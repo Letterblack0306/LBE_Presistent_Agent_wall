@@ -50,6 +50,7 @@ def _propose(gatekeeper: RuleGatekeeper, root: Path, **overrides):
         "trigger": TRIGGER,
         "rule_id": RULE_ID,
         "pack_id": "agents-memory-tool",
+        "package_roots": ["lbe_guard_inspector"],
         "target_profile_path": "profiles/workspace.policy.json",
     }
     kwargs.update(overrides)
@@ -75,6 +76,7 @@ def test_equivalent_rule_returns_already_covered(tmp_path: Path) -> None:
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     assert result["status"] == STATUS_ALREADY_COVERED
     assert result["proposal"] is None
@@ -97,6 +99,7 @@ def test_conflicting_rule_returns_conflict(tmp_path: Path) -> None:
         trigger="Python packages must require init files.",
         rule_id="custom.require_python_package_init",
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     assert result["status"] == STATUS_CONFLICT
     assert result["contradiction_result"]["rule_id"] == "custom.allow_python_packages_without_init"
@@ -110,6 +113,7 @@ def test_missing_protection_is_proposal_ready(tmp_path: Path) -> None:
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     assert result["status"] == STATUS_PROPOSAL_READY
     assert result["scope"] == ["lbe_guard_inspector/__init__.py"]
@@ -126,6 +130,7 @@ def test_no_python_package_evidence_is_insufficient(tmp_path: Path) -> None:
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     assert result["status"] == STATUS_INSUFFICIENT_EVIDENCE
     assert result["package_evidence"] == []
@@ -141,6 +146,7 @@ def test_scope_contains_only_expected_package_paths(tmp_path: Path) -> None:
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     assert result["scope"] == ["lbe_guard_inspector/__init__.py"]
     assert all("config.json" not in item for item in result["scope"])
@@ -155,6 +161,7 @@ def test_reference_evidence_stays_separate_from_workspace_scope(tmp_path: Path) 
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
         reference_evidence_refs=["reference:example:python-package-rule"],
     )
     assert result["reference_evidence_refs"] == ["reference:example:python-package-rule"]
@@ -163,7 +170,7 @@ def test_reference_evidence_stays_separate_from_workspace_scope(tmp_path: Path) 
 
 def test_valid_namespace_package_exception(tmp_path: Path) -> None:
     root = _workspace(tmp_path)
-    namespace = root / "namespace_pkg"
+    namespace = root / "lbe_guard_inspector" / "namespace_pkg"
     namespace.mkdir()
     (namespace / "plugin.py").write_text("PLUGIN = True\n", encoding="utf-8")
     result = _gatekeeper().inspect(
@@ -172,10 +179,11 @@ def test_valid_namespace_package_exception(tmp_path: Path) -> None:
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
-        namespace_packages=["namespace_pkg"],
+        package_roots=["lbe_guard_inspector"],
+        namespace_packages=["lbe_guard_inspector/namespace_pkg"],
     )
-    assert "namespace_pkg/__init__.py" not in result["scope"]
-    ns = next(item for item in result["package_evidence"] if item["package_path"] == "namespace_pkg")
+    assert "lbe_guard_inspector/namespace_pkg/__init__.py" not in result["scope"]
+    ns = next(item for item in result["package_evidence"] if item["package_path"] == "lbe_guard_inspector/namespace_pkg")
     assert ns["namespace_package"] is True
 
 
@@ -190,6 +198,7 @@ def test_nested_python_packages_are_scoped(tmp_path: Path) -> None:
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     assert result["scope"] == [
         "lbe_guard_inspector/__init__.py",
@@ -215,6 +224,7 @@ def test_generated_vendor_archive_and_tests_are_excluded(tmp_path: Path) -> None
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     assert result["scope"] == ["lbe_guard_inspector/__init__.py"]
 
@@ -266,6 +276,7 @@ def test_inspect_mode_is_runtime_read_only(tmp_path: Path) -> None:
         trigger=TRIGGER,
         rule_id=RULE_ID,
         pack_id="agents-memory-tool",
+        package_roots=["lbe_guard_inspector"],
     )
     after = _snapshot(root)
     assert before == after
