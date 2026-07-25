@@ -44,6 +44,7 @@ class RuleGatekeeper:
         trigger: str,
         rule_id: str,
         pack_id: str,
+        package_roots: Iterable[str],
         namespace_packages: Iterable[str] = (),
         exceptions: Iterable[str] = (),
         excluded_paths: Iterable[str] = (),
@@ -57,6 +58,7 @@ class RuleGatekeeper:
             rule_id=rule_id,
             pack_id=pack_id,
             target_profile_path=None,
+            package_roots=package_roots,
             namespace_packages=namespace_packages,
             exceptions=exceptions,
             excluded_paths=excluded_paths,
@@ -74,6 +76,7 @@ class RuleGatekeeper:
         rule_id: str,
         pack_id: str,
         target_profile_path: str | Path | None,
+        package_roots: Iterable[str],
         namespace_packages: Iterable[str] = (),
         exceptions: Iterable[str] = (),
         excluded_paths: Iterable[str] = (),
@@ -89,6 +92,7 @@ class RuleGatekeeper:
             rule_id=rule_id,
             pack_id=pack_id,
             target_profile_path=target_profile_path,
+            package_roots=package_roots,
             namespace_packages=namespace_packages,
             exceptions=exceptions,
             excluded_paths=excluded_paths,
@@ -107,6 +111,7 @@ class RuleGatekeeper:
         rule_id: str,
         pack_id: str,
         target_profile_path: str | Path | None,
+        package_roots: Iterable[str],
         namespace_packages: Iterable[str],
         exceptions: Iterable[str],
         excluded_paths: Iterable[str],
@@ -119,11 +124,17 @@ class RuleGatekeeper:
         rule_id = require_text(rule_id, "rule_id")
         pack_id = require_text(pack_id, "pack_id")
         root = canonical_root(workspace_root)
+        package_root_set = {normalize_relative_path(value) for value in package_roots}
         namespace_set = {normalize_relative_path(value) for value in namespace_packages}
         exception_list = sorted({require_text(value, "exception") for value in exceptions})
         excluded_set = {normalize_relative_path(value) for value in excluded_paths}
         reference_refs = sorted({require_text(value, "reference_evidence_ref") for value in reference_evidence_refs})
-        packages = inspect_python_packages(root, namespace_packages=namespace_set, excluded_paths=excluded_set)
+        packages = inspect_python_packages(
+            root,
+            package_roots=package_root_set,
+            namespace_packages=namespace_set,
+            excluded_paths=excluded_set,
+        )
         catalog = normalize_catalog(self._catalog_provider(root))
         coverage = check_catalog(catalog, pack_id=pack_id, rule_id=rule_id, trigger=trigger)
         base = {
@@ -132,6 +143,7 @@ class RuleGatekeeper:
             "workspace_root": str(root),
             "requested_rule_id": rule_id,
             "requested_pack_id": pack_id,
+            "package_roots": sorted(package_root_set),
             "catalog_checked": [item.as_dict() for item in catalog],
             "package_evidence": [item.as_dict() for item in packages],
             "reference_evidence_refs": reference_refs,
