@@ -673,6 +673,53 @@ def inspect_file(ctx: Context, value: str) -> dict[str, Any]:
     }
 
 
+def _classify_source(path: str) -> tuple[str, int]:
+    """Return (classification, penalty_score) for retrieval-time noise deprioritization.
+
+    Penalty is subtracted from the match score so authoritative source files
+    outrank generated artifacts and dependency metadata.  Hidden configuration
+    files (``.gitignore``, ``.github/``, ``.vscode/``, ``.npmrc``, etc.) are
+    NOT penalized — only VCS internals are."""
+    normalized = "/" + path.lower().replace("\\", "/").strip("/") + "/"
+
+    # VCS internals — preserve .gitignore, .github/, .gitattributes
+    if "/.git/" in normalized:
+        return ("vcs_internal", 800)
+
+    # Vendor / dependency trees
+    if "/node_modules/" in normalized:
+        return ("vendor", 700)
+
+    # Package lockfiles
+    for lock in ("/package-lock.json", "/yarn.lock", "/poetry.lock", "/pnpm-lock.yaml"):
+        if lock in normalized or normalized.endswith(lock.strip("/") + "/"):
+            return ("lockfile", 650)
+
+    # Build / dist / generated output
+    for noise_dir in ("/dist/", "/build/", "/out/", "/.next/", "/.nuxt/"):
+        if noise_dir in normalized:
+            return ("generated", 500)
+
+    # Release proofs and internal state
+    if "/release/" in normalized or "/release-public/" in normalized or "/release-exec/" in normalized:
+        return ("release_proof", 550)
+
+    # Archives
+    for ext in (".zip", ".tar.gz", ".7z", ".rar", ".zxp"):
+        if normalized.rstrip("/").endswith(ext):
+            return ("archive", 700)
+
+    # Backups
+    if "/backup/" in normalized or "/backups/" in normalized or ".bak" in normalized:
+        return ("backup", 700)
+
+    # Temporary worktrees
+    if "/worktree/" in normalized or "/_worktree/" in normalized:
+        return ("worktree", 600)
+
+    return ("source", 0)
+
+
 def search_workspace(
     ctx: Context,
     query: str,
@@ -784,16 +831,20 @@ def search_workspace(
                 snippet = "\n".join(lines[max(0,best_index-2):min(len(lines),best_index+3)])[:1200]
                 line_number = best_index + 1
 
+            # Source classification for noise deprioritization
+            classification, penalty = _classify_source(virtual)
+
             item = {
                 "root": str(row["root"]),
                 "path": virtual,
-                "score": score,
+                "score": score - penalty,
                 "size": size,
                 "line": line_number,
                 "snippet": snippet,
                 "sha256": row["sha256"],
                 "matched_terms": matched,
                 "exact_phrase": exact_path or exact_content,
+                "source_class": classification,
             }
             serial += 1
             entry = (score, serial, item)
@@ -830,6 +881,12 @@ def search_workspace(
             outcome = "no_matches"
             message = "No content matched the query."
 
+        # Compute classification statistics for transparency
+        class_counts: dict[str, int] = {}
+        for candidate in ordered:
+            cls = candidate.get("source_class", "source")
+            class_counts[cls] = class_counts.get(cls, 0) + 1
+
         output = {
             "query": query,
             "search_completed": True,
@@ -837,14 +894,21 @@ def search_workspace(
             "message": message,
             "result_count": len(results),
             "results": results,
-            "searched_roots": sorted(selected_roots or known_roots),
+            "searched_roots": sorted(selected_roots) if selected_roots else sorted(known_roots),
             "meaningful_terms": terms,
             "minimum_required_matches": required,
             "scanned_files": scanned,
             "skipped_unreadable_files": skipped,
+            "duplicate_hashes_collapsed": len(ordered) - len(results),
+            "source_classifications": class_counts,
+            "applied_filters": {
+                "roots": sorted(selected_roots) if selected_roots else sorted(known_roots),
+                "extensions": sorted(allowed_extensions),
+                "max_results": max_results,
+            },
             "scope": {
                 "roots_requested": sorted(selected_roots) if selected_roots else None,
-                "roots_searched": sorted(known_roots),
+                "roots_searched": sorted(selected_roots) if selected_roots else sorted(known_roots),
                 "extensions": sorted(allowed_extensions),
                 "files_considered": files_considered,
             },

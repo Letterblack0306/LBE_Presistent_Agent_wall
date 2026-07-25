@@ -148,7 +148,7 @@ class GuardRunner:
         # Run validation: independent re-read corroborating the workspace
         # evidence against the original problem.
         validation = self._run_validation(
-            ctx, problem, package["workspace_evidence"]
+            ctx, problem, package["current_workspace_evidence"]
         )
         package = {**package, "validation_evidence": validation}
 

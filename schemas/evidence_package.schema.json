@@ -7,11 +7,11 @@
     "package_id",
     "task_id",
     "query",
-    "indexed_evidence",
-    "workspace_evidence",
+    "indexed_reference_evidence",
+    "current_workspace_evidence",
     "validation_evidence",
     "contradictions",
-    "gaps",
+    "missing_evidence",
     "generated_at"
   ],
   "properties": {
@@ -28,40 +28,27 @@
       "minLength": 1
     },
     "workspace_id": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     },
-    "indexed_evidence": {
+    "indexed_reference_evidence": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/evidence"
-      }
+      "items": { "$ref": "#/$defs/evidence" }
     },
-    "workspace_evidence": {
+    "current_workspace_evidence": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/evidence"
-      }
+      "items": { "$ref": "#/$defs/evidence" }
     },
     "validation_evidence": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/evidence"
-      }
+      "items": { "$ref": "#/$defs/evidence" }
     },
     "contradictions": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "type": "string" }
     },
-    "gaps": {
+    "missing_evidence": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "type": "string" }
     },
     "generated_at": {
       "type": "string",

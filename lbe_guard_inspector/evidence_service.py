@@ -136,11 +136,11 @@ class EvidenceService:
             "task_id": task_id,
             "query": query,
             "workspace_id": workspace_id,
-            "indexed_evidence": indexed_evidence,
-            "workspace_evidence": workspace_evidence,
+            "indexed_reference_evidence": indexed_evidence,
+            "current_workspace_evidence": workspace_evidence,
             "validation_evidence": [],
             "contradictions": contradictions,
-            "gaps": gaps,
+            "missing_evidence": gaps,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 

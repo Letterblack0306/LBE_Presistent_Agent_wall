@@ -60,11 +60,11 @@ def _package(
         "task_id": "task-1",
         "query": "q",
         "workspace_id": workspace_id,
-        "indexed_evidence": indexed if indexed is not None else [],
-        "workspace_evidence": workspace if workspace is not None else [],
+        "indexed_reference_evidence": indexed if indexed is not None else [],
+        "current_workspace_evidence": workspace if workspace is not None else [],
         "validation_evidence": validation if validation is not None else [],
         "contradictions": contradictions or [],
-        "gaps": gaps or [],
+        "missing_evidence": gaps or [],
         "generated_at": "2026-07-25T00:00:00+00:00",
     }
 

@@ -182,13 +182,13 @@ class GuardInspector:
         package = _coerce_evidence_package(evidence_package)
 
         workspace_refs = _unique_refs(
-            item.get("ref") for item in package["workspace_evidence"]
+            item.get("ref") for item in package["current_workspace_evidence"]
         )
         validation_refs = _unique_refs(
             item.get("ref") for item in package["validation_evidence"]
         )
         contradictions = [str(c) for c in (package.get("contradictions") or []) if c]
-        gaps = [str(g) for g in (package.get("gaps") or []) if g]
+        gaps = [str(g) for g in (package.get("missing_evidence") or []) if g]
         index_only = self.policy.is_index_only(outcome.rule_id)
 
         findings: list[str] = []
@@ -370,11 +370,11 @@ def _coerce_evidence_package(package: Any) -> dict[str, Any]:
         raise ValueError("evidence_package must be a mapping")
     coerced = dict(package)
     for key, default in (
-        ("indexed_evidence", []),
-        ("workspace_evidence", []),
+        ("indexed_reference_evidence", []),
+        ("current_workspace_evidence", []),
         ("validation_evidence", []),
         ("contradictions", []),
-        ("gaps", []),
+        ("missing_evidence", []),
     ):
         value = coerced.get(key)
         if not isinstance(value, list):

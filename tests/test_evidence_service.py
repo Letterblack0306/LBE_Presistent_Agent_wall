@@ -56,8 +56,8 @@ def test_build_evidence_package_wraps_existing_search() -> None:
             max_results=10,
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    evidence = package["indexed_evidence"][0]
+    assert len(package["indexed_reference_evidence"]) == 1
+    evidence = package["indexed_reference_evidence"][0]
     assert evidence["path"].endswith("CSInterface.js")
     assert evidence["hash"] == "abc123"
     assert evidence["line_start"] == 525
@@ -98,8 +98,8 @@ def test_no_matches_becomes_evidence_gap() -> None:
             query="missing phrase",
         )
 
-    assert package["indexed_evidence"] == []
-    assert package["gaps"] == [
+    assert package["indexed_reference_evidence"] == []
+    assert package["missing_evidence"] == [
         "Indexed files were scanned, but no content matched the query.",
         "Current workspace evidence was not supplied; workspace PASS/FAIL is not permitted.",
     ]
@@ -151,9 +151,9 @@ def test_excluded_classifications_are_filtered_by_default() -> None:
             include_excluded=False,
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    assert package["indexed_evidence"][0]["hash"] == "source-hash"
-    assert package["indexed_evidence"][0]["classification"] == "indexed_reference"
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert package["indexed_reference_evidence"][0]["hash"] == "source-hash"
+    assert package["indexed_reference_evidence"][0]["classification"] == "indexed_reference"
 
 
 def test_excluded_classifications_can_be_included_explicitly() -> None:
@@ -191,8 +191,8 @@ def test_excluded_classifications_can_be_included_explicitly() -> None:
             include_excluded=True,
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    assert package["indexed_evidence"][0]["classification"] == "backup"
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert package["indexed_reference_evidence"][0]["classification"] == "backup"
 
 
 from dataclasses import dataclass
@@ -265,8 +265,8 @@ def test_workspace_evidence_is_attached_separately(tmp_path: Path) -> None:
             roots=["dev"],
         )
 
-    assert len(package["workspace_evidence"]) == 1
-    evidence = package["workspace_evidence"][0]
+    assert len(package["current_workspace_evidence"]) == 1
+    evidence = package["current_workspace_evidence"][0]
     assert evidence["source_type"] == "workspace"
     assert evidence["classification"] == "current_workspace"
     assert evidence["verified"] is True
@@ -357,7 +357,7 @@ def test_workspace_build_directories_are_excluded(tmp_path: Path) -> None:
 
     paths = [
         item["path"]
-        for item in package["workspace_evidence"]
+        for item in package["current_workspace_evidence"]
     ]
 
     assert str(current.resolve()) in paths
@@ -416,10 +416,10 @@ def test_stale_index_hash_produces_a_contradiction(tmp_path: Path) -> None:
             roots=["dev"],
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    assert len(package["workspace_evidence"]) == 1
-    assert package["indexed_evidence"][0]["hash"] == "stale-indexed-hash"
-    assert package["workspace_evidence"][0]["hash"] == current_hash
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert len(package["current_workspace_evidence"]) == 1
+    assert package["indexed_reference_evidence"][0]["hash"] == "stale-indexed-hash"
+    assert package["current_workspace_evidence"][0]["hash"] == current_hash
     assert len(package["contradictions"]) == 1
     contradiction = package["contradictions"][0]
     assert "stale-indexed-hash" in contradiction
@@ -479,9 +479,9 @@ def test_matching_index_hash_produces_no_contradiction(tmp_path: Path) -> None:
             roots=["dev"],
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    assert len(package["workspace_evidence"]) == 1
-    assert package["indexed_evidence"][0]["hash"] == current_hash
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert len(package["current_workspace_evidence"]) == 1
+    assert package["indexed_reference_evidence"][0]["hash"] == current_hash
     assert package["contradictions"] == []
 
 
@@ -520,8 +520,8 @@ def test_contradictions_empty_without_workspace_evidence() -> None:
             max_results=10,
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    assert package["workspace_evidence"] == []
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert package["current_workspace_evidence"] == []
     assert package["contradictions"] == []
 
 
@@ -601,8 +601,8 @@ def test_different_workspaces_same_path_yield_no_contradiction(tmp_path: Path) -
             roots=["dev_A", "dev_B"],
         )
 
-    assert len(package["indexed_evidence"]) == 2
-    assert len(package["workspace_evidence"]) == 1
+    assert len(package["indexed_reference_evidence"]) == 2
+    assert len(package["current_workspace_evidence"]) == 1
     assert package["contradictions"] == []
 
 
@@ -658,8 +658,8 @@ def test_genuine_contradiction_same_workspace_still_works(tmp_path: Path) -> Non
             roots=["dev"],
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    assert len(package["workspace_evidence"]) == 1
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert len(package["current_workspace_evidence"]) == 1
     assert len(package["contradictions"]) == 1
     contradiction = package["contradictions"][0]
     assert "stale-indexed-hash" in contradiction
@@ -716,6 +716,6 @@ def test_indexed_evidence_missing_workspace_id_is_skipped(tmp_path: Path) -> Non
             extensions=[".js"],
         )
 
-    assert len(package["indexed_evidence"]) == 1
-    assert len(package["workspace_evidence"]) == 1
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert len(package["current_workspace_evidence"]) == 1
     assert package["contradictions"] == []
