@@ -154,27 +154,33 @@ class EvidenceService:
         """Detect stale-index contradictions between indexed and workspace evidence.
 
         A contradiction is recorded when an indexed evidence item and a current
-        workspace evidence item refer to the same file path but report different
-        non-null content hashes. This signals that the indexed knowledge may be
-        stale relative to the live workspace, which a downstream guard must know
-        before it can issue a verdict.
+        workspace evidence item belong to the **same workspace**, refer to the
+        **same file path**, but report different non-null content hashes.  This
+        signals that the indexed knowledge may be stale relative to the live
+        workspace, which a downstream guard must know before it can issue a
+        verdict.
+
+        Workspace scoping is enforced via ``workspace_id`` on both evidence
+        items.  Items whose ``workspace_id`` is missing (``None`` / empty) are
+        skipped — workspace identity is never guessed.
 
         Path matching is deliberately conservative: the workspace relative path
         must be a separator-boundary suffix of (or equal to) the indexed path.
-        Cross-root duplicate-basename ambiguity is intentionally out of scope
-        (deferred to workspace resolution in a later phase) and is never guessed.
         """
         def _norm(value: str | None) -> str:
             if not value:
                 return ""
             return value.replace("\\", "/").strip("/").lower()
 
-        workspace_by_key: dict[str, list[dict[str, Any]]] = {}
+        workspace_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
         for item in workspace_evidence:
+            ws_id = item.get("workspace_id")
+            if not ws_id:
+                continue
             metadata = item.get("metadata") or {}
             rel = _norm(metadata.get("relative_path")) or _norm(item.get("path"))
             if rel:
-                workspace_by_key.setdefault(rel, []).append(item)
+                workspace_by_key.setdefault((ws_id, rel), []).append(item)
 
         contradictions: list[str] = []
         seen: set[tuple[str, str]] = set()
@@ -182,10 +188,17 @@ class EvidenceService:
         for idx in indexed_evidence:
             idx_hash = idx.get("hash")
             idx_path = _norm(idx.get("path"))
+            idx_ws_id = idx.get("workspace_id")
             if not idx_hash or not idx_path:
                 continue
+            # Missing workspace identity on indexed side — cannot scope; skip.
+            if not idx_ws_id:
+                continue
 
-            for rel, ws_items in workspace_by_key.items():
+            for (ws_id, rel), ws_items in workspace_by_key.items():
+                # Only compare evidence that belongs to the same workspace.
+                if idx_ws_id != ws_id:
+                    continue
                 same_path = idx_path == rel or idx_path.endswith("/" + rel)
                 if not same_path:
                     continue
@@ -202,12 +215,14 @@ class EvidenceService:
                     seen.add(key)
                     contradictions.append(
                         "Indexed evidence '{iref}' and current workspace evidence "
-                        "'{wref}' refer to the same path '{rel}' but report different "
+                        "'{wref}' refer to the same path '{rel}' in the same "
+                        "workspace '{wsid}' but report different "
                         "content hashes ('{ih}' vs '{wh}'); the indexed record may be "
                         "stale.".format(
                             iref=idx_ref,
                             wref=ws_ref,
                             rel=rel,
+                            wsid=ws_id,
                             ih=idx_hash,
                             wh=ws_hash,
                         )

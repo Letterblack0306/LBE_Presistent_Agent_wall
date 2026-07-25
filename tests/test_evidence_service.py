@@ -409,7 +409,7 @@ def test_stale_index_hash_produces_a_contradiction(tmp_path: Path) -> None:
         package = EvidenceService().build_evidence_package(
             task_id="task-contradiction",
             query="Provided callback is not a function",
-            workspace_id="browser-dev",
+            workspace_id="dev",
             workspace_root=str(workspace),
             max_results=10,
             extensions=[".js"],
@@ -472,7 +472,7 @@ def test_matching_index_hash_produces_no_contradiction(tmp_path: Path) -> None:
         package = EvidenceService().build_evidence_package(
             task_id="task-agreement",
             query="Provided callback is not a function",
-            workspace_id="browser-dev",
+            workspace_id="dev",
             workspace_root=str(workspace),
             max_results=10,
             extensions=[".js"],
@@ -524,3 +524,198 @@ def test_contradictions_empty_without_workspace_evidence() -> None:
     assert package["workspace_evidence"] == []
     assert package["contradictions"] == []
 
+
+
+def test_different_workspaces_same_path_yield_no_contradiction(tmp_path: Path) -> None:
+    """Identical relative paths in two different workspaces must not cross-contradict."""
+    # Workspace A
+    ws_a = tmp_path / "ws_a"
+    ws_a.mkdir()
+    src_a = ws_a / "src"
+    src_a.mkdir()
+    (src_a / "manifest.xml").write_text(
+        "<!-- workspace A manifest -->", encoding="utf-8"
+    )
+    hash_a = hashlib.sha256(b"<!-- workspace A manifest -->").hexdigest()
+
+    # Workspace B with the same relative path but different content
+    ws_b = tmp_path / "ws_b"
+    ws_b.mkdir()
+    src_b = ws_b / "src"
+    src_b.mkdir()
+    (src_b / "manifest.xml").write_text(
+        "<!-- workspace B manifest -->", encoding="utf-8"
+    )
+    hash_b = hashlib.sha256(b"<!-- workspace B manifest -->").hexdigest()
+    assert hash_a != hash_b
+
+    # Indexed evidence: two items from different roots, same relative path
+    search_output = {
+        "query": "manifest",
+        "search_completed": True,
+        "outcome": "matches_found",
+        "message": "Found 2 matching files.",
+        "result_count": 2,
+        "results": [
+            {
+                "root": "dev_A",
+                "path": "dev_A/src/manifest.xml",
+                "score": 800,
+                "size": 28,
+                "line": 1,
+                "snippet": "<!-- workspace A manifest -->",
+                "sha256": hash_a,
+                "matched_terms": 1,
+                "exact_phrase": True,
+            },
+            {
+                "root": "dev_B",
+                "path": "dev_B/src/manifest.xml",
+                "score": 600,
+                "size": 28,
+                "line": 1,
+                "snippet": "<!-- workspace B manifest -->",
+                "sha256": hash_b,
+                "matched_terms": 1,
+                "exact_phrase": True,
+            },
+        ],
+    }
+
+    fake_context = FakeWorkspaceContext(tmp_path)
+
+    with patch(
+        "lbe_guard_inspector.evidence_service.Context.load",
+        return_value=fake_context,
+    ), patch(
+        "lbe_guard_inspector.evidence_service.search_workspace",
+        return_value=search_output,
+    ):
+        package = EvidenceService().build_evidence_package(
+            task_id="task-cross-workspace",
+            query="manifest",
+            workspace_id="dev_A",
+            workspace_root=str(ws_a),
+            max_results=10,
+            extensions=[".xml"],
+            roots=["dev_A", "dev_B"],
+        )
+
+    assert len(package["indexed_evidence"]) == 2
+    assert len(package["workspace_evidence"]) == 1
+    assert package["contradictions"] == []
+
+
+
+def test_genuine_contradiction_same_workspace_still_works(tmp_path: Path) -> None:
+    """A genuine stale hash inside the *same* workspace must still be a contradiction."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    source = workspace / "src"
+    source.mkdir()
+    target = source / "callback.js"
+    content = 'console.log("updated callback");'
+    target.write_text(content, encoding="utf-8")
+    current_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+    search_output = {
+        "query": "callback",
+        "search_completed": True,
+        "outcome": "matches_found",
+        "message": "Found 1 matching file.",
+        "result_count": 1,
+        "results": [
+            {
+                "root": "dev",
+                "path": "dev/src/callback.js",
+                "score": 700,
+                "size": len(content),
+                "line": 1,
+                "snippet": "callback",
+                "sha256": "stale-indexed-hash",
+                "matched_terms": 1,
+                "exact_phrase": True,
+            }
+        ],
+    }
+
+    fake_context = FakeWorkspaceContext(tmp_path)
+
+    with patch(
+        "lbe_guard_inspector.evidence_service.Context.load",
+        return_value=fake_context,
+    ), patch(
+        "lbe_guard_inspector.evidence_service.search_workspace",
+        return_value=search_output,
+    ):
+        package = EvidenceService().build_evidence_package(
+            task_id="task-genuine-contradiction",
+            query="callback",
+            workspace_id="dev",
+            workspace_root=str(workspace),
+            max_results=10,
+            extensions=[".js"],
+            roots=["dev"],
+        )
+
+    assert len(package["indexed_evidence"]) == 1
+    assert len(package["workspace_evidence"]) == 1
+    assert len(package["contradictions"]) == 1
+    contradiction = package["contradictions"][0]
+    assert "stale-indexed-hash" in contradiction
+    assert current_hash in contradiction
+    assert "src/callback.js" in contradiction
+    assert "dev" in contradiction
+
+
+def test_indexed_evidence_missing_workspace_id_is_skipped(tmp_path: Path) -> None:
+    """Indexed evidence without a workspace_id must not be compared (no guessing)."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = workspace / "callback.js"
+    content = 'console.log("live content");'
+    target.write_text(content, encoding="utf-8")
+    live_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+    search_output = {
+        "query": "callback",
+        "search_completed": True,
+        "outcome": "matches_found",
+        "message": "Found 1 matching file.",
+        "result_count": 1,
+        "results": [
+            {
+                "root": None,
+                "path": "callback.js",
+                "score": 500,
+                "size": len(content),
+                "line": 1,
+                "snippet": "callback",
+                "sha256": "different-indexed-hash",
+                "matched_terms": 1,
+                "exact_phrase": True,
+            }
+        ],
+    }
+
+    fake_context = FakeWorkspaceContext(tmp_path)
+
+    with patch(
+        "lbe_guard_inspector.evidence_service.Context.load",
+        return_value=fake_context,
+    ), patch(
+        "lbe_guard_inspector.evidence_service.search_workspace",
+        return_value=search_output,
+    ):
+        package = EvidenceService().build_evidence_package(
+            task_id="task-no-index-wsid",
+            query="callback",
+            workspace_id="dev",
+            workspace_root=str(workspace),
+            max_results=10,
+            extensions=[".js"],
+        )
+
+    assert len(package["indexed_evidence"]) == 1
+    assert len(package["workspace_evidence"]) == 1
+    assert package["contradictions"] == []
