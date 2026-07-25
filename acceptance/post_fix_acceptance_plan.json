@@ -1,0 +1,52 @@
+{
+  "plan_id": "guard-inspector-post-fix-acceptance-v1",
+  "target_workspace": "G:\\Developments\\00_CEP_Developer\\cep-dev-workspace",
+  "workspace_id": "cep-dev-workspace",
+  "output_path": "state/post-fix-acceptance.json",
+  "read_only": true,
+  "rules": [
+    {
+      "pack_id": "cep",
+      "rule_id": "cep.manifest_exists",
+      "problem": "ExtensionManifest manifest.xml",
+      "expected_rule_statuses": ["passed", "failed"],
+      "allowed_verdicts": ["PASS", "FAIL", "INSUFFICIENT_EVIDENCE"]
+    },
+    {
+      "pack_id": "cep",
+      "rule_id": "cep.host_version",
+      "problem": "Host Version minVersion maxVersion",
+      "expected_rule_statuses": ["passed", "failed", "not_applicable"],
+      "allowed_verdicts": ["PASS", "FAIL", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE"]
+    },
+    {
+      "pack_id": "cep",
+      "rule_id": "cep.menubar_extension",
+      "problem": "Menu Extension",
+      "expected_rule_statuses": ["passed", "failed", "not_applicable"],
+      "allowed_verdicts": ["PASS", "FAIL", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE"]
+    },
+    {
+      "pack_id": "cep",
+      "rule_id": "cep.symlink_free",
+      "problem": "symbolic links symlink",
+      "expected_rule_statuses": ["passed", "failed", "blocked"],
+      "allowed_verdicts": ["PASS", "FAIL", "INSUFFICIENT_EVIDENCE"]
+    },
+    {
+      "pack_id": "generic",
+      "rule_id": "generic.index_present",
+      "problem": "workspace index files",
+      "expected_rule_statuses": ["passed", "failed"],
+      "allowed_verdicts": ["FAIL", "INSUFFICIENT_EVIDENCE"],
+      "must_not_verdict": "PASS"
+    }
+  ],
+  "global_invariants": {
+    "unrelated_workspace_contradictions": 0,
+    "indexed_only_cannot_pass_or_fail_without_workspace_evidence": true,
+    "pass_requires_workspace_evidence": true,
+    "pass_requires_validation_evidence": true,
+    "missing_workspace_identity_must_not_be_inferred": true
+  }
+}
