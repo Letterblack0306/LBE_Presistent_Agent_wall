@@ -37,8 +37,8 @@ def _run_rule(runner: GuardRunner, plan: dict[str, Any], case: dict[str, Any]) -
     rule_result = result["rule_result"]
     guard_result = result["guard_result"]
 
-    workspace_evidence = package.get("workspace_evidence") or []
-    indexed_evidence = package.get("indexed_evidence") or []
+    current_workspace_evidence = package.get("current_workspace_evidence") or []
+    indexed_reference_evidence = package.get("indexed_reference_evidence") or []
     validation_evidence = package.get("validation_evidence") or []
     contradictions = package.get("contradictions") or []
 
@@ -58,12 +58,12 @@ def _run_rule(runner: GuardRunner, plan: dict[str, Any], case: dict[str, Any]) -
         errors.append(f"Forbidden verdict produced: {verdict}")
 
     if verdict == "PASS":
-        if not workspace_evidence:
+        if not current_workspace_evidence:
             errors.append("PASS produced without current workspace evidence")
         if not validation_evidence:
             errors.append("PASS produced without validation evidence")
 
-    if not workspace_evidence and verdict in {"PASS", "FAIL"}:
+    if not current_workspace_evidence and verdict in {"PASS", "FAIL"}:
         errors.append(f"{verdict} produced without current workspace evidence")
 
     if contradictions:
@@ -78,12 +78,12 @@ def _run_rule(runner: GuardRunner, plan: dict[str, Any], case: dict[str, Any]) -
         "rule_status": status,
         "verdict": verdict,
         "reason": guard_result.get("reason"),
-        "workspace_evidence_refs": _refs(workspace_evidence),
-        "indexed_evidence_refs": _refs(indexed_evidence),
+        "current_workspace_evidence_refs": _refs(current_workspace_evidence),
+        "indexed_reference_evidence_refs": _refs(indexed_reference_evidence),
         "validation_evidence_refs": _refs(validation_evidence),
         "contradiction_count": len(contradictions),
         "contradictions": contradictions,
-        "gaps": package.get("gaps") or [],
+        "missing_evidence": package.get("missing_evidence") or [],
         "errors": errors,
     }
 

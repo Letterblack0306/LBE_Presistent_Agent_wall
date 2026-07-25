@@ -834,10 +834,13 @@ def search_workspace(
             # Source classification for noise deprioritization
             classification, penalty = _classify_source(virtual)
 
+            # Compute penalized score once; used for display, heap, and ordering
+            penalized_score = int(score) - penalty
+
             item = {
                 "root": str(row["root"]),
                 "path": virtual,
-                "score": score - penalty,
+                "score": penalized_score,
                 "size": size,
                 "line": line_number,
                 "snippet": snippet,
@@ -847,11 +850,11 @@ def search_workspace(
                 "source_class": classification,
             }
             serial += 1
-            entry = (score, serial, item)
+            entry = (penalized_score, serial, item)
             limit = max_results * 4
             if len(candidates) < limit:
                 heapq.heappush(candidates, entry)
-            elif score > candidates[0][0]:
+            elif penalized_score > candidates[0][0]:
                 heapq.heapreplace(candidates, entry)
 
         ordered = [

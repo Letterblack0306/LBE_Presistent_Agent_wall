@@ -16,7 +16,7 @@ This package implements the first required files for the Guard Inspector:
   execute it against the workspace, run validation, and produce the verdict
   from the original problem request;
 - tests proving schema enforcement, exclusion behavior, verdict mapping, and
-  the full guard vertical slice (48 passed).
+  the full guard vertical slice (65 passed as of current HEAD).
 
 ## Files
 
@@ -61,7 +61,7 @@ The adapter automatically discovers a table containing path and content columns.
 python -m pytest -q
 ```
 
-Latest run: **48 passed** (0.21 s).
+Latest run: **65 passed** (0.32 s).
 
 ## Run
 
@@ -138,15 +138,15 @@ $body = @{
         task_id            = "task-1"
         query              = "Provided callback is not a function"
         workspace_id       = "cep-project"
-        indexed_evidence   = @()
-        workspace_evidence = @(
+        indexed_reference_evidence   = @()
+        current_workspace_evidence = @(
             @{ ref = "workspace:cep-project:src/panel.js"; source_type = "workspace"; authority = 2; verified = $true; classification = "current_workspace" }
         )
         validation_evidence = @(
             @{ ref = "validation:manifest-schema:1"; source_type = "validation"; authority = 5; verified = $true; classification = "validation" }
         )
         contradictions = @()
-        gaps           = @()
+        missing_evidence = @()
         generated_at   = "2026-07-25T00:00:00+00:00"
     }
 } | ConvertTo-Json -Depth 10

@@ -309,6 +309,10 @@ class EvidenceService:
             if terms and matched == len(terms):
                 score += 120
 
+            # Apply workspace penalty matching agent._classify_source taxonomy
+            penalty = _workspace_penalty(classification)
+            penalized_score = score - penalty
+
             snippet, line_number = _extract_snippet(content, query_lower, terms)
             digest = hashlib.sha256(raw).hexdigest()
 
@@ -322,7 +326,7 @@ class EvidenceService:
                 "line_start": line_number,
                 "line_end": line_number,
                 "snippet": snippet,
-                "score": float(score),
+                "score": float(penalized_score),
                 "matched_terms": [
                     term
                     for term in terms
@@ -343,11 +347,11 @@ class EvidenceService:
             }
 
             serial += 1
-            entry = (score, serial, item)
+            entry = (penalized_score, serial, item)
             limit = max_results * 4
             if len(candidates) < limit:
                 heapq.heappush(candidates, entry)
-            elif score > candidates[0][0]:
+            elif penalized_score > candidates[0][0]:
                 heapq.heapreplace(candidates, entry)
 
         ordered = [
@@ -445,6 +449,18 @@ def _extract_snippet(
         lines[max(0, best_index - 2):min(len(lines), best_index + 3)]
     )[:1200]
     return snippet or None, best_index + 1
+
+
+def _workspace_penalty(classification: str) -> int:
+    """Return a retrieval-time penalty matching agent._classify_source taxonomy."""
+    penalties = {
+        "generated": 100,
+        "vendor": 120,
+        "archive": 150,
+        "backup": 150,
+        "development_copy": 200,
+    }
+    return penalties.get(classification, 0)
 
 
 def _classify_path(path: str) -> str:

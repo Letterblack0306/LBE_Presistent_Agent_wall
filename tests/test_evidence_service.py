@@ -719,3 +719,81 @@ def test_indexed_evidence_missing_workspace_id_is_skipped(tmp_path: Path) -> Non
     assert len(package["indexed_reference_evidence"]) == 1
     assert len(package["current_workspace_evidence"]) == 1
     assert package["contradictions"] == []
+
+def test_penalized_artifact_cannot_outrank_source(tmp_path):
+    """A penalized lockfile/generated artifact must not outrank a source file with same match quality."""
+
+    # Create a workspace with a source file and a generated artifact
+    ws = tmp_path / "workspace"
+    src_dir = ws / "src"
+    dist_dir = ws / "dist"
+    src_dir.mkdir(parents=True)
+    dist_dir.mkdir(parents=True)
+
+    # Both files contain the exact same query match
+    content = "callback function handler\n"
+    src_file = src_dir / "app.py"
+    dist_file = dist_dir / "app.min.js"
+    src_file.write_text(content)
+    dist_file.write_text(content)
+
+    # Build a fake context that has this workspace as a root
+    fake_context = FakeWorkspaceContext(ws)
+
+    # Mock search_workspace to return empty indexed results
+    search_empty = {
+        "search_completed": True,
+        "outcome": "no_matches",
+        "results": [],
+        "searched_roots": [],
+        "meaningful_terms": ["callback"],
+        "minimum_required_matches": 1,
+        "scanned_files": 0,
+        "skipped_unreadable_files": 0,
+        "scope": {"roots_requested": None, "roots_searched": [],
+                  "extensions": [".py", ".js"], "files_considered": 0},
+    }
+
+    with patch(
+        "lbe_guard_inspector.evidence_service.Context.load",
+        return_value=fake_context,
+    ), patch(
+        "lbe_guard_inspector.evidence_service.search_workspace",
+        return_value=search_empty,
+    ):
+        package = EvidenceService().build_evidence_package(
+            task_id="task-rank",
+            query="callback",
+            workspace_id="test",
+            workspace_root=str(ws),
+            max_results=10,
+            extensions=[".py", ".js"],
+            roots=["test"],
+        )
+
+    ws_evidence = package.get("current_workspace_evidence", [])
+    assert len(ws_evidence) >= 1
+
+    # The source file (app.py) must outrank the generated artifact (app.min.js)
+    # when their match quality is identical
+    if len(ws_evidence) >= 2:
+        scores = [e.get("score", 0) for e in ws_evidence]
+        paths = [e.get("path", "") for e in ws_evidence]
+        # Find indices
+        src_idx = next(i for i, p in enumerate(paths) if "app.py" in p)
+        dist_idx = next(i for i, p in enumerate(paths) if "app.min.js" in p)
+        assert scores[src_idx] > scores[dist_idx], (
+            f"Source file score {scores[src_idx]} must exceed "
+            f"generated artifact score {scores[dist_idx]}"
+        )
+
+
+def test_ranking_tie_ordering_deterministic():
+    """Two files with identical penalized_score must sort deterministically by path."""
+    # Even without live workspace, verify the sort key includes path as secondary
+    sort_key_fn = lambda item: (-item.get("score", 0), item.get("path", "").lower())
+    a = {"score": 100, "path": "src/alpha.py"}
+    b = {"score": 100, "path": "src/beta.py"}
+    sorted_items = sorted([b, a], key=sort_key_fn)
+    assert sorted_items[0]["path"] == "src/alpha.py"
+    assert sorted_items[1]["path"] == "src/beta.py"

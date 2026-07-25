@@ -1,4 +1,6 @@
-# Agent.py Baseline Validation — 2026-07-24
+# Agent.py Baseline Validation — 2026-07-24 *(Historical Baseline)*
+
+> **⚠ This document is a historical baseline from July 24–25, 2026. It is preserved for reference only. See `VALIDATION_CURRENT.md` for the current validation report. Do not use this document as evidence of current pass/fail status.**
 
 ## Baseline Snapshot
 
@@ -152,7 +154,7 @@ Implemented and validated: `lbe_guard_inspector/guard_inspector.py`, `lbe_guard_
 | Validation-ref requirement for `PASS` | PASS — missing validation keeps verdict at `INSUFFICIENT_EVIDENCE` |
 | Workspace evidence requirement for `PASS` / `FAIL` | PASS — missing workspace evidence downgrades to `INSUFFICIENT_EVIDENCE` |
 | `guard_result.schema.json` validation | PASS |
-| Full pytest suite | PASS — **48 tests passed** |
+| Full pytest suite | PASS — **48 tests passed** *(historical: July 24-25, 2026 baseline; superseded by current 65-pass validation)* |
 
 ### GuardRunner responsibilities
 
@@ -197,7 +199,7 @@ Indexed-only evidence (e.g. rules that inspect only the SQLite index) cannot pro
 }
 ```
 
-### Full pytest suite
+### Full pytest suite *(historical — 2026-07-24/25 baseline superseded)*
 
 ```text
 48 passed in 0.21s
