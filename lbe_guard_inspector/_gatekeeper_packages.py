@@ -10,9 +10,8 @@ EXCLUDED_DIR_NAMES = frozenset({
     ".mypy_cache", ".ruff_cache", "node_modules", "vendor", "vendors",
     "dist", "build", "generated", "archive", "archives", "backup",
     "backups", "release", "release-public", "release-exec", "site-packages",
-    ".venv", "venv",
+    ".venv", "venv", "tests", "test", "examples", "docs",
 })
-EXCLUDED_TOP_LEVEL = frozenset({"tests", "test", "examples", "docs"})
 
 
 @dataclass(frozen=True)
@@ -42,11 +41,20 @@ class PackageEvidence:
 def inspect_python_packages(
     root: Path,
     *,
+    package_roots: set[str],
     namespace_packages: set[str],
     excluded_paths: set[str],
 ) -> list[PackageEvidence]:
     modules: list[Path] = []
-    pending = [root]
+    pending: list[Path] = []
+    for relative in sorted(package_roots):
+        candidate = (root / relative).resolve(strict=False)
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            continue
+        if candidate.is_dir() and not candidate.is_symlink():
+            pending.append(candidate)
     while pending:
         current = pending.pop()
         try:
@@ -122,8 +130,6 @@ def is_excluded(path: Path, root: Path, explicit: set[str]) -> bool:
     if relative in explicit or any(relative.startswith(item + "/") for item in explicit if item):
         return True
     parts = path.relative_to(root).parts
-    if parts and parts[0].casefold() in EXCLUDED_TOP_LEVEL:
-        return True
     return any(part.casefold() in EXCLUDED_DIR_NAMES for part in parts)
 
 
