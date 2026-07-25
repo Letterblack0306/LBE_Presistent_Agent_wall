@@ -7,6 +7,8 @@
     "proposal_id",
     "workspace_id",
     "rule_id",
+    "pack_id",
+    "target_profile_path",
     "trigger",
     "rationale",
     "scope",
@@ -14,23 +16,34 @@
     "severity",
     "exceptions",
     "equivalent_rule_checked",
+    "equivalent_rule_result",
+    "contradiction_result",
     "evidence_refs",
     "diff",
     "validation_plan",
     "rollback_plan",
+    "provenance",
     "approval_required",
     "created_at"
   ],
   "properties": {
     "proposal_id": {
       "type": "string",
-      "minLength": 1
+      "pattern": "^prop-[a-f0-9]{24}$"
     },
     "workspace_id": {
       "type": "string",
       "minLength": 1
     },
     "rule_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pack_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_profile_path": {
       "type": "string",
       "minLength": 1
     },
@@ -45,9 +58,11 @@
     "scope": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "required_action": {
       "type": "string",
@@ -66,10 +81,19 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
     },
     "equivalent_rule_checked": {
-      "type": "boolean"
+      "const": true
+    },
+    "equivalent_rule_result": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contradiction_result": {
+      "type": "string",
+      "minLength": 1
     },
     "evidence_refs": {
       "type": "array",
@@ -96,6 +120,52 @@
         "type": "string"
       },
       "minItems": 1
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "mode",
+        "generator",
+        "workspace_root",
+        "profile_path_source",
+        "catalog_snapshot_hash",
+        "evidence_hashes"
+      ],
+      "properties": {
+        "mode": {
+          "const": "propose-rule"
+        },
+        "generator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_path_source": {
+          "type": "string",
+          "enum": [
+            "explicit_request",
+            "workspace_profile",
+            "active_policy"
+          ]
+        },
+        "catalog_snapshot_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evidence_hashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
     },
     "approval_required": {
       "const": true
