@@ -1,0 +1,525 @@
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import sys
+import uuid
+from dataclasses import dataclass, field
+from pathlib import Path
+from types import ModuleType
+from typing import Any, Callable
+
+# Keep one module identity when this file is executed directly.
+# Rule packs may import ``audit_controller.RuleResult``; without this alias,
+# running this file as a script would create a second, incompatible class.
+if __name__ == "__main__":
+    sys.modules.setdefault("audit_controller", sys.modules[__name__])
+
+try:
+    from agent import (
+        STATE_DIR,
+        Context,
+        GovernanceError,
+        inspect_file,
+        search_workspace,
+        write_json,
+    )
+except ImportError as exc:  # pragma: no cover - defensive
+    raise RuntimeError(
+        "audit_controller requires agent.py in the same directory or Python path"
+    ) from exc
+
+
+REPORT_PATH = STATE_DIR / "audit_report.json"
+RULES_DIR = Path(__file__).resolve().parent / "rules"
+RULES_DIR.mkdir(parents=True, exist_ok=True)
+
+VALID_RULE_STATUSES = frozenset({
+    "passed",
+    "failed",
+    "blocked",
+    "not_applicable",
+})
+
+
+class AuditError(RuntimeError):
+    """Raised when an audit cannot be constructed or a rule violates its contract."""
+
+
+@dataclass(frozen=True)
+class RuleResult:
+    rule_id: str
+    status: str
+    message: str
+    evidence: dict[str, Any] = field(default_factory=dict)
+    severity: str = "error"
+    required: bool = True
+    fast_fail: bool = False
+
+
+@dataclass
+class AuditReport:
+    audit_id: str
+    started_at: str
+    completed_at: str
+    project_type: str
+    packs_evaluated: list[str]
+    passed: int = 0
+    failed: int = 0
+    blocked: int = 0
+    not_applicable: int = 0
+    summary: str = ""
+    results: list[RuleResult] = field(default_factory=list)
+    inventory: dict[str, Any] = field(default_factory=dict)
+    skipped_gates: list[dict[str, Any]] = field(default_factory=list)
+    skipped_packs: list[dict[str, Any]] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "audit_id": self.audit_id,
+            "started_at": self.started_at,
+            "completed_at": self.completed_at,
+            "project_type": self.project_type,
+            "packs_evaluated": self.packs_evaluated,
+            "passed": self.passed,
+            "failed": self.failed,
+            "blocked": self.blocked,
+            "not_applicable": self.not_applicable,
+            "summary": self.summary,
+            "inventory": self.inventory,
+            "skipped_gates": self.skipped_gates,
+            "skipped_packs": self.skipped_packs,
+            "results": [
+                {
+                    "rule_id": result.rule_id,
+                    "status": result.status,
+                    "message": result.message,
+                    "evidence": result.evidence,
+                    "severity": result.severity,
+                    "required": result.required,
+                    "fast_fail": result.fast_fail,
+                }
+                for result in self.results
+            ],
+        }
+
+
+RuleFunction = Callable[[Context, dict[str, Any]], RuleResult]
+_rule_registry: dict[str, dict[str, RuleFunction]] = {}
+
+
+def register_rule(pack_id: str, rule_id: str, func: RuleFunction) -> None:
+    """Register a rule programmatically, primarily for tests or built-in packs."""
+    normalized_pack = pack_id.strip().lower()
+    normalized_rule = rule_id.strip()
+    if not normalized_pack or not normalized_rule:
+        raise AuditError("pack_id and rule_id must be non-empty")
+    if not callable(func):
+        raise AuditError(f"Rule is not callable: {normalized_pack}.{normalized_rule}")
+    _rule_registry.setdefault(normalized_pack, {})[normalized_rule] = func
+
+
+def _utc_now() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _load_module(pack_id: str, pack_path: Path) -> ModuleType:
+    module_name = f"lbe_rule_pack_{pack_id}_{abs(hash(pack_path))}"
+    spec = importlib.util.spec_from_file_location(module_name, pack_path)
+    if spec is None or spec.loader is None:
+        raise AuditError(f"Unable to construct loader for rule pack: {pack_path}")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        raise AuditError(
+            f"Rule pack could not be loaded: {pack_path}: {type(exc).__name__}: {exc}"
+        ) from exc
+    return module
+
+
+def _load_rule_pack(pack_id: str) -> dict[str, RuleFunction]:
+    normalized = pack_id.strip().lower()
+    if not normalized:
+        raise AuditError("Rule pack ID cannot be empty")
+    if normalized in _rule_registry:
+        return _rule_registry[normalized]
+
+    pack_path = RULES_DIR / f"{normalized}.py"
+    if not pack_path.exists():
+        raise AuditError(f"Rule pack not found: {pack_path}")
+
+    module = _load_module(normalized, pack_path)
+    functions: dict[str, RuleFunction] = {}
+    for name in sorted(dir(module)):
+        value = getattr(module, name)
+        if callable(value) and name.startswith("rule_"):
+            functions[name] = value
+
+    if not functions:
+        raise AuditError(f"No rule_* functions found in {pack_path}")
+
+    _rule_registry[normalized] = functions
+    return functions
+def resolve_rule(pack_id: str, rule_id: str) -> RuleFunction:
+    """Resolve a single registered rule to its executable function.
+
+    Unlike :func:`_load_rule_pack` (which keys the registry by Python function
+    name), this looks a rule up by its registered ``rule_id`` so a caller can
+    select and execute one specific deterministic guard without running an
+    entire pack.
+    """
+    normalized_pack = pack_id.strip().lower()
+    normalized_rule = rule_id.strip()
+    if not normalized_pack or not normalized_rule:
+        raise AuditError("pack_id and rule_id must be non-empty")
+
+    pack_path = RULES_DIR / f"{normalized_pack}.py"
+    if not pack_path.exists():
+        raise AuditError(f"Rule pack not found: {pack_path}")
+
+    registered = _rule_registry.get(normalized_pack, {})
+    if normalized_rule not in registered:
+        # (Re)load the pack module so register_rule() populates rule_id keys.
+        _load_module(normalized_pack, pack_path)
+        registered = _rule_registry.get(normalized_pack, {})
+
+    if normalized_rule not in registered:
+        available = sorted(registered)
+        raise AuditError(
+            f"Rule not found: {normalized_pack}.{normalized_rule} "
+            f"(available: {available})"
+        )
+    return registered[normalized_rule]
+
+
+def run_rule(
+    pack_id: str,
+    rule_id: str,
+    ctx: Context,
+    params: dict[str, Any] | None = None,
+) -> RuleResult:
+    """Resolve and execute a single registered deterministic rule.
+
+    Mirrors the per-rule execution and exception handling of :func:`run_audit`
+    but runs only the requested rule.  Governance or audit errors are reported
+    as ``blocked``; unexpected errors as ``failed``.
+    """
+    function = resolve_rule(pack_id, rule_id)
+    resolved_params: dict[str, Any] = {
+        "roots": [],
+        "project_type": "generic",
+        "inventory": {},
+    }
+    if params:
+        resolved_params.update(params)
+
+    try:
+        result = function(ctx, resolved_params)
+    except (GovernanceError, AuditError) as exc:
+        return RuleResult(
+            rule_id=rule_id,
+            status="blocked",
+            message=str(exc),
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        return RuleResult(
+            rule_id=rule_id,
+            status="failed",
+            message=f"{type(exc).__name__}: {exc}",
+        )
+
+    if not isinstance(result, RuleResult):
+        raise AuditError(
+            f"Rule {pack_id}.{rule_id} must return RuleResult, "
+            f"not {type(result).__name__}"
+        )
+    return result
+
+
+
+
+def _build_file_inventory(ctx: Context, roots: list[str] | None) -> dict[str, Any]:
+    files: list[str] = []
+    unreadable_directories: list[str] = []
+    skipped_dirs = {
+        ".git",
+        ".lbe",
+        "node_modules",
+        "dist",
+        "release-public",
+        "release-exec",
+        "__pycache__",
+    }
+    selected = set(roots) if roots else None
+    targets = [root for root in ctx.roots if selected is None or root.name in selected]
+
+    for knowledge_root in targets:
+        queue = [knowledge_root.path]
+        while queue:
+            current = queue.pop(0)
+            try:
+                entries = sorted(
+                    current.iterdir(),
+                    key=lambda path: (not path.is_dir(), path.name.lower()),
+                )
+            except (OSError, PermissionError):
+                unreadable_directories.append(str(current))
+                continue
+
+            for entry in entries:
+                try:
+                    if entry.is_dir():
+                        if (
+                            entry.name in skipped_dirs
+                            or entry.name.startswith(".")
+                            or entry.name.startswith("$")
+                        ):
+                            continue
+                        queue.append(entry)
+                    elif entry.is_file():
+                        files.append(str(entry))
+                except (OSError, PermissionError):
+                    continue
+
+    return {
+        "files_considered": len(files),
+        "files": files,
+        "roots": [root.name for root in targets],
+        "unreadable_directories": unreadable_directories[:50],
+        "unreadable_directory_count": len(unreadable_directories),
+    }
+
+
+def detect_project_type(ctx: Context) -> str:
+    """Detect CEP from indexed manifests; otherwise return generic."""
+    try:
+        result = search_workspace(
+            ctx,
+            "manifest.json",
+            max_results=50,
+            extensions=[".json"],
+        )
+    except Exception:
+        return "generic"
+
+    if result.get("outcome") != "matches_found":
+        return "generic"
+
+    for item in result.get("results", []):
+        path = item.get("path")
+        if not isinstance(path, str):
+            continue
+        try:
+            content = str(inspect_file(ctx, path).get("content", ""))
+        except Exception:
+            continue
+        lowered = content.lower()
+        if "csxs" in lowered or "cep" in lowered or "extendscript" in lowered:
+            return "cep"
+
+    return "generic"
+
+
+def _record_result(report: AuditReport, result: RuleResult) -> None:
+    if result.status not in VALID_RULE_STATUSES:
+        raise AuditError(
+            f"Rule {result.rule_id} returned invalid status: {result.status}"
+        )
+    report.results.append(result)
+    current = getattr(report, result.status)
+    setattr(report, result.status, current + 1)
+
+
+def _derive_summary(report: AuditReport) -> str:
+    if report.skipped_packs or report.failed > 0:
+        return "fail"
+
+    required_blocked = any(
+        result.status == "blocked" and result.required
+        for result in report.results
+    )
+    if required_blocked:
+        return "incomplete"
+
+    if report.blocked > 0:
+        return "pass_with_notes"
+
+    applicable = report.passed + report.failed + report.blocked
+    if applicable == 0 and report.not_applicable > 0:
+        return "not_applicable"
+
+    return "pass"
+
+
+def run_audit(
+    *,
+    pack_ids: list[str] | None = None,
+    project_type: str | None = None,
+    roots: list[str] | None = None,
+    ctx: Context | None = None,
+) -> AuditReport:
+    resolved_ctx = ctx or Context.load()
+    known_roots = {root.name for root in resolved_ctx.roots}
+
+    normalized_roots = None
+    if roots:
+        normalized_roots = [root.strip().lower() for root in roots if root.strip()]
+        unknown = sorted(set(normalized_roots) - known_roots)
+        if unknown:
+            raise AuditError(f"Unknown roots: {unknown}")
+
+    audit_type = (project_type or detect_project_type(resolved_ctx)).strip().lower()
+    requested = [pack.strip().lower() for pack in pack_ids] if pack_ids else [audit_type, "generic"]
+    requested = list(dict.fromkeys(pack for pack in requested if pack))
+    if not requested:
+        raise AuditError("At least one rule pack is required")
+
+    report = AuditReport(
+        audit_id=uuid.uuid4().hex,
+        started_at=_utc_now(),
+        completed_at="",
+        project_type=audit_type,
+        packs_evaluated=[],
+    )
+    report.inventory = _build_file_inventory(resolved_ctx, normalized_roots)
+
+    for pack_id in requested:
+        try:
+            rules = _load_rule_pack(pack_id)
+        except AuditError as exc:
+            reason = str(exc)
+            report.skipped_packs.append({"pack_id": pack_id, "reason": reason})
+            _record_result(
+                report,
+                RuleResult(
+                    rule_id=f"{pack_id}.__load__",
+                    status="failed",
+                    message=reason,
+                    evidence={"pack_id": pack_id, "skipped": True},
+                    severity="error",
+                    required=True,
+                    fast_fail=True,
+                ),
+            )
+            continue
+
+        report.packs_evaluated.append(pack_id)
+        gate_closed = False
+
+        for function_name, function in rules.items():
+            if gate_closed:
+                report.skipped_gates.append({
+                    "pack_id": pack_id,
+                    "rule": function_name,
+                    "reason": "A prior required fast-fail rule failed or was blocked.",
+                })
+                continue
+
+            try:
+                result = function(
+                    resolved_ctx,
+                    {
+                        "roots": normalized_roots,
+                        "project_type": audit_type,
+                        "inventory": report.inventory,
+                    },
+                )
+            except Exception as exc:
+                result = RuleResult(
+                    rule_id=f"{pack_id}.{function_name}",
+                    status="failed",
+                    message=f"Rule execution failed: {type(exc).__name__}: {exc}",
+                    evidence={
+                        "pack_id": pack_id,
+                        "function": function_name,
+                        "exception": type(exc).__name__,
+                    },
+                    severity="error",
+                    required=True,
+                    fast_fail=True,
+                )
+
+            if not isinstance(result, RuleResult):
+                raise AuditError(
+                    f"Rule {pack_id}.{function_name} must return RuleResult, "
+                    f"not {type(result).__name__}"
+                )
+
+            _record_result(report, result)
+            if (
+                result.fast_fail
+                and result.required
+                and result.status in {"failed", "blocked"}
+            ):
+                gate_closed = True
+
+    report.completed_at = _utc_now()
+    report.summary = _derive_summary(report)
+    return report
+
+
+def audit_to_json(report: AuditReport) -> dict[str, Any]:
+    payload = report.to_dict()
+    payload["outcome"] = report.summary
+    payload["audit_completed"] = True
+    return payload
+
+
+def save_report(report: AuditReport) -> Path:
+    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    write_json(REPORT_PATH, audit_to_json(report))
+    return REPORT_PATH
+
+
+def _run_cli_audit(args: argparse.Namespace) -> None:
+    pack_ids = [value.strip() for value in args.packs] if args.packs else None
+    roots = [value.strip() for value in args.roots.split(",")] if args.roots else None
+    report = run_audit(
+        pack_ids=pack_ids,
+        project_type=args.project_type,
+        roots=roots,
+    )
+    path = save_report(report)
+    print(json.dumps(audit_to_json(report), indent=2, ensure_ascii=False))
+    print(f"\nReport: {path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Deterministic workspace audit controller"
+    )
+    subcommands = parser.add_subparsers(dest="command", required=True)
+
+    audit_parser = subcommands.add_parser("audit")
+    audit_parser.add_argument("--pack", action="append", dest="packs")
+    audit_parser.add_argument("--project-type")
+    audit_parser.add_argument("--roots")
+    audit_parser.set_defaults(func=_run_cli_audit)
+
+    packs_parser = subcommands.add_parser("packs")
+    packs_parser.set_defaults(
+        func=lambda _: print(
+            json.dumps(
+                {
+                    "rules_dir": str(RULES_DIR),
+                    "available_packs": sorted(
+                        path.stem
+                        for path in RULES_DIR.glob("*.py")
+                        if path.name != "__init__.py"
+                    ),
+                },
+                indent=2,
+            )
+        )
+    )
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

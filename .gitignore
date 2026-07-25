@@ -1,0 +1,105 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# === Testing / Caches ===
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# === IDE / Editor ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# === Machine-Specific Configuration ===
+config.json
+config.dev-roots.json
+config.phase1-database-backup.json
+
+# === Backup / Scratch Files ===
+*.bak
+*.bak_pre_remediation
+*.pre-audit-backup
+*.before-*
+*.baseline-*
+backups-*/
+backup-before-repair/
+repair-package/
+
+# === Generated Runtime State ===
+state/
+memory/
+lbe_guard_inspector/__pycache__/
+
+# === Logs ===
+*.log
+trace_log.txt
+trace_progress.json
+
+# === Session Exports / Workspace Traces ===
+workspace_trace.json
+workspace_trace.partial.jsonl
+last_search.json
+hash_cache.json
+
+# === Local Databases ===
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# === Secrets / Credentials ===
+.env
+.env.*
+*.p12
+*.pfx
+*.key
+*.pem
+credentials*
+secrets*
+
+# === Archives / Binaries ===
+*.zxp
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.exe
+*.msi
+*.dmg
+*.dll
+*.so
+
+# === Large Media (not suitable for Git) ===
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# === lbe-core (separate repository — reference material only) ===
+lbe-core/
+
+# === Node.js ===
+node_modules/
+
+# === OS / Cloud Sync ===
+Thumbs.db
+.DS_Store
+desktop.ini
+Desktop.ini
+.tmp.driveupload/
+.tmp.drivecloud/
