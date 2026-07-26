@@ -98,9 +98,10 @@
     "evidence_refs": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^workspace:[^:]+:.+#sha256:[a-f0-9]{64}$"
       },
-      "minItems": 1,
+      "minItems": 2,
       "uniqueItems": true
     },
     "diff": {
@@ -128,6 +129,9 @@
         "generator",
         "workspace_root",
         "profile_path_source",
+        "profile_snapshot_hash",
+        "profile_evidence_ref",
+        "profile_existed",
         "catalog_snapshot_hash",
         "evidence_hashes"
       ],
@@ -144,12 +148,18 @@
           "minLength": 1
         },
         "profile_path_source": {
+          "const": "workspace_profile"
+        },
+        "profile_snapshot_hash": {
           "type": "string",
-          "enum": [
-            "explicit_request",
-            "workspace_profile",
-            "active_policy"
-          ]
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "profile_evidence_ref": {
+          "type": "string",
+          "pattern": "^workspace:[^:]+:.+#sha256:[a-f0-9]{64}$"
+        },
+        "profile_existed": {
+          "const": true
         },
         "catalog_snapshot_hash": {
           "type": "string",
