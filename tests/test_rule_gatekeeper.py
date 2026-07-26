@@ -5,6 +5,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from lbe_guard_inspector.rule_gatekeeper import (
     CatalogEntry,
     RuleGatekeeper,
@@ -36,10 +38,10 @@ def _workspace(tmp_path: Path) -> Path:
     return root
 
 
-def _gatekeeper(catalog=()):
+def _gatekeeper(catalog=(), clock_time: datetime = FIXED_TIME):
     return RuleGatekeeper(
         catalog_provider=lambda _root: list(catalog),
-        clock=lambda: FIXED_TIME,
+        clock=lambda: clock_time,
     )
 
 
@@ -257,6 +259,7 @@ def test_proposal_contains_complete_governance_fields(tmp_path: Path) -> None:
     assert proposal["target_profile_path"] == "profiles/workspace.policy.json"
     assert proposal["approval_required"] is True
     assert proposal["provenance"]["mode"] == "propose-rule"
+    assert proposal["provenance"]["profile_path_source"] == "workspace_profile"
     assert "custom.rule_validates_python_packages" in proposal["diff"]
 
 
@@ -265,6 +268,121 @@ def test_unresolved_profile_path_is_insufficient(tmp_path: Path) -> None:
     result = _propose(_gatekeeper(), root, target_profile_path=None)
     assert result["status"] == STATUS_INSUFFICIENT_EVIDENCE
     assert "will not invent" in result["missing_evidence"][0]
+
+
+def test_missing_profile_file_is_insufficient(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    result = _propose(
+        _gatekeeper(),
+        root,
+        target_profile_path="profiles/not-present.json",
+    )
+    assert result["status"] == STATUS_INSUFFICIENT_EVIDENCE
+    assert "does not exist" in result["missing_evidence"][0]
+    assert result["proposal"] is None
+
+
+def test_target_profile_path_escape_is_insufficient(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}\n", encoding="utf-8")
+    result = _propose(_gatekeeper(), root, target_profile_path=outside)
+    assert result["status"] == STATUS_INSUFFICIENT_EVIDENCE
+    assert "escapes" in result["missing_evidence"][0]
+
+
+def test_target_profile_symlink_is_insufficient(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}\n", encoding="utf-8")
+    link = root / "profiles" / "linked.json"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("Symlink creation is unavailable on this platform")
+    result = _propose(_gatekeeper(), root, target_profile_path="profiles/linked.json")
+    assert result["status"] == STATUS_INSUFFICIENT_EVIDENCE
+    assert "symbolic link" in result["missing_evidence"][0]
+
+
+def test_existing_profile_rule_returns_already_covered(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    profile = root / "profiles" / "workspace.policy.json"
+    profile.write_text(
+        json.dumps(
+            {
+                "workspace_id": "agents-memory-tool",
+                "rules": {
+                    RULE_ID: {
+                        "rule_id": RULE_ID,
+                        "pack": "agents-memory-tool",
+                        "trigger": TRIGGER,
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    result = _propose(_gatekeeper(), root)
+    assert result["status"] == STATUS_ALREADY_COVERED
+    assert result["equivalent_rule_result"]["source_path"] == "profiles/workspace.policy.json"
+    assert result["proposal"] is None
+
+
+def test_profile_file_is_bound_as_current_workspace_evidence(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    proposal = _propose(_gatekeeper(), root)["proposal"]
+    profile_ref = proposal["provenance"]["profile_evidence_ref"]
+    assert profile_ref in proposal["evidence_refs"]
+    assert profile_ref.startswith(
+        "workspace:agents-memory-tool:profiles/workspace.policy.json#sha256:"
+    )
+    assert len(proposal["provenance"]["profile_snapshot_hash"]) == 64
+
+
+def test_proposal_identity_is_stable_across_clock_changes(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    first = _propose(_gatekeeper(clock_time=FIXED_TIME), root)["proposal"]
+    later = datetime(2026, 7, 27, 12, 30, tzinfo=timezone.utc)
+    second = _propose(_gatekeeper(clock_time=later), root)["proposal"]
+    assert first["proposal_id"] == second["proposal_id"]
+    assert first["diff"] == second["diff"]
+    assert first["created_at"] != second["created_at"]
+
+
+def test_revalidate_unchanged_proposal_is_ready(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    gatekeeper = _gatekeeper()
+    proposal = _propose(gatekeeper, root)["proposal"]
+    result = gatekeeper.revalidate_proposal(workspace_root=root, proposal=proposal)
+    assert result["status"] == STATUS_PROPOSAL_READY
+    assert result["proposal"]["proposal_id"] == proposal["proposal_id"]
+    assert result["stale_evidence"] == []
+
+
+def test_revalidate_detects_stale_module_evidence(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    gatekeeper = _gatekeeper()
+    proposal = _propose(gatekeeper, root)["proposal"]
+    (root / "lbe_guard_inspector" / "module.py").write_text("VALUE = 2\n", encoding="utf-8")
+    result = gatekeeper.revalidate_proposal(workspace_root=root, proposal=proposal)
+    assert result["status"] == STATUS_INSUFFICIENT_EVIDENCE
+    assert any("module.py" in reason for reason in result["stale_evidence"])
+
+
+def test_revalidate_detects_stale_profile_evidence(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    gatekeeper = _gatekeeper()
+    proposal = _propose(gatekeeper, root)["proposal"]
+    profile = root / "profiles" / "workspace.policy.json"
+    document = json.loads(profile.read_text(encoding="utf-8"))
+    document["metadata"] = {"changed": True}
+    profile.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    result = gatekeeper.revalidate_proposal(workspace_root=root, proposal=proposal)
+    assert result["status"] == STATUS_INSUFFICIENT_EVIDENCE
+    assert any("profile" in reason.lower() for reason in result["stale_evidence"])
 
 
 def test_inspect_mode_is_runtime_read_only(tmp_path: Path) -> None:
@@ -297,3 +415,13 @@ def test_propose_rule_mode_is_runtime_read_only(tmp_path: Path) -> None:
         "rule_registry_changed": False,
         "index_changed": False,
     }
+
+
+def test_application_boundary_is_explicitly_blocked(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    gatekeeper = _gatekeeper()
+    proposal = _propose(gatekeeper, root)["proposal"]
+    before = _snapshot(root)
+    with pytest.raises(PermissionError, match="read-only"):
+        gatekeeper.apply_proposal(proposal)
+    assert _snapshot(root) == before
