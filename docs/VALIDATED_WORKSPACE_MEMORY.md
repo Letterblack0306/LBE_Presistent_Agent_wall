@@ -20,7 +20,7 @@ Live workspace and Git
     -> promotion policy
     -> project-scoped SQLite memory
     -> rehydrated context packet
-    -> LLM
+    -> reasoning layer
 ```
 
 The SQLite store is scoped by both `project_workspace_id` and
@@ -138,7 +138,8 @@ runtime.
 ## Module Registry priority
 
 The next implementation priority is the live Module Registry defined in
-`docs/PRIORITY_MODULE_REGISTRY.md`.
+`docs/PRIORITY_MODULE_REGISTRY.md` and sequenced in
+`docs/IMPLEMENTATION_PLAN.md`.
 
 The registry complements memory rather than replacing it:
 
@@ -148,6 +149,28 @@ The registry complements memory rather than replacing it:
 
 Agents must consult registry declarations and runtime receipts before attempting
 to reconstruct runtime behavior from imports or broad source inspection.
+
+This means the registry becomes the primary runtime map. It does not remove
+source inspection. Source inspection remains required when registry evidence is
+missing, contradictory, ownership-sensitive, stale, or when exact implementation
+evidence is explicitly needed.
+
+## Authority Ownership relationship
+
+The Module Registry and Authority Ownership Inspector serve different purposes:
+
+- the registry identifies modules, runtime state, activity, dependencies, loaders,
+  instances, and failures;
+- the ownership inspector evaluates one authoritative operation and classifies its
+  owner, delegates, observers, subscribers, projections, mutation sites, call
+  paths, and persistence paths.
+
+The ownership inspector should consume registry evidence first, then inspect only
+the bounded source and runtime evidence needed to verify ownership. It must not
+reconstruct the whole runtime from random files as its default behavior.
+
+The Authority Ownership Inspector remains a design-phase, read-only contract. It
+is not yet executable and is not authorized to issue ordinary PASS or FAIL.
 
 ## Current scope
 
@@ -159,16 +182,20 @@ This branch currently provides:
 - rehydrated context packets;
 - a runtime-neutral `SessionMemoryAdapter`;
 - the priority Module Registry architecture contract;
-- a current-status document at `docs/CURRENT_STATUS.md`.
+- current status in `docs/CURRENT_STATUS.md`;
+- the sequenced implementation plan in `docs/IMPLEMENTATION_PLAN.md`.
 
 It does not yet provide:
 
 - live Module Registry code;
-- module watcher code;
-- registry UI;
+- Module Watcher code;
+- production module declarations or lifecycle receipts;
+- registry UI or query endpoint;
+- executable Authority Ownership Inspector;
 - runtime-specific Cline, Brew, Browser Dev, or other lifecycle wiring;
 - automatic prompt injection, compaction capture, or module receipts from a real runtime.
 
-The next implementation slice must build and validate the registry foundation,
-then connect both registry receipts and `SessionMemoryAdapter` to the actual
-runtime authority.
+The immediate implementation slice is limited to registry declarations, lifecycle
+receipt types, registry storage, deterministic state derivation, structured
+registry defects, and focused tests. Runtime wiring, UI, and ownership inspection
+must remain separate follow-on phases.
