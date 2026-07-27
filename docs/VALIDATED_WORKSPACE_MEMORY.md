@@ -37,6 +37,7 @@ different project identity and lower authority than current-project evidence.
 | `promoter.py` | Evidence-based promotion policy |
 | `compaction.py` | Validate compaction metadata and persist checkpoint provenance |
 | `context.py` | Hash invalidation, Git inspection, and context-packet construction |
+| `integration.py` | Runtime-neutral `SessionMemoryAdapter` for session, command, compaction, and resume integration |
 
 ## Trust rules
 
@@ -74,6 +75,7 @@ from lbe_guard_inspector.memory import (
     CandidateClaim,
     MemoryPromoter,
     MemoryType,
+    SessionMemoryAdapter,
     SourceType,
     WorkspaceMemoryStore,
     persist_compaction_checkpoint,
@@ -117,9 +119,56 @@ packet = rehydrate_context(
 )
 ```
 
+## Validated implementation status
+
+The repository-side memory foundation and runtime-neutral adapter are implemented on
+`feat/validated-workspace-memory-integration`.
+
+Validated at commit `c79b8968a1da704c17d0052c0e6e51cb90de5829`:
+
+- targeted memory and adapter tests: 14 passed;
+- full repository suite: 67 passed;
+- `git diff --check`: passed;
+- validation worktree: clean.
+
+This proves the storage, promotion, checkpoint, invalidation, context-building,
+and adapter contracts. It does not prove integration with a real external agent
+runtime.
+
+## Module Registry priority
+
+The next implementation priority is the live Module Registry defined in
+`docs/PRIORITY_MODULE_REGISTRY.md`.
+
+The registry complements memory rather than replacing it:
+
+- validated memory answers what remains safe to carry across sessions;
+- the Module Registry answers what modules exist, what loaded, what is running,
+  what each module is doing, which dependencies it uses, and what failed.
+
+Agents must consult registry declarations and runtime receipts before attempting
+to reconstruct runtime behavior from imports or broad source inspection.
+
 ## Current scope
 
-This branch provides the storage, promotion, checkpoint, invalidation, and
-context-building vertical slice. It does not yet patch Cline itself. The runtime
-integration point should call the promotion pipeline after trusted tool results
-and call `rehydrate_context()` immediately after compaction or session resume.
+This branch currently provides:
+
+- validated project-scoped memory;
+- compaction checkpoint provenance;
+- stale-source invalidation;
+- rehydrated context packets;
+- a runtime-neutral `SessionMemoryAdapter`;
+- the priority Module Registry architecture contract;
+- a current-status document at `docs/CURRENT_STATUS.md`.
+
+It does not yet provide:
+
+- live Module Registry code;
+- module watcher code;
+- registry UI;
+- runtime-specific Cline, Brew, Browser Dev, or other lifecycle wiring;
+- automatic prompt injection, compaction capture, or module receipts from a real runtime.
+
+The next implementation slice must build and validate the registry foundation,
+then connect both registry receipts and `SessionMemoryAdapter` to the actual
+runtime authority.
