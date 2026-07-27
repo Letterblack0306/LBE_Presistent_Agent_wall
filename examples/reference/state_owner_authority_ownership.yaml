@@ -100,9 +100,17 @@ guard_binding:
   proposed_guard_id: architecture.authority_ownership
   implementation_available: false
   verdict_restriction: No PASS or FAIL may be produced until a deterministic implementation and required validation exist.
+inspector_design:
+  status: acceptance_ready_contract
+  contract_path: docs/design/AUTHORITY_OWNERSHIP_INSPECTOR_CONTRACT.md
+  read_only: true
+  implementation_available: false
+  pass_fail_authorized: false
+  next_gate: approve exact schemas, deterministic finding tests, runtime observation boundaries, and registry design before implementation.
 evidence_references:
   - docs/reference/docs/02_ARCHITECTURE.md
   - docs/reference/docs/05_TOOL_REGISTRY.md
   - docs/reference/docs/07_RULES_AND_GUARDS.md
   - docs/reference/docs/08_LBE_GALLERY.md
+  - docs/design/AUTHORITY_OWNERSHIP_INSPECTOR_CONTRACT.md
 confidence: 1.0
