@@ -49,55 +49,64 @@ class EvidenceService:
         extensions: list[str] | None = None,
         roots: list[str] | None = None,
         include_excluded: bool = False,
+        retrieval_mode: str = "diagnostic",
+        path_patterns: list[str] | None = None,
+        content_search: bool = True,
     ) -> dict[str, Any]:
         query = query.strip()
         if not query:
             raise ValueError("query must not be empty")
+        if retrieval_mode not in {"diagnostic", "guard", "investigation"}:
+            raise ValueError(f"invalid retrieval_mode: {retrieval_mode}")
 
         max_results = max(1, min(int(max_results), 200))
         ctx = Context.load()
 
-        search_result = search_workspace(
-            ctx,
-            query,
-            max_results=max_results,
-            extensions=extensions,
-            roots=roots,
-        )
+        indexed_evidence: list[dict[str, Any]] = []
+        excluded_evidence: list[dict[str, Any]] = []
 
-        if not search_result.get("search_completed", False):
-            raise RuntimeError(
-                search_result.get("message")
-                or search_result.get("error")
-                or "Search did not complete."
+        if retrieval_mode != "guard" or not workspace_root:
+            search_result = search_workspace(
+                ctx,
+                query,
+                max_results=max_results,
+                extensions=extensions,
+                roots=roots,
             )
 
-        mapped_evidence = [
-            self._map_index_result(item)
-            for item in search_result.get("results", [])
-        ]
+            if not search_result.get("search_completed", False):
+                raise RuntimeError(
+                    search_result.get("message")
+                    or search_result.get("error")
+                    or "Search did not complete."
+                )
 
-        excluded_evidence = [
-            item
-            for item in mapped_evidence
-            if item["classification"] in _EXCLUDED_CLASSIFICATIONS
-        ]
-
-        if include_excluded:
-            indexed_evidence = mapped_evidence
-        else:
-            indexed_evidence = [
-                item
-                for item in mapped_evidence
-                if item["classification"] not in _EXCLUDED_CLASSIFICATIONS
+            mapped_evidence = [
+                self._map_index_result(item)
+                for item in search_result.get("results", [])
             ]
 
-        for item in indexed_evidence:
-            item["metadata"]["authority_filter"] = {
-                "include_excluded": include_excluded,
-                "excluded_result_count": len(excluded_evidence),
-                "excluded_classifications": sorted(_EXCLUDED_CLASSIFICATIONS),
-            }
+            excluded_evidence = [
+                item
+                for item in mapped_evidence
+                if item["classification"] in _EXCLUDED_CLASSIFICATIONS
+            ]
+
+            if include_excluded:
+                indexed_evidence = mapped_evidence
+            else:
+                indexed_evidence = [
+                    item
+                    for item in mapped_evidence
+                    if item["classification"] not in _EXCLUDED_CLASSIFICATIONS
+                ]
+
+            for item in indexed_evidence:
+                item["metadata"]["authority_filter"] = {
+                    "include_excluded": include_excluded,
+                    "excluded_result_count": len(excluded_evidence),
+                    "excluded_classifications": sorted(_EXCLUDED_CLASSIFICATIONS),
+                }
 
         workspace_evidence: list[dict[str, Any]] = []
         if workspace_root:
@@ -109,14 +118,17 @@ class EvidenceService:
                 max_results=max_results,
                 extensions=extensions,
                 include_excluded=include_excluded,
+                path_patterns=path_patterns,
+                content_search=content_search,
             )
 
         gaps: list[str] = []
-        outcome = search_result.get("outcome")
-        if outcome == "scope_empty":
-            gaps.append("No indexed files matched the requested search scope.")
-        elif outcome == "no_matches":
-            gaps.append("Indexed files were scanned, but no content matched the query.")
+        if retrieval_mode != "guard" or not workspace_root:
+            outcome = search_result.get("outcome")
+            if outcome == "scope_empty":
+                gaps.append("No indexed files matched the requested search scope.")
+            elif outcome == "no_matches":
+                gaps.append("Indexed files were scanned, but no content matched the query.")
 
         if not workspace_root:
             gaps.append(
@@ -241,6 +253,8 @@ class EvidenceService:
         max_results: int,
         extensions: list[str] | None,
         include_excluded: bool,
+        path_patterns: list[str] | None = None,
+        content_search: bool = True,
     ) -> list[dict[str, Any]]:
         root = Path(workspace_root).expanduser().resolve()
         if not root.exists() or not root.is_dir():
@@ -273,6 +287,10 @@ class EvidenceService:
                 continue
 
             relative = path.relative_to(root).as_posix()
+            relative_lower = relative.lower()
+            if path_patterns:
+                if not any(pattern.lower() in relative_lower for pattern in path_patterns):
+                    continue
             classification = _classify_path(relative)
             if (
                 not include_excluded
@@ -296,18 +314,27 @@ class EvidenceService:
             relative_lower = relative.lower()
             content_lower = content.lower()
             exact_path = query_lower in relative_lower
-            exact_content = query_lower in content_lower
+            exact_content = query_lower in content_lower if content_search else False
             filename_matches = sum(term in relative_lower for term in terms)
-            content_matches = sum(term in content_lower for term in terms)
-            matched = max(filename_matches, content_matches)
+            content_matches = (
+                sum(term in content_lower for term in terms) if content_search else 0
+            )
+            if path_patterns and not content_search:
+                matched = max(filename_matches, 1)
+            else:
+                matched = max(filename_matches, content_matches)
 
             if not exact_path and not exact_content and matched < required:
                 continue
 
-            score = (500 if exact_path else 0) + (400 if exact_content else 0)
-            score += filename_matches * 60 + content_matches * 35
-            if terms and matched == len(terms):
-                score += 120
+            score = (500 if exact_path else 0)
+            if content_search:
+                score += (400 if exact_content else 0)
+                score += filename_matches * 60 + content_matches * 35
+                if terms and matched == len(terms):
+                    score += 120
+            else:
+                score += filename_matches * 60
 
             # Apply workspace penalty matching agent._classify_source taxonomy
             penalty = _workspace_penalty(classification)
@@ -330,7 +357,7 @@ class EvidenceService:
                 "matched_terms": [
                     term
                     for term in terms
-                    if term in relative_lower or term in content_lower
+                    if term in relative_lower or (content_search and term in content_lower)
                 ],
                 "exact_phrase": exact_path or exact_content,
                 "authority": 2,

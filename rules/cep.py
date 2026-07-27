@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import Any
 
 from agent import Context, GovernanceError, inspect_file, search_workspace
 from audit_controller import AuditError, RuleResult, register_rule
+
 
 
 def _rule(
@@ -28,11 +31,59 @@ def _rule(
         )
 
 
+
+def _parse_host_version(content: str) -> bool:
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return False
+    for elem in root.iter():
+        if elem.tag.endswith('Host'):
+            if any(elem.attrib.get(attr) for attr in ('Version', 'MinVersion', 'MaxVersion')):
+                return True
+    return False
+
+
+def _parse_menubar_extension(content: str) -> bool:
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return False
+    for elem in root.iter():
+        if elem.tag.endswith('Menu') or elem.tag.endswith('Menubar'):
+            if elem.text and elem.text.strip():
+                return True
+            if len(elem) > 0:
+                return True
+    return False
+
+
+
 def rule_cep_manifest_exists(
     ctx: Context,
     params: dict[str, Any],
 ) -> RuleResult:
     rule_id = "cep.manifest_exists"
+    workspace_root = params.get("workspace_root")
+
+    if workspace_root:
+        root = Path(workspace_root).expanduser().resolve()
+        if root.exists() and root.is_dir():
+            for candidate in root.rglob("CSXS/manifest.xml"):
+                try:
+                    if candidate.is_file():
+                        return RuleResult(
+                            rule_id=rule_id,
+                            status="passed",
+                            message="CEP manifest.xml is present.",
+                            evidence={
+                                "path": str(candidate),
+                                "relative_path": candidate.relative_to(root).as_posix(),
+                                "preview": candidate.read_text(encoding="utf-8", errors="ignore")[:400],
+                            },
+                        )
+                except (OSError, PermissionError):
+                    continue
 
     result = search_workspace(
         ctx,
@@ -89,11 +140,34 @@ register_rule(
 )
 
 
+
 def rule_cep_host_version(
     ctx: Context,
     params: dict[str, Any],
 ) -> RuleResult:
     rule_id = "cep.host_version"
+    workspace_root = params.get("workspace_root")
+
+    if workspace_root:
+        root = Path(workspace_root).expanduser().resolve()
+        if root.exists() and root.is_dir():
+            for candidate in root.rglob("manifest.xml"):
+                try:
+                    if candidate.is_file():
+                        content = candidate.read_text(encoding="utf-8", errors="ignore")
+                        if _parse_host_version(content):
+                            return RuleResult(
+                                rule_id=rule_id,
+                                status="passed",
+                                message="manifest.xml contains host version metadata.",
+                                evidence={
+                                    "path": str(candidate),
+                                    "relative_path": candidate.relative_to(root).as_posix(),
+                                    "preview": content[:500],
+                                },
+                            )
+                except (OSError, PermissionError):
+                    continue
 
     result = search_workspace(
         ctx,
@@ -119,16 +193,7 @@ def rule_cep_host_version(
         except Exception:
             continue
 
-        lower = content.lower()
-
-        if (
-            "host" in lower
-            and (
-                "version" in lower
-                or "minversion" in lower
-                or "maxversion" in lower
-            )
-        ):
+        if _parse_host_version(content):
             return RuleResult(
                 rule_id=rule_id,
                 status="passed",
@@ -156,6 +221,7 @@ register_rule(
         rule_cep_host_version,
     ),
 )
+
 
 
 def rule_cep_debug_mode(
@@ -226,6 +292,7 @@ register_rule(
 )
 
 
+
 def rule_cep_no_zip_in_repo(
     ctx: Context,
     params: dict[str, Any],
@@ -281,33 +348,95 @@ register_rule(
 )
 
 
+
+def rule_cep_menubar_extension(
+    ctx: Context,
+    params: dict[str, Any],
+) -> RuleResult:
+    rule_id = "cep.menubar_extension"
+    workspace_root = params.get("workspace_root")
+
+    if workspace_root:
+        root = Path(workspace_root).expanduser().resolve()
+        if root.exists() and root.is_dir():
+            for candidate in root.rglob("*.xml"):
+                try:
+                    if candidate.is_file():
+                        content = candidate.read_text(encoding="utf-8", errors="ignore")
+                        if _parse_menubar_extension(content):
+                            return RuleResult(
+                                rule_id=rule_id,
+                                status="passed",
+                                message="Valid menu extension registration found.",
+                                evidence={
+                                    "path": str(candidate),
+                                    "relative_path": candidate.relative_to(root).as_posix(),
+                                },
+                            )
+                except (OSError, PermissionError):
+                    continue
+
+    return RuleResult(
+        rule_id=rule_id,
+        status="not_applicable",
+        message="No valid menu extension registration found.",
+    )
+
+
+register_rule(
+    "cep",
+    "cep.menubar_extension",
+    lambda ctx, p: _rule(
+        ctx,
+        p,
+        "cep.menubar_extension",
+        rule_cep_menubar_extension,
+    ),
+)
+
 def rule_cep_symlink_free(
     ctx: Context,
     params: dict[str, Any],
 ) -> RuleResult:
     rule_id = "cep.symlink_free"
+    workspace_root = params.get("workspace_root")
 
-    requested_roots = params.get("roots")
+    if workspace_root:
+        direct_root = Path(workspace_root).expanduser().absolute()
 
-    selected_roots = [
-        root
-        for root in ctx.roots
-        if requested_roots is None
-        or root.name in requested_roots
-    ]
+        if not direct_root.exists() or not direct_root.is_dir():
+            raise GovernanceError(
+                f"Workspace root does not exist or is not a directory: "
+                f"{direct_root}"
+            )
 
-    requested_root_names = set(requested_roots or [])
-    selected_root_names = {
-        root.name
-        for root in selected_roots
-    }
+        scan_roots = [(direct_root.name, direct_root)]
+        # Define selected_rools for workspace_root mode (fallback to empty list if no roots in ctx)
+        selected_roots: list[Path] = [direct_root]
+    else:
+        selected_roots = list(ctx.roots)
+        requested_roots = params.get("roots")
 
-    missing_roots = requested_root_names - selected_root_names
+        if requested_roots is not None:
+            selected_roots = [
+                root
+                for root in selected_roots
+                if root.name in requested_roots
+            ]
 
-    if missing_roots:
-        raise GovernanceError(
-            f"Unknown requested roots: {sorted(missing_roots)}"
-        )
+        requested_root_names = set(requested_roots or [])
+        selected_root_names = {root.name for root in selected_roots}
+        missing_roots = requested_root_names - selected_root_names
+
+        if missing_roots:
+            raise GovernanceError(
+                f"Unknown requested roots: {sorted(missing_roots)}"
+            )
+
+        scan_roots = [
+            (root.name, Path(root.path).expanduser().absolute())
+            for root in selected_roots
+        ]
 
     skipped_dirs = {
         ".git",
@@ -324,8 +453,8 @@ def rule_cep_symlink_free(
     symlinks: list[dict[str, str]] = []
     unreadable: list[str] = []
 
-    for root in selected_roots:
-        pending = [root.path]
+    for root_name, root_path in scan_roots:
+        pending = [root_path]
 
         while pending:
             current = pending.pop()
@@ -352,9 +481,9 @@ def rule_cep_symlink_free(
                             target = "unresolved"
 
                         try:
-                            relative = entry.relative_to(root.path)
+                            relative = entry.relative_to(root_path)
                             display_path = (
-                                f"{root.name}/{relative.as_posix()}"
+                                f"{root_name}/{relative.as_posix()}"
                             )
                         except ValueError:
                             display_path = str(entry)

@@ -43,6 +43,34 @@ from audit_controller import RuleResult, run_rule
 from .contracts import validate_contract
 from .evidence_service import EvidenceService
 from .guard_inspector import GuardInspector
+from .workspace_identity import (
+    canonical_workspace_root,
+    project_workspace_id,
+)
+
+
+_GUARD_EVIDENCE_REQUIREMENTS = {
+    "cep.manifest_exists": {
+        "path_patterns": ["CSXS/manifest.xml"],
+        "extensions": [".xml"],
+        "content_search": False,
+    },
+    "cep.host_version": {
+        "path_patterns": ["CSXS/manifest.xml"],
+        "extensions": [".xml"],
+        "content_search": False,
+    },
+    "cep.menubar_extension": {
+        "path_patterns": ["CSXS/manifest.xml"],
+        "extensions": [".xml"],
+        "content_search": False,
+    },
+    "cep.symlink_free": {
+        "path_patterns": [],
+        "extensions": [],
+        "content_search": False,
+    },
+}
 
 #: Stop words excluded from validation term matching (extends the search
 #: backend's set with weak negation terms that would otherwise produce false
@@ -98,6 +126,9 @@ class GuardRunner:
         roots: list[str] | None = None,
         max_results: int = 10,
         reason: str = "",
+        retrieval_mode: str = "diagnostic",
+        path_patterns: list[str] | None = None,
+        content_search: bool = True,
     ) -> dict[str, Any]:
         """Run the full vertical slice and return the decision context."""
         problem = (problem or "").strip()
@@ -105,17 +136,55 @@ class GuardRunner:
             raise ValueError("problem must not be empty")
         if not pack_id or not rule_id:
             raise ValueError("pack_id and rule_id are required")
+        if retrieval_mode not in {"diagnostic", "guard", "investigation"}:
+            raise ValueError(f"invalid retrieval_mode: {retrieval_mode}")
 
         ctx = self.context_loader()
         resolved_root = self._resolve_root_name(ctx, workspace_root, roots)
         ev_roots = roots or ([resolved_root] if resolved_root else None)
         project_type = self._project_type_for(pack_id)
 
+        guard_requirements = (
+            _GUARD_EVIDENCE_REQUIREMENTS.get(rule_id)
+            if retrieval_mode == "guard"
+            else None
+        )
+
+        effective_extensions = (
+            list(guard_requirements["extensions"])
+            if guard_requirements is not None
+            else extensions
+        )
+        effective_path_patterns = (
+            list(guard_requirements["path_patterns"])
+            if guard_requirements is not None
+            else path_patterns
+        )
+        effective_content_search = (
+            bool(guard_requirements["content_search"])
+            if guard_requirements is not None
+            else content_search
+        )
+
+        canonical_root: Path | None = None
+        effective_workspace_id = workspace_id
+
+        if workspace_root:
+            canonical_root = canonical_workspace_root(workspace_root)
+            effective_workspace_id = project_workspace_id(
+                canonical_root,
+                workspace_id,
+            )
+
         task = {
             "task_id": f"task-{uuid.uuid4()}",
             "problem": problem,
-            "workspace_id": workspace_id,
-            "workspace_root": workspace_root,
+            "workspace_id": effective_workspace_id,
+            "workspace_root": (
+                str(canonical_root)
+                if canonical_root is not None
+                else None
+            ),
             "mode": "inspect",
             "write_allowed": False,
             "constraints": [],
@@ -126,11 +195,18 @@ class GuardRunner:
         package = self.evidence_service.build_evidence_package(
             task_id=task["task_id"],
             query=problem,
-            workspace_id=workspace_id,
-            workspace_root=workspace_root,
+            workspace_id=effective_workspace_id,
+            workspace_root=(
+                str(canonical_root)
+                if canonical_root is not None
+                else None
+            ),
             max_results=max_results,
-            extensions=extensions,
+            extensions=effective_extensions,
             roots=ev_roots,
+            retrieval_mode=retrieval_mode,
+            path_patterns=effective_path_patterns,
+            content_search=effective_content_search,
         )
 
         # Execute the registered guard against the workspace.
@@ -140,6 +216,12 @@ class GuardRunner:
             ctx,
             {
                 "roots": ev_roots or [],
+                "workspace_root": (
+                    str(canonical_root)
+                    if canonical_root is not None
+                    else None
+                ),
+                "workspace_id": effective_workspace_id,
                 "project_type": project_type,
                 "inventory": {},
             },
@@ -157,7 +239,10 @@ class GuardRunner:
             evidence_package=package,
             guard_id=guard_id or rule_id,
             guard_version=guard_version,
-            workspace_id=workspace_id or package.get("workspace_id"),
+            workspace_id=(
+                effective_workspace_id
+                or package.get("workspace_id")
+            ),
             reason=reason or f"Vertical slice for {pack_id}.{rule_id}",
         )
 

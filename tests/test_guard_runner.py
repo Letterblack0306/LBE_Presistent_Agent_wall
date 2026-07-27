@@ -10,7 +10,11 @@ from lbe_guard_inspector.guard_inspector import (
     VERDICT_NOT_APPLICABLE,
     VERDICT_PASS,
 )
-from lbe_guard_inspector.guard_runner import GuardRunner
+from lbe_guard_inspector.guard_runner import (
+    GuardRunner,
+    _GUARD_EVIDENCE_REQUIREMENTS,
+)
+from lbe_guard_inspector.workspace_identity import project_workspace_id
 
 
 QUERY = "Provided callback is not a function"
@@ -199,3 +203,97 @@ def test_resolve_root_name_via_workspace_root(tmp_path) -> None:
         workspace_root=str(ws),
     )
     assert result["guard_result"]["verdict"] == VERDICT_PASS
+
+def test_rule_runner_receives_canonical_workspace_identity(tmp_path) -> None:
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+
+    expected_id = project_workspace_id(
+        workspace,
+        "Readable Project",
+    )
+
+    package = _package()
+    package["workspace_id"] = expected_id
+    package["current_workspace_evidence"][0]["workspace_id"] = expected_id
+
+    configured_root = _Root("dev", tmp_path)
+    runner, captured = _runner(
+        package,
+        _rule("passed"),
+        roots=(configured_root,),
+    )
+
+    result = runner.run(
+        problem=QUERY,
+        pack_id="cep",
+        rule_id="cep.manifest_exists",
+        workspace_root=str(workspace),
+        workspace_id="Readable Project",
+        retrieval_mode="guard",
+    )
+
+    canonical = workspace.resolve()
+
+    assert result["task"]["workspace_root"] == str(canonical)
+    assert result["task"]["workspace_id"] == expected_id
+
+    evidence_kwargs = runner.evidence_service.last_kwargs
+    assert evidence_kwargs["workspace_root"] == str(canonical)
+    assert evidence_kwargs["workspace_id"] == expected_id
+
+    assert captured["params"]["workspace_root"] == str(canonical)
+    assert captured["params"]["workspace_id"] == expected_id
+
+def test_guard_mode_uses_exact_rule_evidence_requirements(tmp_path) -> None:
+    expected = {
+        "cep.manifest_exists": {
+            "path_patterns": ["CSXS/manifest.xml"],
+            "extensions": [".xml"],
+            "content_search": False,
+        },
+        "cep.host_version": {
+            "path_patterns": ["CSXS/manifest.xml"],
+            "extensions": [".xml"],
+            "content_search": False,
+        },
+        "cep.menubar_extension": {
+            "path_patterns": ["CSXS/manifest.xml"],
+            "extensions": [".xml"],
+            "content_search": False,
+        },
+        "cep.symlink_free": {
+            "path_patterns": [],
+            "extensions": [],
+            "content_search": False,
+        },
+    }
+
+    assert _GUARD_EVIDENCE_REQUIREMENTS == expected
+
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+
+    configured_root = _Root("dev", tmp_path)
+    runner, _ = _runner(
+        _package(),
+        _rule("passed"),
+        roots=(configured_root,),
+    )
+
+    runner.run(
+        problem=QUERY,
+        pack_id="cep",
+        rule_id="cep.manifest_exists",
+        workspace_root=str(workspace),
+        retrieval_mode="guard",
+        extensions=[".py"],
+        path_patterns=["wrong/path.py"],
+        content_search=True,
+    )
+
+    evidence_kwargs = runner.evidence_service.last_kwargs
+
+    assert evidence_kwargs["extensions"] == [".xml"]
+    assert evidence_kwargs["path_patterns"] == ["CSXS/manifest.xml"]
+    assert evidence_kwargs["content_search"] is False
