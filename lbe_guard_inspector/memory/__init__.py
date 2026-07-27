@@ -16,6 +16,7 @@ from .context import (
     invalidate_changed_sources,
     rehydrate_context,
 )
+from .integration import SessionMemoryAdapter
 from .models import (
     CompactionCheckpoint,
     MemoryRecord,
@@ -31,6 +32,7 @@ __all__ = [
     "CompactionCheckpoint",
     "MemoryPromoter",
     "MemoryRecord",
+ "SessionMemoryAdapter",
     "MemoryType",
     "SourceType",
     "ValidationStatus",
