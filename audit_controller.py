@@ -205,8 +205,8 @@ def run_rule(
     """Resolve and execute a single registered deterministic rule.
 
     Mirrors the per-rule execution and exception handling of :func:`run_audit`
-    but runs only the requested rule.  Governance or audit errors are reported
-    as ``blocked``; unexpected errors as ``failed``.
+    but runs only the requested rule. Any execution error is reported as
+    ``blocked`` because an engine fault is not evidence of a workspace defect.
     """
     function = resolve_rule(pack_id, rule_id)
     resolved_params: dict[str, Any] = {
@@ -228,7 +228,7 @@ def run_rule(
     except Exception as exc:  # pragma: no cover - defensive
         return RuleResult(
             rule_id=rule_id,
-            status="failed",
+            status="blocked",
             message=f"{type(exc).__name__}: {exc}",
         )
 
@@ -431,7 +431,7 @@ def run_audit(
             except Exception as exc:
                 result = RuleResult(
                     rule_id=f"{pack_id}.{function_name}",
-                    status="failed",
+                    status="blocked",
                     message=f"Rule execution failed: {type(exc).__name__}: {exc}",
                     evidence={
                         "pack_id": pack_id,
