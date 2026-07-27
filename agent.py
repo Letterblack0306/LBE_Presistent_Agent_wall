@@ -15,6 +15,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+try:
+    import yaml
+except ImportError:  # pragma: no cover - fallback is exercised only without PyYAML.
+    yaml = None
+
 ROOT = Path(__file__).resolve().parent
 STATE_DIR = ROOT / "state"
 CONFIG_PATH = ROOT / "config.json"
@@ -158,10 +163,109 @@ def safe_root_name(value: str) -> str:
     return normalized.lower()
 
 
+_REFERENCE_METADATA_FIELDS = (
+    "id",
+    "record_type",
+    "source_class",
+    "authority_level",
+    "verification_status",
+    "workspace_scope",
+    "execution_status",
+    "guard_binding",
+)
+
+
+def reference_metadata(path: Path, content: str) -> tuple[str, dict[str, Any]]:
+    """Return safe, structured metadata for a bundled YAML reference mapping."""
+    if path.suffix.lower() not in {".yaml", ".yml"}:
+        return "not_applicable", {}
+    if yaml is None:
+        parsed = _fallback_yaml_mapping(content)
+    else:
+        try:
+            parsed = yaml.safe_load(content)
+        except yaml.YAMLError:
+            return "invalid", {}
+    if not isinstance(parsed, dict):
+        return "invalid", {}
+    return "parsed", {
+        field: parsed[field]
+        for field in _REFERENCE_METADATA_FIELDS
+        if field in parsed
+    }
+
+
+def _fallback_yaml_mapping(content: str) -> dict[str, Any] | None:
+    """Parse the small, scalar-and-block mapping subset used by bundled records.
+
+    This is deliberately non-general: it never constructs Python objects or
+    interprets YAML tags, and exists only when PyYAML is unavailable.
+    """
+    lines = [line.rstrip() for line in content.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    result: dict[str, Any] = {}
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if line.startswith((" ", "-")) or ":" not in line:
+            return None
+        key, value = line.split(":", 1)
+        key, value = key.strip(), value.strip()
+        if not key:
+            return None
+        if value:
+            scalar = _yaml_scalar(value)
+            if scalar is _INVALID_YAML_SCALAR:
+                return None
+            result[key] = scalar
+            index += 1
+            continue
+        index += 1
+        nested: dict[str, Any] = {}
+        values: list[Any] = []
+        while index < len(lines) and lines[index].startswith("  "):
+            child = lines[index].strip()
+            if child.startswith("- "):
+                scalar = _yaml_scalar(child[2:].strip())
+                if scalar is _INVALID_YAML_SCALAR:
+                    return None
+                values.append(scalar)
+            elif ":" in child:
+                child_key, child_value = child.split(":", 1)
+                scalar = _yaml_scalar(child_value.strip())
+                if not child_key.strip() or scalar is _INVALID_YAML_SCALAR:
+                    return None
+                nested[child_key.strip()] = scalar
+            else:
+                return None
+            index += 1
+        result[key] = values if values else nested
+    return result
+
+
+_INVALID_YAML_SCALAR = object()
+
+
+def _yaml_scalar(value: str) -> Any:
+    if value.startswith(("[", "{")) and not value.endswith(("]", "}")):
+        return _INVALID_YAML_SCALAR
+    if value in {"true", "True"}:
+        return True
+    if value in {"false", "False"}:
+        return False
+    if value in {"null", "Null", "NULL", "~"}:
+        return None
+    if value[:1] in {"'", '"'}:
+        if len(value) < 2 or value[-1] != value[0]:
+            return _INVALID_YAML_SCALAR
+        return value[1:-1]
+    return value
+
+
 @dataclass(frozen=True)
 class KnowledgeRoot:
     name: str
     path: Path
+    root_class: str
 
 
 @dataclass(frozen=True)
@@ -186,6 +290,10 @@ class Context:
             if not isinstance(item, dict):
                 raise GovernanceError("Each knowledge_roots entry must be an object")
             name = safe_root_name(str(item.get("name", "")))
+            if name == "lbe-reference":
+                raise GovernanceError(
+                    "Knowledge root name 'lbe-reference' is reserved for bundled references"
+                )
             raw_path = str(item.get("path", "")).strip()
             if not raw_path:
                 raise GovernanceError(f"Knowledge root '{name}' has no path")
@@ -197,9 +305,23 @@ class Context:
                 raise GovernanceError(f"Duplicate knowledge root path: {path}")
             if not path.exists() or not path.is_dir():
                 raise FileNotFoundError(f"Knowledge root does not exist: {path}")
-            roots.append(KnowledgeRoot(name, path))
+            roots.append(KnowledgeRoot(name, path, "workspace"))
             names.add(name)
             paths.add(key)
+
+        reference_path = (ROOT / "examples" / "reference").resolve()
+        if reference_path.is_dir():
+            reference_name = "lbe-reference"
+            reference_key = str(reference_path).casefold()
+            if reference_name in names:
+                raise GovernanceError(
+                    "Knowledge root name 'lbe-reference' is reserved for bundled references"
+                )
+            if reference_key in paths:
+                raise GovernanceError(f"Duplicate knowledge root path: {reference_path}")
+            roots.append(KnowledgeRoot(reference_name, reference_path, "reference"))
+            names.add(reference_name)
+            paths.add(reference_key)
 
         for index, left in enumerate(roots):
             for right in roots[index + 1:]:
@@ -599,7 +721,10 @@ def trace_workspace(
             "mode": "sqlite-read-only-knowledge-index",
             "database": str(DATABASE_PATH),
             "schema_version": STATE_FILE_SCHEMA_VERSION,
-            "knowledge_roots": [{"name": root.name, "path": str(root.path)} for root in ctx.roots],
+            "knowledge_roots": [
+                {"name": root.name, "path": str(root.path), "root_class": root.root_class}
+                for root in ctx.roots
+            ],
             "statistics": {
                 "files_seen_this_run": stats.files_seen,
                 "files_hashed_this_run": stats.files_hashed,
@@ -743,6 +868,7 @@ def search_workspace(
     }
     selected_roots = {safe_root_name(item) for item in roots} if roots else None
     known_roots = {root.name for root in ctx.roots}
+    root_by_name = {root.name: root for root in ctx.roots}
     if selected_roots and selected_roots - known_roots:
         raise GovernanceError(f"Unknown roots: {sorted(selected_roots - known_roots)}")
 
@@ -831,8 +957,21 @@ def search_workspace(
                 snippet = "\n".join(lines[max(0,best_index-2):min(len(lines),best_index+3)])[:1200]
                 line_number = best_index + 1
 
-            # Source classification for noise deprioritization
+            root = root_by_name.get(str(row["root"]))
+            metadata_parse_status = "not_applicable"
+            gallery_metadata: dict[str, Any] = {}
+
+            # Source classification for noise deprioritization.
             classification, penalty = _classify_source(virtual)
+            if root is not None and root.root_class == "reference":
+                metadata_parse_status, gallery_metadata = reference_metadata(physical, content)
+                # Bundled YAML support files are indexed as raw evidence, but only
+                # gallery records participate in reference-pattern retrieval.
+                if metadata_parse_status == "parsed" and not gallery_metadata.get("record_type"):
+                    continue
+                declared_source_class = gallery_metadata.get("source_class")
+                if isinstance(declared_source_class, str) and declared_source_class.strip():
+                    classification = declared_source_class
 
             # Compute penalized score once; used for display, heap, and ordering
             penalized_score = int(score) - penalty
@@ -848,6 +987,9 @@ def search_workspace(
                 "matched_terms": matched,
                 "exact_phrase": exact_path or exact_content,
                 "source_class": classification,
+                "root_class": root.root_class if root is not None else "workspace",
+                "metadata_parse_status": metadata_parse_status,
+                "gallery_metadata": gallery_metadata,
             }
             serial += 1
             entry = (penalized_score, serial, item)
@@ -972,7 +1114,10 @@ def main() -> None:
 
     p = sub.add_parser("roots")
     p.set_defaults(func=lambda _: print(json.dumps(
-        {"knowledge_roots": [{"name": r.name, "path": str(r.path)} for r in Context.load().roots]},
+        {"knowledge_roots": [
+            {"name": r.name, "path": str(r.path), "root_class": r.root_class}
+            for r in Context.load().roots
+        ]},
         indent=2,
     )))
 

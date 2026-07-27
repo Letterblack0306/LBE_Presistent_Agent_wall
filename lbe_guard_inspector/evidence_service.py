@@ -265,6 +265,11 @@ class EvidenceService:
             raise GovernanceError(
                 f"Workspace root is outside configured knowledge roots: {root}"
             )
+        configured = next(item for item in ctx.roots if item.name == configured_root)
+        if getattr(configured, "root_class", "workspace") != "workspace":
+            raise GovernanceError(
+                f"Reference knowledge root cannot be used as a current workspace: {root}"
+            )
 
         allowed_extensions = {
             value.lower() if value.startswith(".") else f".{value.lower()}"
@@ -418,7 +423,17 @@ class EvidenceService:
         path = str(item.get("path") or "")
         line = item.get("line")
         snippet = item.get("snippet") or None
-        classification = _classify_path(path)
+        root_class = str(item.get("root_class") or "workspace")
+        gallery_metadata = item.get("gallery_metadata")
+        if not isinstance(gallery_metadata, dict):
+            gallery_metadata = {}
+        declared_source_class = gallery_metadata.get("source_class")
+        classification = (
+            declared_source_class
+            if root_class == "reference" and isinstance(declared_source_class, str)
+            and declared_source_class.strip()
+            else _classify_path(path)
+        )
 
         matched = item.get("matched_terms")
         if isinstance(matched, int):
@@ -428,11 +443,31 @@ class EvidenceService:
         else:
             matched_terms = []
 
+        metadata = {
+            "root": root,
+            "root_class": root_class,
+            "size": item.get("size"),
+            "retrieval_source": "agent.search_workspace",
+            "metadata_parse_status": item.get("metadata_parse_status", "not_applicable"),
+        }
+        if root_class == "reference":
+            metadata.update(gallery_metadata)
+            guard_binding = gallery_metadata.get("guard_binding")
+            implementation_available = (
+                guard_binding.get("implementation_available")
+                if isinstance(guard_binding, dict)
+                else None
+            )
+            metadata["executable"] = not (
+                gallery_metadata.get("execution_status") == "knowledge_only"
+                and implementation_available is False
+            )
+
         return {
             "ref": f"index:{root}:{path}",
             "source_type": "index",
-            "record_id": None,
-            "workspace_id": root or None,
+            "record_id": gallery_metadata.get("id") if root_class == "reference" else None,
+            "workspace_id": None if root_class == "reference" else (root or None),
             "path": path or None,
             "hash": item.get("sha256"),
             "line_start": int(line) if isinstance(line, int) and line > 0 else None,
@@ -444,11 +479,7 @@ class EvidenceService:
             "authority": _authority_for(classification),
             "verified": False,
             "classification": classification,
-            "metadata": {
-                "root": root,
-                "size": item.get("size"),
-                "retrieval_source": "agent.search_workspace",
-            },
+            "metadata": metadata,
         }
 
 

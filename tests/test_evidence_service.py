@@ -65,6 +65,60 @@ def test_build_evidence_package_wraps_existing_search() -> None:
     assert evidence["metadata"]["retrieval_source"] == "agent.search_workspace"
 
 
+def test_reference_record_stays_indexed_and_non_executable() -> None:
+    search_output = {
+        "query": "authority owner",
+        "search_completed": True,
+        "outcome": "matches_found",
+        "results": [{
+            "root": "lbe-reference",
+            "root_class": "reference",
+            "path": "lbe-reference/state_owner_authority_ownership.yaml",
+            "score": 900,
+            "size": 100,
+            "line": 1,
+            "snippet": "authority owner",
+            "sha256": "reference-hash",
+            "matched_terms": 2,
+            "exact_phrase": True,
+            "source_class": "reference_pattern",
+            "metadata_parse_status": "parsed",
+            "gallery_metadata": {
+                "id": "architecture.authority-ownership",
+                "record_type": "state-owner-pattern",
+                "source_class": "reference_pattern",
+                "authority_level": "reviewed",
+                "verification_status": "verified",
+                "workspace_scope": {"kind": "reference"},
+                "execution_status": "knowledge_only",
+                "guard_binding": {
+                    "proposed_guard_id": "architecture.authority_ownership",
+                    "implementation_available": False,
+                },
+            },
+        }],
+    }
+
+    with patch("lbe_guard_inspector.evidence_service.Context", FakeContext), patch(
+        "lbe_guard_inspector.evidence_service.search_workspace", return_value=search_output
+    ):
+        package = EvidenceService().build_evidence_package(
+            task_id="reference-only", query="authority owner"
+        )
+
+    assert len(package["indexed_reference_evidence"]) == 1
+    assert package["current_workspace_evidence"] == []
+    evidence = package["indexed_reference_evidence"][0]
+    assert evidence["record_id"] == "architecture.authority-ownership"
+    assert evidence["workspace_id"] is None
+    assert evidence["classification"] == "reference_pattern"
+    assert evidence["metadata"]["workspace_scope"] == {"kind": "reference"}
+    assert evidence["metadata"]["verification_status"] == "verified"
+    assert evidence["metadata"]["executable"] is False
+    assert "workspace PASS/FAIL is not permitted" in package["missing_evidence"][0]
+    assert "PASS" not in package and "FAIL" not in package
+
+
 def test_no_matches_becomes_evidence_gap() -> None:
     search_output = {
         "query": "missing phrase",
