@@ -106,7 +106,9 @@ def test_current_source_invalidates_stale_source_backed_memory(tmp_path: Path) -
     memory_id = runtime.adapter.record_file_hash(relative_path="tracked.txt")
     original = runtime.store.get(memory_id)
     assert original is not None
-    assert original.source_hash == hashlib.sha256(b"one\n").hexdigest()
+    assert original.source_hash == hashlib.sha256(
+        (root / "tracked.txt").read_bytes()
+    ).hexdigest()
 
     (root / "tracked.txt").write_text("two\n", encoding="utf-8")
     runtime.start_or_resume()
