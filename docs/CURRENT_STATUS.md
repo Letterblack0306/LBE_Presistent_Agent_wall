@@ -23,11 +23,11 @@ Live target workspace state and current validation remain authoritative.
 
 - Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 - Base branch: `main`
-- Integration branch: `feat/validated-workspace-memory-integration`
-- Pull request: `#2`
-- PR state: open and ready for review
-- Validated head: `91742f5c02f1b0c911ad0f787397e335c48ba0f8`
-- Merge status: not merged
+- Foundation PR: `#2`, merged
+- Foundation merge commit: `7f212f406331dfaf7961143eefbf45f8ceaf6a17`
+- Active branch: `feat/guard-inspector-vertical-slice`
+- Validated implementation head: `c1b2877869b44db0030d0258c3ec97c53b2cc4e9`
+- Merge status: Phase 13 branch not merged
 
 ## Completed foundation
 
@@ -133,33 +133,85 @@ Implemented and tested:
 12. no ordinary ownership `PASS` or `FAIL`;
 13. registry-memory evidence separation.
 
-Validated at `91742f5c02f1b0c911ad0f787397e335c48ba0f8`:
+Foundation validation is preserved by merged PR `#2`.
 
-- Phase 12 proof: `1 passed`;
-- full repository suite: `144 passed`;
+## Phase 13 complete: callback Guard Inspector vertical slice
+
+The first complete read-only Guard Inspector product path is implemented for:
+
+```text
+Provided callback is not a function
+```
+
+Implemented pipeline:
+
+```text
+fixed callback problem request
+-> exact configured workspace resolution
+-> independently scoped reference retrieval
+-> bounded live target-workspace scan
+-> duplicate-safe evidence packaging
+-> registered cep.callback_contract guard selection
+-> deterministic callback classification
+-> LBE authorization envelope
+-> independent narrow validation
+-> PASS / FAIL / INSUFFICIENT_EVIDENCE / NOT_APPLICABLE
+-> evidence-only explanation
+```
+
+### Implemented components
+
+- `lbe_guard_inspector/callback_vertical_slice.py`
+  - fixes the problem, pack, and rule identity;
+  - rejects missing, outside-root, or ambiguous target workspaces;
+  - fingerprints the workspace before and after execution;
+  - emits read-only authorization and a deterministic semantic fingerprint;
+  - explains only evidence referenced by the verdict.
+- `rules/cep_callback.py`
+  - registered pack: `cep_callback`;
+  - registered rule: `cep.callback_contract`;
+  - bounded live scan of the exact target workspace;
+  - deterministic parsing of multiline `evalScript` calls;
+  - definite invalid literals map to failure;
+  - inline functions and omitted callbacks map to pass candidates;
+  - unresolved callback expressions map to insufficient evidence;
+  - irrelevant workspaces map to not applicable.
+- `lbe_guard_inspector/guard_runner.py`
+  - passes the exact workspace to the registered guard;
+  - scopes workspace and validation evidence to guard-supporting paths;
+  - records canonical virtual paths for explanation and validation.
+
+### Phase 13 proof
+
+Tests prove:
+
+1. exact target workspace selection;
+2. reference/workspace evidence separation;
+3. duplicate filename safety;
+4. indexed reference evidence cannot prove a current defect;
+5. bounded read-only inspection;
+6. registered deterministic guard execution;
+7. repeatable semantic decision fingerprints;
+8. missing or unresolved evidence produces `INSUFFICIENT_EVIDENCE`;
+9. irrelevant workspace produces `NOT_APPLICABLE`;
+10. invalid callback produces `FAIL`;
+11. corrected callback produces `PASS`;
+12. target workspace remains unchanged;
+13. explanation cites only verdict-referenced workspace or validation evidence.
+
+Validated at `c1b2877869b44db0030d0258c3ec97c53b2cc4e9`:
+
+- focused Phase 13 and runner suite: `29 passed`;
+- full repository suite: `160 passed`;
 - `git diff --check`: passed;
 - working tree: clean;
-- untracked generated evidence: none.
+- branch synchronized with `origin/feat/guard-inspector-vertical-slice`.
+
+Rollback instructions are documented in `docs/PHASE_13_CALLBACK_VERTICAL_SLICE.md`.
 
 ## Current product position
 
-The trustworthy support foundation is complete, but the complete Guard Inspector product path is not yet proven.
-
-The missing user-facing execution chain is:
-
-```text
-user problem
--> exact workspace resolution
--> reference retrieval
--> bounded current-workspace inspection
--> evidence package
--> registered deterministic guard selection
--> guard execution
--> LBE governance
--> required validation
--> structured verdict
--> human explanation
-```
+The first deterministic Guard Inspector vertical slice is proven as a Python service and testable product pipeline. It is not yet exposed through the existing local HTTP retrieval server and is not integrated with Cline, Brew, Browser Dev, or another external runtime.
 
 The normal verdict contract is:
 
@@ -172,40 +224,17 @@ The model may select, hypothesize, and explain. It must not invent the verdict.
 
 ## Next implementation target
 
-Implement the first complete read-only Guard Inspector vertical slice for one real problem and one registered deterministic guard.
+Create the smallest read-only invocation surface for `CallbackVerticalSlice` without broadening scope. The surface must preserve exact workspace selection, fixed registered guard selection, structured authorization, validation, deterministic verdicts, and evidence-only explanation.
 
-Recommended first case:
-
-```text
-Provided callback is not a function
-```
-
-The slice must prove:
-
-1. deterministic target-workspace identity;
-2. strict separation of reference-corpus evidence and current-workspace evidence;
-3. correct duplicate-filename handling;
-4. bounded live inspection;
-5. evidence containing exact paths, hashes, snippets, and line ranges;
-6. selection of an existing registered callback guard;
-7. deterministic guard execution;
-8. LBE governance and authorization;
-9. required narrow validation;
-10. one structured verdict;
-11. no target-workspace mutation;
-12. identical results for identical input and workspace state.
+Do not add mutation or repair execution as part of this step.
 
 ## Not yet completed
 
-- first complete Guard Inspector vertical slice;
-- production reference-retrieval integration for that slice;
-- target-workspace evidence packaging across duplicate filenames;
-- deterministic registered callback guard execution through the complete pipeline;
-- LBE-governed ordinary verdict production;
+- read-only HTTP or CLI invocation surface for the completed callback vertical slice;
 - runtime-specific integration with Cline, Brew, Browser Dev, or another external agent runtime;
 - broader guard gallery coverage;
 - release packaging;
-- merge into `main`.
+- merge of `feat/guard-inspector-vertical-slice` into `main`.
 
 ## No-drift boundary
 
