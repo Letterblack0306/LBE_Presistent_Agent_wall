@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://letterblack.local/schemas/authority_ownership_evidence_package.schema.json",
+  "title": "Authority Ownership Evidence Package",
+  "type": "object",
+  "required": [
+    "request",
+    "registry",
+    "lifecycle",
+    "canonical_state",
+    "owner_declarations",
+    "mutation_sites",
+    "call_paths",
+    "persistence",
+    "runtime_confirmation",
+    "contradictions"
+  ],
+  "$defs": {
+    "evidenceItem": {
+      "type": "object",
+      "required": ["ref", "kind"],
+      "properties": {
+        "ref": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "detail": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "evidenceList": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/evidenceItem"},
+      "uniqueItems": true
+    }
+  },
+  "properties": {
+    "request": {"type": "object", "required": ["operation_id", "canonical_target"], "properties": {"operation_id": {"type": "string", "minLength": 1}, "canonical_target": {"type": "string", "minLength": 1}}, "additionalProperties": false},
+    "registry": {"$ref": "#/$defs/evidenceList"},
+    "lifecycle": {"$ref": "#/$defs/evidenceList"},
+    "canonical_state": {"$ref": "#/$defs/evidenceList"},
+    "owner_declarations": {"$ref": "#/$defs/evidenceList"},
+    "mutation_sites": {"$ref": "#/$defs/evidenceList"},
+    "call_paths": {"$ref": "#/$defs/evidenceList"},
+    "persistence": {"$ref": "#/$defs/evidenceList"},
+    "runtime_confirmation": {"$ref": "#/$defs/evidenceList"},
+    "contradictions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+  },
+  "additionalProperties": false
+}

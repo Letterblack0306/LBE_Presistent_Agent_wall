@@ -15,12 +15,14 @@ from .contracts import ContractValidationError, validate_contract
 from .evidence_service import EvidenceService
 from .guard_inspector import GuardInspector
 from .guard_runner import GuardRunner
+from .runtime_slice import RuntimeSlice
 
 
 def make_handler(
     service: EvidenceService,
     inspector: GuardInspector | None = None,
     runner: GuardRunner | None = None,
+    runtime: RuntimeSlice | None = None,
 ):
     guard_inspector = inspector or GuardInspector()
     guard_runner = runner or GuardRunner(
@@ -28,25 +30,37 @@ def make_handler(
     )
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "LBEGuardInspectorPhase1/1.3"
+        server_version = "LBEGuardInspectorPhase1/1.4"
 
         def do_GET(self) -> None:
-            if self.path == "/health":
-                self._send_json(
-                    HTTPStatus.OK,
-                    {
-                        "ok": True,
-                        "service": "lbe-guard-inspector-phase1",
-                        "search_backend": "agent.search_workspace",
-                        "workspace_evidence": True,
-                        "contradictions": True,
-                        "guard_evaluation": True,
-                    },
-                )
-                return
-            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+            self._runtime_request_started()
+            try:
+                if self.path == "/health":
+                    self._send_json(
+                        HTTPStatus.OK,
+                        {
+                            "ok": True,
+                            "service": "lbe-guard-inspector-phase1",
+                            "search_backend": "agent.search_workspace",
+                            "workspace_evidence": True,
+                            "contradictions": True,
+                            "guard_evaluation": True,
+                            "module_registry": runtime is not None,
+                        },
+                    )
+                    return
+                if self.path == "/module-registry" and runtime is not None:
+                    self._send_json(HTTPStatus.OK, runtime.snapshot())
+                    return
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+            except Exception as exc:
+                self._runtime_request_failed(exc)
+                raise
+            finally:
+                self._runtime_request_finished()
 
         def do_POST(self) -> None:
+            self._runtime_request_started()
             try:
                 if self.path == "/evidence-package":
                     self._handle_evidence_package()
@@ -57,6 +71,7 @@ def make_handler(
                 else:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
             except ContractValidationError as exc:
+                self._runtime_request_failed(exc)
                 self._send_json(
                     HTTPStatus.BAD_REQUEST,
                     {
@@ -66,6 +81,7 @@ def make_handler(
                     },
                 )
             except (GovernanceError, ValueError, FileNotFoundError, RuntimeError) as exc:
+                self._runtime_request_failed(exc)
                 self._send_json(
                     HTTPStatus.BAD_REQUEST,
                     {
@@ -74,6 +90,7 @@ def make_handler(
                     },
                 )
             except Exception as exc:
+                self._runtime_request_failed(exc)
                 self._send_json(
                     HTTPStatus.INTERNAL_SERVER_ERROR,
                     {
@@ -81,6 +98,23 @@ def make_handler(
                         "message": str(exc),
                         "trace": traceback.format_exc(limit=3),
                     },
+                )
+            finally:
+                self._runtime_request_finished()
+
+        def _runtime_request_started(self) -> None:
+            if runtime is not None:
+                runtime.request_started(f"{self.command} {self.path}")
+
+        def _runtime_request_finished(self) -> None:
+            if runtime is not None:
+                runtime.request_finished()
+
+        def _runtime_request_failed(self, exc: Exception) -> None:
+            if runtime is not None:
+                runtime.request_failed(
+                    code=type(exc).__name__,
+                    error=str(exc),
                 )
 
         def _handle_evidence_package(self) -> None:
@@ -198,7 +232,6 @@ def make_handler(
 
             self._send_json(HTTPStatus.OK, result)
 
-
         def _read_json_body(self) -> dict[str, Any]:
             raw_length = self.headers.get("Content-Length")
             if raw_length is None:
@@ -235,11 +268,18 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8766)
     args = parser.parse_args()
 
+    runtime = RuntimeSlice(active_profile="production")
+    runtime.startup()
     service = EvidenceService()
     inspector = GuardInspector()
     server = ThreadingHTTPServer(
         (args.host, args.port),
-        make_handler(service, inspector, GuardRunner(evidence_service=service, inspector=inspector)),
+        make_handler(
+            service,
+            inspector,
+            GuardRunner(evidence_service=service, inspector=inspector),
+            runtime,
+        ),
     )
 
     print(f"LBE Phase 1 endpoint: http://{args.host}:{args.port}")
@@ -249,6 +289,7 @@ def main() -> None:
     print("POST /evidence-package")
     print("POST /guard-result  (supplied rule_result -> guard_result)")
     print("POST /guard-run     (problem -> select+execute guard -> verdict)")
+    print("GET  /module-registry")
     print("GET  /health")
 
     try:
@@ -256,6 +297,7 @@ def main() -> None:
     except KeyboardInterrupt:
         print("\nServer stopped.")
     finally:
+        runtime.shutdown()
         server.server_close()
 
 
