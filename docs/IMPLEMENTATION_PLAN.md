@@ -4,386 +4,287 @@ Updated: 2026-07-28
 
 ## Goal
 
-Build a deterministic, read-only-first Guard Inspector runtime with two explicit truth layers:
+Build a deterministic, read-only-first Guard Inspector that diagnoses one concrete workspace problem through an explicit authority chain:
 
-1. validated project-scoped memory for safe continuity across sessions;
-2. a complete live Module Registry for runtime inventory, load state, activity, dependencies, instances, and failures.
+```text
+reference corpus suggests
+current workspace inspection supplies facts
+reasoning selects and explains
+deterministic guards detect
+LBE Core authorizes
+validation proves
+```
 
-After those foundations are operational, add a bounded Authority Ownership Inspector that evaluates one authoritative operation at a time without becoming a coding agent, mutation engine, or model-authored verdict system.
+The model may select guards, form hypotheses, and explain results. It must not invent the verdict.
 
 ## Non-negotiable invariants
 
-- Live target workspace and passing current validation outrank stored memory and indexed reference knowledge.
+- Live target workspace and current validation outrank stored memory and indexed reference knowledge.
 - Session history and compaction are historical context, not workspace truth.
-- Every production module must be declared.
-- Every loaded module must emit a runtime receipt.
-- Every running module must report current activity.
-- Every declared dependency must reference another registered module.
+- Reference-corpus evidence and target-workspace evidence remain separate.
+- Every production module in the inspected runtime slice is declared.
+- Every loaded module emits a runtime receipt.
+- Every running module reports current activity.
 - Registered-but-not-loaded modules remain visible.
 - Loaded-but-unregistered modules are blocking defects.
-- The registry provides the runtime map; source inspection verifies or investigates that map.
-- Source inspection is not removed. It is narrowed to missing, contradictory, ownership-sensitive, or implementation-specific evidence.
-- The Authority Ownership Inspector remains read-only and cannot issue ordinary PASS/FAIL until explicitly authorized by a later implementation gate.
+- Registry evidence is read before broad source reconstruction.
+- Source inspection remains available for missing, contradictory, stale, ownership-sensitive, or exact implementation evidence.
+- The Authority Ownership Inspector remains read-only and cannot issue ordinary guard `PASS` or `FAIL`.
+- Ordinary verdicts come only from deterministic guard execution plus required validation and LBE authorization.
 
-## Current baseline
+## Completed foundation: Phases 1-12
 
-Implemented and validated:
+### Phase 1 - Module Registry contract and types
 
-- SQLite-backed project-scoped memory;
-- typed records, provenance, authority, and validation state;
-- deterministic claim promotion;
-- compaction checkpoint provenance;
-- source-hash invalidation and supersession;
-- rehydrated context packets;
-- runtime-neutral `SessionMemoryAdapter`;
-- 14 targeted memory/adapter tests passed;
-- 67 full-suite tests passed at commit `c79b8968a1da704c17d0052c0e6e51cb90de5829`.
+Completed:
 
-Documented but not implemented:
+- canonical declarations;
+- lifecycle receipt types;
+- module states;
+- defect types;
+- profile and singleton fields;
+- bounded activity history.
 
-- live Module Registry;
-- Module Watcher;
-- production lifecycle receipts;
-- registry UI or query endpoint;
-- executable Authority Ownership Inspector;
-- runtime-specific session integration.
+### Phase 2 - Registry store and state derivation
 
-## Phase 1 — Module Registry contract and types
+Completed:
 
-### Deliverables
-
-- canonical module declaration model;
-- allowed module types;
-- lifecycle receipt models;
-- module state enum;
-- defect enum;
-- explicit active runtime profile input;
-- singleton/multi-instance declaration field;
-- bounded activity-history model.
-
-### Required declaration fields
-
-- `id`;
-- `path`;
-- `type`;
-- `purpose`;
-- `provides`;
-- `dependsOn`;
-- `loadedBy`;
-- `expectedProfiles`.
-
-### Required lifecycle events
-
-- `registered`;
-- `loaded`;
-- `started`;
-- `activity`;
-- `stopped`;
-- `failed`.
-
-### Exit criteria
-
-- invalid declarations are rejected deterministically;
-- duplicate module IDs are rejected;
-- unknown states and malformed receipts are rejected;
-- schema/type tests pass.
-
-## Phase 2 — Registry store and state derivation
-
-### Deliverables
-
-- in-memory registry store;
-- declaration lookup;
-- live record lookup;
-- list/filter by state, type, profile, capability, loader, and dependency;
+- declaration and live-record lookup;
 - deterministic state derivation;
-- bounded recent activity;
-- last-error retention;
-- instance tracking.
+- bounded activity and last-error retention;
+- instance tracking;
+- filtering by state, type, profile, capability, loader, and dependency.
 
-### Required states
+### Phase 3 - Registry validation and defects
 
-- `REGISTERED`;
-- `NOT_LOADED`;
-- `LOADED`;
-- `RUNNING`;
-- `IDLE`;
-- `BLOCKED`;
-- `FAILED`;
-- `STOPPED`;
-- `DISABLED`.
+Completed:
 
-### Exit criteria
+- unregistered module detection;
+- registered-not-loaded visibility;
+- expected-profile failures;
+- unregistered dependency detection;
+- singleton conflict detection;
+- disabled-but-loaded detection;
+- invalid loader and contradictory lifecycle detection.
 
-- the same declarations and receipt sequence produce the same live records;
-- timestamps and activity ordering are deterministic under injected clocks;
-- state-transition tests pass.
+### Phase 4 - Module Watcher
 
-## Phase 3 — Registry validation and defects
+Completed:
 
-### Deliverables
-
-Structured defects for:
-
-- `MODULE_UNREGISTERED`;
-- `REGISTERED_NOT_LOADED`;
-- `EXPECTED_MODULE_NOT_LOADED`;
-- `MODULE_DEPENDENCY_UNREGISTERED`;
-- `MODULE_INSTANCE_CONFLICT`;
-- disabled module loaded;
-- receipt for unknown module;
-- invalid loader relationship;
-- contradictory lifecycle state.
-
-### Exit criteria
-
-- every defect has minimum deterministic evidence;
-- registered-but-not-loaded remains visible without always becoming blocking;
-- expected-profile and disabled-state behavior is tested;
-- dependency and singleton tests pass.
-
-## Phase 4 — Module Watcher
-
-### Deliverables
-
-- watcher subscription API;
-- callbacks for registration and every lifecycle event;
-- immutable event payloads;
+- ordered subscriptions;
+- immutable watcher events;
 - bounded event history;
-- subscriber isolation so one failing watcher cannot corrupt registry state;
+- subscriber isolation;
+- watcher failure visibility;
 - registry and watcher self-registration.
 
-### Exit criteria
+### Phase 5 - Minimal real runtime slice
 
-- watcher sees events in deterministic order;
-- failed subscribers are surfaced without losing registry truth;
-- watcher tests pass.
+Completed:
 
-## Phase 5 — Minimal real runtime slice
-
-Choose one small runtime path, not the entire workspace.
-
-Recommended initial slice:
-
-- `app.launcher`;
-- `agent.http-server`;
-- `agent.service`;
-- `browser.chat-bridge`;
-- `browser.loop-controller`;
-- `module.registry`;
-- `module.watcher`.
-
-### Deliverables
-
-- static declarations for selected modules;
-- load receipts during startup;
-- started/activity/stopped/failed receipts at real lifecycle boundaries;
+- static declarations for the selected runtime slice;
+- load, start, activity, stop, and failure receipts;
 - explicit loader and dependency relationships;
-- one read-only registry query surface.
+- read-only `/module-registry` query surface.
 
-### Exit criteria
+### Phase 6 - Registry-first inspection
 
-- startup shows declared versus loaded state;
-- Start Loop activity chain is visible without source reconstruction;
-- missing and unexpected modules produce structured defects;
-- no broad runtime-wide instrumentation is attempted yet.
+Completed:
 
-## Phase 6 — Registry-first inspection behavior
+- registry declarations read first;
+- watcher and lifecycle receipts read second;
+- declaration/runtime comparison;
+- structured missing-evidence and defect output;
+- bounded source fallback only when required.
 
-### Deliverables
+### Phase 7 - Authority ownership declaration contract
 
-An inspection policy that requires:
+Completed:
 
-1. read registry declarations;
-2. read watcher/lifecycle receipts;
-3. compare declaration and runtime state;
-4. report registry defects and missing evidence;
-5. inspect source only when registry evidence is absent, contradictory, incomplete, ownership-sensitive, or exact implementation evidence is required.
-
-### Required proof cases
-
-- answer what modules exist without import search;
-- answer what loaded without constructor tracing;
-- answer current activity from receipts;
-- distinguish two related modules by ID and purpose;
-- fall back to bounded source inspection when a module is unregistered;
-- detect a false or stale declaration through current source/runtime evidence.
-
-### Exit criteria
-
-- registry-first behavior is covered by tests;
-- source inspection remains available as verification/fallback;
-- broad random-file reconstruction is not the default path.
-
-## Phase 7 — Authority ownership declaration contract
-
-Do not implement the inspector yet.
-
-### Deliverables
-
-For one explicit authoritative operation, define:
-
-- operation ID and canonical target;
-- declared authoritative owner;
-- delegates;
-- observers;
-- subscribers;
-- projections;
-- canonical state location;
-- allowed mutation capabilities;
+- one operation per inspection;
+- canonical target;
+- owner, delegates, observers, subscribers, and projections;
+- allowed mutations;
 - persistence contract;
-- runtime confirmation requirement;
 - applicability and evidence requirements.
 
-### Exit criteria
+### Phase 8 - Authority ownership schemas
 
-- one operation per inspection is enforced;
-- duplicate storage is not automatically duplicate authority;
-- owner/delegate/observer roles are unambiguous;
-- unresolved contradictions require insufficient evidence.
+Completed:
 
-## Phase 8 — Authority ownership schemas
+- request schema;
+- 10-section evidence-package schema;
+- result schema;
+- evidence-reference requirements;
+- seven deterministic findings;
+- `pass_fail_authorized: false`.
+
+### Phase 9 - Read-only Authority Ownership Inspector
+
+Completed:
+
+- bounded inspection of one authoritative operation;
+- deterministic findings;
+- duplicate storage distinguished from duplicate authority;
+- unresolved contradictions mapped to `INSUFFICIENT_EVIDENCE`;
+- indexed reference knowledge rejected as current proof;
+- no workspace writes.
+
+### Phase 10 - Runtime confirmation adapter
+
+Completed:
+
+- safe observation of existing watcher history;
+- exact operation and module identity;
+- bounded receipt window;
+- explicit confirmed, unavailable, and unsafe results;
+- no hidden activation.
+
+### Phase 11 - Session memory runtime wiring
+
+Completed:
+
+- `WorkspaceMemoryStore` and `SessionMemoryAdapter` initialization;
+- deterministic command and structured tool-result ingestion;
+- checkpoint persistence;
+- start/resume rehydration;
+- stale source-backed memory invalidation;
+- active-constraint retention;
+- separation and correlation of registry receipts and durable memory evidence.
+
+### Phase 12 - End-to-end foundation proof
+
+Completed proof sequence:
+
+1. verified project/session start;
+2. registered runtime startup;
+3. current activity receipts;
+4. validated source-backed workspace fact;
+5. deterministic command failure;
+6. active-constraint checkpoint;
+7. source change outside the session;
+8. restart and rehydration;
+9. stale-memory invalidation;
+10. constraint retention;
+11. runtime confirmation;
+12. bounded ownership inspection;
+13. deterministic repeatability;
+14. no ordinary ownership `PASS` or `FAIL`;
+15. no generated evidence committed.
+
+Validated at commit `91742f5c02f1b0c911ad0f787397e335c48ba0f8`:
+
+- Phase 12 proof: `1 passed`;
+- full repository suite: `144 passed`;
+- `git diff --check`: passed;
+- working tree: clean;
+- untracked generated evidence: none.
+
+## Phase 13 - First complete Guard Inspector vertical slice
+
+### Recommended problem
+
+```text
+Provided callback is not a function
+```
+
+### Objective
+
+Prove the complete read-only product pipeline for one real problem and one registered deterministic guard.
+
+### Required sequence
+
+```text
+user problem
+-> exact workspace resolution
+-> reference retrieval
+-> bounded current-workspace inspection
+-> evidence package
+-> registered guard selection
+-> deterministic guard execution
+-> LBE governance
+-> required validation
+-> structured verdict
+-> explanation
+```
 
 ### Deliverables
 
-- authority ownership request schema;
-- 10-section evidence-package schema;
-- ownership result schema;
-- role and finding enums;
-- evidence-reference requirements;
-- `pass_fail_authorized: false` requirement.
+- one request model for the callback problem;
+- deterministic target-workspace resolution;
+- reference retrieval scoped independently from workspace inspection;
+- duplicate-filename-safe candidate selection;
+- evidence records containing:
+  - configured root;
+  - project root;
+  - relative path;
+  - file hash;
+  - line range;
+  - bounded snippet;
+  - source class;
+  - retrieval provenance;
+- one registered callback guard;
+- deterministic guard input and output contracts;
+- LBE authorization envelope;
+- required narrow validation;
+- structured verdict contract;
+- human-readable explanation generated only from structured evidence and verdict;
+- rollback documentation;
+- focused and end-to-end tests.
 
-### Required findings
+### Verdicts
 
-- `SINGLE_OWNER_CONFIRMED`;
-- `DUPLICATE_AUTHORITY`;
-- `UNDECLARED_AUTHORITY`;
-- `OWNER_CONTRACT_BROKEN`;
-- `STALE_OWNER_RECORD`;
+- `PASS`;
+- `FAIL`;
 - `INSUFFICIENT_EVIDENCE`;
 - `NOT_APPLICABLE`.
 
-### Exit criteria
+### Required proof cases
 
-- each finding has deterministic minimum evidence;
-- malformed or incomplete packages fail schema validation;
-- no finding can be emitted without required evidence references.
-
-## Phase 9 — Read-only Authority Ownership Inspector
-
-### Inspection sequence
-
-1. resolve the exact target workspace;
-2. identify one authoritative operation;
-3. read Module Registry declarations and runtime participants;
-4. identify canonical state and persistence targets;
-5. inspect owner declarations;
-6. inspect bounded mutation sites;
-7. inspect bounded call paths;
-8. inspect persistence paths;
-9. classify relationships;
-10. obtain runtime confirmation only where required and safe;
-11. record contradictions and missing evidence;
-12. apply deterministic finding rules;
-13. emit a structured result without workspace mutation.
+1. correct target workspace is selected;
+2. reference and workspace evidence are never conflated;
+3. duplicate filenames do not cause wrong-file inspection;
+4. indexed reference evidence cannot prove a current defect;
+5. source inspection is bounded to relevant candidates;
+6. the selected guard is registered and applicable;
+7. identical input and workspace state produce identical guard results;
+8. missing evidence produces `INSUFFICIENT_EVIDENCE`;
+9. irrelevant workspace produces `NOT_APPLICABLE`;
+10. confirmed callback defect produces deterministic `FAIL`;
+11. corrected implementation produces deterministic `PASS`;
+12. no target-workspace write occurs;
+13. explanation cites only evidence referenced by the verdict.
 
 ### Exit criteria
 
-- all seven findings have tests;
-- duplicate store versus duplicate authority is tested;
-- unresolved contradictions produce `INSUFFICIENT_EVIDENCE`;
-- indexed reference knowledge cannot prove a current defect;
-- no workspace writes occur.
-
-## Phase 10 — Runtime confirmation adapter
-
-### Deliverables
-
-- safe read-only runtime observation interface;
-- exact operation and module identity in receipts;
-- bounded observation window;
-- no mutation or hidden activation;
-- evidence timestamps and provenance;
-- explicit unavailable/unsafe result.
-
-### Exit criteria
-
-- lifecycle ownership and active persistence can be confirmed when safely observable;
-- unavailable runtime observation does not become a guessed finding;
-- observation tests pass.
-
-## Phase 11 — Session memory runtime wiring
-
-### Deliverables
-
-At one bounded runtime bridge:
-
-- initialize `WorkspaceMemoryStore`;
-- initialize `SessionMemoryAdapter`;
-- ingest deterministic command/tool results;
-- persist compaction checkpoints;
-- rehydrate context at session start/resume;
-- mark changed source-backed claims stale;
-- preserve active constraints;
-- keep registry receipts and memory evidence separate but correlated by workspace/session/task IDs.
-
-### Exit criteria
-
-- no model conclusion is promoted directly;
-- current Git and source override stale memory;
-- compaction summaries remain historical;
-- runtime wiring tests pass.
-
-## Phase 12 — End-to-end proof
-
-### Scenario
-
-1. start a session in a verified project;
-2. register and load the minimal runtime slice;
-3. emit current activity receipts;
-4. validate and store one workspace fact;
-5. record one command failure and one active constraint;
-6. compact the session;
-7. change a source-backed fact outside the session;
-8. restart and resume;
-9. rehydrate context;
-10. verify stale-memory invalidation;
-11. verify active constraint retention;
-12. verify registry startup and activity visibility;
-13. inspect one authoritative operation;
-14. confirm source inspection is bounded to relevant participants and mutation/persistence paths;
-15. confirm no ordinary PASS/FAIL is produced by the ownership inspector.
-
-### Completion criteria
-
-- deterministic repeatability;
-- clean test suite;
-- no untracked generated evidence committed;
-- exact implementation and rollback documentation;
-- PR review confirms boundaries;
-- merge only after all proof requirements pass.
+- all four verdicts are covered by deterministic tests;
+- evidence paths, hashes, snippets, and line ranges are reproducible;
+- target and reference scopes are explicit in every record;
+- LBE authorization is present for verdict production;
+- required validation executes and is recorded;
+- no model-generated verdict path exists;
+- no workspace mutation occurs;
+- complete end-to-end vertical-slice test passes;
+- full repository suite passes;
+- `git diff --check` passes;
+- working tree remains clean.
 
 ## Deferred work
 
 - broad autonomous repair;
-- model-generated verdicts;
-- automatic global-rule creation;
 - unrestricted planning;
 - passive corpus learning;
 - cross-project truth sharing;
 - cloud synchronization;
-- authority policy embedded into the basic registry;
-- complete UI beyond the minimum read-only registry view;
-- expansion to every production module before the minimal slice is proven.
+- automatic global-rule creation;
+- expansion to every guard before the first vertical slice is proven;
+- complete UI beyond the minimum read-only proof surface;
+- production integration with every external agent runtime;
+- release packaging.
 
 ## Immediate next task
 
-Implement **Phase 1 through Phase 3 only** on a dedicated branch or the existing draft branch:
-
-- declaration and receipt types;
-- registry store;
-- deterministic state derivation;
-- structured registry defects;
-- focused tests.
-
-Do not wire the full runtime, build the UI, or implement Authority Ownership in the same patch.
+1. update and validate the completed foundation documentation;
+2. merge PR `#2` after the validated head and review boundary are confirmed;
+3. create a dedicated Phase 13 branch from updated `main`;
+4. implement the callback-error vertical slice without broadening scope.
