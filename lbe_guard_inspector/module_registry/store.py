@@ -116,7 +116,17 @@ class ModuleRegistry:
         )
 
     def idle(self, module_id: str) -> LiveModuleRecord:
-        record = self._known_record(module_id, ReceiptType.ACTIVITY)
+        if module_id not in self._records:
+            receipt = LifecycleReceipt(
+                module_id=module_id,
+                type=ReceiptType.ACTIVITY,
+                timestamp=self._clock(),
+                action="idle",
+                detail="idle requested for unknown module",
+            )
+            self._unknown_receipts.append(receipt)
+            raise KeyError(module_id)
+        record = self._records[module_id]
         if not record.loaded:
             self._contradiction(module_id, "idle-before-loaded")
             raise ValueError(f"module is not loaded: {module_id}")
@@ -219,15 +229,6 @@ class ModuleRegistry:
                 )
         return defects
 
-    def _known_record(
-        self, module_id: str, receipt_type: ReceiptType
-    ) -> LiveModuleRecord:
-        if module_id in self._records:
-            return self._records[module_id]
-        receipt = LifecycleReceipt(module_id, receipt_type, self._clock())
-        self._unknown_receipts.append(receipt)
-        raise KeyError(module_id)
-
     def _contradiction(self, module_id: str, detail: str) -> None:
         self._unknown_receipts.append(
             LifecycleReceipt(
@@ -240,7 +241,10 @@ class ModuleRegistry:
         )
 
     def _apply(self, receipt: LifecycleReceipt) -> LiveModuleRecord:
-        record = self._known_record(receipt.module_id, receipt.type)
+        if receipt.module_id not in self._records:
+            self._unknown_receipts.append(receipt)
+            raise KeyError(receipt.module_id)
+        record = self._records[receipt.module_id]
         if receipt.type is ReceiptType.LOADED:
             assert receipt.instance_id is not None
             record.instances.add(receipt.instance_id)
