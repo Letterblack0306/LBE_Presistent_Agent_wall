@@ -4,240 +4,223 @@ Updated: 2026-07-28
 
 ## Objective
 
-Build a focused, project-scoped Guard Inspector and persistent evidence system that preserves useful context without treating chat history, compaction summaries, indexed reference knowledge, or model reasoning as authoritative workspace truth.
+Build a focused, project-scoped Guard Inspector and persistent evidence system that can diagnose one concrete workspace problem without treating chat history, compaction summaries, indexed reference knowledge, or model reasoning as authoritative truth.
 
-The live target workspace and current validation remain authoritative. Durable memory contains only claims promoted through deterministic evidence or explicit validation.
+The authority chain is:
+
+```text
+reference corpus suggests
+current workspace inspection supplies facts
+reasoning selects and explains
+deterministic guards detect
+LBE Core authorizes
+validation proves
+```
+
+Live target workspace state and current validation remain authoritative.
 
 ## Repository state
 
 - Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 - Base branch: `main`
-- Active implementation branch: `feat/validated-workspace-memory-integration`
-- Draft pull request: `#2`
-- Verified branch position before this documentation update: 14 commits ahead of `main`, 0 behind
+- Integration branch: `feat/validated-workspace-memory-integration`
+- Pull request: `#2`
+- PR state: open and ready for review
+- Validated head: `91742f5c02f1b0c911ad0f787397e335c48ba0f8`
 - Merge status: not merged
-- Main branch modification: none from this work
 
-## Completed implementation
+## Completed foundation
 
 ### Validated workspace memory
 
 Implemented and tested:
 
 - project-scoped SQLite memory;
-- canonical workspace identity fields;
-- typed memory records;
-- provenance and authority metadata;
-- validation states: verified, unverified, stale, contradicted, and superseded;
-- deterministic memory promotion;
-- rejection of assistant reasoning as directly verified memory;
-- rejection of compaction summaries as directly verified memory;
+- canonical workspace identity;
+- typed memory records with provenance, authority, confidence, and validation state;
+- verified, unverified, stale, contradicted, and superseded states;
+- deterministic promotion of current Git, file-hash, command, test, and structured tool evidence;
+- rejection of assistant reasoning and compaction summaries as directly verified truth;
 - source-hash invalidation;
-- supersession support;
-- compaction checkpoint persistence;
-- current Git-state inspection;
-- bounded context-packet construction;
-- runtime-neutral `SessionMemoryAdapter`.
+- compaction checkpoints;
+- bounded context rehydration;
+- active-constraint retention;
+- runtime-neutral `SessionMemoryAdapter`;
+- bounded `SessionMemoryRuntimeBridge`.
 
-Validated at integration commit `c79b8968a1da704c17d0052c0e6e51cb90de5829`:
+### Module Registry and Module Watcher
 
-- targeted memory and adapter tests: 14 passed;
-- full repository suite: 67 passed;
-- `git diff --check`: passed;
-- validation worktree: clean.
+Implemented and tested:
 
-### Priority Module Registry architecture
-
-`docs/PRIORITY_MODULE_REGISTRY.md` defines the registry as the canonical inventory of functional production modules.
-
-It defines:
-
-- stable module declarations;
-- runtime load receipts;
-- start, activity, stop, and failure events;
-- live module states;
-- dependency visibility;
+- canonical module declarations;
+- registered, loaded, started, activity, stopped, and failed receipts;
+- deterministic module-state derivation;
+- dependency and loader validation;
 - expected-profile checks;
-- singleton conflict detection;
-- watcher behavior;
-- declared-versus-loaded comparison;
-- UI inventory and activity views;
-- priority rules for agent inspection.
+- disabled-module detection;
+- singleton-instance conflict detection;
+- registered-but-not-loaded visibility;
+- loaded-but-unregistered defects;
+- ordered watcher history;
+- isolated watcher subscriber failures;
+- registry and watcher self-registration;
+- a minimal registered runtime slice;
+- read-only `/module-registry` query surface.
 
-Primary rule:
+Primary inspection rule:
 
 > Read the Module Registry and watcher receipts before reconstructing runtime behavior from imports, filenames, or broad source inspection.
 
-This does not prohibit source inspection. It changes source inspection from the primary discovery method into a bounded verification and investigation method.
+Source inspection remains available for missing, contradictory, stale, ownership-sensitive, or exact implementation evidence.
 
-The intended flow is:
+### Registry-first inspection
 
-```text
-registry declaration
-+ runtime lifecycle receipts
-+ current activity
-+ dependency map
-        ↓
-identify relevant modules
-        ↓
-inspect only missing, contradictory, ownership-sensitive, or implementation-specific source evidence
-```
+Implemented and tested:
 
-## Module Registry and Authority Ownership Inspector
-
-These are separate but complementary layers.
-
-### Module Registry
-
-Answers:
-
-- what modules exist;
-- where they are located;
-- what each module provides;
-- what loaded;
-- what is running;
-- what each module is doing;
-- which dependencies it declares;
-- what failed.
+- module existence from registry declarations;
+- load and activity state from lifecycle receipts;
+- deterministic registry defects;
+- bounded source fallback when registry evidence is absent or contradictory;
+- separation between runtime visibility and source verification.
 
 ### Authority Ownership Inspector
 
-Answers for one explicit authoritative operation:
+Implemented and tested:
 
-- which component is the authoritative owner;
-- which components are delegates;
-- which components are observers, subscribers, or projections;
-- which components mutate canonical state;
-- whether declaration, call path, persistence path, and runtime behavior agree;
-- whether duplicate, undeclared, stale, or broken authority exists.
+- one-operation ownership declaration contract;
+- request, 10-section evidence-package, and result schemas;
+- deterministic findings:
+  - `SINGLE_OWNER_CONFIRMED`;
+  - `DUPLICATE_AUTHORITY`;
+  - `UNDECLARED_AUTHORITY`;
+  - `OWNER_CONTRACT_BROKEN`;
+  - `STALE_OWNER_RECORD`;
+  - `INSUFFICIENT_EVIDENCE`;
+  - `NOT_APPLICABLE`;
+- bounded mutation, call-path, persistence, and runtime evidence handling;
+- duplicate storage distinguished from duplicate authority;
+- indexed reference knowledge rejected as proof of a current defect;
+- explicit `pass_fail_authorized: false`.
 
-The Module Registry provides the runtime map and participants. The Authority Ownership Inspector verifies ownership using declarations, mutation sites, call paths, persistence paths, relationships, runtime confirmation, contradictions, and validation.
+The ownership inspector is executable and read-only. It does not issue the Guard Inspector product's ordinary `PASS` or `FAIL` verdict.
 
-The ownership inspector is currently a design contract, not an executable production guard. It remains read-only and `pass_fail_authorized: false` until its implementation gate is satisfied.
+### Runtime confirmation
 
-## Current truth boundary
+Implemented and tested:
 
-The repository currently contains:
+- exact operation and module correlation;
+- bounded receipt observation;
+- no hidden activation;
+- explicit confirmed, unavailable, and unsafe results;
+- runtime provenance and timestamps;
+- separation between registry receipts and durable memory evidence.
 
-1. the validated memory engine;
-2. the runtime-neutral session adapter;
-3. the priority Module Registry architecture contract;
-4. current-status and implementation-plan documentation.
+### End-to-end foundation proof
 
-The repository does not yet contain:
+`tests/test_end_to_end_proof.py` proves:
 
-- a complete live Module Registry implementation;
-- a Module Watcher implementation;
-- production module declarations and lifecycle receipts;
-- a registry UI;
-- an executable Authority Ownership Inspector;
-- runtime-specific wiring to Cline, Brew, Browser Dev, or another agent runtime.
+1. verified project and session startup;
+2. runtime registry startup and activity visibility;
+3. storage of one validated source-backed fact;
+4. storage of one deterministic command failure;
+5. compaction checkpoint persistence with an active constraint;
+6. source change outside the session;
+7. restart and bounded context rehydration;
+8. stale-memory invalidation;
+9. active-constraint retention;
+10. bounded runtime confirmation;
+11. deterministic authority ownership inspection;
+12. no ordinary ownership `PASS` or `FAIL`;
+13. registry-memory evidence separation.
 
-Documentation must not claim these runtime integrations or inspectors already exist.
+Validated at `91742f5c02f1b0c911ad0f787397e335c48ba0f8`:
 
-## Current priority
+- Phase 12 proof: `1 passed`;
+- full repository suite: `144 passed`;
+- `git diff --check`: passed;
+- working tree: clean;
+- untracked generated evidence: none.
 
-The immediate implementation priority is the **Module Registry foundation**.
+## Current product position
 
-Required first implementation slice:
+The trustworthy support foundation is complete, but the complete Guard Inspector product path is not yet proven.
 
-1. static module declaration schema;
-2. registry store and query API;
-3. lifecycle receipt API:
-   - `register`;
-   - `loaded`;
-   - `started`;
-   - `activity`;
-   - `stopped`;
-   - `failed`;
-4. watcher subscription API;
-5. deterministic module-state derivation;
-6. dependency, profile, disabled-module, and singleton validation;
-7. structured registry defects;
-8. tests proving declarations and receipts produce deterministic live records.
-
-After the registry foundation passes, connect the actual runtime lifecycle to both:
-
-- `SessionMemoryAdapter` for validated persistent context;
-- Module Registry receipts for live inventory, load state, activity, dependencies, instances, and failures.
-
-Only after those runtime receipts exist should the Authority Ownership Inspector move from design contract to implementation.
-
-## Updated implementation order
+The missing user-facing execution chain is:
 
 ```text
-1. Preserve the validated memory baseline
-2. Implement the Module Registry core
-3. Implement the Module Watcher
-4. Register the registry and watcher themselves
-5. Add declarations for a minimal real runtime slice
-6. Emit lifecycle receipts from that slice
-7. Add read-only registry query and defect output
-8. Prove registry-first inspection behavior
-9. Define authority ownership declarations for one operation
-10. Add ownership evidence and result schemas
-11. Implement the read-only Authority Ownership Inspector
-12. Add deterministic finding tests
-13. Add bounded runtime confirmation
-14. Connect SessionMemoryAdapter to the same runtime boundary
-15. Run end-to-end restart, compaction, staleness, registry, and ownership proof
-16. Review PR and merge only after proof
+user problem
+-> exact workspace resolution
+-> reference retrieval
+-> bounded current-workspace inspection
+-> evidence package
+-> registered deterministic guard selection
+-> guard execution
+-> LBE governance
+-> required validation
+-> structured verdict
+-> human explanation
 ```
 
-## End-to-end target
+The normal verdict contract is:
 
-A successful proof must show that:
+- `PASS`;
+- `FAIL`;
+- `INSUFFICIENT_EVIDENCE`;
+- `NOT_APPLICABLE`.
 
-1. the active target workspace is resolved deterministically;
-2. current Git and source state override stale memory;
-3. verified memory survives restart and compaction;
-4. changed source-backed claims become stale;
-5. active user constraints survive when still applicable;
-6. compaction text is not treated as verified truth;
-7. every production module in the selected runtime slice is declared;
-8. every loaded module emits a runtime receipt;
-9. current module activity is visible;
-10. registered-but-not-loaded modules remain visible;
-11. loaded-but-unregistered and disabled-but-loaded modules are blocking defects;
-12. dependency and singleton conflicts are reported deterministically;
-13. the inspector starts from registry evidence instead of broad source reconstruction;
-14. source inspection remains available for missing, contradictory, ownership-sensitive, or implementation-specific evidence;
-15. one authoritative operation can be classified without treating duplicate storage as automatic duplicate authority.
+The model may select, hypothesize, and explain. It must not invent the verdict.
+
+## Next implementation target
+
+Implement the first complete read-only Guard Inspector vertical slice for one real problem and one registered deterministic guard.
+
+Recommended first case:
+
+```text
+Provided callback is not a function
+```
+
+The slice must prove:
+
+1. deterministic target-workspace identity;
+2. strict separation of reference-corpus evidence and current-workspace evidence;
+3. correct duplicate-filename handling;
+4. bounded live inspection;
+5. evidence containing exact paths, hashes, snippets, and line ranges;
+6. selection of an existing registered callback guard;
+7. deterministic guard execution;
+8. LBE governance and authorization;
+9. required narrow validation;
+10. one structured verdict;
+11. no target-workspace mutation;
+12. identical results for identical input and workspace state.
 
 ## Not yet completed
 
-- live Module Registry code;
-- Module Watcher code;
-- production module declarations;
-- automatic lifecycle receipts;
-- registry query endpoint or UI;
-- Authority Ownership schemas;
-- executable Authority Ownership Inspector;
-- deterministic tests for its seven findings;
-- runtime-specific session event wiring;
-- automatic command/tool-result ingestion from a real runtime;
-- automatic compaction capture from a real runtime;
-- automatic rehydrated-context injection before model execution;
-- complete restart/compaction/staleness/registry/ownership end-to-end test;
-- merge into `main`;
-- release packaging.
+- first complete Guard Inspector vertical slice;
+- production reference-retrieval integration for that slice;
+- target-workspace evidence packaging across duplicate filenames;
+- deterministic registered callback guard execution through the complete pipeline;
+- LBE-governed ordinary verdict production;
+- runtime-specific integration with Cline, Brew, Browser Dev, or another external agent runtime;
+- broader guard gallery coverage;
+- release packaging;
+- merge into `main`.
 
 ## No-drift boundary
 
-This phase is not building:
+This project is not building:
 
-- a chat agent or general coding agent;
+- a general chat or coding agent;
 - unrestricted personal memory;
 - model-authored truth;
-- a replacement for Git or live workspace inspection;
 - passive learning from every conversation;
-- a generic knowledge graph;
-- automatic task-complete claims;
-- cloud synchronization;
+- a replacement for Git or current workspace inspection;
 - cross-project truth sharing;
 - broad autonomous repair;
-- authority policy inside the basic Module Registry.
+- automatic global-rule creation;
+- unrestricted mutation.
 
-The current scope remains:
+The current scope is:
 
-> Validated project-scoped memory plus a complete live module inventory and activity registry, followed by a bounded read-only Authority Ownership Inspector built on explicit registry and runtime evidence.
+> A deterministic, read-only-first Guard Inspector that uses reference patterns for retrieval, current workspace evidence for facts, deterministic guards for detection, LBE for authorization, and validation for proof.
