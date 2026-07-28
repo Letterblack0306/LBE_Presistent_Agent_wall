@@ -77,7 +77,7 @@ class RuntimeSlice:
             active_profile=active_profile,
             watcher=self.watcher,
         )
-        self.registry.register_registry_layer()
+        self.registry.register_registry_layer(load=False)
         for declaration in _RUNTIME_DECLARATIONS:
             self.registry.register(declaration)
 
