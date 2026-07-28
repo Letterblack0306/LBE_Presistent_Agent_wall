@@ -2,16 +2,60 @@ from __future__ import annotations
 
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, Mapping
 from urllib.parse import urlparse
 
 from agent import (
     CONFIG_PATH, Context, GovernanceError, database_status,
     inspect_file, load_json, search_workspace
 )
+from lbe_guard_inspector.callback_vertical_slice import CallbackVerticalSlice
+
+_CALLBACK_FIELDS = frozenset({"workspace_root", "workspace_id", "reason", "max_results"})
+_MAX_CALLBACK_RESULTS = 50
+
+
+def run_callback_inspection(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and invoke the fixed read-only callback Guard Inspector slice."""
+    unknown = sorted(set(payload) - _CALLBACK_FIELDS)
+    if unknown:
+        raise GovernanceError(f"Unsupported callback inspection fields: {unknown}")
+
+    workspace_root = payload.get("workspace_root")
+    if not isinstance(workspace_root, str) or not workspace_root.strip():
+        raise GovernanceError("'workspace_root' must be a non-empty string")
+
+    workspace_id = payload.get("workspace_id")
+    if workspace_id is not None and (
+        not isinstance(workspace_id, str) or not workspace_id.strip()
+    ):
+        raise GovernanceError("'workspace_id' must be a non-empty string when provided")
+
+    reason = payload.get("reason")
+    if reason is not None and (not isinstance(reason, str) or not reason.strip()):
+        raise GovernanceError("'reason' must be a non-empty string when provided")
+
+    max_results = payload.get("max_results", 10)
+    if isinstance(max_results, bool) or not isinstance(max_results, int):
+        raise GovernanceError("'max_results' must be an integer")
+    if max_results < 1 or max_results > _MAX_CALLBACK_RESULTS:
+        raise GovernanceError(
+            f"'max_results' must be between 1 and {_MAX_CALLBACK_RESULTS}"
+        )
+
+    kwargs: dict[str, Any] = {
+        "workspace_root": workspace_root,
+        "max_results": max_results,
+    }
+    if workspace_id is not None:
+        kwargs["workspace_id"] = workspace_id
+    if reason is not None:
+        kwargs["reason"] = reason
+    return CallbackVerticalSlice().run(**kwargs)
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "CEPKnowledgeAgent/0.6-sqlite"
+    server_version = "CEPKnowledgeAgent/0.7-guard-inspector"
 
     def send_json(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -70,16 +114,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
-            ctx = Context.load()
             path = urlparse(self.path).path
             payload = self.read_json()
 
-            if path == "/inspect":
+            if path == "/guard-inspector/callback":
+                result = run_callback_inspection(payload)
+            elif path == "/inspect":
+                ctx = Context.load()
                 value = payload.get("path")
                 if not isinstance(value, str):
                     raise GovernanceError("'path' must be a string")
                 result = inspect_file(ctx, value)
             elif path == "/search":
+                ctx = Context.load()
                 query = payload.get("query")
                 if not isinstance(query, str):
                     raise GovernanceError("'query' must be a string")
@@ -98,7 +145,7 @@ class Handler(BaseHTTPRequestHandler):
                 )
             elif path in {"/trace", "/apply", "/validate", "/propose"}:
                 raise GovernanceError(
-                    "This HTTP server is retrieval-only. Run traces directly in PowerShell."
+                    "This HTTP server is read-only. Run traces directly in PowerShell."
                 )
             else:
                 self.send_json(404, {"error": "not_found", "path": path})
@@ -122,8 +169,11 @@ def main() -> None:
     port = int(config.get("server_port", 8765))
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"CEP/LBE SQLite agent listening on http://{host}:{port}")
-    print("Mode: read-only local retrieval")
-    print("Endpoints: GET /health, GET /roots, GET /status, POST /search, POST /inspect")
+    print("Mode: read-only local retrieval and callback inspection")
+    print(
+        "Endpoints: GET /health, GET /roots, GET /status, POST /search, "
+        "POST /inspect, POST /guard-inspector/callback"
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:

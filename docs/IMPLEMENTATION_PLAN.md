@@ -31,6 +31,7 @@ The model may select guards, form hypotheses, and explain results. It must not i
 - Source inspection remains available for missing, contradictory, stale, ownership-sensitive, or exact implementation evidence.
 - The Authority Ownership Inspector remains read-only and cannot issue ordinary guard `PASS` or `FAIL`.
 - Ordinary verdicts come only from deterministic guard execution plus required validation and LBE authorization.
+- Invocation boundaries must remain configurable and must not hardcode a runtime, workspace, path, or port.
 
 ## Completed foundation: Phases 1-12
 
@@ -172,74 +173,52 @@ Completed proof sequence:
 14. no ordinary ownership `PASS` or `FAIL`;
 15. no generated evidence committed.
 
-Validated at commit `91742f5c02f1b0c911ad0f787397e335c48ba0f8`:
-
-- Phase 12 proof: `1 passed`;
-- full repository suite: `144 passed`;
-- `git diff --check`: passed;
-- working tree: clean;
-- untracked generated evidence: none.
+Foundation was merged in PR `#2` at `7f212f406331dfaf7961143eefbf45f8ceaf6a17`.
 
 ## Phase 13 - First complete Guard Inspector vertical slice
 
-### Recommended problem
+Status: complete on `feat/guard-inspector-vertical-slice`.
+
+### Problem
 
 ```text
 Provided callback is not a function
 ```
 
-### Objective
-
-Prove the complete read-only product pipeline for one real problem and one registered deterministic guard.
-
-### Required sequence
+### Completed sequence
 
 ```text
-user problem
+fixed callback request
 -> exact workspace resolution
--> reference retrieval
--> bounded current-workspace inspection
+-> independently scoped reference retrieval
+-> bounded live target-workspace inspection
 -> evidence package
--> registered guard selection
+-> registered cep.callback_contract selection
 -> deterministic guard execution
--> LBE governance
--> required validation
+-> LBE authorization
+-> independent narrow validation
 -> structured verdict
--> explanation
+-> evidence-only explanation
 ```
 
-### Deliverables
+### Completed deliverables
 
-- one request model for the callback problem;
+- fixed request model for the callback problem;
 - deterministic target-workspace resolution;
 - reference retrieval scoped independently from workspace inspection;
 - duplicate-filename-safe candidate selection;
-- evidence records containing:
-  - configured root;
-  - project root;
-  - relative path;
-  - file hash;
-  - line range;
-  - bounded snippet;
-  - source class;
-  - retrieval provenance;
-- one registered callback guard;
+- evidence records containing configured root, project root, relative path, hash, line range, bounded snippet, source class, and retrieval provenance;
+- registered callback guard `cep.callback_contract` in pack `cep_callback`;
 - deterministic guard input and output contracts;
-- LBE authorization envelope;
+- explicit read-only LBE authorization envelope;
 - required narrow validation;
-- structured verdict contract;
-- human-readable explanation generated only from structured evidence and verdict;
-- rollback documentation;
+- `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` verdicts;
+- explanation generated only from structured evidence referenced by the verdict;
+- workspace before/after fingerprint verification;
+- rollback documentation in `docs/PHASE_13_CALLBACK_VERTICAL_SLICE.md`;
 - focused and end-to-end tests.
 
-### Verdicts
-
-- `PASS`;
-- `FAIL`;
-- `INSUFFICIENT_EVIDENCE`;
-- `NOT_APPLICABLE`.
-
-### Required proof cases
+### Proven cases
 
 1. correct target workspace is selected;
 2. reference and workspace evidence are never conflated;
@@ -247,26 +226,88 @@ user problem
 4. indexed reference evidence cannot prove a current defect;
 5. source inspection is bounded to relevant candidates;
 6. the selected guard is registered and applicable;
-7. identical input and workspace state produce identical guard results;
-8. missing evidence produces `INSUFFICIENT_EVIDENCE`;
+7. identical input and workspace state produce identical semantic fingerprints;
+8. missing or unresolved evidence produces `INSUFFICIENT_EVIDENCE`;
 9. irrelevant workspace produces `NOT_APPLICABLE`;
 10. confirmed callback defect produces deterministic `FAIL`;
 11. corrected implementation produces deterministic `PASS`;
 12. no target-workspace write occurs;
 13. explanation cites only evidence referenced by the verdict.
 
-### Exit criteria
+## Phase 14 - Minimal read-only invocation surface
 
-- all four verdicts are covered by deterministic tests;
-- evidence paths, hashes, snippets, and line ranges are reproducible;
-- target and reference scopes are explicit in every record;
-- LBE authorization is present for verdict production;
-- required validation executes and is recorded;
-- no model-generated verdict path exists;
-- no workspace mutation occurs;
-- complete end-to-end vertical-slice test passes;
-- full repository suite passes;
-- `git diff --check` passes;
+Status: complete on `feat/guard-inspector-vertical-slice`.
+
+### Implemented surface
+
+```text
+POST /guard-inspector/callback
+```
+
+### Completed behavior
+
+- accepts required `workspace_root`;
+- accepts optional `workspace_id`, `reason`, and bounded `max_results`;
+- invokes `CallbackVerticalSlice`, not a caller-selected arbitrary guard;
+- remains local-only and read-only;
+- preserves exact workspace resolution;
+- returns request, authorization, decision, explanation, fingerprint, and workspace-unchanged fields;
+- maps invalid input and governance failures to structured errors;
+- rejects unknown fields, including caller-controlled `pack_id` and `rule_id`;
+- preserves `/search` and `/inspect` as separate retrieval utilities;
+- does not add mutation, repair, or unrestricted planning.
+
+### Phase 14 proof
+
+`tests/test_callback_http_endpoint.py` proves:
+
+1. `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain reachable;
+2. missing and malformed input is rejected;
+3. `max_results` is bounded and validated;
+4. outside-root workspaces are rejected;
+5. arbitrary guard selection fields are rejected;
+6. read-only authorization remains explicit;
+7. target workspace mutation remains prohibited;
+8. the endpoint returns the complete existing vertical-slice contract.
+
+### Validation record
+
+Validated at `163e5319ea5797387d5470fa3dfcec8897b72238`:
+
+- focused Phase 13/14 and runner suite: `45 passed`;
+- full repository suite: `176 passed`;
+- `git diff --check`: passed;
+- working tree: clean;
+- branch synchronized with origin.
+
+## Phase 15 - Runtime-neutral invocation adapter contract
+
+### Objective
+
+Define one small adapter boundary that allows an external runtime to invoke the proven callback endpoint without embedding Guard Inspector logic into that runtime and without binding the product to a fixed application, path, workspace, port, or transport configuration.
+
+### Required behavior
+
+- adapter accepts a configurable endpoint or in-process callable;
+- adapter accepts the same narrow callback request contract;
+- adapter returns the endpoint response without reinterpreting the verdict;
+- adapter preserves request IDs, authorization, evidence refs, validation refs, fingerprint, and structured errors;
+- adapter does not select arbitrary guards;
+- adapter does not mutate the workspace;
+- adapter does not retry unsafe or governance-rejected requests automatically;
+- adapter exposes bounded timeout and cancellation controls;
+- tests use temporary/local transports rather than fixed ports;
+- no runtime-specific UI or vendor integration is added in this phase.
+
+### Phase 15 exit criteria
+
+- one transport-neutral adapter interface exists;
+- in-process and local HTTP invocation can be tested through the same contract;
+- response fields are preserved exactly;
+- structured endpoint failures remain structured;
+- cancellation and timeout behavior are deterministic;
+- no hardcoded port, workspace path, runtime, or vendor dependency exists;
+- full suite and `git diff --check` pass;
 - working tree remains clean.
 
 ## Deferred work
@@ -277,14 +318,13 @@ user problem
 - cross-project truth sharing;
 - cloud synchronization;
 - automatic global-rule creation;
-- expansion to every guard before the first vertical slice is proven;
+- broad guard-gallery expansion before the adapter boundary is proven;
 - complete UI beyond the minimum read-only proof surface;
-- production integration with every external agent runtime;
+- runtime-specific integration with Cline, Brew, Browser Dev, or another external runtime;
 - release packaging.
 
 ## Immediate next task
 
-1. update and validate the completed foundation documentation;
-2. merge PR `#2` after the validated head and review boundary are confirmed;
-3. create a dedicated Phase 13 branch from updated `main`;
-4. implement the callback-error vertical slice without broadening scope.
+1. review PR `#3` branch and CI state;
+2. do not merge without explicit authorization;
+3. implement Phase 15 as a runtime-neutral, configurable adapter contract on a separate branch after Phase 13/14 integration is accepted.
