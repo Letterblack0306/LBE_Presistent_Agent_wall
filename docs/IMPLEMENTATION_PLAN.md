@@ -131,9 +131,9 @@ Validation:
 
 ## Phase 17 - Profile-driven end-to-end invocation proof
 
-Status: complete on `feat/profile-driven-end-to-end-proof`.
+Status: complete and merged through PR `#6` at `f41dd154a7450f30b92c05c358220606f5da95fa`.
 
-### Proven path
+Proven path:
 
 ```text
 generic runtime input
@@ -145,72 +145,127 @@ generic runtime input
 -> unchanged structured result or structured error
 ```
 
-### Proven behavior
-
-`tests/test_profile_driven_end_to_end.py` proves:
-
-1. one complete in-process profile path reaches the real callback vertical slice;
-2. one complete temporary local HTTP profile path reaches the same fixed callback endpoint;
-3. `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain unchanged;
-4. request data, authorization, evidence refs, validation refs, explanation, fingerprint, and `workspace_unchanged` remain intact;
-5. unknown runtime input is rejected before invocation;
-6. missing factory registration remains a structured profile failure;
-7. endpoint rejection remains a structured adapter failure;
-8. timeout and cancellation are deterministic;
-9. no automatic retry occurs;
-10. temporary workspaces and temporary ports avoid hardcoded assumptions;
-11. target workspace state remains unchanged;
-12. no vendor-specific package, UI, repair, mutation, or arbitrary guard-selection path is added.
-
-### Validation record
-
-Validated at `a0c77934dfc61240f6e59f2a63dbcc64cf4a1c12`:
+Validation:
 
 - focused Phase 17 suite: `10 passed`;
 - full repository suite: `215 passed`;
+- `git diff --check`: passed.
+
+## Phase 18 - Second deterministic guard vertical slice
+
+Status: complete on `feat/second-deterministic-guard-slice`.
+
+### Selected problem
+
+```text
+Loaded module receipt has no matching declaration
+```
+
+The problem comes directly from `docs/PRIORITY_MODULE_REGISTRY.md`: loaded modules absent from the canonical declaration inventory are blocking defects.
+
+### Fixed identities
+
+- pack: `module_registry`;
+- rule: `module_registry.loaded_module_registration`;
+- vertical slice: `ModuleRegistryVerticalSlice`;
+- current workspace artifact: `.lbe/module-registry.json`.
+
+### Implemented path
+
+```text
+fixed module-registry request
+-> exact configured workspace resolution
+-> current canonical registry artifact inspection
+-> bounded declaration and lifecycle-receipt parsing
+-> loaded-module/declaration comparison
+-> registered deterministic rule execution
+-> GuardRunner evidence scoping
+-> independent validation re-read
+-> LBE authorization
+-> structured verdict and evidence-only explanation
+```
+
+### Deterministic verdict semantics
+
+- `FAIL`: at least one loaded receipt names a module absent from declarations;
+- `PASS`: loaded receipts exist and every loaded module is declared;
+- `INSUFFICIENT_EVIDENCE`: the registry exists but contains no loaded receipts or cannot establish runtime load state;
+- `NOT_APPLICABLE`: the exact configured workspace has no canonical registry artifact.
+
+### Boundaries preserved
+
+- exact configured workspace only;
+- current workspace evidence is authoritative;
+- indexed reference evidence cannot prove a current defect;
+- registry parsing is bounded by declaration and receipt limits;
+- inspection is read-only and workspace fingerprints must remain unchanged;
+- one fixed pack and rule are selected internally;
+- no caller-controlled arbitrary guard selection;
+- no repair, mutation, retry, vendor package, or model-authored verdict;
+- callback rule evidence scoping remains compatible.
+
+### Validation record
+
+Validated at `a32ea872d8ffe4f5c68ee7e49c8fdfaef583f0fb`:
+
+- focused Phase 18 suite: `11 passed`;
+- full repository suite: `226 passed`;
 - `git diff --check`: passed;
 - working tree: clean;
 - branch synchronized with origin.
 
-### Phase 17 exit criteria
+### Phase 18 exit criteria
 
-- complete in-process profile proof: complete;
-- complete temporary HTTP profile proof: complete;
-- all four verdicts preserved exactly: complete;
-- structured failures preserved: complete;
-- timeout and cancellation deterministic: complete;
-- no fixed port, path, workspace, runtime, company, product, or vendor dependency: complete;
-- full suite and `git diff --check` pass: complete;
+- second problem and fixed deterministic identities documented: complete;
+- rule registered and executable through a bounded vertical slice: complete;
+- all four verdict semantics explicit: complete;
+- current workspace and validation evidence cited exactly: complete;
+- indexed reference evidence cannot prove a current defect: complete;
+- no workspace mutation: complete;
+- callback behavior unchanged: complete;
+- focused and full suites pass: complete;
+- `git diff --check` passes: complete;
 - working tree remains clean: complete.
 
-## Phase 18 - Second deterministic guard vertical slice
+## Phase 19 - Profile-driven invocation proof for the second guard
 
 ### Objective
 
-Expand the guard gallery by exactly one additional project-scoped problem while preserving every boundary proven by the callback slice and profile-driven invocation path.
+Expose `ModuleRegistryVerticalSlice` through the same runtime-neutral architecture without turning the profile contract into arbitrary guard execution.
 
-### Selection requirements
+Required path:
 
-- select one problem from `docs/PRIORITY_MODULE_REGISTRY.md` or another already registered priority source;
-- prefer a problem with deterministic source evidence and narrow validation;
-- define one fixed pack and one fixed rule identity;
-- avoid broad autonomous repair, unrestricted planning, or model-authored verdicts;
-- keep reference evidence separate from current workspace evidence;
-- require exact configured workspace resolution;
-- keep inspection bounded and read-only;
-- reuse the existing evidence package, GuardRunner, LBE authorization, validation, explanation, adapter, and profile boundaries where compatible;
-- add a dedicated endpoint or invocation request only if the second problem requires a distinct narrow contract;
-- do not generalize into arbitrary caller-selected guard execution.
+```text
+generic runtime input
+-> validated fixed module-registry profile capability
+-> externally supplied transport factory
+-> narrow module-registry request mapping
+-> RuntimeNeutralInvocationAdapter
+-> fixed ModuleRegistryVerticalSlice
+-> unchanged structured result or structured error
+```
 
-### Phase 18 exit criteria
+### Required behavior
 
-- one second problem and fixed deterministic rule are selected and documented;
-- the rule is registered and executable through a bounded vertical slice;
-- `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` semantics are explicit where applicable;
-- current workspace evidence and validation evidence are cited exactly;
-- indexed reference evidence cannot prove a current defect;
-- no workspace mutation occurs;
-- existing callback behavior remains unchanged;
+- preserve the existing callback profile contract and callback tests;
+- introduce an explicit fixed `module_registry_inspection` capability rather than caller-selected pack or rule IDs;
+- map only `workspace_root`, `workspace_id`, `reason`, and `max_results`;
+- prove one in-process and one temporary local HTTP path;
+- preserve `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` exactly;
+- preserve authorization, evidence refs, validation refs, explanation, fingerprint, and `workspace_unchanged`;
+- preserve structured missing-factory, endpoint, timeout, and cancellation errors;
+- prohibit retries, mutation, repair, and arbitrary guard selection;
+- use temporary workspaces and ephemeral ports only;
+- keep callback and module-registry profiles independently explicit.
+
+### Phase 19 exit criteria
+
+- fixed module-registry profile capability exists without arbitrary selection;
+- in-process and temporary HTTP proofs pass;
+- all four verdicts remain unchanged;
+- callback profile behavior remains unchanged;
+- structured failures remain deterministic;
+- no workspace mutation or retry occurs;
 - focused and full suites pass;
 - `git diff --check` passes;
 - working tree remains clean.
@@ -225,12 +280,12 @@ Expand the guard gallery by exactly one additional project-scoped problem while 
 - automatic global-rule creation;
 - complete UI beyond the minimum read-only proof surface;
 - direct vendor-specific integrations inside the core package;
-- release packaging before at least one additional deterministic guard path is proven.
+- release packaging until the second guard invocation boundary is proven.
 
 ## Immediate next task
 
-1. open and review the Phase 17 pull request;
-2. validate branch mergeability and repository checks;
-3. merge only after the Phase 17 proof boundary is accepted;
-4. create a separate Phase 18 branch from updated `main`;
-5. inspect the priority module registry and select exactly one second deterministic guard problem before implementation.
+1. open and review the Phase 18 pull request;
+2. verify mergeability and repository checks;
+3. merge only after the fixed module-registry boundary is accepted;
+4. create a separate Phase 19 branch from updated `main`;
+5. extend the profile contract narrowly for the fixed module-registry capability and prove both transport paths.

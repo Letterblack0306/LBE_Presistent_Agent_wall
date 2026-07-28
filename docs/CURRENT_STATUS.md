@@ -25,9 +25,10 @@ Live target workspace state and current validation remain authoritative.
 - Callback vertical-slice PR `#3`: merged at `0376f52093d079a5911b8c8b164492373e386046`
 - Runtime-neutral adapter PR `#4`: merged at `25ea2560dbd9d440f3caf3be9f9c3b286aed1f5d`
 - Runtime integration profile PR `#5`: merged at `575283ab986abc723de226c0340ec88c81ea2a10`
-- Active branch: `feat/profile-driven-end-to-end-proof`
-- Validated implementation head: `a0c77934dfc61240f6e59f2a63dbcc64cf4a1c12`
-- Merge status: Phase 17 branch not merged
+- Profile-driven proof PR `#6`: merged at `f41dd154a7450f30b92c05c358220606f5da95fa`
+- Active branch: `feat/second-deterministic-guard-slice`
+- Validated implementation head: `a32ea872d8ffe4f5c68ee7e49c8fdfaef583f0fb`
+- Merge status: Phase 18 branch not merged
 
 ## Completed foundation
 
@@ -94,54 +95,73 @@ Implemented:
 
 ## Phase 17 complete: profile-driven end-to-end invocation proof
 
-Implemented on `feat/profile-driven-end-to-end-proof` in `tests/test_profile_driven_end_to_end.py`.
+Merged through PR `#6` at `f41dd154a7450f30b92c05c358220606f5da95fa`.
 
-The proof covers the full generic path:
+The proof covers the full generic profile path through both in-process and temporary local HTTP transports. It preserves all four verdicts, structured failures, timeout, cancellation, evidence references, validation references, explanation, decision fingerprint, and workspace immutability without vendor-specific integration.
 
-```text
-generic runtime input
--> validated RuntimeIntegrationProfile
--> externally supplied transport factory
--> mapped callback request
--> RuntimeNeutralInvocationAdapter
--> fixed CallbackVerticalSlice
--> unchanged structured result or structured error
-```
-
-Proven behavior:
-
-1. one complete in-process profile path reaches the real callback vertical slice;
-2. one complete temporary local HTTP profile path reaches the same fixed callback endpoint;
-3. `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain unchanged;
-4. request data, authorization, evidence refs, validation refs, explanation, decision fingerprint, and `workspace_unchanged` remain intact;
-5. unknown runtime input is rejected before transport invocation;
-6. missing transport factories remain structured profile errors;
-7. endpoint rejection remains a structured adapter error;
-8. timeout and cancellation remain deterministic;
-9. transport failures are not retried automatically;
-10. temporary workspaces and temporary ports avoid hardcoded environment assumptions;
-11. target workspace hashes remain unchanged;
-12. no vendor-specific package, UI, repair, mutation, or arbitrary guard-selection path is introduced.
-
-Validated at `a0c77934dfc61240f6e59f2a63dbcc64cf4a1c12`:
+Validation:
 
 - focused Phase 17 suite: `10 passed`;
 - full repository suite: `215 passed`;
+- `git diff --check`: passed.
+
+## Phase 18 complete: second deterministic guard vertical slice
+
+Selected problem:
+
+```text
+Loaded module receipt has no matching declaration
+```
+
+Fixed identities:
+
+- pack: `module_registry`;
+- rule: `module_registry.loaded_module_registration`;
+- vertical slice: `ModuleRegistryVerticalSlice`.
+
+Implemented:
+
+- deterministic inspection of the canonical `.lbe/module-registry.json` artifact in one exact configured workspace;
+- bounded declarations and lifecycle receipt parsing;
+- detection of loaded module receipts whose module IDs are absent from declarations;
+- read-only evidence with exact registry path, file hash, and supporting findings;
+- explicit `FAIL`, `PASS`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` semantics;
+- independent validation through the existing `GuardRunner` validation layer;
+- exact workspace resolution and workspace fingerprint checks;
+- fixed guard selection with no caller-controlled pack or rule;
+- no source mutation, repair authority, retry loop, or verdict reinterpretation;
+- existing callback guard support remains unchanged.
+
+`tests/test_module_registry_guard_slice.py` proves:
+
+1. unknown loaded modules produce deterministic failure evidence;
+2. declared loaded modules pass;
+3. a registry without loaded receipts remains insufficient evidence;
+4. a missing canonical registry is not applicable;
+5. malformed and contradictory registry data is handled structurally;
+6. exact configured workspace targeting is mandatory;
+7. the vertical slice preserves authorization, decision fingerprint, citations, and workspace immutability;
+8. indexed reference material cannot independently prove a current workspace defect;
+9. callback support-path behavior remains available.
+
+Validated at `a32ea872d8ffe4f5c68ee7e49c8fdfaef583f0fb`:
+
+- focused Phase 18 suite: `11 passed`;
+- full repository suite: `226 passed`;
 - `git diff --check`: passed;
 - working tree: clean;
-- branch synchronized with `origin/feat/profile-driven-end-to-end-proof`.
+- branch synchronized with `origin/feat/second-deterministic-guard-slice`.
 
 ## Current product position
 
 The product now has:
 
-- one proven deterministic guard path;
-- one narrow local HTTP invocation surface;
+- two proven deterministic guard paths;
+- one narrow local callback invocation surface;
 - one runtime-neutral adapter;
 - one generic configurable runtime integration profile boundary;
-- one complete generic profile-driven proof through in-process and temporary local HTTP transports.
-
-External runtimes can supply configuration and capability mapping without embedding Guard Inspector logic or hardcoding a specific application, company, workspace, path, port, vendor, or environment.
+- one complete generic profile-driven invocation proof;
+- one module-registry guard slice that diagnoses loaded-but-unregistered runtime modules from current workspace evidence.
 
 The verdict contract remains:
 
@@ -154,12 +174,12 @@ The model may select, hypothesize, and explain. It must not invent or reinterpre
 
 ## Next implementation target
 
-After Phase 17 integration, select one second deterministic guard vertical slice from the priority module registry. The next guard must preserve the same evidence-domain separation, exact workspace targeting, registered deterministic execution, read-only authorization, independent validation, structured verdict contract, and profile-driven invocation boundary already proven for the callback case.
+After Phase 18 integration, prove the second guard through the runtime-neutral invocation boundary without broadening profiles into arbitrary guard selection. The next phase should add a fixed, narrow request/profile capability for `ModuleRegistryVerticalSlice`, preserve existing callback profile behavior, and prove in-process plus temporary HTTP execution with unchanged structured results.
 
 ## Not yet completed
 
-- merge of `feat/profile-driven-end-to-end-proof` into `main`;
-- second deterministic guard vertical slice;
+- merge of `feat/second-deterministic-guard-slice` into `main`;
+- profile-driven invocation proof for the module-registry slice;
 - optional external-runtime integration packages;
 - broader guard gallery coverage;
 - release packaging.
