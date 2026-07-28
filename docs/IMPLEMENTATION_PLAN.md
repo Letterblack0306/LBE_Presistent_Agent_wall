@@ -113,9 +113,8 @@ Implemented:
 - stable `profile_id` and `version`;
 - named `transport_factory` resolved through an externally supplied factory registry;
 - externally supplied `transport_config`;
-- explicit `request_mapping` into the narrow callback request fields only;
+- explicit `request_mapping` into the narrow inspection request fields;
 - explicit capability declarations;
-- required `callback_inspection` capability;
 - deterministic rejection of arbitrary guard selection, workspace mutation, and repair execution;
 - bounded timeout configuration;
 - explicit cancellation support declaration;
@@ -129,7 +128,7 @@ Validation:
 - full repository suite: `205 passed`;
 - `git diff --check`: passed.
 
-## Phase 17 - Profile-driven end-to-end invocation proof
+## Phase 17 - Profile-driven callback invocation proof
 
 Status: complete and merged through PR `#6` at `f41dd154a7450f30b92c05c358220606f5da95fa`.
 
@@ -137,7 +136,7 @@ Proven path:
 
 ```text
 generic runtime input
--> validated RuntimeIntegrationProfile
+-> validated callback RuntimeIntegrationProfile
 -> externally supplied transport factory
 -> mapped callback request
 -> RuntimeNeutralInvocationAdapter
@@ -153,7 +152,7 @@ Validation:
 
 ## Phase 18 - Second deterministic guard vertical slice
 
-Status: complete on `feat/second-deterministic-guard-slice`.
+Status: complete and merged through PR `#7` at `7345149b99d09ac34debaf16bd006107510b8095`.
 
 ### Selected problem
 
@@ -192,52 +191,21 @@ fixed module-registry request
 - `INSUFFICIENT_EVIDENCE`: the registry exists but contains no loaded receipts or cannot establish runtime load state;
 - `NOT_APPLICABLE`: the exact configured workspace has no canonical registry artifact.
 
-### Boundaries preserved
-
-- exact configured workspace only;
-- current workspace evidence is authoritative;
-- indexed reference evidence cannot prove a current defect;
-- registry parsing is bounded by declaration and receipt limits;
-- inspection is read-only and workspace fingerprints must remain unchanged;
-- one fixed pack and rule are selected internally;
-- no caller-controlled arbitrary guard selection;
-- no repair, mutation, retry, vendor package, or model-authored verdict;
-- callback rule evidence scoping remains compatible.
-
 ### Validation record
-
-Validated at `a32ea872d8ffe4f5c68ee7e49c8fdfaef583f0fb`:
 
 - focused Phase 18 suite: `11 passed`;
 - full repository suite: `226 passed`;
-- `git diff --check`: passed;
-- working tree: clean;
-- branch synchronized with origin.
-
-### Phase 18 exit criteria
-
-- second problem and fixed deterministic identities documented: complete;
-- rule registered and executable through a bounded vertical slice: complete;
-- all four verdict semantics explicit: complete;
-- current workspace and validation evidence cited exactly: complete;
-- indexed reference evidence cannot prove a current defect: complete;
-- no workspace mutation: complete;
-- callback behavior unchanged: complete;
-- focused and full suites pass: complete;
-- `git diff --check` passes: complete;
-- working tree remains clean: complete.
+- `git diff --check`: passed.
 
 ## Phase 19 - Profile-driven invocation proof for the second guard
 
-### Objective
+Status: complete on `feat/module-registry-profile-proof`.
 
-Expose `ModuleRegistryVerticalSlice` through the same runtime-neutral architecture without turning the profile contract into arbitrary guard execution.
-
-Required path:
+### Proven path
 
 ```text
 generic runtime input
--> validated fixed module-registry profile capability
+-> validated module_registry_inspection capability
 -> externally supplied transport factory
 -> narrow module-registry request mapping
 -> RuntimeNeutralInvocationAdapter
@@ -245,30 +213,103 @@ generic runtime input
 -> unchanged structured result or structured error
 ```
 
-### Required behavior
+### Implemented contract
 
-- preserve the existing callback profile contract and callback tests;
-- introduce an explicit fixed `module_registry_inspection` capability rather than caller-selected pack or rule IDs;
-- map only `workspace_root`, `workspace_id`, `reason`, and `max_results`;
-- prove one in-process and one temporary local HTTP path;
-- preserve `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` exactly;
-- preserve authorization, evidence refs, validation refs, explanation, fingerprint, and `workspace_unchanged`;
-- preserve structured missing-factory, endpoint, timeout, and cancellation errors;
-- prohibit retries, mutation, repair, and arbitrary guard selection;
-- use temporary workspaces and ephemeral ports only;
-- keep callback and module-registry profiles independently explicit.
+`RuntimeIntegrationProfile` now accepts exactly one enabled fixed inspection capability:
+
+- `callback_inspection`; or
+- `module_registry_inspection`.
+
+Profiles enabling neither or both are rejected deterministically. The profile continues to map only:
+
+- `workspace_root`;
+- `workspace_id`;
+- `reason`;
+- `max_results`.
+
+The following remain prohibited:
+
+- `arbitrary_guard_selection`;
+- `workspace_mutation`;
+- `repair_execution`.
+
+### Fixed HTTP surface
+
+```text
+POST /guard-inspector/module-registry
+```
+
+The endpoint accepts the same narrow request field set and invokes only `ModuleRegistryVerticalSlice`. Caller-supplied pack IDs, rule IDs, guard IDs, repair requests, and mutation controls remain invalid.
+
+### Proven behavior
+
+`tests/test_module_registry_profile_end_to_end.py` proves:
+
+1. callback and module-registry profiles remain independently explicit;
+2. contradictory capability combinations are rejected;
+3. the in-process profile path preserves `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE`;
+4. the temporary local HTTP path preserves the complete endpoint result;
+5. authorization, evidence refs, validation refs, explanation, decision fingerprint, and workspace immutability remain intact;
+6. arbitrary guard-selection fields are rejected;
+7. missing factory and endpoint rejection remain structured;
+8. timeout and cancellation remain deterministic;
+9. transport failures are not retried;
+10. temporary workspaces and ephemeral ports avoid fixed environment assumptions;
+11. callback profile and callback endpoint behavior remain unchanged.
+
+### Validation record
+
+Validated at `b74f2c14b8f9409cf76b401961b5174e0fd3edf9`:
+
+- focused Phase 19 suite: `54 passed`;
+- full repository suite: `238 passed`;
+- `git diff --check`: passed;
+- working tree: clean;
+- branch synchronized with origin.
 
 ### Phase 19 exit criteria
 
-- fixed module-registry profile capability exists without arbitrary selection;
-- in-process and temporary HTTP proofs pass;
-- all four verdicts remain unchanged;
-- callback profile behavior remains unchanged;
-- structured failures remain deterministic;
-- no workspace mutation or retry occurs;
+- fixed module-registry profile capability exists without arbitrary selection: complete;
+- in-process and temporary HTTP proofs pass: complete;
+- all four verdicts remain unchanged: complete;
+- callback profile behavior remains unchanged: complete;
+- structured failures remain deterministic: complete;
+- no workspace mutation or retry occurs: complete;
+- focused and full suites pass: complete;
+- `git diff --check` passes: complete;
+- working tree remains clean: complete.
+
+## Phase 20 - Minimum release-readiness boundary
+
+### Objective
+
+Make the proven read-only Guard Inspector distributable and verifiable without expanding product authority.
+
+### Required scope
+
+- define the supported Python and operating-system compatibility matrix from actual CI/runtime evidence;
+- define stable public entry points for callback and module-registry inspection;
+- document the two fixed profile capabilities and their request/result contracts;
+- add packaging metadata and build validation only where missing;
+- validate installation into a clean temporary environment;
+- validate both in-process and local HTTP smoke paths from the installed package;
+- ensure package contents exclude development-only, private, generated, cache, and workspace-specific artifacts;
+- preserve local-only HTTP defaults and read-only behavior;
+- preserve all deterministic verdict, evidence, authorization, timeout, cancellation, and no-retry semantics;
+- avoid release automation that publishes externally without explicit user action.
+
+### Phase 20 exit criteria
+
+- one reproducible package build succeeds from a clean tree;
+- one clean-environment installation succeeds;
+- both fixed guard slices execute from the installed artifact;
+- callback and module-registry profile examples validate;
+- public documentation matches actual invocation contracts;
+- package-content audit passes;
 - focused and full suites pass;
 - `git diff --check` passes;
-- working tree remains clean.
+- working tree remains clean;
+- no publish action occurs automatically.
 
 ## Deferred work
 
@@ -280,12 +321,12 @@ generic runtime input
 - automatic global-rule creation;
 - complete UI beyond the minimum read-only proof surface;
 - direct vendor-specific integrations inside the core package;
-- release packaging until the second guard invocation boundary is proven.
+- additional guard gallery expansion until release readiness is established.
 
 ## Immediate next task
 
-1. open and review the Phase 18 pull request;
+1. open and review the Phase 19 pull request;
 2. verify mergeability and repository checks;
-3. merge only after the fixed module-registry boundary is accepted;
-4. create a separate Phase 19 branch from updated `main`;
-5. extend the profile contract narrowly for the fixed module-registry capability and prove both transport paths.
+3. merge only after the mutually exclusive fixed-capability boundary is accepted;
+4. create a separate Phase 20 branch from updated `main`;
+5. inspect current packaging and CI truth before modifying release files.
