@@ -8,5 +8,6 @@ __all__ = [
     "invocation_adapter",
     "memory",
     "module_registry",
+    "runtime_integration_profile",
     "server",
 ]
