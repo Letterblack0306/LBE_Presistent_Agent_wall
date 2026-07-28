@@ -1,10 +1,11 @@
-"""LBE Guard Inspector Phase 1 typed contracts and evidence-bound evaluation."""
+"""LBE Guard Inspector typed contracts and evidence-bound evaluation."""
 
 __all__ = [
     "contracts",
     "evidence_service",
     "guard_inspector",
     "guard_runner",
+    "invocation_adapter",
     "memory",
     "module_registry",
     "server",

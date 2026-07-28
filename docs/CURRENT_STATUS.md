@@ -25,10 +25,11 @@ Live target workspace state and current validation remain authoritative.
 - Base branch: `main`
 - Foundation PR: `#2`, merged
 - Foundation merge commit: `7f212f406331dfaf7961143eefbf45f8ceaf6a17`
-- Active branch: `feat/guard-inspector-vertical-slice`
-- Pull request: `#3`, open
-- Validated head: `163e5319ea5797387d5470fa3dfcec8897b72238`
-- Merge status: not merged
+- Callback vertical-slice PR: `#3`, merged
+- Callback integration merge commit: `0376f52093d079a5911b8c8b164492373e386046`
+- Active branch: `feat/runtime-neutral-invocation-adapter`
+- Validated implementation head: `8120fed0b0827384c3e248b96334c4ab7cb4fd4a`
+- Merge status: Phase 15 branch not merged
 
 ## Completed foundation
 
@@ -90,20 +91,13 @@ Implemented and tested:
 
 - one-operation ownership declaration contract;
 - request, 10-section evidence-package, and result schemas;
-- deterministic findings:
-  - `SINGLE_OWNER_CONFIRMED`;
-  - `DUPLICATE_AUTHORITY`;
-  - `UNDECLARED_AUTHORITY`;
-  - `OWNER_CONTRACT_BROKEN`;
-  - `STALE_OWNER_RECORD`;
-  - `INSUFFICIENT_EVIDENCE`;
-  - `NOT_APPLICABLE`;
+- deterministic ownership findings;
 - bounded mutation, call-path, persistence, and runtime evidence handling;
 - duplicate storage distinguished from duplicate authority;
 - indexed reference knowledge rejected as proof of a current defect;
 - explicit `pass_fail_authorized: false`.
 
-The ownership inspector is executable and read-only. It does not issue the Guard Inspector product's ordinary `PASS` or `FAIL` verdict.
+The ownership inspector remains executable and read-only. It does not issue the Guard Inspector product's ordinary `PASS` or `FAIL` verdict.
 
 ### Runtime confirmation
 
@@ -118,21 +112,7 @@ Implemented and tested:
 
 ### End-to-end foundation proof
 
-`tests/test_end_to_end_proof.py` proves:
-
-1. verified project and session startup;
-2. runtime registry startup and activity visibility;
-3. storage of one validated source-backed fact;
-4. storage of one deterministic command failure;
-5. compaction checkpoint persistence with an active constraint;
-6. source change outside the session;
-7. restart and bounded context rehydration;
-8. stale-memory invalidation;
-9. active-constraint retention;
-10. bounded runtime confirmation;
-11. deterministic authority ownership inspection;
-12. no ordinary ownership `PASS` or `FAIL`;
-13. registry-memory evidence separation.
+`tests/test_end_to_end_proof.py` proves verified project/session startup, runtime registry visibility, validated source-backed facts, deterministic command failures, compaction retention, stale-memory invalidation, bounded runtime confirmation, authority ownership inspection, and registry-memory evidence separation.
 
 Foundation validation is preserved by merged PR `#2`.
 
@@ -160,19 +140,13 @@ fixed callback problem request
 -> evidence-only explanation
 ```
 
-Implemented components:
+Phase 13 proves exact target selection, evidence-domain separation, duplicate filename safety, bounded inspection, deterministic registered guard execution, all four verdicts, no mutation, repeatable semantic fingerprints, and evidence-only explanations.
 
-- `lbe_guard_inspector/callback_vertical_slice.py`
-- `rules/cep_callback.py`
-- `lbe_guard_inspector/guard_runner.py`
-- focused and end-to-end tests
-- rollback documentation in `docs/PHASE_13_CALLBACK_VERTICAL_SLICE.md`
-
-Phase 13 proof covers exact target selection, evidence-domain separation, duplicate filenames, bounded inspection, deterministic registered guard execution, all four verdicts, no mutation, repeatable semantic fingerprints, and evidence-only explanations.
+Rollback instructions remain in `docs/PHASE_13_CALLBACK_VERTICAL_SLICE.md`.
 
 ## Phase 14 complete: minimal read-only invocation surface
 
-The completed callback vertical slice is now exposed through one dedicated local endpoint:
+The callback vertical slice is exposed through one dedicated local endpoint:
 
 ```text
 POST /guard-inspector/callback
@@ -188,49 +162,70 @@ The endpoint:
 - preserves exact configured workspace resolution;
 - returns the existing request, authorization, decision, explanation, fingerprint, and workspace-unchanged fields;
 - rejects unknown fields, invalid bounds, missing workspace roots, and outside-root workspaces with structured errors;
-- preserves the existing `/search` and `/inspect` retrieval utilities unchanged.
+- preserves `/search` and `/inspect` as separate retrieval utilities.
 
-`tests/test_callback_http_endpoint.py` proves:
+Phases 13 and 14 were merged through PR `#3` at `0376f52093d079a5911b8c8b164492373e386046`.
 
-1. all four verdicts remain reachable through the endpoint;
-2. invalid input is rejected deterministically;
-3. arbitrary `pack_id` and `rule_id` fields are rejected;
-4. outside-root workspaces are rejected;
-5. read-only authorization and `workspace_unchanged` are preserved;
-6. the endpoint returns the complete existing vertical-slice response contract.
+## Phase 15 complete: runtime-neutral invocation adapter
 
-Validated at `163e5319ea5797387d5470fa3dfcec8897b72238`:
+Implemented on `feat/runtime-neutral-invocation-adapter`:
 
-- focused Phase 13/14 and runner suite: `45 passed`;
-- full repository suite: `176 passed`;
+- `lbe_guard_inspector/invocation_adapter.py`;
+- transport-neutral `InvocationTransport` protocol;
+- configurable `InProcessTransport` for a supplied callable;
+- configurable `LocalHttpTransport` for a supplied local endpoint;
+- `CallbackInvocationAdapter` using the same narrow callback request contract;
+- explicit `CancellationToken` and cancellation protocol;
+- bounded timeout validation and deterministic timeout/cancellation errors;
+- structured `InvocationAdapterError` values with stable error codes and retryability metadata;
+- exact response pass-through without verdict reinterpretation;
+- rejection of arbitrary fields, including caller-selected guard identifiers;
+- no automatic retry of governance-rejected or unsafe requests;
+- no fixed runtime, vendor, workspace path, port, or endpoint.
+
+`tests/test_invocation_adapter.py` proves:
+
+1. in-process and local HTTP invocation use the same request/response contract;
+2. successful responses preserve nested request, authorization, evidence, validation, explanation, and fingerprint fields exactly;
+3. structured HTTP endpoint failures remain structured;
+4. invalid and non-object transport responses are rejected deterministically;
+5. arbitrary guard-selection fields are rejected;
+6. timeout and cancellation results are deterministic;
+7. endpoints and temporary server ports remain configurable;
+8. no automatic retry occurs.
+
+Validated at `8120fed0b0827384c3e248b96334c4ab7cb4fd4a`:
+
+- focused Phase 15 suite: `13 passed`;
+- full repository suite: `189 passed`;
 - `git diff --check`: passed;
 - working tree: clean;
-- branch synchronized with `origin/feat/guard-inspector-vertical-slice`.
+- branch synchronized with `origin/feat/runtime-neutral-invocation-adapter`.
 
 ## Current product position
 
-The first deterministic Guard Inspector case is complete as both a Python service and a minimal local HTTP product surface. The endpoint remains deliberately narrow: it invokes only the fixed callback vertical slice and cannot execute arbitrary guards, mutate workspaces, repair code, or perform unrestricted planning.
+The product now has one proven deterministic guard path, one narrow local HTTP invocation surface, and one runtime-neutral adapter boundary supporting configurable in-process or local HTTP transport. External runtimes can invoke the fixed callback inspection without embedding Guard Inspector logic and without hardcoded workspace, path, port, transport, application, or vendor assumptions.
 
-The normal verdict contract is:
+The normal verdict contract remains:
 
 - `PASS`;
 - `FAIL`;
 - `INSUFFICIENT_EVIDENCE`;
 - `NOT_APPLICABLE`.
 
-The model may select, hypothesize, and explain. It must not invent the verdict.
+The model may select, hypothesize, and explain. It must not invent or reinterpret the verdict.
 
 ## Next implementation target
 
-Review PR `#3` and validate its branch/CI state. Do not merge without explicit authorization.
+Open the Phase 15 pull request and review its exact adapter contract, tests, branch state, and mergeability.
 
-After Phase 13/14 integration, the next bounded product step is to define one runtime-neutral invocation adapter contract that can call the fixed callback endpoint without coupling the Guard Inspector to Cline, Brew, Browser Dev, a fixed port, or a fixed workspace path.
+After Phase 15 integration, define one runtime integration profile contract. The profile must provide configuration and capability mapping only; it must not embed vendor-specific logic in the core adapter or introduce fixed paths, ports, workspaces, or applications.
 
 ## Not yet completed
 
-- merge of PR `#3` into `main`;
-- runtime-neutral external invocation adapter contract;
-- runtime-specific integration with Cline, Brew, Browser Dev, or another external runtime;
+- merge of `feat/runtime-neutral-invocation-adapter` into `main`;
+- configurable runtime integration profile contract;
+- concrete optional integration packages for external runtimes;
 - broader guard gallery coverage;
 - release packaging.
 
@@ -247,8 +242,8 @@ This project is not building:
 - broad autonomous repair;
 - automatic global-rule creation;
 - unrestricted mutation;
-- hardcoded runtime, workspace, path, or port assumptions.
+- hardcoded runtime, workspace, path, port, application, or vendor assumptions.
 
 The current scope is:
 
-> A deterministic, read-only-first Guard Inspector that uses reference patterns for retrieval, current workspace evidence for facts, deterministic guards for detection, LBE for authorization, validation for proof, and one narrow local invocation surface for the proven callback case.
+> A deterministic, read-only-first Guard Inspector that uses reference patterns for retrieval, current workspace evidence for facts, deterministic guards for detection, LBE for authorization, validation for proof, a narrow local invocation surface, and a configurable runtime-neutral adapter for the proven callback case.
