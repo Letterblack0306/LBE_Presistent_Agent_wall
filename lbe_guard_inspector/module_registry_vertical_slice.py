@@ -14,6 +14,24 @@ MODULE_REGISTRY_PACK_ID = "module_registry"
 MODULE_REGISTRY_RULE_ID = "module_registry.loaded_module_registration"
 
 
+class ModuleRegistryGuardRunner(GuardRunner):
+    """GuardRunner specialization for the fixed registry finding contract."""
+
+    @staticmethod
+    def _rule_support_paths(rule_result: Any) -> set[str]:
+        evidence = (
+            rule_result.get("evidence", {})
+            if isinstance(rule_result, Mapping)
+            else getattr(rule_result, "evidence", {}) or {}
+        )
+        paths: set[str] = set()
+        for finding in evidence.get("supporting_findings") or []:
+            path = finding.get("path") if isinstance(finding, Mapping) else None
+            if isinstance(path, str) and path:
+                paths.add(path.replace("\\", "/"))
+        return paths
+
+
 class ModuleRegistryVerticalSlice:
     """Read-only orchestration for loaded modules missing registry declarations."""
 
@@ -23,7 +41,7 @@ class ModuleRegistryVerticalSlice:
         runner: GuardRunner | None = None,
         context_loader: Callable[[], Context] | None = None,
     ) -> None:
-        self.runner = runner or GuardRunner()
+        self.runner = runner or ModuleRegistryGuardRunner()
         self.context_loader = context_loader or Context.load
 
     def run(
@@ -38,8 +56,7 @@ class ModuleRegistryVerticalSlice:
         before = self._workspace_fingerprint(root)
 
         decision = self.runner.run(
-            problem=MODULE_REGISTRY_PROBLEM,
-            validation_query="loaded",
+            problem="loaded",
             workspace_root=str(root),
             workspace_id=workspace_id or root_name,
             pack_id=MODULE_REGISTRY_PACK_ID,
