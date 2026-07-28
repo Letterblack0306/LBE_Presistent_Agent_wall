@@ -10,16 +10,16 @@ from agent import (
     inspect_file, load_json, search_workspace
 )
 from lbe_guard_inspector.callback_vertical_slice import CallbackVerticalSlice
+from lbe_guard_inspector.module_registry_vertical_slice import ModuleRegistryVerticalSlice
 
-_CALLBACK_FIELDS = frozenset({"workspace_root", "workspace_id", "reason", "max_results"})
-_MAX_CALLBACK_RESULTS = 50
+_INSPECTION_FIELDS = frozenset({"workspace_root", "workspace_id", "reason", "max_results"})
+_MAX_INSPECTION_RESULTS = 50
 
 
-def run_callback_inspection(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Validate and invoke the fixed read-only callback Guard Inspector slice."""
-    unknown = sorted(set(payload) - _CALLBACK_FIELDS)
+def _inspection_kwargs(payload: Mapping[str, Any], *, label: str) -> dict[str, Any]:
+    unknown = sorted(set(payload) - _INSPECTION_FIELDS)
     if unknown:
-        raise GovernanceError(f"Unsupported callback inspection fields: {unknown}")
+        raise GovernanceError(f"Unsupported {label} inspection fields: {unknown}")
 
     workspace_root = payload.get("workspace_root")
     if not isinstance(workspace_root, str) or not workspace_root.strip():
@@ -38,9 +38,9 @@ def run_callback_inspection(payload: Mapping[str, Any]) -> dict[str, Any]:
     max_results = payload.get("max_results", 10)
     if isinstance(max_results, bool) or not isinstance(max_results, int):
         raise GovernanceError("'max_results' must be an integer")
-    if max_results < 1 or max_results > _MAX_CALLBACK_RESULTS:
+    if max_results < 1 or max_results > _MAX_INSPECTION_RESULTS:
         raise GovernanceError(
-            f"'max_results' must be between 1 and {_MAX_CALLBACK_RESULTS}"
+            f"'max_results' must be between 1 and {_MAX_INSPECTION_RESULTS}"
         )
 
     kwargs: dict[str, Any] = {
@@ -51,11 +51,23 @@ def run_callback_inspection(payload: Mapping[str, Any]) -> dict[str, Any]:
         kwargs["workspace_id"] = workspace_id
     if reason is not None:
         kwargs["reason"] = reason
-    return CallbackVerticalSlice().run(**kwargs)
+    return kwargs
+
+
+def run_callback_inspection(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and invoke the fixed read-only callback Guard Inspector slice."""
+    return CallbackVerticalSlice().run(**_inspection_kwargs(payload, label="callback"))
+
+
+def run_module_registry_inspection(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and invoke the fixed read-only module-registry Guard Inspector slice."""
+    return ModuleRegistryVerticalSlice().run(
+        **_inspection_kwargs(payload, label="module registry")
+    )
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "CEPKnowledgeAgent/0.7-guard-inspector"
+    server_version = "CEPKnowledgeAgent/0.8-guard-inspector"
 
     def send_json(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -119,6 +131,8 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/guard-inspector/callback":
                 result = run_callback_inspection(payload)
+            elif path == "/guard-inspector/module-registry":
+                result = run_module_registry_inspection(payload)
             elif path == "/inspect":
                 ctx = Context.load()
                 value = payload.get("path")
@@ -169,10 +183,11 @@ def main() -> None:
     port = int(config.get("server_port", 8765))
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"CEP/LBE SQLite agent listening on http://{host}:{port}")
-    print("Mode: read-only local retrieval and callback inspection")
+    print("Mode: read-only local retrieval and fixed guard inspection")
     print(
         "Endpoints: GET /health, GET /roots, GET /status, POST /search, "
-        "POST /inspect, POST /guard-inspector/callback"
+        "POST /inspect, POST /guard-inspector/callback, "
+        "POST /guard-inspector/module-registry"
     )
     try:
         server.serve_forever()
