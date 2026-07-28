@@ -138,13 +138,13 @@ def test_registered_rule_executes_through_audit_controller(monkeypatch) -> None:
         },
     )
     audit_controller.register_rule(
-        "cep_callback_test",
+        "cep_callback",
         module.RULE_ID,
         lambda ctx, params: module.rule_cep_callback_contract(ctx, params),
     )
 
     result = audit_controller.run_rule(
-        "cep_callback_test",
+        "cep_callback",
         module.RULE_ID,
         _context(),
         {"roots": ["workspace"]},
