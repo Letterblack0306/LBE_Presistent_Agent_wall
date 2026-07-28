@@ -10,6 +10,7 @@ from .models import (
     RegistryDefectCode,
 )
 from .store import ModuleRegistry
+from .watcher import ModuleWatcher, WatcherEvent, WatcherFailure, WatchSubscription
 
 __all__ = [
     "LifecycleReceipt",
@@ -19,7 +20,11 @@ __all__ = [
     "ModuleRegistry",
     "ModuleState",
     "ModuleType",
+    "ModuleWatcher",
     "ReceiptType",
     "RegistryDefect",
     "RegistryDefectCode",
+    "WatcherEvent",
+    "WatcherFailure",
+    "WatchSubscription",
 ]
