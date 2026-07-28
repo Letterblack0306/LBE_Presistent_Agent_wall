@@ -15,7 +15,7 @@ LBE Core authorizes
 validation proves
 ```
 
-The model may select guards, form hypotheses, and explain results. It must not invent the verdict.
+The model may select guards, form hypotheses, and explain results. It must not invent or reinterpret the verdict.
 
 ## Non-negotiable invariants
 
@@ -31,153 +31,26 @@ The model may select guards, form hypotheses, and explain results. It must not i
 - Source inspection remains available for missing, contradictory, stale, ownership-sensitive, or exact implementation evidence.
 - The Authority Ownership Inspector remains read-only and cannot issue ordinary guard `PASS` or `FAIL`.
 - Ordinary verdicts come only from deterministic guard execution plus required validation and LBE authorization.
-- Invocation boundaries must remain configurable and must not hardcode a runtime, workspace, path, or port.
+- Invocation boundaries remain configurable and do not hardcode a runtime, workspace, path, port, application, vendor, or transport.
+- Runtime integrations may map capabilities and configuration, but must not reimplement or reinterpret Guard Inspector decisions.
 
 ## Completed foundation: Phases 1-12
 
-### Phase 1 - Module Registry contract and types
+Completed foundation includes:
 
-Completed:
-
-- canonical declarations;
-- lifecycle receipt types;
-- module states;
-- defect types;
-- profile and singleton fields;
-- bounded activity history.
-
-### Phase 2 - Registry store and state derivation
-
-Completed:
-
-- declaration and live-record lookup;
-- deterministic state derivation;
-- bounded activity and last-error retention;
-- instance tracking;
-- filtering by state, type, profile, capability, loader, and dependency.
-
-### Phase 3 - Registry validation and defects
-
-Completed:
-
-- unregistered module detection;
-- registered-not-loaded visibility;
-- expected-profile failures;
-- unregistered dependency detection;
-- singleton conflict detection;
-- disabled-but-loaded detection;
-- invalid loader and contradictory lifecycle detection.
-
-### Phase 4 - Module Watcher
-
-Completed:
-
-- ordered subscriptions;
-- immutable watcher events;
-- bounded event history;
-- subscriber isolation;
-- watcher failure visibility;
-- registry and watcher self-registration.
-
-### Phase 5 - Minimal real runtime slice
-
-Completed:
-
-- static declarations for the selected runtime slice;
-- load, start, activity, stop, and failure receipts;
-- explicit loader and dependency relationships;
-- read-only `/module-registry` query surface.
-
-### Phase 6 - Registry-first inspection
-
-Completed:
-
-- registry declarations read first;
-- watcher and lifecycle receipts read second;
-- declaration/runtime comparison;
-- structured missing-evidence and defect output;
-- bounded source fallback only when required.
-
-### Phase 7 - Authority ownership declaration contract
-
-Completed:
-
-- one operation per inspection;
-- canonical target;
-- owner, delegates, observers, subscribers, and projections;
-- allowed mutations;
-- persistence contract;
-- applicability and evidence requirements.
-
-### Phase 8 - Authority ownership schemas
-
-Completed:
-
-- request schema;
-- 10-section evidence-package schema;
-- result schema;
-- evidence-reference requirements;
-- seven deterministic findings;
-- `pass_fail_authorized: false`.
-
-### Phase 9 - Read-only Authority Ownership Inspector
-
-Completed:
-
-- bounded inspection of one authoritative operation;
-- deterministic findings;
-- duplicate storage distinguished from duplicate authority;
-- unresolved contradictions mapped to `INSUFFICIENT_EVIDENCE`;
-- indexed reference knowledge rejected as current proof;
-- no workspace writes.
-
-### Phase 10 - Runtime confirmation adapter
-
-Completed:
-
-- safe observation of existing watcher history;
-- exact operation and module identity;
-- bounded receipt window;
-- explicit confirmed, unavailable, and unsafe results;
-- no hidden activation.
-
-### Phase 11 - Session memory runtime wiring
-
-Completed:
-
-- `WorkspaceMemoryStore` and `SessionMemoryAdapter` initialization;
-- deterministic command and structured tool-result ingestion;
-- checkpoint persistence;
-- start/resume rehydration;
-- stale source-backed memory invalidation;
-- active-constraint retention;
-- separation and correlation of registry receipts and durable memory evidence.
-
-### Phase 12 - End-to-end foundation proof
-
-Completed proof sequence:
-
-1. verified project/session start;
-2. registered runtime startup;
-3. current activity receipts;
-4. validated source-backed workspace fact;
-5. deterministic command failure;
-6. active-constraint checkpoint;
-7. source change outside the session;
-8. restart and rehydration;
-9. stale-memory invalidation;
-10. constraint retention;
-11. runtime confirmation;
-12. bounded ownership inspection;
-13. deterministic repeatability;
-14. no ordinary ownership `PASS` or `FAIL`;
-15. no generated evidence committed.
+- Module Registry contracts, lifecycle receipts, state derivation, validation, and Module Watcher;
+- minimal registered runtime slice and read-only `/module-registry` surface;
+- registry-first inspection with bounded source fallback;
+- Authority Ownership declaration, schemas, deterministic inspector, and read-only enforcement;
+- runtime confirmation without hidden activation;
+- validated workspace memory and session-memory runtime wiring;
+- complete Phase 12 end-to-end proof.
 
 Foundation was merged in PR `#2` at `7f212f406331dfaf7961143eefbf45f8ceaf6a17`.
 
 ## Phase 13 - First complete Guard Inspector vertical slice
 
-Status: complete on `feat/guard-inspector-vertical-slice`.
+Status: complete and merged through PR `#3`.
 
 ### Problem
 
@@ -218,25 +91,9 @@ fixed callback request
 - rollback documentation in `docs/PHASE_13_CALLBACK_VERTICAL_SLICE.md`;
 - focused and end-to-end tests.
 
-### Proven cases
-
-1. correct target workspace is selected;
-2. reference and workspace evidence are never conflated;
-3. duplicate filenames do not cause wrong-file inspection;
-4. indexed reference evidence cannot prove a current defect;
-5. source inspection is bounded to relevant candidates;
-6. the selected guard is registered and applicable;
-7. identical input and workspace state produce identical semantic fingerprints;
-8. missing or unresolved evidence produces `INSUFFICIENT_EVIDENCE`;
-9. irrelevant workspace produces `NOT_APPLICABLE`;
-10. confirmed callback defect produces deterministic `FAIL`;
-11. corrected implementation produces deterministic `PASS`;
-12. no target-workspace write occurs;
-13. explanation cites only evidence referenced by the verdict.
-
 ## Phase 14 - Minimal read-only invocation surface
 
-Status: complete on `feat/guard-inspector-vertical-slice`.
+Status: complete and merged through PR `#3`.
 
 ### Implemented surface
 
@@ -257,57 +114,110 @@ POST /guard-inspector/callback
 - preserves `/search` and `/inspect` as separate retrieval utilities;
 - does not add mutation, repair, or unrestricted planning.
 
-### Phase 14 proof
+Phases 13 and 14 were merged at `0376f52093d079a5911b8c8b164492373e386046`.
 
-`tests/test_callback_http_endpoint.py` proves:
+## Phase 15 - Runtime-neutral invocation adapter contract
 
-1. `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain reachable;
-2. missing and malformed input is rejected;
-3. `max_results` is bounded and validated;
-4. outside-root workspaces are rejected;
-5. arbitrary guard selection fields are rejected;
-6. read-only authorization remains explicit;
-7. target workspace mutation remains prohibited;
-8. the endpoint returns the complete existing vertical-slice contract.
+Status: complete on `feat/runtime-neutral-invocation-adapter`.
+
+### Objective
+
+Allow an external runtime to invoke the proven callback inspection without embedding Guard Inspector logic and without binding the product to a fixed application, path, workspace, port, vendor, or transport configuration.
+
+### Implemented contract
+
+- `InvocationTransport` protocol with one narrow `invoke` method;
+- `CallbackInvocationAdapter` using the callback request contract;
+- configurable `InProcessTransport` accepting a supplied callable;
+- configurable `LocalHttpTransport` accepting a supplied local endpoint;
+- explicit `CancellationSignal` protocol and `CancellationToken` implementation;
+- bounded positive timeout validation;
+- stable `InvocationAdapterError` with structured code, message, details, and retryability;
+- exact response preservation without verdict reinterpretation;
+- no caller-controlled guard selection;
+- no workspace mutation;
+- no automatic retries;
+- no fixed port, endpoint, path, workspace, runtime, or vendor dependency.
+
+### Proven behavior
+
+`tests/test_invocation_adapter.py` proves:
+
+1. in-process and local HTTP transports use the same adapter contract;
+2. complete successful responses are preserved exactly;
+3. request IDs, authorization, evidence refs, validation refs, fingerprints, and nested structures are not rewritten;
+4. endpoint failures remain structured;
+5. malformed and non-object responses are rejected deterministically;
+6. arbitrary request fields and guard-selection identifiers are rejected;
+7. timeout behavior is deterministic;
+8. cancellation before or during waiting is deterministic;
+9. temporary local HTTP servers avoid fixed ports;
+10. transport failures are not retried automatically.
 
 ### Validation record
 
-Validated at `163e5319ea5797387d5470fa3dfcec8897b72238`:
+Validated at `8120fed0b0827384c3e248b96334c4ab7cb4fd4a`:
 
-- focused Phase 13/14 and runner suite: `45 passed`;
-- full repository suite: `176 passed`;
+- focused Phase 15 suite: `13 passed`;
+- full repository suite: `189 passed`;
 - `git diff --check`: passed;
 - working tree: clean;
 - branch synchronized with origin.
 
-## Phase 15 - Runtime-neutral invocation adapter contract
+### Phase 15 exit criteria
+
+- one transport-neutral adapter interface exists: complete;
+- in-process and local HTTP invocation use the same contract: complete;
+- response fields are preserved exactly: complete;
+- structured endpoint failures remain structured: complete;
+- cancellation and timeout behavior are deterministic: complete;
+- no hardcoded port, workspace path, runtime, application, or vendor dependency exists: complete;
+- full suite and `git diff --check` pass: complete;
+- working tree remains clean: complete.
+
+## Phase 16 - Configurable runtime integration profile contract
 
 ### Objective
 
-Define one small adapter boundary that allows an external runtime to invoke the proven callback endpoint without embedding Guard Inspector logic into that runtime and without binding the product to a fixed application, path, workspace, port, or transport configuration.
+Define a small configuration and capability-mapping contract that allows different external runtimes to use the Phase 15 adapter without modifying the adapter core and without creating hardcoded integrations for a particular product, company, workspace, path, port, or environment.
 
 ### Required behavior
 
-- adapter accepts a configurable endpoint or in-process callable;
-- adapter accepts the same narrow callback request contract;
-- adapter returns the endpoint response without reinterpreting the verdict;
-- adapter preserves request IDs, authorization, evidence refs, validation refs, fingerprint, and structured errors;
-- adapter does not select arbitrary guards;
-- adapter does not mutate the workspace;
-- adapter does not retry unsafe or governance-rejected requests automatically;
-- adapter exposes bounded timeout and cancellation controls;
-- tests use temporary/local transports rather than fixed ports;
-- no runtime-specific UI or vendor integration is added in this phase.
+- profile has a stable identifier and version;
+- profile selects a configured transport factory rather than a fixed transport instance;
+- profile supplies endpoint or in-process callable configuration externally;
+- profile maps runtime input into the existing narrow callback request fields only;
+- profile declares supported capabilities and unavailable capabilities explicitly;
+- profile preserves the adapter response without verdict reinterpretation;
+- profile does not select arbitrary guards;
+- profile does not add mutation or repair authority;
+- profile exposes timeout and cancellation configuration within adapter bounds;
+- profile validates missing, unknown, and contradictory configuration deterministically;
+- tests use generic sample runtimes and temporary endpoints rather than vendor-specific implementations.
 
-### Phase 15 exit criteria
+### Recommended contract shape
 
-- one transport-neutral adapter interface exists;
-- in-process and local HTTP invocation can be tested through the same contract;
-- response fields are preserved exactly;
-- structured endpoint failures remain structured;
-- cancellation and timeout behavior are deterministic;
-- no hardcoded port, workspace path, runtime, or vendor dependency exists;
-- full suite and `git diff --check` pass;
+```text
+runtime input
+-> validated integration profile
+-> callback request mapping
+-> CallbackInvocationAdapter
+-> unchanged structured result or structured adapter error
+```
+
+The core profile contract should remain generic. Optional vendor- or application-specific packages may be added later as separate adapters only after the generic profile boundary is proven.
+
+### Phase 16 exit criteria
+
+- generic profile schema or typed contract exists;
+- transport creation is configurable and environment-derived;
+- input mapping is restricted to the callback request contract;
+- unsupported capabilities are explicit;
+- unknown and contradictory profile fields fail deterministically;
+- adapter outputs remain unchanged;
+- no hardcoded runtime, workspace, path, port, application, company, or vendor assumptions exist;
+- focused and full suites pass;
+- `git diff --check` passes;
 - working tree remains clean.
 
 ## Deferred work
@@ -318,13 +228,15 @@ Define one small adapter boundary that allows an external runtime to invoke the 
 - cross-project truth sharing;
 - cloud synchronization;
 - automatic global-rule creation;
-- broad guard-gallery expansion before the adapter boundary is proven;
+- broad guard-gallery expansion before the integration profile boundary is proven;
 - complete UI beyond the minimum read-only proof surface;
-- runtime-specific integration with Cline, Brew, Browser Dev, or another external runtime;
+- direct vendor-specific integrations inside the core package;
 - release packaging.
 
 ## Immediate next task
 
-1. review PR `#3` branch and CI state;
-2. do not merge without explicit authorization;
-3. implement Phase 15 as a runtime-neutral, configurable adapter contract on a separate branch after Phase 13/14 integration is accepted.
+1. open and review the Phase 15 pull request;
+2. validate branch mergeability and any repository checks;
+3. merge only after the Phase 15 boundary is accepted;
+4. create a separate Phase 16 branch from the updated `main`;
+5. implement the generic configurable runtime integration profile contract without vendor-specific or hardcoded assumptions.
