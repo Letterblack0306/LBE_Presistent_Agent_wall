@@ -6,7 +6,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from .module_registry import ModuleRegistry, ModuleWatcher, RegistryDefectCode
+from .module_registry import (
+    ModuleRegistry,
+    ModuleWatcher,
+    ReceiptType,
+    RegistryDefectCode,
+)
 
 
 class InspectionEvidenceSource(str, Enum):
@@ -88,6 +93,7 @@ class RegistryFirstInspector:
             }
             for event in self._watcher.history
             if event.module_id == clean_id
+            and event.event_type is not ReceiptType.REGISTERED
         )
         defects = tuple(
             {
