@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Mapping, Protocol
 
 from .invocation_adapter import (
     CancellationSignal,
@@ -24,7 +24,9 @@ _PROFILE_FIELDS = frozenset(
         "cancellation_supported",
     }
 )
-_REQUIRED_CAPABILITIES = frozenset({"callback_inspection"})
+_INSPECTION_CAPABILITIES = frozenset(
+    {"callback_inspection", "module_registry_inspection"}
+)
 _FORBIDDEN_CAPABILITIES = frozenset(
     {"arbitrary_guard_selection", "workspace_mutation", "repair_execution"}
 )
@@ -100,6 +102,20 @@ class RuntimeIntegrationProfile:
             timeout_seconds=timeout,
             cancellation_supported=cancellation_supported,
         )
+
+    @property
+    def inspection_capability(self) -> str:
+        enabled = [
+            name for name in sorted(_INSPECTION_CAPABILITIES)
+            if self.capabilities.get(name) is True
+        ]
+        if len(enabled) != 1:  # Defensive: from_mapping already enforces this.
+            raise IntegrationProfileError(
+                "contradictory_profile",
+                "Exactly one fixed inspection capability must be enabled",
+                {"enabled_inspection_capabilities": enabled},
+            )
+        return enabled[0]
 
     def compile(
         self,
@@ -208,7 +224,7 @@ def _request_mapping(value: Any) -> Mapping[str, str]:
     if unknown:
         raise IntegrationProfileError(
             "invalid_profile",
-            f"Unsupported callback request mappings: {unknown}",
+            f"Unsupported inspection request mappings: {unknown}",
             {"unsupported_fields": unknown},
         )
     if "workspace_root" not in mapping:
@@ -237,21 +253,36 @@ def _capabilities(value: Any) -> Mapping[str, bool]:
             raise IntegrationProfileError(
                 "invalid_profile", "Capabilities must map non-empty names to booleans"
             )
-    missing = sorted(name for name in _REQUIRED_CAPABILITIES if capabilities.get(name) is not True)
-    if missing:
+
+    enabled_inspection = sorted(
+        name for name in _INSPECTION_CAPABILITIES if capabilities.get(name) is True
+    )
+    if not enabled_inspection:
         raise IntegrationProfileError(
             "contradictory_profile",
-            "Callback inspection capability must be enabled",
-            {"required_capabilities": missing},
+            "One fixed inspection capability must be enabled",
+            {"required_one_of": sorted(_INSPECTION_CAPABILITIES)},
         )
-    forbidden = sorted(name for name in _FORBIDDEN_CAPABILITIES if capabilities.get(name) is True)
+    if len(enabled_inspection) > 1:
+        raise IntegrationProfileError(
+            "contradictory_profile",
+            "Only one fixed inspection capability may be enabled",
+            {"enabled_inspection_capabilities": enabled_inspection},
+        )
+
+    forbidden = sorted(
+        name for name in _FORBIDDEN_CAPABILITIES if capabilities.get(name) is True
+    )
     if forbidden:
         raise IntegrationProfileError(
             "contradictory_profile",
             "Read-only integration profile enables prohibited capabilities",
             {"prohibited_capabilities": forbidden},
         )
+
     result = dict(capabilities)
+    for name in _INSPECTION_CAPABILITIES:
+        result.setdefault(name, False)
     for name in _FORBIDDEN_CAPABILITIES:
         result.setdefault(name, False)
     return result

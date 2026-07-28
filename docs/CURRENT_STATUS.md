@@ -26,9 +26,10 @@ Live target workspace state and current validation remain authoritative.
 - Runtime-neutral adapter PR `#4`: merged at `25ea2560dbd9d440f3caf3be9f9c3b286aed1f5d`
 - Runtime integration profile PR `#5`: merged at `575283ab986abc723de226c0340ec88c81ea2a10`
 - Profile-driven proof PR `#6`: merged at `f41dd154a7450f30b92c05c358220606f5da95fa`
-- Active branch: `feat/second-deterministic-guard-slice`
-- Validated implementation head: `a32ea872d8ffe4f5c68ee7e49c8fdfaef583f0fb`
-- Merge status: Phase 18 branch not merged
+- Second deterministic guard PR `#7`: merged at `7345149b99d09ac34debaf16bd006107510b8095`
+- Active branch: `feat/module-registry-profile-proof`
+- Validated implementation head: `b74f2c14b8f9409cf76b401961b5174e0fd3edf9`
+- Merge status: Phase 19 branch not merged
 
 ## Completed foundation
 
@@ -93,11 +94,11 @@ Implemented:
 - unchanged adapter response propagation;
 - no vendor-, product-, company-, workspace-, path-, port-, or environment-specific assumptions.
 
-## Phase 17 complete: profile-driven end-to-end invocation proof
+## Phase 17 complete: profile-driven callback invocation proof
 
 Merged through PR `#6` at `f41dd154a7450f30b92c05c358220606f5da95fa`.
 
-The proof covers the full generic profile path through both in-process and temporary local HTTP transports. It preserves all four verdicts, structured failures, timeout, cancellation, evidence references, validation references, explanation, decision fingerprint, and workspace immutability without vendor-specific integration.
+The proof covers the full generic callback profile path through both in-process and temporary local HTTP transports. It preserves all four verdicts, structured failures, timeout, cancellation, evidence references, validation references, explanation, decision fingerprint, and workspace immutability without vendor-specific integration.
 
 Validation:
 
@@ -106,6 +107,8 @@ Validation:
 - `git diff --check`: passed.
 
 ## Phase 18 complete: second deterministic guard vertical slice
+
+Merged through PR `#7` at `7345149b99d09ac34debaf16bd006107510b8095`.
 
 Selected problem:
 
@@ -121,47 +124,74 @@ Fixed identities:
 
 Implemented:
 
-- deterministic inspection of the canonical `.lbe/module-registry.json` artifact in one exact configured workspace;
-- bounded declarations and lifecycle receipt parsing;
+- deterministic inspection of `.lbe/module-registry.json` in one exact configured workspace;
+- bounded declaration and lifecycle-receipt parsing;
 - detection of loaded module receipts whose module IDs are absent from declarations;
-- read-only evidence with exact registry path, file hash, and supporting findings;
+- exact registry path, hash, and supporting evidence;
 - explicit `FAIL`, `PASS`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` semantics;
-- independent validation through the existing `GuardRunner` validation layer;
-- exact workspace resolution and workspace fingerprint checks;
+- independent validation through `GuardRunner`;
+- read-only workspace fingerprint enforcement;
 - fixed guard selection with no caller-controlled pack or rule;
-- no source mutation, repair authority, retry loop, or verdict reinterpretation;
-- existing callback guard support remains unchanged.
+- callback behavior unchanged.
 
-`tests/test_module_registry_guard_slice.py` proves:
-
-1. unknown loaded modules produce deterministic failure evidence;
-2. declared loaded modules pass;
-3. a registry without loaded receipts remains insufficient evidence;
-4. a missing canonical registry is not applicable;
-5. malformed and contradictory registry data is handled structurally;
-6. exact configured workspace targeting is mandatory;
-7. the vertical slice preserves authorization, decision fingerprint, citations, and workspace immutability;
-8. indexed reference material cannot independently prove a current workspace defect;
-9. callback support-path behavior remains available.
-
-Validated at `a32ea872d8ffe4f5c68ee7e49c8fdfaef583f0fb`:
+Validation:
 
 - focused Phase 18 suite: `11 passed`;
 - full repository suite: `226 passed`;
+- `git diff --check`: passed.
+
+## Phase 19 complete: profile-driven module-registry invocation proof
+
+Implemented on `feat/module-registry-profile-proof`.
+
+The runtime profile contract now supports exactly one enabled fixed inspection capability:
+
+- `callback_inspection`; or
+- `module_registry_inspection`.
+
+Both capabilities remain independently explicit. Enabling neither or both is rejected as a contradictory profile. The profile still maps only `workspace_root`, `workspace_id`, `reason`, and `max_results`, while arbitrary guard selection, workspace mutation, and repair execution remain prohibited.
+
+The second fixed local endpoint is:
+
+```text
+POST /guard-inspector/module-registry
+```
+
+The endpoint validates the same narrow request field set and invokes only `ModuleRegistryVerticalSlice`.
+
+`tests/test_module_registry_profile_end_to_end.py` proves:
+
+1. callback and module-registry profiles remain independently valid;
+2. multiple enabled inspection capabilities are rejected;
+3. in-process module-registry profiles preserve all four verdicts;
+4. temporary local HTTP invocation preserves the complete result unchanged;
+5. authorization, evidence refs, validation refs, explanation, fingerprint, and `workspace_unchanged` remain intact;
+6. arbitrary guard-selection fields are rejected;
+7. missing factory and endpoint rejection remain structured;
+8. timeout and cancellation remain deterministic;
+9. transport failures are not retried;
+10. temporary workspaces and ephemeral ports avoid environment assumptions;
+11. target workspace state remains unchanged;
+12. existing callback profile and endpoint tests remain green.
+
+Validated at `b74f2c14b8f9409cf76b401961b5174e0fd3edf9`:
+
+- focused Phase 19 suite: `54 passed`;
+- full repository suite: `238 passed`;
 - `git diff --check`: passed;
 - working tree: clean;
-- branch synchronized with `origin/feat/second-deterministic-guard-slice`.
+- branch synchronized with `origin/feat/module-registry-profile-proof`.
 
 ## Current product position
 
 The product now has:
 
-- two proven deterministic guard paths;
-- one narrow local callback invocation surface;
+- two deterministic guard paths;
+- two narrow fixed local invocation surfaces;
 - one runtime-neutral adapter;
-- one generic configurable runtime integration profile boundary;
-- one complete generic profile-driven invocation proof;
-- one module-registry guard slice that diagnoses loaded-but-unregistered runtime modules from current workspace evidence.
+- one generic runtime integration profile contract with mutually exclusive fixed capabilities;
+- complete in-process and temporary local HTTP proofs for both guards;
+- unchanged structured verdict and evidence contracts across both invocation paths.
 
 The verdict contract remains:
 
@@ -174,15 +204,15 @@ The model may select, hypothesize, and explain. It must not invent or reinterpre
 
 ## Next implementation target
 
-After Phase 18 integration, prove the second guard through the runtime-neutral invocation boundary without broadening profiles into arbitrary guard selection. The next phase should add a fixed, narrow request/profile capability for `ModuleRegistryVerticalSlice`, preserve existing callback profile behavior, and prove in-process plus temporary HTTP execution with unchanged structured results.
+Phase 20 should define the minimum release-readiness boundary for the proven read-only product: packaging, stable public invocation documentation, compatibility checks, and release validation without adding repair authority, arbitrary guard selection, or vendor-specific runtime logic.
 
 ## Not yet completed
 
-- merge of `feat/second-deterministic-guard-slice` into `main`;
-- profile-driven invocation proof for the module-registry slice;
+- merge of `feat/module-registry-profile-proof` into `main`;
+- release-readiness contract and packaging validation;
 - optional external-runtime integration packages;
 - broader guard gallery coverage;
-- release packaging.
+- complete UI beyond the minimum read-only proof surface.
 
 ## No-drift boundary
 
