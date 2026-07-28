@@ -243,7 +243,7 @@ class GuardRunner:
                 try:
                     relative = physical_path.relative_to(root.path.expanduser().resolve())
                 except ValueError:
-                    return None
+                    continue
                 return f"{configured_root}/{relative.as_posix()}"
         relative = metadata.get("relative_path")
         if isinstance(relative, str) and relative:
