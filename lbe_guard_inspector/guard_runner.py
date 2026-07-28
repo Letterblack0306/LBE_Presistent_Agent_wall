@@ -133,13 +133,14 @@ class GuardRunner:
             roots=ev_roots,
         )
 
-        # Execute the registered guard against the workspace.
+        # Execute the registered guard against the exact target workspace.
         rule_result = self.rule_runner(
             pack_id,
             rule_id,
             ctx,
             {
                 "roots": ev_roots or [],
+                "workspace_root": workspace_root,
                 "project_type": project_type,
                 "inventory": {},
             },
