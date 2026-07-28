@@ -31,6 +31,7 @@ The model may select guards, form hypotheses, and explain results. It must not i
 - Source inspection remains available for missing, contradictory, stale, ownership-sensitive, or exact implementation evidence.
 - The Authority Ownership Inspector remains read-only and cannot issue ordinary guard `PASS` or `FAIL`.
 - Ordinary verdicts come only from deterministic guard execution plus required validation and LBE authorization.
+- Invocation boundaries must remain configurable and must not hardcode a runtime, workspace, path, or port.
 
 ## Completed foundation: Phases 1-12
 
@@ -233,50 +234,79 @@ fixed callback request
 12. no target-workspace write occurs;
 13. explanation cites only evidence referenced by the verdict.
 
-### Validation record
-
-Validated at implementation head `c1b2877869b44db0030d0258c3ec97c53b2cc4e9`:
-
-- focused Phase 13 and runner suite: `29 passed`;
-- full repository suite: `160 passed`;
-- `git diff --check`: passed;
-- working tree: clean;
-- branch synchronized with origin.
-
 ## Phase 14 - Minimal read-only invocation surface
 
-### Objective
+Status: complete on `feat/guard-inspector-vertical-slice`.
 
-Expose the completed callback vertical slice through the smallest practical invocation boundary without changing its authority model or broadening it into a generic agent endpoint.
-
-### Required behavior
-
-- accept one explicit `workspace_root` and optional `workspace_id`, `reason`, and bounded `max_results`;
-- invoke `CallbackVerticalSlice`, not a caller-selected arbitrary guard;
-- remain local-only and read-only;
-- preserve exact workspace resolution;
-- return the existing request, authorization, decision, explanation, fingerprint, and workspace-unchanged fields;
-- map invalid input and governance failures to structured errors;
-- add deterministic endpoint or CLI tests;
-- do not add mutation, repair, or unrestricted planning.
-
-### Recommended first surface
-
-Add one dedicated local endpoint, for example:
+### Implemented surface
 
 ```text
 POST /guard-inspector/callback
 ```
 
-The existing `/search` and `/inspect` endpoints remain retrieval utilities. The callback endpoint should be a narrow product invocation surface rather than a generic arbitrary-rule executor.
+### Completed behavior
 
-### Phase 14 exit criteria
+- accepts required `workspace_root`;
+- accepts optional `workspace_id`, `reason`, and bounded `max_results`;
+- invokes `CallbackVerticalSlice`, not a caller-selected arbitrary guard;
+- remains local-only and read-only;
+- preserves exact workspace resolution;
+- returns request, authorization, decision, explanation, fingerprint, and workspace-unchanged fields;
+- maps invalid input and governance failures to structured errors;
+- rejects unknown fields, including caller-controlled `pack_id` and `rule_id`;
+- preserves `/search` and `/inspect` as separate retrieval utilities;
+- does not add mutation, repair, or unrestricted planning.
 
-- dedicated read-only invocation path exists;
-- all four verdicts remain reachable through deterministic tests;
-- invalid and outside-root workspaces are rejected;
-- no caller-controlled pack or rule selection is exposed;
-- no target workspace mutation occurs;
+### Phase 14 proof
+
+`tests/test_callback_http_endpoint.py` proves:
+
+1. `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain reachable;
+2. missing and malformed input is rejected;
+3. `max_results` is bounded and validated;
+4. outside-root workspaces are rejected;
+5. arbitrary guard selection fields are rejected;
+6. read-only authorization remains explicit;
+7. target workspace mutation remains prohibited;
+8. the endpoint returns the complete existing vertical-slice contract.
+
+### Validation record
+
+Validated at `163e5319ea5797387d5470fa3dfcec8897b72238`:
+
+- focused Phase 13/14 and runner suite: `45 passed`;
+- full repository suite: `176 passed`;
+- `git diff --check`: passed;
+- working tree: clean;
+- branch synchronized with origin.
+
+## Phase 15 - Runtime-neutral invocation adapter contract
+
+### Objective
+
+Define one small adapter boundary that allows an external runtime to invoke the proven callback endpoint without embedding Guard Inspector logic into that runtime and without binding the product to a fixed application, path, workspace, port, or transport configuration.
+
+### Required behavior
+
+- adapter accepts a configurable endpoint or in-process callable;
+- adapter accepts the same narrow callback request contract;
+- adapter returns the endpoint response without reinterpreting the verdict;
+- adapter preserves request IDs, authorization, evidence refs, validation refs, fingerprint, and structured errors;
+- adapter does not select arbitrary guards;
+- adapter does not mutate the workspace;
+- adapter does not retry unsafe or governance-rejected requests automatically;
+- adapter exposes bounded timeout and cancellation controls;
+- tests use temporary/local transports rather than fixed ports;
+- no runtime-specific UI or vendor integration is added in this phase.
+
+### Phase 15 exit criteria
+
+- one transport-neutral adapter interface exists;
+- in-process and local HTTP invocation can be tested through the same contract;
+- response fields are preserved exactly;
+- structured endpoint failures remain structured;
+- cancellation and timeout behavior are deterministic;
+- no hardcoded port, workspace path, runtime, or vendor dependency exists;
 - full suite and `git diff --check` pass;
 - working tree remains clean.
 
@@ -288,11 +318,13 @@ The existing `/search` and `/inspect` endpoints remain retrieval utilities. The 
 - cross-project truth sharing;
 - cloud synchronization;
 - automatic global-rule creation;
-- broad guard-gallery expansion before the invocation surface is proven;
+- broad guard-gallery expansion before the adapter boundary is proven;
 - complete UI beyond the minimum read-only proof surface;
-- production integration with every external agent runtime;
+- runtime-specific integration with Cline, Brew, Browser Dev, or another external runtime;
 - release packaging.
 
 ## Immediate next task
 
-Implement and test the minimal dedicated read-only invocation surface for `CallbackVerticalSlice`, then open the Phase 13 pull request for review. Do not merge without explicit authorization.
+1. review PR `#3` branch and CI state;
+2. do not merge without explicit authorization;
+3. implement Phase 15 as a runtime-neutral, configurable adapter contract on a separate branch after Phase 13/14 integration is accepted.
