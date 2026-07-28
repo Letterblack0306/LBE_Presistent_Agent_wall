@@ -29,7 +29,8 @@ class RuntimeConfirmationAdapter:
 
     The adapter never starts modules, executes callbacks, persists state, or
     mutates watcher history. Exact operation identity is supplied by the caller
-    and correlated only with the requested module's already-recorded receipts.
+    and attached to each emitted observation receipt while retaining the source
+    module identity, timestamp, and provenance.
     """
 
     def __init__(
@@ -41,8 +42,11 @@ class RuntimeConfirmationAdapter:
     ) -> None:
         if max_receipts < 1:
             raise ValueError("max_receipts must be at least 1")
+        clean_provenance = provenance.strip()
+        if not clean_provenance:
+            raise ValueError("provenance must not be empty")
         self._watcher = watcher
-        self._provenance = provenance.strip()
+        self._provenance = clean_provenance
         self._max_receipts = max_receipts
 
     def observe(
@@ -86,7 +90,9 @@ class RuntimeConfirmationAdapter:
             if event.module_id == clean_module
             and event.event_type is not ReceiptType.REGISTERED
         ][-self._max_receipts :]
-        receipts = tuple(self._serialize(event.payload) for event in matching)
+        receipts = tuple(
+            self._serialize(event.payload, clean_operation) for event in matching
+        )
         observed_at = receipts[-1]["timestamp"] if receipts else None
         if not receipts:
             return RuntimeObservation(
@@ -130,9 +136,11 @@ class RuntimeConfirmationAdapter:
         )
 
     @staticmethod
-    def _serialize(receipt: LifecycleReceipt) -> dict[str, Any]:
+    def _serialize(
+        receipt: LifecycleReceipt, operation_id: str
+    ) -> dict[str, Any]:
         return {
-            "operation_id": None,
+            "operation_id": operation_id,
             "module_id": receipt.module_id,
             "type": receipt.type.value,
             "timestamp": receipt.timestamp,
