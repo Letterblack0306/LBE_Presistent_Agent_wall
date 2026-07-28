@@ -169,10 +169,11 @@ class CallbackVerticalSlice:
             item = evidence_by_ref.get(ref)
             if item is None:
                 continue
+            metadata = item.get("metadata") or {}
             citations.append(
                 {
                     "ref": ref,
-                    "path": item.get("path"),
+                    "path": metadata.get("virtual_path") or item.get("path"),
                     "hash": item.get("hash"),
                     "line_start": item.get("line_start"),
                     "line_end": item.get("line_end"),
