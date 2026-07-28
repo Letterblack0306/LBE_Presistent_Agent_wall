@@ -106,13 +106,9 @@ Validation:
 
 ## Phase 16 - Configurable runtime integration profile contract
 
-Status: complete on `feat/configurable-runtime-integration-profile`.
+Status: complete and merged through PR `#5` at `575283ab986abc723de226c0340ec88c81ea2a10`.
 
-### Objective
-
-Allow different external runtimes to use the Phase 15 adapter through configuration and capability mapping without modifying adapter core and without hardcoded product, company, workspace, path, port, vendor, environment, or application assumptions.
-
-### Implemented contract
+Implemented:
 
 - stable `profile_id` and `version`;
 - named `transport_factory` resolved through an externally supplied factory registry;
@@ -120,59 +116,24 @@ Allow different external runtimes to use the Phase 15 adapter through configurat
 - explicit `request_mapping` into the narrow callback request fields only;
 - explicit capability declarations;
 - required `callback_inspection` capability;
-- deterministic rejection of forbidden capabilities:
-  - `arbitrary_guard_selection`;
-  - `workspace_mutation`;
-  - `repair_execution`;
+- deterministic rejection of arbitrary guard selection, workspace mutation, and repair execution;
 - bounded timeout configuration;
 - explicit cancellation support declaration;
 - deterministic validation of unknown, missing, malformed, and contradictory fields;
 - unchanged adapter response propagation;
 - no direct vendor-specific integration.
 
-### Proven behavior
-
-`tests/test_runtime_integration_profile.py` proves:
-
-1. valid profiles construct adapters through registered factories;
-2. runtime input maps only into `workspace_root`, `workspace_id`, `reason`, and `max_results`;
-3. unknown profile and runtime fields are rejected;
-4. missing factory registrations fail structurally;
-5. forbidden and contradictory capabilities fail deterministically;
-6. timeout bounds are enforced;
-7. cancellation support is enforced;
-8. invalid factory results fail deterministically;
-9. adapter outputs remain unchanged;
-10. generic sample runtimes need no product-specific code.
-
-### Validation record
-
-Validated at `a7e1b0d8812e3f9ec6998311e9df7233dac140ff`:
+Validation:
 
 - focused Phase 16 suite: `16 passed`;
 - full repository suite: `205 passed`;
-- `git diff --check`: passed;
-- working tree: clean;
-- branch synchronized with origin.
-
-### Phase 16 exit criteria
-
-- generic typed profile contract exists: complete;
-- transport creation is configurable and environment-derived: complete;
-- input mapping is restricted to the callback request contract: complete;
-- unsupported capabilities are explicit: complete;
-- unknown and contradictory fields fail deterministically: complete;
-- adapter outputs remain unchanged: complete;
-- no hardcoded runtime, workspace, path, port, application, company, vendor, or environment assumptions exist: complete;
-- focused and full suites pass: complete;
-- `git diff --check` passes: complete;
-- working tree remains clean: complete.
+- `git diff --check`: passed.
 
 ## Phase 17 - Profile-driven end-to-end invocation proof
 
-### Objective
+Status: complete on `feat/profile-driven-end-to-end-proof`.
 
-Prove the full generic runtime path without adding vendor-specific integration code:
+### Proven path
 
 ```text
 generic runtime input
@@ -184,27 +145,74 @@ generic runtime input
 -> unchanged structured result or structured error
 ```
 
-### Required behavior
+### Proven behavior
 
-- use at least one in-process profile and one temporary local HTTP profile;
-- use temporary workspaces and temporary ports only;
-- prove `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain unchanged through the full profile path;
-- preserve request IDs, authorization, evidence refs, validation refs, explanation, fingerprint, and `workspace_unchanged`;
-- prove unknown runtime input is rejected before invocation;
-- prove missing factory, endpoint rejection, timeout, and cancellation remain structured;
-- prove no automatic retry occurs;
-- prove no target workspace mutation occurs;
-- do not add vendor-specific packages, UI, repair, mutation, or arbitrary guard selection.
+`tests/test_profile_driven_end_to_end.py` proves:
+
+1. one complete in-process profile path reaches the real callback vertical slice;
+2. one complete temporary local HTTP profile path reaches the same fixed callback endpoint;
+3. `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain unchanged;
+4. request data, authorization, evidence refs, validation refs, explanation, fingerprint, and `workspace_unchanged` remain intact;
+5. unknown runtime input is rejected before invocation;
+6. missing factory registration remains a structured profile failure;
+7. endpoint rejection remains a structured adapter failure;
+8. timeout and cancellation are deterministic;
+9. no automatic retry occurs;
+10. temporary workspaces and temporary ports avoid hardcoded assumptions;
+11. target workspace state remains unchanged;
+12. no vendor-specific package, UI, repair, mutation, or arbitrary guard-selection path is added.
+
+### Validation record
+
+Validated at `a0c77934dfc61240f6e59f2a63dbcc64cf4a1c12`:
+
+- focused Phase 17 suite: `10 passed`;
+- full repository suite: `215 passed`;
+- `git diff --check`: passed;
+- working tree: clean;
+- branch synchronized with origin.
 
 ### Phase 17 exit criteria
 
-- one complete in-process profile proof exists;
-- one complete temporary HTTP profile proof exists;
-- all four verdicts are preserved exactly;
-- structured failures are preserved;
-- timeout and cancellation are deterministic;
-- no fixed port, path, workspace, runtime, company, product, or vendor dependency exists;
-- full suite and `git diff --check` pass;
+- complete in-process profile proof: complete;
+- complete temporary HTTP profile proof: complete;
+- all four verdicts preserved exactly: complete;
+- structured failures preserved: complete;
+- timeout and cancellation deterministic: complete;
+- no fixed port, path, workspace, runtime, company, product, or vendor dependency: complete;
+- full suite and `git diff --check` pass: complete;
+- working tree remains clean: complete.
+
+## Phase 18 - Second deterministic guard vertical slice
+
+### Objective
+
+Expand the guard gallery by exactly one additional project-scoped problem while preserving every boundary proven by the callback slice and profile-driven invocation path.
+
+### Selection requirements
+
+- select one problem from `docs/PRIORITY_MODULE_REGISTRY.md` or another already registered priority source;
+- prefer a problem with deterministic source evidence and narrow validation;
+- define one fixed pack and one fixed rule identity;
+- avoid broad autonomous repair, unrestricted planning, or model-authored verdicts;
+- keep reference evidence separate from current workspace evidence;
+- require exact configured workspace resolution;
+- keep inspection bounded and read-only;
+- reuse the existing evidence package, GuardRunner, LBE authorization, validation, explanation, adapter, and profile boundaries where compatible;
+- add a dedicated endpoint or invocation request only if the second problem requires a distinct narrow contract;
+- do not generalize into arbitrary caller-selected guard execution.
+
+### Phase 18 exit criteria
+
+- one second problem and fixed deterministic rule are selected and documented;
+- the rule is registered and executable through a bounded vertical slice;
+- `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` semantics are explicit where applicable;
+- current workspace evidence and validation evidence are cited exactly;
+- indexed reference evidence cannot prove a current defect;
+- no workspace mutation occurs;
+- existing callback behavior remains unchanged;
+- focused and full suites pass;
+- `git diff --check` passes;
 - working tree remains clean.
 
 ## Deferred work
@@ -215,15 +223,14 @@ generic runtime input
 - cross-project truth sharing;
 - cloud synchronization;
 - automatic global-rule creation;
-- broad guard-gallery expansion before the profile path is proven end to end;
 - complete UI beyond the minimum read-only proof surface;
 - direct vendor-specific integrations inside the core package;
-- release packaging.
+- release packaging before at least one additional deterministic guard path is proven.
 
 ## Immediate next task
 
-1. open and review the Phase 16 pull request;
+1. open and review the Phase 17 pull request;
 2. validate branch mergeability and repository checks;
-3. merge only after the Phase 16 boundary is accepted;
-4. create a separate Phase 17 branch from updated `main`;
-5. implement the generic profile-driven end-to-end invocation proof without vendor-specific or hardcoded assumptions.
+3. merge only after the Phase 17 proof boundary is accepted;
+4. create a separate Phase 18 branch from updated `main`;
+5. inspect the priority module registry and select exactly one second deterministic guard problem before implementation.
