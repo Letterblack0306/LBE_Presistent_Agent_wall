@@ -109,6 +109,7 @@ class SessionMemoryRuntimeBridge:
                 source_message_id=source_message_id,
                 authority=9,
                 validation_method="structured-tool-result",
+                validated=True,
             )
         )
         return record.memory_id
