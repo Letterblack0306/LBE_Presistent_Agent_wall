@@ -146,11 +146,17 @@ class GuardRunner:
             },
         )
 
-        # Run validation: independent re-read corroborating the workspace
-        # evidence against the original problem.
-        validation = self._run_validation(
-            ctx, problem, package["current_workspace_evidence"]
+        # A verdict may cite only the files that support the deterministic rule
+        # outcome. This prevents a duplicate filename or nearby valid call site
+        # from entering a FAIL explanation merely because retrieval also found it.
+        scoped_workspace = self._scope_workspace_evidence(
+            ctx, rule_result, package["current_workspace_evidence"]
         )
+        package = {**package, "current_workspace_evidence": scoped_workspace}
+
+        # Run validation: independent re-read corroborating the exact supporting
+        # workspace evidence against the original problem.
+        validation = self._run_validation(ctx, problem, scoped_workspace)
         package = {**package, "validation_evidence": validation}
 
         guard_result = self.inspector.evaluate(
@@ -194,28 +200,94 @@ class GuardRunner:
     def _project_type_for(pack_id: str) -> str:
         return pack_id.strip().lower() or "generic"
 
+    @staticmethod
+    def _rule_support_paths(rule_result: Any) -> set[str]:
+        evidence = (
+            rule_result.get("evidence", {})
+            if isinstance(rule_result, Mapping)
+            else getattr(rule_result, "evidence", {}) or {}
+        )
+        status = (
+            rule_result.get("status", "")
+            if isinstance(rule_result, Mapping)
+            else getattr(rule_result, "status", "")
+        )
+        key = {
+            "failed": "invalid_callbacks",
+            "blocked": "unresolved_callbacks",
+            "passed": "valid_or_omitted_callbacks",
+        }.get(str(status))
+        if key is None:
+            return set()
+        paths: set[str] = set()
+        for finding in evidence.get(key) or []:
+            path = finding.get("path") if isinstance(finding, Mapping) else None
+            if isinstance(path, str) and path:
+                paths.add(path.replace("\\", "/"))
+        return paths
+
+    @staticmethod
+    def _virtual_path_for_evidence(
+        ctx: Context, item: Mapping[str, Any]
+    ) -> str | None:
+        metadata = item.get("metadata") or {}
+        configured_root = metadata.get("configured_root")
+        physical = item.get("path")
+        if not isinstance(configured_root, str) or not configured_root:
+            return None
+        if isinstance(physical, str) and physical:
+            physical_path = Path(physical).expanduser().resolve()
+            for root in ctx.roots:
+                if root.name != configured_root:
+                    continue
+                try:
+                    relative = physical_path.relative_to(root.path.expanduser().resolve())
+                except ValueError:
+                    return None
+                return f"{configured_root}/{relative.as_posix()}"
+        relative = metadata.get("relative_path")
+        if isinstance(relative, str) and relative:
+            return f"{configured_root}/{relative.replace(chr(92), '/')}"
+        return None
+
+    def _scope_workspace_evidence(
+        self,
+        ctx: Context,
+        rule_result: Any,
+        workspace_evidence: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        support_paths = self._rule_support_paths(rule_result)
+        if not support_paths:
+            return list(workspace_evidence)
+        scoped: list[dict[str, Any]] = []
+        for item in workspace_evidence:
+            virtual = self._virtual_path_for_evidence(ctx, item)
+            if virtual not in support_paths:
+                continue
+            metadata = dict(item.get("metadata") or {})
+            metadata["virtual_path"] = virtual
+            scoped.append({**item, "metadata": metadata})
+        return scoped
+
     def _run_validation(
         self,
         ctx: Context,
         query: str,
         workspace_evidence: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        """Independently re-read the top workspace evidence to corroborate it.
+        """Independently re-read the top supporting workspace evidence.
 
         Produces a ``validation`` evidence item only when the live file content
-        contains the original problem phrase or one of its meaningful terms.
+        contains the original problem phrase or enough meaningful terms.
         Missing corroboration yields no validation evidence, which keeps a
         passed rule at ``INSUFFICIENT_EVIDENCE`` rather than ``PASS``.
         """
         if not workspace_evidence:
             return []
         top = workspace_evidence[0]
-        metadata = top.get("metadata") or {}
-        configured_root = metadata.get("configured_root")
-        relative = metadata.get("relative_path")
-        if not configured_root or not relative:
+        virtual = self._virtual_path_for_evidence(ctx, top)
+        if not virtual:
             return []
-        virtual = f"{configured_root}/{relative}"
 
         try:
             inspected = self.file_inspector(ctx, virtual) or {}
@@ -259,6 +331,7 @@ class GuardRunner:
                 "metadata": {
                     "retrieval_source": "agent.inspect_file",
                     "read_only": True,
+                    "virtual_path": virtual,
                     "corroborated_workspace_ref": top.get("ref"),
                 },
             }
