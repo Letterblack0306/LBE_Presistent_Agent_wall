@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from .module_registry import ModuleRegistry, RegistryDefectCode
+from .module_registry import ModuleRegistry, ModuleWatcher, RegistryDefectCode
 
 
 class InspectionEvidenceSource(str, Enum):
@@ -59,10 +59,12 @@ class RegistryFirstInspector:
     def __init__(
         self,
         registry: ModuleRegistry,
+        watcher: ModuleWatcher,
         *,
         source_inspector: SourceInspector | None = None,
     ) -> None:
         self._registry = registry
+        self._watcher = watcher
         self._source_inspector = source_inspector
 
     def inspect(
@@ -84,7 +86,7 @@ class RegistryFirstInspector:
                 "event_type": event.event_type.value,
                 "module_id": event.module_id,
             }
-            for event in self._registry.watcher_history()
+            for event in self._watcher.history
             if event.module_id == clean_id
         )
         defects = tuple(
