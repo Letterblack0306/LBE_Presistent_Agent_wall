@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://letterblack.local/schemas/authority_ownership_result.schema.json",
+  "title": "Authority Ownership Result",
+  "type": "object",
+  "required": ["result_id", "operation_id", "finding", "summary", "evidence_refs", "pass_fail_authorized", "inspected_at"],
+  "properties": {
+    "result_id": {"type": "string", "minLength": 1},
+    "operation_id": {"type": "string", "minLength": 1},
+    "finding": {"type": "string", "enum": ["SINGLE_OWNER_CONFIRMED", "DUPLICATE_AUTHORITY", "UNDECLARED_AUTHORITY", "OWNER_CONTRACT_BROKEN", "STALE_OWNER_RECORD", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE"]},
+    "summary": {"type": "string", "minLength": 1},
+    "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true},
+    "pass_fail_authorized": {"const": false},
+    "inspected_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}
