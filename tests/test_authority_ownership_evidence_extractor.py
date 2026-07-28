@@ -88,3 +88,108 @@ def test_bounded_patterns_assignments_and_required_specification(tmp_path):
     assert {"assignment_target", "attribute_assignment_target"} <= kinds
     with pytest.raises(ValueError): AuthorityOwnershipEvidenceExtractor().extract({"workspace_root": str(tmp_path)})
     with pytest.raises(ValueError): AuthorityOwnershipEvidenceExtractor().extract(_spec(tmp_path, candidate_files=[], include_patterns=["**/*"]))
+
+
+def test_registry_payload_contains_inspected_files(tmp_path):
+    _write(tmp_path, "app.py", "def save():\n    db.commit()\n")
+    result = AuthorityOwnershipEvidenceExtractor().extract(_spec(tmp_path))
+    registry = result["evidence_package"]["registry"]
+    assert registry
+    assert registry[0]["detail"] == "app.py"
+    assert result["evidence_package"]["runtime_confirmation"] == []
+
+
+def test_mutation_payload_preserves_actual_mutator(tmp_path):
+    _write(
+        tmp_path,
+        "app.py",
+        "def save():\n    pass\n\ndef evil():\n    db.commit()\n",
+    )
+    result = AuthorityOwnershipEvidenceExtractor().extract(_spec(tmp_path))
+    details = [
+        item["detail"]
+        for item in result["evidence_package"]["mutation_sites"]
+    ]
+    assert any("mutator=evil" in detail for detail in details)
+    assert not any("mutator=save" in detail for detail in details)
+
+
+def test_transitive_caller_path_reaches_mutation(tmp_path):
+    _write(
+        tmp_path,
+        "app.py",
+        "def api():\n"
+        "    service()\n\n"
+        "def service():\n"
+        "    save()\n\n"
+        "def save():\n"
+        "    db.commit()\n",
+    )
+    result = AuthorityOwnershipEvidenceExtractor().extract(_spec(tmp_path))
+    assert any(
+        path["entrypoint"] == "api"
+        and path["caller_chain"] == ["api", "service", "save"]
+        for path in result["caller_paths"]
+    )
+
+
+def test_transitive_caller_path_cycle_is_bounded(tmp_path):
+    _write(
+        tmp_path,
+        "app.py",
+        "def api():\n"
+        "    service()\n\n"
+        "def service():\n"
+        "    api()\n"
+        "    save()\n\n"
+        "def save():\n"
+        "    db.commit()\n",
+    )
+    result = AuthorityOwnershipEvidenceExtractor().extract(_spec(tmp_path))
+    assert any(
+        path["caller_chain"] == ["api", "service", "save"]
+        for path in result["caller_paths"]
+    )
+
+
+def test_write_methods_use_receiver_not_payload(tmp_path):
+    _write(
+        tmp_path,
+        "app.py",
+        "def save(target):\n"
+        "    target.write_text('payload')\n"
+        "    target.write_bytes(b'data')\n",
+    )
+    result = AuthorityOwnershipEvidenceExtractor().extract(
+        _spec(
+            tmp_path,
+            mutation_call_names=["write_text", "write_bytes"],
+        )
+    )
+    locations = [
+        item["storage_location"]
+        for item in result["persistence_paths"]
+    ]
+    assert locations == ["target", "target"]
+    assert "payload" not in locations
+    assert "data" not in locations
+
+
+def test_unresolved_dynamic_write_receiver_remains_unresolved(tmp_path):
+    _write(
+        tmp_path,
+        "app.py",
+        "def save(target, method):\n"
+        "    getattr(target, method)('payload')\n",
+    )
+    result = AuthorityOwnershipEvidenceExtractor().extract(
+        _spec(
+            tmp_path,
+            mutation_call_names=[],
+            persistence_call_names=[],
+        )
+    )
+    assert result["unresolved_dynamic_evidence"]
+    assert result["evidence_package"]["runtime_confirmation"] == []
+    assert result["read_only"] is True
+    assert result["pass_fail_authorized"] is False

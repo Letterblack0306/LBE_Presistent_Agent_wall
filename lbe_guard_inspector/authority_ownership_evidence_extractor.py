@@ -95,6 +95,9 @@ class AuthorityOwnershipEvidenceExtractor:
         }
         inspector_input = self._inspector_input(root, operation, canonical, owners, mutation, caller_paths, persistence,
                                                 relationship_candidates, hashes, symbol_names, spec, missing, validation)
+        inspector_input["inspected_files"] = deepcopy(records)
+        inspector_input["lifecycle_registration_candidates"] = deepcopy(lifecycle)
+        inspector_input["unresolved_dynamic_evidence"] = self._sorted(unresolved, "evidence_ref")
         return {
             "extractor_id": EXTRACTOR_ID, "extractor_version": EXTRACTOR_VERSION,
             "workspace_root": str(root), "operation": operation, "canonical_state_or_side_effect": deepcopy(canonical),
@@ -236,13 +239,43 @@ class AuthorityOwnershipEvidenceExtractor:
         return self._sorted(output, "callsite_ref")
 
     def _caller_paths(self, edges, mutations, allowed):
-        terminals = {item["callsite_ref"]: item for item in mutations}
-        output = []
+        adjacency: dict[str, list[dict[str, Any]]] = {}
+        callers: set[str] = set()
+        callees: set[str] = set()
         for edge in edges:
-            for ref, site in terminals.items():
-                if edge["callee"] == site["symbol"] and (not allowed or edge["caller"] in allowed):
-                    output.append({"entrypoint": edge["caller"], "caller_chain": [edge["caller"], edge["callee"]], "terminal_mutation_site": ref,
-                                   "authority_source": None, "evidence_refs": [edge["callsite_ref"], ref]})
+            adjacency.setdefault(edge["caller"], []).append(edge)
+            callers.add(edge["caller"])
+            callees.add(edge["callee"])
+        for edge_list in adjacency.values():
+            edge_list.sort(key=lambda item: (item["callee"], item["callsite_ref"]))
+
+        entrypoints = sorted(allowed) if allowed else sorted((callers - callees) or callers)
+        output = []
+        for site in mutations:
+            target = site["symbol"]
+            for entrypoint in entrypoints:
+                stack = [(entrypoint, [entrypoint], [], {entrypoint})]
+                while stack:
+                    current, chain, refs, visited = stack.pop()
+                    if current == target and len(chain) > 1:
+                        output.append({
+                            "entrypoint": entrypoint,
+                            "caller_chain": chain,
+                            "terminal_mutation_site": site["callsite_ref"],
+                            "authority_source": None,
+                            "evidence_refs": [*refs, site["callsite_ref"]],
+                        })
+                        continue
+                    for edge in reversed(adjacency.get(current, [])):
+                        callee = edge["callee"]
+                        if callee in visited:
+                            continue
+                        stack.append((
+                            callee,
+                            [*chain, callee],
+                            [*refs, edge["callsite_ref"]],
+                            {*visited, callee},
+                        ))
         return self._sorted(output, "entrypoint")
 
     def _owner_records(self, declarations, symbols, hashes, excluded):
@@ -324,8 +357,14 @@ class _SourceVisitor(ast.NodeVisitor):
     def _effect(self, call, node):
         leaf = call["call_name"].split(".")[-1]
         mode = self._literal(node.args[1]) if call["call_name"] == "open" and len(node.args) > 1 else self._keyword(node, "mode")
-        if (call["call_name"] == "open" and isinstance(mode, str) and any(flag in mode for flag in "wax")) or leaf in {"write_text", "write_bytes"}:
-            call["static_effect"] = "file_write"; call["storage_location"] = str(self._literal(node.args[0])) if node.args else "unresolved"
+        if call["call_name"] == "open" and isinstance(mode, str) and any(flag in mode for flag in "wax"):
+            call["static_effect"] = "file_write"
+            location = self._literal(node.args[0]) if node.args else None
+            call["storage_location"] = str(location) if location is not None else "unresolved"
+        elif leaf in {"write_text", "write_bytes"}:
+            call["static_effect"] = "file_write"
+            receiver = call["call_name"].rsplit(".", 1)[0] if "." in call["call_name"] else None
+            call["storage_location"] = receiver or "unresolved"
         if leaf in {"execute", "executemany"} and isinstance(self._literal(node.args[0]) if node.args else None, str) and self._literal(node.args[0]).lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE", "REPLACE", "CREATE", "DROP", "ALTER")):
             call["static_effect"] = "sqlite_write"; call["storage_location"] = "sqlite:unresolved"
         if call["call_name"].startswith("subprocess.") or call["call_name"] in {"os.system", "os.popen"}: call["static_effect"] = "command_execution"
@@ -373,7 +412,6 @@ def _main_contract_payload(inspector_input: Mapping[str, Any]) -> dict[str, Any]
     }
 
     owners = list(inspector_input.get("owner_declarations") or [])
-    owner_name = _owner_name(owners[0]) if owners else "unresolved-owner"
 
     package = {
         "request": {
@@ -409,19 +447,10 @@ def _main_contract_payload(inspector_input: Mapping[str, Any]) -> dict[str, Any]
             }
             for index, record in enumerate(owners)
         ],
-        "mutation_sites": [
-            {
-                "ref": f"mutation:{_contract_token(owner_name)}:{index}",
-                "kind": "current_source",
-                "detail": (
-                    f"mutator={owner_name} "
-                    f"capability={_record_detail(record, operation_id)}"
-                ),
-            }
-            for index, record in enumerate(
-                list(inspector_input.get("mutation_sites") or [])
-            )
-        ],
+        "mutation_sites": _mutation_items(
+            inspector_input.get("mutation_sites") or [],
+            operation_id=operation_id,
+        ),
         "call_paths": _evidence_items(
             inspector_input.get("call_paths")
             or inspector_input.get("caller_paths")
@@ -450,6 +479,24 @@ def _main_contract_payload(inspector_input: Mapping[str, Any]) -> dict[str, Any]
         "inspector_request": request,
         "evidence_package": package,
     }
+
+
+def _mutation_items(records: Any, *, operation_id: str) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    for index, record in enumerate(list(records or [])):
+        mutator = _owner_name(record)
+        items.append({
+            "ref": _record_ref(
+                record,
+                f"mutation:{_contract_token(mutator)}:{index}",
+            ),
+            "kind": "current_source",
+            "detail": (
+                f"mutator={mutator} "
+                f"capability={_record_detail(record, operation_id)}"
+            ),
+        })
+    return items
 
 
 def _evidence_items(
