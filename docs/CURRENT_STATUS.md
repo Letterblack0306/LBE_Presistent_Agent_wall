@@ -24,9 +24,10 @@ Live target workspace state and current validation remain authoritative.
 - Foundation PR `#2`: merged at `7f212f406331dfaf7961143eefbf45f8ceaf6a17`
 - Callback vertical-slice PR `#3`: merged at `0376f52093d079a5911b8c8b164492373e386046`
 - Runtime-neutral adapter PR `#4`: merged at `25ea2560dbd9d440f3caf3be9f9c3b286aed1f5d`
-- Active branch: `feat/configurable-runtime-integration-profile`
-- Validated implementation head: `a7e1b0d8812e3f9ec6998311e9df7233dac140ff`
-- Merge status: Phase 16 branch not merged
+- Runtime integration profile PR `#5`: merged at `575283ab986abc723de226c0340ec88c81ea2a10`
+- Active branch: `feat/profile-driven-end-to-end-proof`
+- Validated implementation head: `a0c77934dfc61240f6e59f2a63dbcc64cf4a1c12`
+- Merge status: Phase 17 branch not merged
 
 ## Completed foundation
 
@@ -76,43 +77,59 @@ Implemented:
 
 ## Phase 16 complete: configurable runtime integration profile
 
-Implemented on `feat/configurable-runtime-integration-profile`:
+Merged through PR `#5`.
 
-- `lbe_guard_inspector/runtime_integration_profile.py`;
+Implemented:
+
 - stable profile identifier and version;
-- named transport-factory selection through an externally supplied factory registry;
+- externally supplied transport-factory registry;
 - externally supplied transport configuration;
 - runtime-input mapping restricted to `workspace_root`, `workspace_id`, `reason`, and `max_results`;
 - explicit capability declarations;
-- deterministic rejection of forbidden capabilities:
-  - `arbitrary_guard_selection`;
-  - `workspace_mutation`;
-  - `repair_execution`;
-- bounded timeout configuration within the Phase 15 adapter limit;
-- explicit cancellation support declaration;
-- deterministic rejection of unknown, missing, malformed, and contradictory profile configuration;
+- deterministic rejection of arbitrary guard selection, workspace mutation, and repair execution;
+- bounded timeout and cancellation configuration;
+- deterministic validation of unknown, missing, malformed, and contradictory profile configuration;
 - unchanged adapter response propagation;
 - no vendor-, product-, company-, workspace-, path-, port-, or environment-specific assumptions.
 
-`tests/test_runtime_integration_profile.py` proves:
+## Phase 17 complete: profile-driven end-to-end invocation proof
 
-1. valid profiles build adapters from externally supplied factories;
-2. runtime input maps only into the narrow callback request contract;
-3. unknown profile and runtime fields fail deterministically;
-4. unsupported and forbidden capabilities remain explicit;
-5. contradictory cancellation and timeout settings fail;
-6. missing factories and invalid transport results fail structurally;
-7. adapter responses are preserved exactly;
-8. cancellation configuration is enforced;
-9. generic sample runtimes require no vendor-specific integration.
+Implemented on `feat/profile-driven-end-to-end-proof` in `tests/test_profile_driven_end_to_end.py`.
 
-Validated at `a7e1b0d8812e3f9ec6998311e9df7233dac140ff`:
+The proof covers the full generic path:
 
-- focused Phase 16 suite: `16 passed`;
-- full repository suite: `205 passed`;
+```text
+generic runtime input
+-> validated RuntimeIntegrationProfile
+-> externally supplied transport factory
+-> mapped callback request
+-> RuntimeNeutralInvocationAdapter
+-> fixed CallbackVerticalSlice
+-> unchanged structured result or structured error
+```
+
+Proven behavior:
+
+1. one complete in-process profile path reaches the real callback vertical slice;
+2. one complete temporary local HTTP profile path reaches the same fixed callback endpoint;
+3. `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` remain unchanged;
+4. request data, authorization, evidence refs, validation refs, explanation, decision fingerprint, and `workspace_unchanged` remain intact;
+5. unknown runtime input is rejected before transport invocation;
+6. missing transport factories remain structured profile errors;
+7. endpoint rejection remains a structured adapter error;
+8. timeout and cancellation remain deterministic;
+9. transport failures are not retried automatically;
+10. temporary workspaces and temporary ports avoid hardcoded environment assumptions;
+11. target workspace hashes remain unchanged;
+12. no vendor-specific package, UI, repair, mutation, or arbitrary guard-selection path is introduced.
+
+Validated at `a0c77934dfc61240f6e59f2a63dbcc64cf4a1c12`:
+
+- focused Phase 17 suite: `10 passed`;
+- full repository suite: `215 passed`;
 - `git diff --check`: passed;
 - working tree: clean;
-- branch synchronized with `origin/feat/configurable-runtime-integration-profile`.
+- branch synchronized with `origin/feat/profile-driven-end-to-end-proof`.
 
 ## Current product position
 
@@ -121,7 +138,8 @@ The product now has:
 - one proven deterministic guard path;
 - one narrow local HTTP invocation surface;
 - one runtime-neutral adapter;
-- one generic configurable runtime integration profile boundary.
+- one generic configurable runtime integration profile boundary;
+- one complete generic profile-driven proof through in-process and temporary local HTTP transports.
 
 External runtimes can supply configuration and capability mapping without embedding Guard Inspector logic or hardcoding a specific application, company, workspace, path, port, vendor, or environment.
 
@@ -136,12 +154,12 @@ The model may select, hypothesize, and explain. It must not invent or reinterpre
 
 ## Next implementation target
 
-Open and review the Phase 16 pull request. After integration, prove a profile-driven end-to-end invocation path using generic sample runtimes and temporary transports. This proof must exercise profile validation, transport construction, request mapping, adapter invocation, unchanged result propagation, structured failures, timeout, cancellation, and no workspace mutation without adding vendor-specific code.
+After Phase 17 integration, select one second deterministic guard vertical slice from the priority module registry. The next guard must preserve the same evidence-domain separation, exact workspace targeting, registered deterministic execution, read-only authorization, independent validation, structured verdict contract, and profile-driven invocation boundary already proven for the callback case.
 
 ## Not yet completed
 
-- merge of `feat/configurable-runtime-integration-profile` into `main`;
-- profile-driven end-to-end integration proof;
+- merge of `feat/profile-driven-end-to-end-proof` into `main`;
+- second deterministic guard vertical slice;
 - optional external-runtime integration packages;
 - broader guard gallery coverage;
 - release packaging.
