@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from agent import Context, GovernanceError, inspect_file, search_workspace
@@ -9,6 +10,9 @@ from audit_controller import AuditError, RuleResult, register_rule
 RULE_ID = "cep.callback_contract"
 _MAX_FILES = 25
 _MAX_FINDINGS = 50
+_MAX_SCANNED_FILES = 2_000
+_ALLOWED_EXTENSIONS = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"}
+_EXCLUDED_DIRS = {".git", "node_modules", "dist", "build", "coverage", "__pycache__"}
 
 
 def _rule(ctx: Context, params: dict[str, Any], logic) -> RuleResult:
@@ -135,25 +139,106 @@ def _classify_callback(expression: str) -> str:
     return "unresolved"
 
 
+def _configured_root_for(ctx: Context, target: Path, roots: list[str]) -> Any:
+    selected = set(roots or [])
+    for root in ctx.roots:
+        if selected and root.name not in selected:
+            continue
+        try:
+            target.relative_to(root.path)
+            return root
+        except ValueError:
+            continue
+    raise GovernanceError(f"Workspace root is outside configured knowledge roots: {target}")
+
+
+def _live_candidates(ctx: Context, params: dict[str, Any]) -> dict[str, Any] | None:
+    """Find evalScript candidates from the exact live workspace, not the index."""
+    raw_workspace = params.get("workspace_root")
+    if not isinstance(raw_workspace, str) or not raw_workspace.strip():
+        return None
+
+    target = Path(raw_workspace).expanduser().resolve()
+    if not target.exists() or not target.is_dir():
+        raise GovernanceError(f"Workspace root does not exist or is not a directory: {target}")
+
+    roots = [str(item) for item in (params.get("roots") or [])]
+    configured = _configured_root_for(ctx, target, roots)
+    max_bytes = int(getattr(ctx, "config", {}).get("max_file_bytes", 5_000_000))
+    matches: list[dict[str, Any]] = []
+    scanned = 0
+
+    files = sorted(
+        (path for path in target.rglob("*") if path.is_file() and not path.is_symlink()),
+        key=lambda path: path.relative_to(target).as_posix().lower(),
+    )
+    for path in files:
+        relative_target = path.relative_to(target)
+        if any(part in _EXCLUDED_DIRS for part in relative_target.parts):
+            continue
+        if path.suffix.lower() not in _ALLOWED_EXTENSIONS:
+            continue
+        if scanned >= _MAX_SCANNED_FILES:
+            break
+        scanned += 1
+        try:
+            if path.stat().st_size > max_bytes:
+                continue
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "evalScript" not in content:
+            continue
+
+        relative_configured = path.relative_to(configured.path).as_posix()
+        matches.append({"path": f"{configured.name}/{relative_configured}"})
+        if len(matches) >= _MAX_FILES:
+            break
+
+    return {
+        "outcome": "matches_found" if matches else "no_matches",
+        "searched_roots": [configured.name],
+        "results": matches,
+        "retrieval_source": "bounded_live_workspace_scan",
+        "scanned_files": scanned,
+        "scan_limit": _MAX_SCANNED_FILES,
+        "workspace_root": str(target),
+    }
+
+
+def _candidate_result(ctx: Context, params: dict[str, Any]) -> dict[str, Any]:
+    live = _live_candidates(ctx, params)
+    if live is not None:
+        return live
+    return search_workspace(
+        ctx,
+        "evalScript",
+        max_results=_MAX_FILES,
+        extensions=sorted(_ALLOWED_EXTENSIONS),
+        roots=params.get("roots"),
+    )
+
+
 def rule_cep_callback_contract(ctx: Context, params: dict[str, Any]) -> RuleResult:
     """Detect definite non-function callbacks passed to CEP evalScript calls.
 
     Identifier callbacks are not guessed. They produce a blocked result unless a
     definite invalid callback exists elsewhere in the inspected workspace.
     """
-    result = search_workspace(
-        ctx,
-        "evalScript",
-        max_results=_MAX_FILES,
-        extensions=[".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"],
-        roots=params.get("roots"),
-    )
+    result = _candidate_result(ctx, params)
     if result.get("outcome") != "matches_found":
         return RuleResult(
             rule_id=RULE_ID,
             status="not_applicable",
             message="No CEP evalScript calls were found in the selected workspace scope.",
-            evidence={"searched_roots": result.get("searched_roots")},
+            evidence={
+                "searched_roots": result.get("searched_roots"),
+                "retrieval_source": result.get("retrieval_source"),
+                "scanned_files": result.get("scanned_files"),
+                "scan_limit": result.get("scan_limit"),
+                "read_only": True,
+                "bounded": True,
+            },
         )
 
     invalid: list[dict[str, Any]] = []
@@ -203,6 +288,10 @@ def rule_cep_callback_contract(ctx: Context, params: dict[str, Any]) -> RuleResu
         "invalid_callbacks": invalid,
         "unresolved_callbacks": unresolved,
         "valid_or_omitted_callbacks": valid,
+        "retrieval_source": result.get("retrieval_source", "agent.search_workspace"),
+        "scanned_files": result.get("scanned_files"),
+        "scan_limit": result.get("scan_limit"),
+        "workspace_root": result.get("workspace_root"),
         "read_only": True,
         "bounded": True,
     }
