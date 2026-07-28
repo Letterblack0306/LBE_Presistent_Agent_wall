@@ -14,6 +14,7 @@ from .models import (
     RegistryDefectCode,
     utc_now,
 )
+from .watcher import ModuleWatcher
 
 
 _ALLOWED_EXTERNAL_LOADERS = {"process.entrypoint", "external.runtime"}
@@ -26,6 +27,7 @@ class ModuleRegistry:
         active_profile: str = "production",
         activity_limit: int = 20,
         clock: Callable[[], str] = utc_now,
+        watcher: ModuleWatcher | None = None,
     ) -> None:
         if activity_limit < 1:
             raise ValueError("activity_limit must be at least 1")
@@ -34,6 +36,7 @@ class ModuleRegistry:
             raise ValueError("active_profile must not be empty")
         self._activity_limit = activity_limit
         self._clock = clock
+        self._watcher = watcher
         self._declarations: dict[str, ModuleDeclaration] = {}
         self._records: dict[str, LiveModuleRecord] = {}
         self._unknown_receipts: list[LifecycleReceipt] = []
@@ -50,7 +53,39 @@ class ModuleRegistry:
         )
         self._declarations[declaration.id] = declaration
         self._records[declaration.id] = record
+        if self._watcher is not None:
+            self._watcher.publish_registered(declaration)
         return record
+
+    def register_registry_layer(self) -> None:
+        declarations = (
+            ModuleDeclaration(
+                id="module.registry",
+                path="lbe_guard_inspector/module_registry/store.py",
+                type=ModuleType.REGISTRY,
+                purpose="Stores module declarations and derives live runtime state.",
+                provides=("module.register", "module.lifecycle", "module.query"),
+                loaded_by="process.entrypoint",
+                expected_profiles=(self.active_profile,),
+            ),
+            ModuleDeclaration(
+                id="module.watcher",
+                path="lbe_guard_inspector/module_registry/watcher.py",
+                type=ModuleType.SERVICE,
+                purpose="Publishes immutable module lifecycle events to isolated subscribers.",
+                provides=("module.watch", "module.event-history"),
+                depends_on=("module.registry",),
+                loaded_by="module.registry",
+                expected_profiles=(self.active_profile,),
+            ),
+        )
+        for declaration in declarations:
+            if declaration.id not in self._declarations:
+                self.register(declaration)
+        if not self.get("module.registry").loaded:
+            self.loaded("module.registry", instance_id="module-registry-1")
+        if not self.get("module.watcher").loaded:
+            self.loaded("module.watcher", instance_id="module-watcher-1")
 
     def declaration(self, module_id: str) -> ModuleDeclaration:
         return self._declarations[module_id]
@@ -90,41 +125,20 @@ class ModuleRegistry:
         return records
 
     def loaded(self, module_id: str, *, instance_id: str) -> LiveModuleRecord:
-        return self._apply(
-            LifecycleReceipt(
-                module_id=module_id,
-                type=ReceiptType.LOADED,
-                timestamp=self._clock(),
-                instance_id=instance_id,
-            )
-        )
+        return self._apply(LifecycleReceipt(module_id=module_id, type=ReceiptType.LOADED, timestamp=self._clock(), instance_id=instance_id))
 
     def started(self, module_id: str) -> LiveModuleRecord:
-        return self._apply(
-            LifecycleReceipt(module_id, ReceiptType.STARTED, self._clock())
-        )
+        return self._apply(LifecycleReceipt(module_id, ReceiptType.STARTED, self._clock()))
 
     def activity(self, module_id: str, *, action: str, detail: str) -> LiveModuleRecord:
-        return self._apply(
-            LifecycleReceipt(
-                module_id=module_id,
-                type=ReceiptType.ACTIVITY,
-                timestamp=self._clock(),
-                action=action,
-                detail=detail,
-            )
-        )
+        return self._apply(LifecycleReceipt(module_id=module_id, type=ReceiptType.ACTIVITY, timestamp=self._clock(), action=action, detail=detail))
 
     def idle(self, module_id: str) -> LiveModuleRecord:
         if module_id not in self._records:
-            receipt = LifecycleReceipt(
-                module_id=module_id,
-                type=ReceiptType.ACTIVITY,
-                timestamp=self._clock(),
-                action="idle",
-                detail="idle requested for unknown module",
-            )
+            receipt = LifecycleReceipt(module_id=module_id, type=ReceiptType.ACTIVITY, timestamp=self._clock(), action="idle", detail="idle requested for unknown module")
             self._unknown_receipts.append(receipt)
+            if self._watcher is not None:
+                self._watcher.publish_receipt(receipt)
             raise KeyError(module_id)
         record = self._records[module_id]
         if not record.loaded:
@@ -136,113 +150,43 @@ class ModuleRegistry:
         return record
 
     def stopped(self, module_id: str, *, reason: str = "stopped") -> LiveModuleRecord:
-        return self._apply(
-            LifecycleReceipt(
-                module_id=module_id,
-                type=ReceiptType.STOPPED,
-                timestamp=self._clock(),
-                reason=reason,
-            )
-        )
+        return self._apply(LifecycleReceipt(module_id=module_id, type=ReceiptType.STOPPED, timestamp=self._clock(), reason=reason))
 
     def failed(self, module_id: str, *, code: str, error: str) -> LiveModuleRecord:
-        return self._apply(
-            LifecycleReceipt(
-                module_id=module_id,
-                type=ReceiptType.FAILED,
-                timestamp=self._clock(),
-                code=code,
-                error=error,
-            )
-        )
+        return self._apply(LifecycleReceipt(module_id=module_id, type=ReceiptType.FAILED, timestamp=self._clock(), code=code, error=error))
 
     def defects(self) -> list[RegistryDefect]:
-        defects = [
-            RegistryDefect(
-                RegistryDefectCode.RECEIPT_FOR_UNKNOWN_MODULE,
-                receipt.module_id,
-                True,
-                (receipt.type.value, receipt.timestamp),
-            )
-            for receipt in self._unknown_receipts
-        ]
+        defects = [RegistryDefect(RegistryDefectCode.RECEIPT_FOR_UNKNOWN_MODULE, receipt.module_id, True, (receipt.type.value, receipt.timestamp)) for receipt in self._unknown_receipts]
         for module_id in sorted(self._records):
             record = self._records[module_id]
             declaration = record.declaration
             for dependency in declaration.depends_on:
                 if dependency not in self._declarations:
-                    defects.append(
-                        RegistryDefect(
-                            RegistryDefectCode.MODULE_DEPENDENCY_UNREGISTERED,
-                            module_id,
-                            True,
-                            (dependency,),
-                        )
-                    )
-            if (
-                declaration.loaded_by not in _ALLOWED_EXTERNAL_LOADERS
-                and declaration.loaded_by not in self._declarations
-            ):
-                defects.append(
-                    RegistryDefect(
-                        RegistryDefectCode.INVALID_LOADER_RELATIONSHIP,
-                        module_id,
-                        True,
-                        (declaration.loaded_by,),
-                    )
-                )
+                    defects.append(RegistryDefect(RegistryDefectCode.MODULE_DEPENDENCY_UNREGISTERED, module_id, True, (dependency,)))
+            if declaration.loaded_by not in _ALLOWED_EXTERNAL_LOADERS and declaration.loaded_by not in self._declarations:
+                defects.append(RegistryDefect(RegistryDefectCode.INVALID_LOADER_RELATIONSHIP, module_id, True, (declaration.loaded_by,)))
             if declaration.disabled and record.loaded:
-                defects.append(
-                    RegistryDefect(
-                        RegistryDefectCode.DISABLED_MODULE_LOADED,
-                        module_id,
-                        True,
-                        tuple(sorted(record.instances)),
-                    )
-                )
+                defects.append(RegistryDefect(RegistryDefectCode.DISABLED_MODULE_LOADED, module_id, True, tuple(sorted(record.instances))))
             expected = self.active_profile in declaration.expected_profiles
             if expected and not record.loaded and not declaration.disabled:
-                defects.append(
-                    RegistryDefect(
-                        RegistryDefectCode.EXPECTED_MODULE_NOT_LOADED,
-                        module_id,
-                        True,
-                        (self.active_profile,),
-                    )
-                )
+                defects.append(RegistryDefect(RegistryDefectCode.EXPECTED_MODULE_NOT_LOADED, module_id, True, (self.active_profile,)))
             elif not record.loaded and not declaration.disabled:
-                defects.append(
-                    RegistryDefect(
-                        RegistryDefectCode.REGISTERED_NOT_LOADED,
-                        module_id,
-                        False,
-                    )
-                )
+                defects.append(RegistryDefect(RegistryDefectCode.REGISTERED_NOT_LOADED, module_id, False))
             if declaration.singleton and record.instance_count > 1:
-                defects.append(
-                    RegistryDefect(
-                        RegistryDefectCode.MODULE_INSTANCE_CONFLICT,
-                        module_id,
-                        True,
-                        tuple(sorted(record.instances)),
-                    )
-                )
+                defects.append(RegistryDefect(RegistryDefectCode.MODULE_INSTANCE_CONFLICT, module_id, True, tuple(sorted(record.instances))))
         return defects
 
     def _contradiction(self, module_id: str, detail: str) -> None:
-        self._unknown_receipts.append(
-            LifecycleReceipt(
-                module_id=module_id,
-                type=ReceiptType.FAILED,
-                timestamp=self._clock(),
-                code=RegistryDefectCode.CONTRADICTORY_LIFECYCLE_STATE.value,
-                error=detail,
-            )
-        )
+        receipt = LifecycleReceipt(module_id=module_id, type=ReceiptType.FAILED, timestamp=self._clock(), code=RegistryDefectCode.CONTRADICTORY_LIFECYCLE_STATE.value, error=detail)
+        self._unknown_receipts.append(receipt)
+        if self._watcher is not None:
+            self._watcher.publish_receipt(receipt)
 
     def _apply(self, receipt: LifecycleReceipt) -> LiveModuleRecord:
         if receipt.module_id not in self._records:
             self._unknown_receipts.append(receipt)
+            if self._watcher is not None:
+                self._watcher.publish_receipt(receipt)
             raise KeyError(receipt.module_id)
         record = self._records[receipt.module_id]
         if receipt.type is ReceiptType.LOADED:
@@ -261,11 +205,7 @@ class ModuleRegistry:
             if not record.loaded:
                 self._contradiction(receipt.module_id, "activity-before-loaded")
                 raise ValueError(f"module is not loaded: {receipt.module_id}")
-            activity = ModuleActivity(
-                action=receipt.action or "",
-                detail=receipt.detail or "",
-                started_at=receipt.timestamp,
-            )
+            activity = ModuleActivity(action=receipt.action or "", detail=receipt.detail or "", started_at=receipt.timestamp)
             record.current_activity = activity
             record.recent_activity.append(activity)
             record.recent_activity[:] = record.recent_activity[-self._activity_limit :]
@@ -279,10 +219,8 @@ class ModuleRegistry:
             record.running = False
             record.healthy = False
             record.state = ModuleState.FAILED
-            record.last_error = {
-                "code": receipt.code or "UNKNOWN",
-                "error": receipt.error or "Unknown error",
-                "timestamp": receipt.timestamp,
-            }
+            record.last_error = {"code": receipt.code or "UNKNOWN", "error": receipt.error or "Unknown error", "timestamp": receipt.timestamp}
         record.updated_at = receipt.timestamp
+        if self._watcher is not None:
+            self._watcher.publish_receipt(receipt)
         return record
