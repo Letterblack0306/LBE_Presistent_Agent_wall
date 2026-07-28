@@ -15,6 +15,9 @@ SCHEMA_FILES = {
     "guard_request": "guard_request.schema.json",
     "guard_result": "guard_result.schema.json",
     "rule_proposal": "rule_proposal.schema.json",
+    "authority_ownership_request": "authority_ownership_request.schema.json",
+    "authority_ownership_evidence_package": "authority_ownership_evidence_package.schema.json",
+    "authority_ownership_result": "authority_ownership_result.schema.json",
 }
 
 
