@@ -101,6 +101,7 @@ class OpenAICompatibleReasoningBackend:
             "planning",
             _PLANNING_SYSTEM_PROMPT,
             _PLANNING_OUTPUT_CONTRACT,
+            _PLANNING_JSON_SCHEMA,
             asdict(request),
         )
         try:
@@ -113,6 +114,7 @@ class OpenAICompatibleReasoningBackend:
             "explanation",
             _EXPLANATION_SYSTEM_PROMPT,
             _EXPLANATION_OUTPUT_CONTRACT,
+            _EXPLANATION_JSON_SCHEMA,
             asdict(request),
         )
         try:
@@ -125,6 +127,7 @@ class OpenAICompatibleReasoningBackend:
         stage: str,
         system_prompt: str,
         output_contract: Mapping[str, Any],
+        output_schema: Mapping[str, Any],
         input_payload: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         payload = {
@@ -145,7 +148,14 @@ class OpenAICompatibleReasoningBackend:
                 },
             ],
             "temperature": 0,
-            "response_format": {"type": "json_object"},
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": f"lbe_{stage}_response",
+                    "strict": True,
+                    "schema": output_schema,
+                },
+            },
         }
         headers = {"Content-Type": "application/json"}
         if self._config.api_key:
@@ -198,6 +208,48 @@ _PLANNING_OUTPUT_CONTRACT = {
 }
 
 _EXPLANATION_OUTPUT_CONTRACT = {"explanation": "non-empty string"}
+
+_PLANNING_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "interpreted_problem": {"type": "string", "minLength": 1},
+        "ambiguities": {"type": "array", "items": {"type": "string"}},
+        "candidate_guard_ids": {"type": "array", "items": {"type": "string"}},
+        "evidence_requests": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tool_id": {"type": "string", "minLength": 1},
+                    "path": {"type": "string", "minLength": 1},
+                    "reason": {"type": "string", "minLength": 1},
+                },
+                "required": ["tool_id", "path", "reason"],
+                "additionalProperties": False,
+            },
+        },
+        "validation_requests": {"type": "array", "items": {"type": "string"}},
+        "explanation_focus": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": [
+        "interpreted_problem",
+        "ambiguities",
+        "candidate_guard_ids",
+        "evidence_requests",
+        "validation_requests",
+        "explanation_focus",
+    ],
+    "additionalProperties": False,
+}
+
+_EXPLANATION_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "explanation": {"type": "string", "minLength": 1},
+    },
+    "required": ["explanation"],
+    "additionalProperties": False,
+}
 
 _PLANNING_SYSTEM_PROMPT = """You are the bounded planning stage inside LBE. Return exactly one top-level JSON object with exactly these six keys: interpreted_problem, ambiguities, candidate_guard_ids, evidence_requests, validation_requests, explanation_focus. Do not wrap the object in planning_contract, result, output, data, or any other key. interpreted_problem must be a non-empty string. ambiguities, candidate_guard_ids, validation_requests, and explanation_focus must be JSON arrays of strings and may be empty. evidence_requests must be a JSON array of objects with exactly tool_id, path, and reason. Use only approved guard IDs, approved tool IDs, approved validation IDs, and workspace-relative paths supplied in the input. Do not return verdicts, authorization, commands, writes, repairs, mutations, policy decisions, or memory-promotion instructions. Do not include Markdown or prose outside the JSON object."""
 
