@@ -9,5 +9,6 @@ __all__ = [
     "memory",
     "module_registry",
     "runtime_integration_profile",
+    "rule_gatekeeper",
     "server",
 ]

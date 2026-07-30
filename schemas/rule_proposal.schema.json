@@ -34,6 +34,14 @@
       "type": "string",
       "minLength": 1
     },
+    "pack_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_profile_path": {
+      "type": "string",
+      "minLength": 1
+    },
     "trigger": {
       "type": "string",
       "minLength": 1
@@ -71,12 +79,26 @@
     "equivalent_rule_checked": {
       "type": "boolean"
     },
+    "equivalent_rule_result": {
+      "type": ["string", "object"]
+    },
+    "contradiction_result": {
+      "type": ["string", "object"]
+    },
     "evidence_refs": {
       "type": "array",
       "items": {
         "type": "string"
       },
       "minItems": 1,
+      "uniqueItems": true
+    },
+    "source_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 64
+      },
       "uniqueItems": true
     },
     "diff": {
@@ -96,6 +118,10 @@
         "type": "string"
       },
       "minItems": 1
+    },
+    "provenance": {
+      "type": "object",
+      "minProperties": 1
     },
     "approval_required": {
       "const": true
