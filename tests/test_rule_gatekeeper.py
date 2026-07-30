@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from agent import Context, KnowledgeRoot
+from lbe_guard_inspector.contracts import validate_contract
 from lbe_guard_inspector.rule_gatekeeper import (
     RuleGatekeeper,
     STATUS_INSUFFICIENT_EVIDENCE,
@@ -165,3 +166,76 @@ def test_inspect_and_revalidate_are_read_only(tmp_path: Path):
     assert inspection["workspace_id"] == identity.workspace_id
     assert gatekeeper.revalidate_proposal(workspace_root=tmp_path, proposal=proposal)["runtime_mutations_performed"] is False
     assert before == {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+
+
+def test_record_decision_approved_is_deterministic_and_read_only(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+    before = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+
+    first = gatekeeper.record_decision(
+        workspace_root=tmp_path,
+        proposal=proposal,
+        decision="approved",
+        actor="user:test-operator",
+        reason="Explicit user approval.",
+    )
+    second = gatekeeper.record_decision(
+        workspace_root=tmp_path,
+        proposal=proposal,
+        decision="APPROVED",
+        actor="user:test-operator",
+        reason="Explicit user approval.",
+    )
+
+    assert first == second
+    record = first["decision_record"]
+    assert record["decision"] == "APPROVED"
+    assert record["authority_owner"] == "LBE_GOVERNANCE"
+    assert record["proposal_id"] == proposal["proposal_id"]
+    assert first["runtime_mutations_performed"] is False
+    assert before == {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+
+
+def test_record_decision_rejected_is_schema_valid(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+    result = gatekeeper.record_decision(
+        workspace_root=tmp_path,
+        proposal=proposal,
+        decision="REJECTED",
+        actor="user:test-operator",
+        reason="Proposal does not match workspace policy.",
+    )
+    validate_contract("rule_proposal_decision", result["decision_record"])
+    assert result["decision_record"]["decision"] == "REJECTED"
+
+
+def test_record_decision_rejects_invalid_inputs(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+
+    for kwargs in (
+       {"decision": "PENDING", "actor": "user:test", "reason": "not allowed"},
+        {"decision": "APPROVED", "actor": " ", "reason": "valid"},
+        {"decision": "APPROVED", "actor": "user:test", "reason": " "},
+    ):
+        with pytest.raises(ValueError):
+            gatekeeper.record_decision(workspace_root=tmp_path, proposal=proposal, **kwargs)
+
+
+def test_record_decision_rejects_stale_proposal(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+    (tmp_path / "src.py").write_text("print('changed')\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="not currently eligible"):
+        gatekeeper.record_decision(
+            workspace_root=tmp_path,
+            proposal=proposal,
+            decision="APPROVED",
+            actor="user:test",
+            reason="stale proposal",
+         )
+
+    with pytest.raises(PermissionError, match="read-only"):
+        gatekeeper.apply_proposal(proposal)

@@ -1,0 +1,61 @@
+{
+  "$id": "https://lbe.local/schemas/rule_proposal_decision.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actor": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "authority_owner": {
+      "const": "LBE_GOVERNANCE"
+    },
+    "decided_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "decision_id": {
+      "pattern": "^rpd_[0-9a-f]{24}$",
+      "type": "string"
+    },
+    "proposal_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "proposal_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "proposal_status": {
+      "const": "PROPOSAL_READY"
+    },
+    "reason": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "workspace_id": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "decision_id",
+    "proposal_id",
+    "workspace_id",
+    "decision",
+    "actor",
+    "reason",
+    "decided_at",
+    "proposal_hash",
+    "proposal_status",
+    "authority_owner"
+  ],
+  "title": "Rule Proposal Decision",
+  "type": "object"
+}

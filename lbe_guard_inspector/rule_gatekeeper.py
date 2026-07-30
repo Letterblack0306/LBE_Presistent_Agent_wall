@@ -201,6 +201,55 @@ class RuleGatekeeper:
             "reasons": sorted(set(reasons)), **_read_only_report(),
         }
 
+    def record_decision(
+        self,
+        *,
+        workspace_root: str | Path,
+        proposal: Mapping[str, Any],
+        decision: str,
+        actor: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Record a schema-validated decision without persisting or applying it."""
+        validate_contract("rule_proposal", proposal)
+        revalidation = self.revalidate_proposal(
+            workspace_root=workspace_root,
+            proposal=proposal,
+        )
+        if revalidation.get("status") != STATUS_PROPOSAL_READY:
+            raise ValueError("Proposal is not currently eligible for a governance decision.")
+
+        normalized_decision = _text(decision, "decision").upper()
+        if normalized_decision not in {"APPROVED", "REJECTED"}:
+            raise ValueError("decision must be APPROVED or REJECTED.")
+
+        normalized_actor = _text(actor, "actor")
+        normalized_reason = _text(reason, "reason")
+        decided_at = _timestamp(self._clock())
+        decision_basis = {
+            "proposal_id": proposal["proposal_id"],
+            "workspace_id": proposal["workspace_id"],
+            "decision": normalized_decision,
+            "actor": normalized_actor,
+            "reason": normalized_reason,
+            "decided_at": decided_at,
+        }
+        record = {
+            "decision_id": "rpd_" + _stable_hash(decision_basis)[:24],
+            **decision_basis,
+            "proposal_hash": _stable_hash(dict(proposal)),
+            "proposal_status": STATUS_PROPOSAL_READY,
+            "authority_owner": "LBE_GOVERNANCE",
+        }
+        validate_contract("rule_proposal_decision", record)
+        return {
+            "mode": "record_decision",
+            "workspace_id": proposal["workspace_id"],
+            "decision_record": record,
+            "proposal_revalidation": revalidation,
+            **_read_only_report(),
+        }
+
     def apply_proposal(self, proposal: Mapping[str, Any]) -> None:
         """Application is intentionally unavailable and performs no write."""
         validate_contract("rule_proposal", proposal)
