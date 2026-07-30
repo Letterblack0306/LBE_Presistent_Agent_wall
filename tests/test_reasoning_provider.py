@@ -108,7 +108,20 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     assert call["headers"]["Authorization"] == "Bearer secret"
     assert call["payload"]["model"] == "local-model"
     assert call["payload"]["temperature"] == 0
-    assert json.loads(call["payload"]["messages"][1]["content"])["stage"] == "planning"
+    assert call["payload"]["response_format"] == {"type": "json_object"}
+    user_payload = json.loads(call["payload"]["messages"][1]["content"])
+    assert user_payload["stage"] == "planning"
+    assert set(user_payload["output_contract"]) == {
+        "interpreted_problem",
+        "ambiguities",
+        "candidate_guard_ids",
+        "evidence_requests",
+        "validation_requests",
+        "explanation_focus",
+    }
+    system_prompt = call["payload"]["messages"][0]["content"]
+    assert "exactly these six keys" in system_prompt
+    assert "Do not wrap the object in planning_contract" in system_prompt
 
 
 def test_explanation_call_is_separate_and_typed():
@@ -121,7 +134,12 @@ def test_explanation_call_is_separate_and_typed():
     result = backend.explain(explanation_request())
 
     assert result.explanation == "The deterministic guard passed."
-    assert json.loads(transport.calls[0]["payload"]["messages"][1]["content"])["stage"] == "explanation"
+    call = transport.calls[0]
+    user_payload = json.loads(call["payload"]["messages"][1]["content"])
+    assert user_payload["stage"] == "explanation"
+    assert user_payload["output_contract"] == {"explanation": "non-empty string"}
+    assert call["payload"]["response_format"] == {"type": "json_object"}
+    assert "exactly one top-level JSON object" in call["payload"]["messages"][0]["content"]
 
 
 @pytest.mark.parametrize(
@@ -159,6 +177,19 @@ def test_schema_invalid_planning_response_is_rejected():
         backend.plan(planning_request())
 
     assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+
+
+def test_wrapped_planning_contract_is_rejected_instead_of_silently_unwrapped():
+    backend = OpenAICompatibleReasoningBackend(
+        config=ProviderConfig(endpoint="http://provider", model="model", timeout_seconds=5),
+        transport=FakeTransport(choice({"planning_contract": {}})),
+    )
+
+    with pytest.raises(ProviderError) as exc:
+        backend.plan(planning_request())
+
+    assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+    assert "unsupported planning_contract" in str(exc.value)
 
 
 def test_injected_transport_failure_is_preserved():
