@@ -58,6 +58,23 @@ def choice(value) -> dict:
     return {"choices": [{"message": {"content": json.dumps(value)}}]}
 
 
+def valid_plan(path: str = "package.json") -> dict:
+    return {
+        "interpreted_problem": "inspect package metadata",
+        "ambiguities": [],
+        "candidate_guard_ids": ["npm.package_metadata"],
+        "evidence_requests": [
+            {
+                "tool_id": "workspace.read",
+                "path": path,
+                "reason": "inspect metadata",
+            }
+        ],
+        "validation_requests": ["guard_runner.independent_reread"],
+        "explanation_focus": ["package metadata"],
+    }
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
@@ -72,23 +89,7 @@ def test_provider_config_requires_explicit_valid_values(kwargs):
 
 
 def test_planning_call_uses_explicit_config_and_typed_contract():
-    response = choice(
-        {
-            "interpreted_problem": "inspect package metadata",
-            "ambiguities": [],
-            "candidate_guard_ids": ["npm.package_metadata"],
-            "evidence_requests": [
-                {
-                    "tool_id": "workspace.read",
-                    "path": "package.json",
-                    "reason": "inspect metadata",
-                }
-            ],
-            "validation_requests": ["guard_runner.independent_reread"],
-            "explanation_focus": ["package metadata"],
-        }
-    )
-    transport = FakeTransport(response)
+    transport = FakeTransport(choice(valid_plan()))
     backend = OpenAICompatibleReasoningBackend(
         config=ProviderConfig(
             endpoint="http://127.0.0.1:1234/v1/chat/completions",
@@ -126,7 +127,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     evidence_schema = schema["properties"]["evidence_requests"]["items"]
     assert evidence_schema["required"] == ["tool_id", "path", "reason"]
     assert evidence_schema["additionalProperties"] is False
-    assert "Workspace-relative path only" in evidence_schema["properties"]["path"]["description"]
+    assert evidence_schema["properties"]["path"]["pattern"] == "^[^/\\\\:][^:]*$"
     user_payload = json.loads(call["payload"]["messages"][1]["content"])
     assert user_payload["stage"] == "planning"
     assert set(user_payload["output_contract"]) == {
@@ -145,7 +146,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     system_prompt = call["payload"]["messages"][0]["content"]
     assert "exactly these six keys" in system_prompt
     assert "Do not wrap the object in planning_contract" in system_prompt
-    assert "absolute target_project_root is intentionally withheld" in system_prompt
+    assert "must not begin with a slash or backslash" in system_prompt
 
 
 def test_explanation_call_is_separate_and_typed():
@@ -223,6 +224,29 @@ def test_wrapped_planning_contract_is_rejected_instead_of_silently_unwrapped():
 
     assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
     assert "unsupported planning_contract" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/pyproject.toml",
+        "\\pyproject.toml",
+        "C:/repo/pyproject.toml",
+        "C:\\repo\\pyproject.toml",
+        "\\\\server\\share\\pyproject.toml",
+    ],
+)
+def test_absolute_evidence_paths_are_rejected_after_provider_decode(path):
+    backend = OpenAICompatibleReasoningBackend(
+        config=ProviderConfig(endpoint="http://provider", model="model", timeout_seconds=5),
+        transport=FakeTransport(choice(valid_plan(path))),
+    )
+
+    with pytest.raises(ProviderError) as exc:
+        backend.plan(planning_request())
+
+    assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+    assert "workspace-relative" in str(exc.value)
 
 
 def test_injected_transport_failure_is_preserved():
