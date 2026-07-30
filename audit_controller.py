@@ -9,6 +9,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable
+from lbe_guard_inspector.project_profiler import ProjectProfiler
+from lbe_guard_inspector.project_snapshots import ProjectSnapshotStore
+from lbe_guard_inspector.workspace_identity import resolve_workspace_identity, scoped_context
 
 # Keep one module identity when this file is executed directly.
 # Rule packs may import ``audit_controller.RuleResult``; without this alias,
@@ -41,6 +44,11 @@ VALID_RULE_STATUSES = frozenset({
     "blocked",
     "not_applicable",
 })
+FOUNDATION_GUARD_IDS = (
+    "generic.index_present",
+    "generic.forbidden_roots",
+)
+_OVERRIDABLE_FOUNDATION_GUARD_IDS = frozenset({"generic.forbidden_roots"})
 
 
 class AuditError(RuntimeError):
@@ -74,6 +82,13 @@ class AuditReport:
     inventory: dict[str, Any] = field(default_factory=dict)
     skipped_gates: list[dict[str, Any]] = field(default_factory=list)
     skipped_packs: list[dict[str, Any]] = field(default_factory=list)
+    project_profile: dict[str, Any] = field(default_factory=dict)
+    profile_snapshot: dict[str, Any] = field(default_factory=dict)
+    guard_selection: list[dict[str, Any]] = field(default_factory=list)
+    snapshot_comparison: dict[str, Any] = field(default_factory=dict)
+    foundation_guard_execution: dict[str, Any] = field(default_factory=dict)
+    optional_guard_execution: list[dict[str, Any]] = field(default_factory=list)
+    audit_status: str = "completed"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,6 +105,13 @@ class AuditReport:
             "inventory": self.inventory,
             "skipped_gates": self.skipped_gates,
             "skipped_packs": self.skipped_packs,
+            "project_profile": self.project_profile,
+            "profile_snapshot": self.profile_snapshot,
+            "guard_selection": self.guard_selection,
+            "snapshot_comparison": self.snapshot_comparison,
+            "foundation_guard_execution": self.foundation_guard_execution,
+            "optional_guard_execution": self.optional_guard_execution,
+            "audit_status": self.audit_status,
             "results": [
                 {
                     "rule_id": result.rule_id,
@@ -355,14 +377,126 @@ def _derive_summary(report: AuditReport) -> str:
     return "pass"
 
 
+def _evidence_refs(evidence: dict[str, Any]) -> list[str]:
+    refs: list[str] = []
+    for key in ("path", "registry_path"):
+        value = evidence.get(key)
+        if isinstance(value, str) and value:
+            refs.append(value)
+    for item in evidence.get("hits", []):
+        if isinstance(item, str):
+            refs.append(item)
+        elif isinstance(item, dict) and isinstance(item.get("path"), str):
+            refs.append(item["path"])
+    return list(dict.fromkeys(refs))
+
+
+def _validate_foundation_overrides(value: Any) -> dict[str, dict[str, Any]]:
+    if value is None:
+        return {}
+    if not isinstance(value, list):
+        raise AuditError("foundation_overrides must be a list of structured acknowledgments")
+    accepted: dict[str, dict[str, Any]] = {}
+    for item in value:
+        if not isinstance(item, dict):
+            raise AuditError("foundation override must be an object")
+        guard_id = item.get("guard_id")
+        if guard_id not in FOUNDATION_GUARD_IDS:
+            raise AuditError(f"Unknown foundation guard override: {guard_id}")
+        if guard_id not in _OVERRIDABLE_FOUNDATION_GUARD_IDS:
+            raise AuditError(f"Foundation guard is not overridable: {guard_id}")
+        if item.get("acknowledged") is not True:
+            raise AuditError(f"Foundation override requires acknowledged: true for {guard_id}")
+        reason = item.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            raise AuditError(f"Foundation override requires a non-empty reason for {guard_id}")
+        if item.get("requested_by") != "user":
+            raise AuditError(f"Foundation override must be requested_by: user for {guard_id}")
+        if guard_id in accepted:
+            raise AuditError(f"Duplicate foundation override: {guard_id}")
+        accepted[guard_id] = {
+            "guard_id": guard_id,
+            "acknowledged": True,
+            "reason": reason.strip(),
+            "requested_by": "user",
+        }
+    return accepted
+
+
+def _run_foundation_gate(
+    report: AuditReport,
+    ctx: Context,
+    params: dict[str, Any],
+    foundation_overrides: Any,
+) -> bool:
+    execution = {
+        "required": list(FOUNDATION_GUARD_IDS),
+        "order": list(FOUNDATION_GUARD_IDS),
+        "results": [],
+        "stop_reason": None,
+    }
+    report.foundation_guard_execution = execution
+    try:
+        overrides = _validate_foundation_overrides(foundation_overrides)
+    except AuditError as exc:
+        execution["stop_reason"] = str(exc)
+        report.audit_status = "BLOCKED"
+        report.summary = "foundation_gate_failed"
+        return False
+
+    for index, guard_id in enumerate(FOUNDATION_GUARD_IDS, start=1):
+        override = overrides.get(guard_id)
+        if override is not None:
+            execution["results"].append({
+                "guard_id": guard_id,
+                "execution_index": index,
+                "status": "overridden",
+                "evidence_refs": [],
+                "evidence": {},
+                "override": override,
+            })
+            continue
+        try:
+            result = run_rule("generic", guard_id, ctx, params)
+        except AuditError as exc:
+            result = RuleResult(guard_id, "blocked", str(exc))
+        record = {
+            "guard_id": guard_id,
+            "execution_index": index,
+            "status": result.status,
+            "evidence_refs": _evidence_refs(result.evidence),
+            "evidence": result.evidence,
+            "message": result.message,
+        }
+        execution["results"].append(record)
+        _record_result(report, result)
+        if result.status != "passed":
+            execution["stop_reason"] = f"FOUNDATION_GATE_FAILED: {guard_id}: {result.message}"
+            report.audit_status = "BLOCKED"
+            report.summary = "foundation_gate_failed"
+            return False
+
+    if overrides:
+        report.audit_status = "completed_with_overrides"
+        report.summary = "completed_with_overrides"
+    return True
+
+
 def run_audit(
     *,
     pack_ids: list[str] | None = None,
     project_type: str | None = None,
     roots: list[str] | None = None,
+    workspace_root: str | Path | None = None,
+    foundation_overrides: list[dict[str, Any]] | None = None,
     ctx: Context | None = None,
 ) -> AuditReport:
     resolved_ctx = ctx or Context.load()
+    target_identity = None
+    if workspace_root is not None:
+        target_identity = resolve_workspace_identity(resolved_ctx, workspace_root)
+        resolved_ctx = scoped_context(resolved_ctx, target_identity)
+        roots = [target_identity.configured_root_id]
     known_roots = {root.name for root in resolved_ctx.roots}
 
     normalized_roots = None
@@ -372,21 +506,69 @@ def run_audit(
         if unknown:
             raise AuditError(f"Unknown roots: {unknown}")
 
-    audit_type = (project_type or detect_project_type(resolved_ctx)).strip().lower()
-    requested = [pack.strip().lower() for pack in pack_ids] if pack_ids else [audit_type, "generic"]
-    requested = list(dict.fromkeys(pack for pack in requested if pack))
-    if not requested:
-        raise AuditError("At least one rule pack is required")
-
     report = AuditReport(
         audit_id=uuid.uuid4().hex,
         started_at=_utc_now(),
         completed_at="",
-        project_type=audit_type,
+        project_type=(project_type or "generic").strip().lower(),
         packs_evaluated=[],
     )
     report.inventory = _build_file_inventory(resolved_ctx, normalized_roots)
+    base_params = {
+        "roots": normalized_roots,
+        "workspace_root": (
+            str(target_identity.target_project_root)
+            if target_identity is not None
+            else None
+        ),
+        "workspace_id": (
+            target_identity.workspace_id
+            if target_identity is not None
+            else None
+        ),
+        "project_type": report.project_type,
+        "inventory": report.inventory,
+    }
+    if not _run_foundation_gate(report, resolved_ctx, base_params, foundation_overrides):
+        report.completed_at = _utc_now()
+        return report
 
+    selected_roots = [root for root in resolved_ctx.roots if normalized_roots is None or root.name in normalized_roots]
+    profiler = ProjectProfiler()
+    profiles = [
+        profiler.profile(
+            root.path,
+            configured_root_id=(
+                target_identity.configured_root_id
+                if target_identity is not None
+                else root.name
+            ),
+        )
+        for root in selected_roots
+    ]
+    confident = [profile for profile in profiles if profile["outcome"] == "profiled"]
+    audit_type = (project_type or (confident[0]["project_types"][0] if len(confident) == 1 else "generic")).strip().lower()
+    report.project_type = audit_type
+    requested = [pack.strip().lower() for pack in pack_ids] if pack_ids else (confident[0]["guard_packs"] if len(confident) == 1 else ["generic"])
+    requested = list(dict.fromkeys(pack for pack in requested if pack))
+    if not requested:
+        raise AuditError("At least one rule pack is required")
+
+    report.project_profile = confident[0] if len(confident) == 1 else {"outcome": "insufficient_evidence", "profiles": profiles, "missing_evidence": ["Exactly one confident project profile is required for automatic guard selection."]}
+    report.profile_snapshot = profiler.snapshot(confident[0]) if len(confident) == 1 else {}
+    if len(confident) == 1:
+        signal_references = [
+            {"path": signal["path"], "sha256": signal["sha256"]}
+            for signal in confident[0]["signals"]
+        ]
+        report.guard_selection = [
+            {
+                "pack_id": pack_id,
+                "rationale": "Selected from approved project signals.",
+                "evidence_references": signal_references,
+            }
+            for pack_id in requested
+        ]
     for pack_id in requested:
         try:
             rules = _load_rule_pack(pack_id)
@@ -411,6 +593,8 @@ def run_audit(
         gate_closed = False
 
         for function_name, function in rules.items():
+            if function_name in FOUNDATION_GUARD_IDS:
+                continue
             if gate_closed:
                 report.skipped_gates.append({
                     "pack_id": pack_id,
@@ -424,6 +608,8 @@ def run_audit(
                     resolved_ctx,
                     {
                         "roots": normalized_roots,
+                        "workspace_root": base_params["workspace_root"],
+                        "workspace_id": base_params["workspace_id"],
                         "project_type": audit_type,
                         "inventory": report.inventory,
                     },
@@ -450,6 +636,14 @@ def run_audit(
                 )
 
             _record_result(report, result)
+            report.optional_guard_execution.append({
+                "guard_id": result.rule_id,
+                "execution_index": len(report.optional_guard_execution) + 1,
+                "status": result.status,
+                "evidence_refs": _evidence_refs(result.evidence),
+                "evidence": result.evidence,
+                "message": result.message,
+            })
             if (
                 result.fast_fail
                 and result.required
@@ -458,7 +652,16 @@ def run_audit(
                 gate_closed = True
 
     report.completed_at = _utc_now()
-    report.summary = _derive_summary(report)
+    if report.audit_status != "completed_with_overrides":
+        report.summary = _derive_summary(report)
+    if len(confident) == 1:
+        report.snapshot_comparison = ProjectSnapshotStore().save(
+            report.profile_snapshot,
+            [
+                {"id": result.rule_id, "status": result.status}
+                for result in report.results
+            ],
+        )
     return report
 
 

@@ -7,20 +7,29 @@ from audit_controller import AuditError, RuleResult, register_rule
 
 
 def rule_generic_index_present(ctx: Context, params: dict[str, Any]) -> RuleResult:
-    db = __import__("agent", fromlist=["database_status"]).database_status()
-    file_count = int(db.get("file_count", 0))
+    inventory = params.get("inventory") or {}
+    file_count = int(inventory.get("files_considered", 0))
+    roots = list(inventory.get("roots", []))
     if file_count <= 0:
         return RuleResult(
             rule_id="generic.index_present",
             status="failed",
-            message="Workspace index reports zero files.",
-            evidence={"file_count": file_count},
+            message="Selected workspace inventory contains zero files.",
+            evidence={
+                "files_considered": file_count,
+                "roots": roots,
+                "evidence_source": "current_workspace_inventory",
+            },
         )
     return RuleResult(
         rule_id="generic.index_present",
         status="passed",
-        message="Workspace index contains files.",
-        evidence={"file_count": file_count},
+        message="Selected workspace inventory contains files.",
+        evidence={
+            "files_considered": file_count,
+            "roots": roots,
+            "evidence_source": "current_workspace_inventory",
+        },
     )
 
 

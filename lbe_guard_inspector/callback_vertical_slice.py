@@ -8,6 +8,7 @@ from typing import Any, Callable, Mapping
 from agent import Context, GovernanceError
 
 from .guard_runner import GuardRunner
+from .project_profiler import ProjectProfiler
 
 CALLBACK_PROBLEM = "Provided callback is not a function"
 CALLBACK_PACK_ID = "cep_callback"
@@ -41,12 +42,13 @@ class CallbackVerticalSlice:
         max_results: int = 10,
     ) -> dict[str, Any]:
         root, root_name = self._resolve_exact_workspace(workspace_root)
+        canonical_workspace_id = ProjectProfiler.workspace_id(root)
         before = self._workspace_fingerprint(root)
 
         decision = self.runner.run(
             problem=CALLBACK_PROBLEM,
             workspace_root=str(root),
-            workspace_id=workspace_id or root_name,
+            workspace_id=canonical_workspace_id,
             pack_id=CALLBACK_PACK_ID,
             rule_id=CALLBACK_RULE_ID,
             guard_id=CALLBACK_RULE_ID,
@@ -54,6 +56,10 @@ class CallbackVerticalSlice:
             extensions=[".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"],
             max_results=max_results,
             reason=reason,
+            retrieval_mode="guard",
+            query="evalScript",
+            path_patterns=["*.js", "*.jsx", "*.ts", "*.tsx", "*.mjs", "*.cjs"],
+            evidence_requirements=["bounded call-site evidence"],
         )
 
         after = self._workspace_fingerprint(root)
@@ -91,7 +97,7 @@ class CallbackVerticalSlice:
             "request": {
                 "problem": CALLBACK_PROBLEM,
                 "workspace_root": str(root),
-                "workspace_id": workspace_id or root_name,
+                "workspace_id": canonical_workspace_id,
                 "requested_mode": "inspect",
             },
             "authorization": authorization,

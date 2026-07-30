@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from agent import Context, GovernanceError, inspect_file, search_workspace
+from agent import Context, GovernanceError, inspect_file
 from audit_controller import AuditError, RuleResult, register_rule
 
 RULE_ID = "cep.callback_contract"
@@ -156,7 +156,9 @@ def _live_candidates(ctx: Context, params: dict[str, Any]) -> dict[str, Any] | N
     """Find evalScript candidates from the exact live workspace, not the index."""
     raw_workspace = params.get("workspace_root")
     if not isinstance(raw_workspace, str) or not raw_workspace.strip():
-        return None
+        raise GovernanceError(
+            "workspace_root is required for exact CEP callback inspection"
+        )
 
     target = Path(raw_workspace).expanduser().resolve()
     if not target.exists() or not target.is_dir():
@@ -207,16 +209,7 @@ def _live_candidates(ctx: Context, params: dict[str, Any]) -> dict[str, Any] | N
 
 
 def _candidate_result(ctx: Context, params: dict[str, Any]) -> dict[str, Any]:
-    live = _live_candidates(ctx, params)
-    if live is not None:
-        return live
-    return search_workspace(
-        ctx,
-        "evalScript",
-        max_results=_MAX_FILES,
-        extensions=sorted(_ALLOWED_EXTENSIONS),
-        roots=params.get("roots"),
-    )
+    return _live_candidates(ctx, params)
 
 
 def rule_cep_callback_contract(ctx: Context, params: dict[str, Any]) -> RuleResult:
@@ -288,7 +281,7 @@ def rule_cep_callback_contract(ctx: Context, params: dict[str, Any]) -> RuleResu
         "invalid_callbacks": invalid,
         "unresolved_callbacks": unresolved,
         "valid_or_omitted_callbacks": valid,
-        "retrieval_source": result.get("retrieval_source", "agent.search_workspace"),
+        "retrieval_source": result.get("retrieval_source", "bounded_live_workspace_scan"),
         "scanned_files": result.get("scanned_files"),
         "scan_limit": result.get("scan_limit"),
         "workspace_root": result.get("workspace_root"),

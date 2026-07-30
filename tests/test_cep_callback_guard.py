@@ -45,7 +45,7 @@ cs.evalScript(
 
 def test_definite_literal_callback_fails(monkeypatch) -> None:
     module = _load_module()
-    monkeypatch.setattr(module, "search_workspace", lambda *args, **kwargs: _search_result())
+    monkeypatch.setattr(module, "_live_candidates", lambda *args, **kwargs: _search_result())
     monkeypatch.setattr(
         module,
         "inspect_file",
@@ -70,7 +70,7 @@ def test_definite_literal_callback_fails(monkeypatch) -> None:
 
 def test_inline_function_callback_passes(monkeypatch) -> None:
     module = _load_module()
-    monkeypatch.setattr(module, "search_workspace", lambda *args, **kwargs: _search_result())
+    monkeypatch.setattr(module, "_live_candidates", lambda *args, **kwargs: _search_result())
     monkeypatch.setattr(
         module,
         "inspect_file",
@@ -90,7 +90,7 @@ def test_inline_function_callback_passes(monkeypatch) -> None:
 
 def test_identifier_callback_is_blocked_not_guessed(monkeypatch) -> None:
     module = _load_module()
-    monkeypatch.setattr(module, "search_workspace", lambda *args, **kwargs: _search_result())
+    monkeypatch.setattr(module, "_live_candidates", lambda *args, **kwargs: _search_result())
     monkeypatch.setattr(
         module,
         "inspect_file",
@@ -113,7 +113,7 @@ def test_missing_evalscript_is_not_applicable(monkeypatch) -> None:
     module = _load_module()
     monkeypatch.setattr(
         module,
-        "search_workspace",
+        "_live_candidates",
         lambda *args, **kwargs: {
             "outcome": "no_matches",
             "searched_roots": ["workspace"],
@@ -128,7 +128,7 @@ def test_missing_evalscript_is_not_applicable(monkeypatch) -> None:
 
 def test_registered_rule_executes_through_audit_controller(monkeypatch) -> None:
     module = _load_module()
-    monkeypatch.setattr(module, "search_workspace", lambda *args, **kwargs: _search_result())
+    monkeypatch.setattr(module, "_live_candidates", lambda *args, **kwargs: _search_result())
     monkeypatch.setattr(
         module,
         "inspect_file",
@@ -152,3 +152,16 @@ def test_registered_rule_executes_through_audit_controller(monkeypatch) -> None:
 
     assert result.status == "failed"
     assert result.evidence["invalid_callbacks"][0]["callback_expression"] == "null"
+
+
+def test_missing_workspace_root_is_blocked_not_searched() -> None:
+    module = _load_module()
+
+    result = module._rule(
+        _context(),
+        {"roots": ["workspace"]},
+        module.rule_cep_callback_contract,
+    )
+
+    assert result.status == "blocked"
+    assert "workspace_root is required" in result.message

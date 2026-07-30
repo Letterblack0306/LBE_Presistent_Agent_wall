@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import Any
 
-from agent import Context, GovernanceError, inspect_file, search_workspace
+from agent import Context, GovernanceError
 from audit_controller import AuditError, RuleResult, register_rule
 
 
@@ -33,48 +36,92 @@ def rule_cep_manifest_exists(
     params: dict[str, Any],
 ) -> RuleResult:
     rule_id = "cep.manifest_exists"
-
-    result = search_workspace(
-        ctx,
-        "CSXS/manifest.xml",
-        max_results=10,
-        extensions=[".xml"],
-        roots=params.get("roots"),
-    )
-
-    if result.get("outcome") != "matches_found":
+    requested_roots = set(params.get("roots") or [root.name for root in ctx.roots])
+    examined: list[str] = []
+    for root in ctx.roots:
+        if root.name not in requested_roots:
+            continue
+        manifest = root.path / "CSXS" / "manifest.xml"
+        examined.append(f"{root.name}/CSXS/manifest.xml")
+        if not manifest.is_file():
+            continue
+        try:
+            document = ET.parse(manifest)
+        except (OSError, UnicodeDecodeError, ET.ParseError) as exc:
+            return RuleResult(
+                rule_id=rule_id,
+                status="blocked",
+                message=f"Canonical CEP manifest cannot be parsed: {exc}",
+                evidence={"path": f"{root.name}/CSXS/manifest.xml"},
+            )
         return RuleResult(
             rule_id=rule_id,
-            status="failed",
-            message="CEP manifest.xml is missing.",
+            status="passed",
+            message="CEP manifest.xml is present.",
             evidence={
-                "searched_roots": result.get("searched_roots"),
+                "path": f"{root.name}/CSXS/manifest.xml",
+                "root_element": _local_name(document.getroot().tag),
+                "evidence_source": "current_workspace_exact_path",
             },
         )
-
-    best = result["results"][0]
-
-    try:
-        content = inspect_file(
-            ctx,
-            best["path"],
-        ).get("content", "")
-    except Exception as exc:
-        return RuleResult(
-            rule_id=rule_id,
-            status="failed",
-            message=f"Could not read manifest: {exc}",
-        )
-
     return RuleResult(
         rule_id=rule_id,
-        status="passed",
-        message="CEP manifest.xml is present.",
-        evidence={
-            "path": best["path"],
-            "preview": content[:400],
-        },
+        status="failed",
+        message="CEP manifest.xml is missing.",
+        evidence={"examined_paths": examined},
     )
+
+
+def _selected_roots(ctx: Context, params: dict[str, Any]) -> list[Any]:
+    requested = params.get("roots")
+    requested_names = set(requested or [])
+    selected = [
+        root for root in ctx.roots
+        if not requested_names or root.name in requested_names
+    ]
+    found_names = {root.name for root in selected}
+    missing = requested_names - found_names
+    if missing:
+        raise GovernanceError(f"Unknown requested roots: {sorted(missing)}")
+    return selected
+
+
+def _exact_manifests(ctx: Context, params: dict[str, Any]) -> list[tuple[str, Any]]:
+    manifests: list[tuple[str, Any]] = []
+    for root in _selected_roots(ctx, params):
+        path = root.path / "CSXS" / "manifest.xml"
+        if path.is_file():
+            manifests.append((f"{root.name}/CSXS/manifest.xml", path))
+    return manifests
+
+
+def _local_name(value: str) -> str:
+    return value.rsplit("}", 1)[-1]
+
+
+def _parse_manifest(path: Path) -> ET.Element:
+    return ET.parse(path).getroot()
+
+
+def _first_descendant_text(root: ET.Element, local_name: str) -> str:
+    for element in root.iter():
+        if _local_name(element.tag) == local_name:
+            return (element.text or "").strip()
+    return ""
+
+
+def _registered_extension_ids(root: ET.Element) -> set[str]:
+    registered: set[str] = set()
+    for container in root.iter():
+        if _local_name(container.tag) != "ExtensionList":
+            continue
+        for child in container:
+            if _local_name(child.tag) != "Extension":
+                continue
+            extension_id = (child.attrib.get("Id") or "").strip()
+            if extension_id:
+                registered.add(extension_id)
+    return registered
 
 
 register_rule(
@@ -95,54 +142,55 @@ def rule_cep_host_version(
 ) -> RuleResult:
     rule_id = "cep.host_version"
 
-    result = search_workspace(
-        ctx,
-        "manifest.xml",
-        max_results=50,
-        extensions=[".xml"],
-        roots=params.get("roots"),
-    )
-
-    if result.get("outcome") != "matches_found":
+    manifests = _exact_manifests(ctx, params)
+    if not manifests:
         return RuleResult(
             rule_id=rule_id,
             status="not_applicable",
             message="manifest.xml not found; cannot verify host version.",
         )
 
-    for item in result.get("results", []):
+    examined: list[str] = []
+    for virtual_path, manifest in manifests:
         try:
-            content = inspect_file(
-                ctx,
-                item["path"],
-            ).get("content", "")
-        except Exception:
-            continue
-
-        lower = content.lower()
-
-        if (
-            "host" in lower
-            and (
-                "version" in lower
-                or "minversion" in lower
-                or "maxversion" in lower
-            )
-        ):
+            document = _parse_manifest(manifest)
+        except (OSError, UnicodeDecodeError, ET.ParseError) as exc:
             return RuleResult(
                 rule_id=rule_id,
-                status="passed",
-                message="manifest.xml contains host version metadata.",
-                evidence={
-                    "path": item["path"],
-                    "preview": content[:500],
-                },
+                status="blocked",
+                message=f"Could not read manifest: {exc}",
+                evidence={"path": virtual_path},
             )
+
+        examined.append(virtual_path)
+
+        for host in document.iter():
+            if _local_name(host.tag) != "Host":
+                continue
+            host_name = (host.attrib.get("Name") or "").strip()
+            version = (host.attrib.get("Version") or host.attrib.get("MinVersion") or "").strip()
+            valid_version = re.fullmatch(
+                r"(?:\d+(?:\.\d+){1,3}|\[\d+(?:\.\d+){1,3},\s*\d+(?:\.\d+){1,3}\])",
+                version,
+            )
+            if host_name and re.fullmatch(r"[A-Za-z0-9_.-]+", host_name) and valid_version:
+                return RuleResult(
+                    rule_id=rule_id,
+                    status="passed",
+                    message="Canonical CEP manifest declares a valid host identity and version.",
+                    evidence={
+                        "path": virtual_path,
+                        "host_name": host_name,
+                        "version": version,
+                        "evidence_source": "current_workspace_exact_path",
+                    },
+                )
 
     return RuleResult(
         rule_id=rule_id,
         status="failed",
-        message="manifest.xml does not declare host version metadata.",
+        message="Canonical CEP manifest does not declare a valid host identity and version.",
+        evidence={"examined_paths": examined},
     )
 
 
@@ -164,37 +212,44 @@ def rule_cep_debug_mode(
 ) -> RuleResult:
     rule_id = "cep.debug_mode"
 
-    result = search_workspace(
-        ctx,
-        "PlayerDebugMode",
-        max_results=20,
-        roots=params.get("roots"),
-    )
+    max_hits = 20
+    skipped_dirs = {".git", ".lbe", "node_modules", "dist", "build", "coverage", "__pycache__"}
+    hits: list[dict[str, Any]] = []
+    for root in _selected_roots(ctx, params):
+        for path in root.path.rglob("*"):
+            if not path.is_file() or any(part in skipped_dirs for part in path.relative_to(root.path).parts):
+                continue
+            try:
+                content = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if "playerdebugmode" not in content.lower():
+                continue
+            hits.append({
+                "path": f"{root.name}/{path.relative_to(root.path).as_posix()}",
+                "score": 1,
+            })
+            if len(hits) >= max_hits:
+                break
+        if len(hits) >= max_hits:
+            break
 
-    if result.get("outcome") != "matches_found":
+    if not hits:
         return RuleResult(
             rule_id=rule_id,
             status="blocked",
             message=(
-                "PlayerDebugMode reference was not found in the indexed "
-                "workspace. This usually means debug mode is not enabled "
-                "in host settings or references were not indexed."
+                "PlayerDebugMode reference was not found in the selected "
+                "workspace. This does not prove host debug mode is disabled."
             ),
             evidence={
-                "searched_roots": result.get("searched_roots"),
+                "roots_checked": [root.name for root in _selected_roots(ctx, params)],
+                "evidence_source": "current_workspace_bounded_scan",
             },
             severity="warning",
             required=False,
             fast_fail=False,
         )
-
-    hits = [
-        {
-            "path": item["path"],
-            "score": item["score"],
-        }
-        for item in result["results"][:5]
-    ]
 
     return RuleResult(
         rule_id=rule_id,
@@ -202,9 +257,10 @@ def rule_cep_debug_mode(
         message="Indexed workspace references PlayerDebugMode.",
         evidence={
             "hits": hits,
+            "evidence_source": "current_workspace_bounded_scan",
             "note": (
                 "Many PlayerDebugMode references were found."
-                if len(result.get("results", [])) >= 10
+                if len(hits) >= 10
                 else None
             ),
         },
@@ -232,32 +288,28 @@ def rule_cep_no_zip_in_repo(
 ) -> RuleResult:
     rule_id = "cep.no_zip_in_repo"
 
-    result = search_workspace(
-        ctx,
-        ".",
-        max_results=200,
-        extensions=[
-            ".zxp",
-            ".zip",
-            ".7z",
-            ".rar",
-            ".tar",
-            ".gz",
-        ],
-        roots=params.get("roots"),
-    )
+    archive_extensions = {".zxp", ".zip", ".7z", ".rar", ".tar", ".gz"}
+    skipped_dirs = {".git", ".lbe", "node_modules", "dist", "build", "coverage", "__pycache__"}
+    hits: list[str] = []
+    for root in _selected_roots(ctx, params):
+        for path in root.path.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in archive_extensions:
+                continue
+            if any(part in skipped_dirs for part in path.relative_to(root.path).parts):
+                continue
+            hits.append(f"{root.name}/{path.relative_to(root.path).as_posix()}")
+            if len(hits) >= 10:
+                break
+        if len(hits) >= 10:
+            break
 
-    if result.get("outcome") != "matches_found":
+    if not hits:
         return RuleResult(
             rule_id=rule_id,
             status="passed",
-            message="No packaging archives were found in the indexed roots.",
+            message="No packaging archives were found in the selected workspace roots.",
+            evidence={"evidence_source": "current_workspace_bounded_scan"},
         )
-
-    hits = [
-        item["path"]
-        for item in result["results"][:10]
-    ]
 
     return RuleResult(
         rule_id=rule_id,
@@ -265,6 +317,7 @@ def rule_cep_no_zip_in_repo(
         message="Packaging archives were found in the workspace.",
         evidence={
             "hits": hits,
+            "evidence_source": "current_workspace_bounded_scan",
         },
     )
 
@@ -440,4 +493,61 @@ register_rule(
         "cep.symlink_free",
         rule_cep_symlink_free,
     ),
+)
+
+
+def rule_cep_menubar_extension(
+    ctx: Context,
+    params: dict[str, Any],
+) -> RuleResult:
+    rule_id = "cep.menubar_extension"
+    supported_ui_types = {"Panel", "Modeless", "ModalDialog"}
+    manifests = _exact_manifests(ctx, params)
+    if not manifests:
+        return RuleResult(rule_id=rule_id, status="not_applicable", message="Canonical CEP manifest is absent.")
+
+    examined: list[str] = []
+    for virtual_path, manifest in manifests:
+        try:
+            document = _parse_manifest(manifest)
+        except (OSError, UnicodeDecodeError, ET.ParseError) as exc:
+            return RuleResult(rule_id=rule_id, status="blocked", message=f"Could not parse canonical manifest: {exc}", evidence={"path": virtual_path})
+        examined.append(virtual_path)
+        registered = _registered_extension_ids(document)
+        for extension in document.iter():
+            if _local_name(extension.tag) != "Extension":
+                continue
+            extension_id = (extension.attrib.get("Id") or "").strip()
+            if extension_id not in registered:
+                continue
+            for dispatch in extension.iter():
+                if _local_name(dispatch.tag) != "DispatchInfo":
+                    continue
+                ui_type = _first_descendant_text(dispatch, "Type")
+                menu = _first_descendant_text(dispatch, "Menu")
+                if ui_type in supported_ui_types and menu:
+                    return RuleResult(
+                        rule_id=rule_id,
+                        status="passed",
+                        message="Registered CEP extension has a supported UI type and non-empty Menu value.",
+                        evidence={
+                            "path": virtual_path,
+                            "extension_id": extension_id,
+                            "ui_type": ui_type,
+                            "menu": menu,
+                            "evidence_source": "current_workspace_exact_path",
+                        },
+                    )
+    return RuleResult(
+        rule_id=rule_id,
+        status="failed",
+        message="No registered CEP extension has both a supported UI type and a non-empty Menu value.",
+        evidence={"examined_paths": examined},
+    )
+
+
+register_rule(
+    "cep",
+    "cep.menubar_extension",
+    lambda ctx, p: _rule(ctx, p, "cep.menubar_extension", rule_cep_menubar_extension),
 )

@@ -98,6 +98,10 @@ class GuardRunner:
         roots: list[str] | None = None,
         max_results: int = 10,
         reason: str = "",
+        retrieval_mode: str = "diagnostic",
+        query: str | None = None,
+        path_patterns: list[str] | None = None,
+        evidence_requirements: list[str] | None = None,
     ) -> dict[str, Any]:
         """Run the full vertical slice and return the decision context."""
         problem = (problem or "").strip()
@@ -105,6 +109,8 @@ class GuardRunner:
             raise ValueError("problem must not be empty")
         if not pack_id or not rule_id:
             raise ValueError("pack_id and rule_id are required")
+        if retrieval_mode == "guard" and not query:
+            raise ValueError("guard mode requires a deterministic query")
 
         ctx = self.context_loader()
         resolved_root = self._resolve_root_name(ctx, workspace_root, roots)
@@ -125,12 +131,16 @@ class GuardRunner:
 
         package = self.evidence_service.build_evidence_package(
             task_id=task["task_id"],
-            query=problem,
+            query=query or problem,
             workspace_id=workspace_id,
             workspace_root=workspace_root,
             max_results=max_results,
             extensions=extensions,
             roots=ev_roots,
+            retrieval_mode=retrieval_mode,
+            rule_id=rule_id,
+            path_patterns=path_patterns,
+            evidence_requirements=evidence_requirements,
         )
 
         # Execute the registered guard against the exact target workspace.
@@ -156,7 +166,11 @@ class GuardRunner:
 
         # Run validation: independent re-read corroborating the exact supporting
         # workspace evidence against the original problem.
-        validation = self._run_validation(ctx, problem, scoped_workspace)
+        validation = self._run_validation(
+            ctx,
+            query if retrieval_mode == "guard" and query else problem,
+            scoped_workspace,
+        )
         package = {**package, "validation_evidence": validation}
 
         guard_result = self.inspector.evaluate(
@@ -167,13 +181,36 @@ class GuardRunner:
             workspace_id=workspace_id or package.get("workspace_id"),
             reason=reason or f"Vertical slice for {pack_id}.{rule_id}",
         )
-
-        return {
+        response = {
             "task": task,
             "evidence_package": package,
             "rule_result": _rule_result_to_dict(rule_result),
             "guard_result": guard_result,
         }
+        rule_status = (
+            rule_result.get("status")
+            if isinstance(rule_result, Mapping)
+            else getattr(rule_result, "status", None)
+        )
+        if rule_status == "failed":
+            investigation = self.evidence_service.build_evidence_package(
+                task_id=f"{task['task_id']}:investigation",
+                query=problem,
+                workspace_id=workspace_id,
+                workspace_root=workspace_root,
+                max_results=max_results,
+                extensions=extensions,
+                roots=ev_roots,
+                retrieval_mode="investigation",
+            )
+            response["investigation"] = {
+                "triggered_by_rule_id": rule_id,
+                "known_evidence_refs": [
+                    item.get("ref") for item in scoped_workspace if item.get("ref")
+                ],
+                "evidence_package": investigation,
+            }
+        return response
 
     # -- helpers -----------------------------------------------------------
 
@@ -297,6 +334,8 @@ class GuardRunner:
         content = inspected.get("content") or ""
         query_lower = query.lower()
         content_lower = content.lower()
+        relative_path = str((top.get("metadata") or {}).get("relative_path") or "").replace("\\", "/").lower()
+        path_query_match = query_lower.strip("/") == relative_path.strip("/")
         raw_terms = re.findall(r"[a-z0-9_.$/-]+", query_lower)
         meaningful = [t for t in raw_terms if len(t) > 2 and t not in _STOP_WORDS]
         phrase_match = query_lower in content_lower
@@ -307,7 +346,7 @@ class GuardRunner:
 
         matched_terms = [term for term in meaningful if _has(term)]
         required = 2 if len(meaningful) >= 2 else 1
-        corroborated = phrase_match or len(matched_terms) >= required
+        corroborated = path_query_match or phrase_match or len(matched_terms) >= required
         if not corroborated:
             return []
 
@@ -324,7 +363,7 @@ class GuardRunner:
                 "snippet": (content[:400] or None),
                 "score": None,
                 "matched_terms": matched_terms,
-                "exact_phrase": phrase_match,
+                "exact_phrase": phrase_match or path_query_match,
                 "authority": 5,
                 "verified": True,
                 "classification": "workspace_corroboration",
@@ -333,6 +372,7 @@ class GuardRunner:
                     "read_only": True,
                     "virtual_path": virtual,
                     "corroborated_workspace_ref": top.get("ref"),
+                    "corroborated_exact_path": path_query_match,
                 },
             }
         ]

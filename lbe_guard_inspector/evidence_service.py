@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import heapq
+import fnmatch
 import re
 import uuid
 from datetime import datetime, timezone
@@ -49,33 +50,45 @@ class EvidenceService:
         extensions: list[str] | None = None,
         roots: list[str] | None = None,
         include_excluded: bool = False,
+        retrieval_mode: str = "diagnostic",
+        rule_id: str | None = None,
+        path_patterns: list[str] | None = None,
+        evidence_requirements: list[str] | None = None,
     ) -> dict[str, Any]:
         query = query.strip()
         if not query:
             raise ValueError("query must not be empty")
+        if retrieval_mode not in {"diagnostic", "guard", "investigation"}:
+            raise ValueError("retrieval_mode must be diagnostic, guard, or investigation")
+        if retrieval_mode == "guard":
+            if not workspace_id or not workspace_root or not rule_id:
+                raise ValueError("guard mode requires workspace_id, workspace_root, and rule_id")
+            if not path_patterns:
+                raise ValueError("guard mode requires explicit path_patterns")
 
         max_results = max(1, min(int(max_results), 200))
         ctx = Context.load()
 
-        search_result = search_workspace(
-            ctx,
-            query,
-            max_results=max_results,
-            extensions=extensions,
-            roots=roots,
-        )
-
-        if not search_result.get("search_completed", False):
-            raise RuntimeError(
-                search_result.get("message")
-                or search_result.get("error")
-                or "Search did not complete."
+        search_result: dict[str, Any] | None = None
+        mapped_evidence: list[dict[str, Any]] = []
+        if retrieval_mode != "guard":
+            search_result = search_workspace(
+                ctx,
+                query,
+                max_results=max_results,
+                extensions=extensions,
+                roots=roots,
             )
-
-        mapped_evidence = [
-            self._map_index_result(item)
-            for item in search_result.get("results", [])
-        ]
+            if not search_result.get("search_completed", False):
+                raise RuntimeError(
+                    search_result.get("message")
+                    or search_result.get("error")
+                    or "Search did not complete."
+                )
+            mapped_evidence = [
+                self._map_index_result(item)
+                for item in search_result.get("results", [])
+            ]
 
         excluded_evidence = [
             item
@@ -101,31 +114,41 @@ class EvidenceService:
 
         workspace_evidence: list[dict[str, Any]] = []
         if workspace_root:
-            workspace_evidence = self._search_current_workspace(
-                ctx=ctx,
-                workspace_root=workspace_root,
-                workspace_id=workspace_id,
-                query=query,
-                max_results=max_results,
-                extensions=extensions,
-                include_excluded=include_excluded,
-            )
+            if retrieval_mode == "guard":
+                workspace_evidence = self._collect_guard_evidence(
+                    ctx=ctx,
+                    workspace_root=workspace_root,
+                    workspace_id=workspace_id,
+                    path_patterns=path_patterns or [],
+                    extensions=extensions,
+                    include_excluded=include_excluded,
+                    evidence_requirements=evidence_requirements or [],
+                )
+            else:
+                workspace_evidence = self._search_current_workspace(
+                    ctx=ctx,
+                    workspace_root=workspace_root,
+                    workspace_id=workspace_id,
+                    query=query,
+                    max_results=max_results,
+                    extensions=extensions,
+                    include_excluded=include_excluded,
+                )
 
         gaps: list[str] = []
-        outcome = search_result.get("outcome")
-        if outcome == "scope_empty":
-            gaps.append("No indexed files matched the requested search scope.")
-        elif outcome == "no_matches":
-            gaps.append("Indexed files were scanned, but no content matched the query.")
+        if search_result is not None:
+            outcome = search_result.get("outcome")
+            if outcome == "scope_empty":
+                gaps.append("No indexed files matched the requested search scope.")
+            elif outcome == "no_matches":
+                gaps.append("Indexed files were scanned, but no content matched the query.")
 
         if not workspace_root:
             gaps.append(
                 "Current workspace evidence was not supplied; workspace PASS/FAIL is not permitted."
             )
         elif not workspace_evidence:
-            gaps.append(
-                "The current workspace was scanned, but no workspace evidence matched the query."
-            )
+            gaps.append("No current workspace evidence satisfied the retrieval requirements.")
 
         contradictions = self._detect_contradictions(
             indexed_evidence, workspace_evidence
@@ -145,6 +168,73 @@ class EvidenceService:
         }
 
         return validate_contract("evidence_package", package)
+
+    def _collect_guard_evidence(
+        self,
+        *,
+        ctx: Context,
+        workspace_root: str,
+        workspace_id: str,
+        path_patterns: list[str],
+        extensions: list[str] | None,
+        include_excluded: bool,
+        evidence_requirements: list[str],
+    ) -> list[dict[str, Any]]:
+        root = Path(workspace_root).expanduser().resolve()
+        if not root.is_dir():
+            raise FileNotFoundError(f"Workspace root does not exist or is not a directory: {root}")
+        configured_root = self._configured_parent_root(ctx, root)
+        if configured_root is None:
+            raise GovernanceError(f"Workspace root is outside configured knowledge roots: {root}")
+        allowed_extensions = {
+            value.lower() if value.startswith(".") else f".{value.lower()}"
+            for value in (extensions or sorted(_DEFAULT_EXTENSIONS))
+        }
+        normalized_patterns = [pattern.replace("\\", "/").strip("/") for pattern in path_patterns]
+        evidence: list[dict[str, Any]] = []
+        for path in sorted(root.rglob("*"), key=lambda item: item.as_posix().lower()):
+            if not path.is_file() or path.suffix.lower() not in allowed_extensions:
+                continue
+            relative = path.relative_to(root).as_posix()
+            if not any(fnmatch.fnmatchcase(relative, pattern) for pattern in normalized_patterns):
+                continue
+            classification = _classify_path(relative)
+            # Guard mode is driven by explicit approved paths.  A required
+            # canonical artifact (for example `.lbe/module-registry.json`) is
+            # evidence even when broad diagnostic retrieval would classify it
+            # as generated and omit it.
+            try:
+                raw = path.read_bytes()
+            except (OSError, PermissionError):
+                continue
+            content = raw.decode("utf-8", errors="ignore")
+            evidence.append({
+                "ref": f"workspace:{workspace_id}:{relative}",
+                "source_type": "workspace",
+                "record_id": None,
+                "workspace_id": workspace_id,
+                "path": str(path),
+                "hash": hashlib.sha256(raw).hexdigest(),
+                "line_start": 1 if content else None,
+                "line_end": 1 if content else None,
+                "snippet": content[:400] or None,
+                "score": None,
+                "matched_terms": [],
+                "exact_phrase": None,
+                "authority": 2,
+                "verified": True,
+                "classification": "current_workspace",
+                "metadata": {
+                    "configured_root": configured_root,
+                    "workspace_root": str(root),
+                    "relative_path": relative,
+                    "retrieval_source": "guard_exact_path_patterns",
+                    "path_patterns": normalized_patterns,
+                    "evidence_requirements": list(evidence_requirements),
+                    "read_only": True,
+                },
+            })
+        return evidence
 
     @staticmethod
     def _detect_contradictions(

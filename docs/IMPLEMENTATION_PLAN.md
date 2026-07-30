@@ -29,6 +29,34 @@ The model may select guards, form hypotheses, and explain results. It must not i
 - Runtime integrations may map capabilities and configuration, but must not reimplement or reinterpret Guard Inspector decisions.
 - Runtime profiles cannot add arbitrary guard selection, mutation, or repair authority.
 
+## Controlled integration checkpoint - deterministic project profiling
+
+Status: complete in the current worktree; integration proof remains the next
+milestone.
+
+The audit controller profiles the selected canonical project root using an
+approved signal allowlist. The canonical-root hash produces the target
+`workspace_id`; a configured root is therefore not reused as a shared project
+identity. Automatic pack selection requires exactly one confident profile. An
+unknown or ambiguous profile returns `insufficient_evidence` and does not
+guess.
+
+The report preserves the selected pack rationale as signal path/hash evidence.
+Generated inspector state stores historical snapshots outside the audited
+workspace and compares them on later audits. Snapshot data is historical
+memory only: the current filesystem remains the sole source of workspace
+truth.
+
+The CEP manifest guard is part of this proof boundary: it reads the exact
+`CSXS/manifest.xml` below the selected workspace root rather than treating
+shared-index or sibling-project matches as evidence.
+
+All CEP checks now use bounded selected-workspace evidence. The generic
+inventory precondition uses the controller's selected-workspace inventory,
+not global index state. Callback and module-registry guards retain their
+existing bounded live-workspace paths. Callback inspection rejects missing
+`workspace_root` scope instead of using a shared-index fallback.
+
 ## Completed foundation: Phases 1-12
 
 Completed foundation includes:

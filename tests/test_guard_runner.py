@@ -126,6 +126,8 @@ def test_run_fail_when_guard_failed_with_workspace_evidence() -> None:
     runner, _ = _runner(_package(), _rule("failed"))
     result = runner.run(problem=QUERY, pack_id="cep", rule_id="cep.manifest_exists")
     assert result["guard_result"]["verdict"] == VERDICT_FAIL
+    assert result["investigation"]["triggered_by_rule_id"] == "cep.manifest_exists"
+    assert result["investigation"]["evidence_package"]["query"] == QUERY
 
 
 def test_run_blocked_rule_yields_insufficient() -> None:

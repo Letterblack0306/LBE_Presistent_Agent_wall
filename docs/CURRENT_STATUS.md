@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-07-28
+Updated: 2026-07-30
 
 ## Objective
 
@@ -202,9 +202,50 @@ The verdict contract remains:
 
 The model may select, hypothesize, and explain. It must not invent or reinterpret the verdict.
 
+## Controlled integration checkpoint: deterministic project profiling
+
+The audit controller now profiles one selected canonical project root before it
+chooses an approved guard pack. A configured knowledge root is not treated as a
+project identity: `workspace_id` is derived from the canonical project root,
+and sibling projects are not used as profile evidence.
+
+- approved signals currently include `package.json`, `pyproject.toml`,
+  `CSXS/manifest.xml`, and `.lbe/module-registry.json`;
+- one confident profile selects only its allowlisted guard packs and records
+  the signal path/hash rationale in the audit report;
+- the CEP manifest guard reads only `CSXS/manifest.xml` beneath the selected
+  workspace root; it does not use a sibling project or the shared index as
+  manifest proof;
+- the remaining CEP and generic guards use bounded selected-workspace scans or
+  the controller's selected-workspace inventory; callback and module-registry
+  guards already use bounded live-workspace evidence;
+- callback inspection now requires an exact `workspace_root`; absent scope is
+  reported as `blocked` and never falls back to shared-index retrieval;
+- zero or multiple confident profiles produce `insufficient_evidence` for
+  automatic selection rather than guessing;
+- a snapshot is persisted only under generated inspector state at
+  `state/workspace-intelligence/<workspace_id>/snapshot.json`;
+- snapshots record historical signal hashes and prior guard statuses, then
+  report added, removed, and changed signals on the next audit;
+- current filesystem profiling remains authoritative; a snapshot never acts as
+  current workspace proof.
+
+Validation for this checkpoint:
+
+- focused profiling/controller/guard suite: `24 passed`;
+- full repository suite: `265 passed`;
+- `git diff --check`: passed.
+
 ## Next implementation target
 
-Phase 20 should define the minimum release-readiness boundary for the proven read-only product: packaging, stable public invocation documentation, compatibility checks, and release validation without adding repair authority, arbitrary guard selection, or vendor-specific runtime logic.
+The next milestone is an end-to-end proof of the project-scoped chain:
+
+```text
+workspace resolver -> project profiler -> guard selector -> exact evidence
+-> deterministic guard -> snapshot comparison -> evidence report
+```
+
+It must not add repair authority, arbitrary guard selection, or vendor-specific runtime logic.
 
 ## Not yet completed
 

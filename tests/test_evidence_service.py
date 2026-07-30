@@ -10,6 +10,43 @@ class FakeContext:
         return cls()
 
 
+def test_guard_mode_uses_exact_paths_without_querying_index(tmp_path, monkeypatch) -> None:
+    from agent import Context, KnowledgeRoot
+
+    target = tmp_path / "project"; target.mkdir()
+    (target / "CSXS").mkdir()
+    (target / "CSXS" / "manifest.xml").write_text("<ExtensionManifest/>", encoding="utf-8")
+    context = Context(config={"max_file_bytes": 1_000_000}, governance={}, roots=(KnowledgeRoot("dev", tmp_path),))
+
+    class _BoundContext:
+        @classmethod
+        def load(cls):
+            return context
+
+    monkeypatch.setattr("lbe_guard_inspector.evidence_service.Context", _BoundContext)
+    monkeypatch.setattr(
+        "lbe_guard_inspector.evidence_service.search_workspace",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("guard mode must not query the index")),
+    )
+
+    package = EvidenceService().build_evidence_package(
+        task_id="guard-1",
+        query="CSXS/manifest.xml",
+        workspace_id="workspace_abc",
+        workspace_root=str(target),
+        retrieval_mode="guard",
+        rule_id="cep.manifest_exists",
+        path_patterns=["CSXS/manifest.xml"],
+        evidence_requirements=["canonical manifest"],
+        extensions=[".xml"],
+    )
+
+    assert package["query"] == "CSXS/manifest.xml"
+    assert package["indexed_reference_evidence"] == []
+    assert package["current_workspace_evidence"][0]["metadata"]["relative_path"] == "CSXS/manifest.xml"
+    assert package["current_workspace_evidence"][0]["metadata"]["evidence_requirements"] == ["canonical manifest"]
+
+
 def test_build_evidence_package_wraps_existing_search() -> None:
     search_output = {
         "query": "Provided callback is not a function",
