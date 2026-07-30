@@ -1,0 +1,5 @@
+{
+  "endpoint": "http://127.0.0.1:1234/v1/chat/completions",
+  "model": "replace-with-provider-model-id",
+  "timeout_seconds": 120
+}
