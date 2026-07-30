@@ -6,6 +6,7 @@ import socket
 import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Mapping, Protocol
 
 from .reasoning_contracts import (
@@ -97,20 +98,41 @@ class OpenAICompatibleReasoningBackend:
         self._transport = transport or UrllibJsonTransport()
 
     def plan(self, request: ReasoningRequest) -> ReasoningPlan:
-        result = self._complete("planning", _PLANNING_SYSTEM_PROMPT, asdict(request))
+        result = self._complete(
+            "planning",
+            _PLANNING_SYSTEM_PROMPT,
+            _PLANNING_OUTPUT_CONTRACT,
+            _PLANNING_JSON_SCHEMA,
+            _planning_input_payload(request),
+        )
         try:
-            return ReasoningPlan.from_mapping(result)
+            plan = ReasoningPlan.from_mapping(result)
+            _require_relative_evidence_paths(plan)
+            return plan
         except (TypeError, ValueError) as exc:
             raise ProviderError("PROVIDER_SCHEMA_ERROR", f"invalid planning response: {exc}") from exc
 
     def explain(self, request: ExplanationRequest) -> ExplanationResult:
-        result = self._complete("explanation", _EXPLANATION_SYSTEM_PROMPT, asdict(request))
+        result = self._complete(
+            "explanation",
+            _EXPLANATION_SYSTEM_PROMPT,
+            _EXPLANATION_OUTPUT_CONTRACT,
+            _EXPLANATION_JSON_SCHEMA,
+            asdict(request),
+        )
         try:
             return ExplanationResult.from_mapping(result)
         except (TypeError, ValueError) as exc:
             raise ProviderError("PROVIDER_SCHEMA_ERROR", f"invalid explanation response: {exc}") from exc
 
-    def _complete(self, stage: str, system_prompt: str, input_payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    def _complete(
+        self,
+        stage: str,
+        system_prompt: str,
+        output_contract: Mapping[str, Any],
+        output_schema: Mapping[str, Any],
+        input_payload: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
         payload = {
             "model": self._config.model.strip(),
             "messages": [
@@ -118,13 +140,25 @@ class OpenAICompatibleReasoningBackend:
                 {
                     "role": "user",
                     "content": json.dumps(
-                        {"stage": stage, "input": input_payload},
+                        {
+                            "stage": stage,
+                            "output_contract": output_contract,
+                            "input": input_payload,
+                        },
                         ensure_ascii=False,
                         sort_keys=True,
                     ),
                 },
             ],
             "temperature": 0,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": f"lbe_{stage}_response",
+                    "strict": True,
+                    "schema": output_schema,
+                },
+            },
         }
         headers = {"Content-Type": "application/json"}
         if self._config.api_key:
@@ -145,6 +179,27 @@ class OpenAICompatibleReasoningBackend:
         return decoded
 
 
+def _planning_input_payload(request: ReasoningRequest) -> Mapping[str, Any]:
+    payload = asdict(request)
+    identity = dict(payload.get("workspace_identity", {}))
+    identity.pop("target_project_root", None)
+    payload["workspace_identity"] = identity
+    return payload
+
+
+def _require_relative_evidence_paths(plan: ReasoningPlan) -> None:
+    for item in plan.evidence_requests:
+        path = item.path.strip()
+        if (
+            not path
+            or PureWindowsPath(path).is_absolute()
+            or PurePosixPath(path).is_absolute()
+            or path.startswith(("/", "\\"))
+            or (len(path) >= 2 and path[1] == ":")
+        ):
+            raise ValueError(f"evidence path must be workspace-relative: {item.path}")
+
+
 def _extract_message_content(response: Mapping[str, Any]) -> str:
     choices = response.get("choices")
     if not isinstance(choices, list) or len(choices) != 1:
@@ -161,6 +216,69 @@ def _extract_message_content(response: Mapping[str, Any]) -> str:
     return content.strip()
 
 
-_PLANNING_SYSTEM_PROMPT = """You are the bounded planning stage inside LBE. Return one JSON object matching the supplied planning contract exactly. Use only approved guard IDs, approved tool IDs, and workspace-relative paths from the input. Do not return verdicts, authorization, commands, writes, repairs, mutations, policy decisions, or memory-promotion instructions. Do not include prose outside the JSON object."""
+_PLANNING_OUTPUT_CONTRACT = {
+    "interpreted_problem": "non-empty string",
+    "ambiguities": ["string"],
+    "candidate_guard_ids": ["approved guard ID string"],
+    "evidence_requests": [
+        {
+            "tool_id": "approved tool ID string",
+            "path": "workspace-relative path without a leading slash, backslash, or drive prefix",
+            "reason": "non-empty string",
+        }
+    ],
+    "validation_requests": ["approved validation ID string"],
+    "explanation_focus": ["string"],
+}
 
-_EXPLANATION_SYSTEM_PROMPT = """You are the bounded explanation stage inside LBE. The deterministic result is final. Return one JSON object with exactly one field: explanation. Explain the supplied result and evidence concisely. Do not add or alter verdicts, authority, evidence, governance state, commands, writes, repairs, or policy decisions."""
+_EXPLANATION_OUTPUT_CONTRACT = {"explanation": "non-empty string"}
+
+_PLANNING_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "interpreted_problem": {"type": "string", "minLength": 1},
+        "ambiguities": {"type": "array", "items": {"type": "string"}},
+        "candidate_guard_ids": {"type": "array", "items": {"type": "string"}},
+        "evidence_requests": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tool_id": {"type": "string", "minLength": 1},
+                    "path": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[^/\\\\:][^:]*$",
+                    },
+                    "reason": {"type": "string", "minLength": 1},
+                },
+                "required": ["tool_id", "path", "reason"],
+                "additionalProperties": False,
+            },
+        },
+        "validation_requests": {"type": "array", "items": {"type": "string"}},
+        "explanation_focus": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": [
+        "interpreted_problem",
+        "ambiguities",
+        "candidate_guard_ids",
+        "evidence_requests",
+        "validation_requests",
+        "explanation_focus",
+    ],
+    "additionalProperties": False,
+}
+
+_EXPLANATION_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "explanation": {"type": "string", "minLength": 1},
+    },
+    "required": ["explanation"],
+    "additionalProperties": False,
+}
+
+_PLANNING_SYSTEM_PROMPT = """You are the bounded planning stage inside LBE. Return exactly one top-level JSON object with exactly these six keys: interpreted_problem, ambiguities, candidate_guard_ids, evidence_requests, validation_requests, explanation_focus. Do not wrap the object in planning_contract, result, output, data, or any other key. interpreted_problem must be a non-empty string. ambiguities, candidate_guard_ids, validation_requests, and explanation_focus must be JSON arrays of strings and may be empty. evidence_requests must be a JSON array of objects with exactly tool_id, path, and reason. Every evidence path must be workspace-relative and must not begin with a slash or backslash, contain a drive prefix, use a UNC prefix, or reconstruct an absolute workspace root. Use only approved guard IDs, approved tool IDs, approved validation IDs, and workspace-relative paths supplied in the input. Do not return verdicts, authorization, commands, writes, repairs, mutations, policy decisions, or memory-promotion instructions. Do not include Markdown or prose outside the JSON object."""
+
+_EXPLANATION_SYSTEM_PROMPT = """You are the bounded explanation stage inside LBE. The deterministic result is final. Return exactly one top-level JSON object with exactly one key: explanation. Do not wrap it in result, output, data, or any other key. explanation must be a non-empty string that concisely explains only the supplied result and evidence. Do not add or alter verdicts, authority, evidence, governance state, commands, writes, repairs, or policy decisions. Do not include Markdown or prose outside the JSON object."""

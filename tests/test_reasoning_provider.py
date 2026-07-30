@@ -58,6 +58,23 @@ def choice(value) -> dict:
     return {"choices": [{"message": {"content": json.dumps(value)}}]}
 
 
+def valid_plan(path: str = "package.json") -> dict:
+    return {
+        "interpreted_problem": "inspect package metadata",
+        "ambiguities": [],
+        "candidate_guard_ids": ["npm.package_metadata"],
+        "evidence_requests": [
+            {
+                "tool_id": "workspace.read",
+                "path": path,
+                "reason": "inspect metadata",
+            }
+        ],
+        "validation_requests": ["guard_runner.independent_reread"],
+        "explanation_focus": ["package metadata"],
+    }
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
@@ -72,23 +89,7 @@ def test_provider_config_requires_explicit_valid_values(kwargs):
 
 
 def test_planning_call_uses_explicit_config_and_typed_contract():
-    response = choice(
-        {
-            "interpreted_problem": "inspect package metadata",
-            "ambiguities": [],
-            "candidate_guard_ids": ["npm.package_metadata"],
-            "evidence_requests": [
-                {
-                    "tool_id": "workspace.read",
-                    "path": "package.json",
-                    "reason": "inspect metadata",
-                }
-            ],
-            "validation_requests": ["guard_runner.independent_reread"],
-            "explanation_focus": ["package metadata"],
-        }
-    )
-    transport = FakeTransport(response)
+    transport = FakeTransport(choice(valid_plan()))
     backend = OpenAICompatibleReasoningBackend(
         config=ProviderConfig(
             endpoint="http://127.0.0.1:1234/v1/chat/completions",
@@ -108,7 +109,44 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     assert call["headers"]["Authorization"] == "Bearer secret"
     assert call["payload"]["model"] == "local-model"
     assert call["payload"]["temperature"] == 0
-    assert json.loads(call["payload"]["messages"][1]["content"])["stage"] == "planning"
+    response_format = call["payload"]["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["name"] == "lbe_planning_response"
+    assert response_format["json_schema"]["strict"] is True
+    schema = response_format["json_schema"]["schema"]
+    assert schema["type"] == "object"
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == {
+        "interpreted_problem",
+        "ambiguities",
+        "candidate_guard_ids",
+        "evidence_requests",
+        "validation_requests",
+        "explanation_focus",
+    }
+    evidence_schema = schema["properties"]["evidence_requests"]["items"]
+    assert evidence_schema["required"] == ["tool_id", "path", "reason"]
+    assert evidence_schema["additionalProperties"] is False
+    assert evidence_schema["properties"]["path"]["pattern"] == "^[^/\\\\:][^:]*$"
+    user_payload = json.loads(call["payload"]["messages"][1]["content"])
+    assert user_payload["stage"] == "planning"
+    assert set(user_payload["output_contract"]) == {
+        "interpreted_problem",
+        "ambiguities",
+        "candidate_guard_ids",
+        "evidence_requests",
+        "validation_requests",
+        "explanation_focus",
+    }
+    assert user_payload["input"]["workspace_identity"] == {
+        "configured_root_id": "root-1",
+        "workspace_id": "workspace-1",
+    }
+    assert "C:/repo" not in call["payload"]["messages"][1]["content"]
+    system_prompt = call["payload"]["messages"][0]["content"]
+    assert "exactly these six keys" in system_prompt
+    assert "Do not wrap the object in planning_contract" in system_prompt
+    assert "must not begin with a slash or backslash" in system_prompt
 
 
 def test_explanation_call_is_separate_and_typed():
@@ -121,7 +159,21 @@ def test_explanation_call_is_separate_and_typed():
     result = backend.explain(explanation_request())
 
     assert result.explanation == "The deterministic guard passed."
-    assert json.loads(transport.calls[0]["payload"]["messages"][1]["content"])["stage"] == "explanation"
+    call = transport.calls[0]
+    user_payload = json.loads(call["payload"]["messages"][1]["content"])
+    assert user_payload["stage"] == "explanation"
+    assert user_payload["output_contract"] == {"explanation": "non-empty string"}
+    response_format = call["payload"]["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["name"] == "lbe_explanation_response"
+    assert response_format["json_schema"]["strict"] is True
+    assert response_format["json_schema"]["schema"] == {
+        "type": "object",
+        "properties": {"explanation": {"type": "string", "minLength": 1}},
+        "required": ["explanation"],
+        "additionalProperties": False,
+    }
+    assert "exactly one top-level JSON object" in call["payload"]["messages"][0]["content"]
 
 
 @pytest.mark.parametrize(
@@ -159,6 +211,42 @@ def test_schema_invalid_planning_response_is_rejected():
         backend.plan(planning_request())
 
     assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+
+
+def test_wrapped_planning_contract_is_rejected_instead_of_silently_unwrapped():
+    backend = OpenAICompatibleReasoningBackend(
+        config=ProviderConfig(endpoint="http://provider", model="model", timeout_seconds=5),
+        transport=FakeTransport(choice({"planning_contract": {}})),
+    )
+
+    with pytest.raises(ProviderError) as exc:
+        backend.plan(planning_request())
+
+    assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+    assert "unsupported planning_contract" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/pyproject.toml",
+        "\\pyproject.toml",
+        "C:/repo/pyproject.toml",
+        "C:\\repo\\pyproject.toml",
+        "\\\\server\\share\\pyproject.toml",
+    ],
+)
+def test_absolute_evidence_paths_are_rejected_after_provider_decode(path):
+    backend = OpenAICompatibleReasoningBackend(
+        config=ProviderConfig(endpoint="http://provider", model="model", timeout_seconds=5),
+        transport=FakeTransport(choice(valid_plan(path))),
+    )
+
+    with pytest.raises(ProviderError) as exc:
+        backend.plan(planning_request())
+
+    assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+    assert "workspace-relative" in str(exc.value)
 
 
 def test_injected_transport_failure_is_preserved():
