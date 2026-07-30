@@ -12,7 +12,9 @@ from agent import (
 )
 from lbe_guard_inspector.callback_vertical_slice import CallbackVerticalSlice
 from lbe_guard_inspector.module_registry_vertical_slice import ModuleRegistryVerticalSlice
+from lbe_guard_inspector.reasoning_config import load_provider_config
 from lbe_guard_inspector.reasoning_contracts import LBERequest, LBEResponse
+from lbe_guard_inspector.reasoning_runtime import build_openai_compatible_controller
 
 _INSPECTION_FIELDS = frozenset({"workspace_root", "workspace_id", "reason", "max_results"})
 _MAX_INSPECTION_RESULTS = 50
@@ -242,13 +244,36 @@ def make_handler(reasoning_controller: _ReasoningController) -> type[Handler]:
     return BoundHandler
 
 
+def _startup_handler(
+    config: Mapping[str, Any],
+    *,
+    config_path=CONFIG_PATH,
+) -> type[Handler]:
+    """Build the root handler with reasoning disabled unless explicitly configured."""
+    provider_config_value = config.get("reasoning_provider_config")
+    if provider_config_value is None:
+        return Handler
+    if not isinstance(provider_config_value, str) or not provider_config_value.strip():
+        raise GovernanceError(
+            "'reasoning_provider_config' must be a non-empty string when supplied"
+        )
+
+    provider_config_path = config_path.parent / provider_config_value.strip()
+    provider_config = load_provider_config(provider_config_path)
+    controller = build_openai_compatible_controller(
+        provider_config=provider_config
+    )
+    return make_handler(controller)
+
+
 def main() -> None:
     config = load_json(CONFIG_PATH)
     host = str(config.get("server_host", "127.0.0.1"))
     if host not in {"127.0.0.1", "localhost"}:
         raise GovernanceError("Server host must remain local-only")
     port = int(config.get("server_port", 8765))
-    server = ThreadingHTTPServer((host, port), Handler)
+    handler = _startup_handler(config)
+    server = ThreadingHTTPServer((host, port), handler)
     print(f"CEP/LBE SQLite agent listening on http://{host}:{port}")
     print("Mode: read-only local retrieval and fixed guard inspection")
     print(

@@ -16,5 +16,6 @@
     "/build/",
     "/release/",
     "/node_modules/"
-  ]
+  ],
+  "reasoning_provider_config": "reasoning-provider.json"
 }
