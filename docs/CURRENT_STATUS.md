@@ -233,20 +233,30 @@ and sibling projects are not used as profile evidence.
 
 Validation for this checkpoint:
 
-- focused profiling/controller/guard suite: `24 passed`;
-- full repository suite: `265 passed`;
+- focused controller and installed-package suite: `16 passed`;
+- full repository suite: `283 passed`;
 - `git diff --check`: passed.
 
-## Next implementation target
+## Completed project-scoped audit proof
 
-The next milestone is an end-to-end proof of the project-scoped chain:
+The end-to-end project-scoped chain is now proven through the installed
+package:
 
 ```text
 workspace resolver -> project profiler -> guard selector -> exact evidence
 -> deterministic guard -> snapshot comparison -> evidence report
 ```
 
-It must not add repair authority, arbitrary guard selection, or vendor-specific runtime logic.
+The public command is:
+
+```powershell
+lbe-guard-audit audit --workspace-root "<target-project-root>"
+```
+
+The installed-package smoke test proves the generic audit path as well as the
+fixed callback and module-registry slices. The command remains deterministic,
+read-only, project-scoped, and unable to accept arbitrary guard selection or
+repair authority.
 
 ## Not yet completed
 
