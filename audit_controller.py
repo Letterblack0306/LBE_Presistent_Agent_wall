@@ -12,6 +12,11 @@ from typing import Any, Callable
 from lbe_guard_inspector.project_profiler import ProjectProfiler
 from lbe_guard_inspector.project_snapshots import ProjectSnapshotStore
 from lbe_guard_inspector.workspace_identity import resolve_workspace_identity, scoped_context
+from lbe_guard_inspector.guard_catalog import (
+    FOUNDATION_GUARD_IDS,
+    resolve_foundation_guards,
+    select_guard_catalog,
+)
 
 # Keep one module identity when this file is executed directly.
 # Rule packs may import ``audit_controller.RuleResult``; without this alias,
@@ -44,10 +49,6 @@ VALID_RULE_STATUSES = frozenset({
     "blocked",
     "not_applicable",
 })
-FOUNDATION_GUARD_IDS = (
-    "generic.index_present",
-    "generic.forbidden_roots",
-)
 _OVERRIDABLE_FOUNDATION_GUARD_IDS = frozenset({"generic.forbidden_roots"})
 
 
@@ -89,6 +90,7 @@ class AuditReport:
     foundation_guard_execution: dict[str, Any] = field(default_factory=dict)
     optional_guard_execution: list[dict[str, Any]] = field(default_factory=list)
     audit_status: str = "completed"
+    guard_catalog: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -112,6 +114,7 @@ class AuditReport:
             "foundation_guard_execution": self.foundation_guard_execution,
             "optional_guard_execution": self.optional_guard_execution,
             "audit_status": self.audit_status,
+            "guard_catalog": self.guard_catalog,
             "results": [
                 {
                     "rule_id": result.rule_id,
@@ -252,6 +255,7 @@ def run_rule(
             rule_id=rule_id,
             status="failed",
             message=f"{type(exc).__name__}: {exc}",
+            evidence={"execution_error": type(exc).__name__},
         )
 
     if not isinstance(result, RuleResult):
@@ -391,7 +395,10 @@ def _evidence_refs(evidence: dict[str, Any]) -> list[str]:
     return list(dict.fromkeys(refs))
 
 
-def _validate_foundation_overrides(value: Any) -> dict[str, dict[str, Any]]:
+def _validate_foundation_overrides(
+    value: Any,
+    required_guard_ids: tuple[str, ...],
+) -> dict[str, dict[str, Any]]:
     if value is None:
         return {}
     if not isinstance(value, list):
@@ -401,7 +408,7 @@ def _validate_foundation_overrides(value: Any) -> dict[str, dict[str, Any]]:
         if not isinstance(item, dict):
             raise AuditError("foundation override must be an object")
         guard_id = item.get("guard_id")
-        if guard_id not in FOUNDATION_GUARD_IDS:
+        if guard_id not in required_guard_ids:
             raise AuditError(f"Unknown foundation guard override: {guard_id}")
         if guard_id not in _OVERRIDABLE_FOUNDATION_GUARD_IDS:
             raise AuditError(f"Foundation guard is not overridable: {guard_id}")
@@ -429,22 +436,36 @@ def _run_foundation_gate(
     params: dict[str, Any],
     foundation_overrides: Any,
 ) -> bool:
+    resolved = resolve_foundation_guards()
+    guards = resolved["guards"]
+    required_guard_ids = tuple(item["guard_id"] for item in guards)
     execution = {
-        "required": list(FOUNDATION_GUARD_IDS),
-        "order": list(FOUNDATION_GUARD_IDS),
+        "required": list(required_guard_ids),
+        "resolved_applicability": resolved,
+        "order": list(required_guard_ids),
         "results": [],
         "stop_reason": None,
+        "gate_opened": False,
+        "first_blocking_guard_id": None,
     }
     report.foundation_guard_execution = execution
     try:
-        overrides = _validate_foundation_overrides(foundation_overrides)
+        overrides = _validate_foundation_overrides(foundation_overrides, required_guard_ids)
     except AuditError as exc:
         execution["stop_reason"] = str(exc)
+        execution["first_blocking_guard_id"] = (
+            foundation_overrides[0].get("guard_id")
+            if isinstance(foundation_overrides, list)
+            and foundation_overrides
+            and isinstance(foundation_overrides[0], dict)
+            else None
+        )
         report.audit_status = "BLOCKED"
         report.summary = "foundation_gate_failed"
         return False
 
-    for index, guard_id in enumerate(FOUNDATION_GUARD_IDS, start=1):
+    for index, guard in enumerate(guards, start=1):
+        guard_id = guard["guard_id"]
         override = overrides.get(guard_id)
         if override is not None:
             execution["results"].append({
@@ -457,9 +478,19 @@ def _run_foundation_gate(
             })
             continue
         try:
-            result = run_rule("generic", guard_id, ctx, params)
+            result = run_rule(guard["pack_id"], guard_id, ctx, params)
         except AuditError as exc:
             result = RuleResult(guard_id, "blocked", str(exc))
+        if result.status == "not_applicable" or result.evidence.get("execution_error"):
+            result = RuleResult(
+                guard_id,
+                "blocked",
+                f"Foundation guard could not execute reliably: {result.message}",
+                result.evidence,
+                severity=result.severity,
+                required=result.required,
+                fast_fail=result.fast_fail,
+            )
         record = {
             "guard_id": guard_id,
             "execution_index": index,
@@ -472,6 +503,7 @@ def _run_foundation_gate(
         _record_result(report, result)
         if result.status != "passed":
             execution["stop_reason"] = f"FOUNDATION_GATE_FAILED: {guard_id}: {result.message}"
+            execution["first_blocking_guard_id"] = guard_id
             report.audit_status = "BLOCKED"
             report.summary = "foundation_gate_failed"
             return False
@@ -479,6 +511,7 @@ def _run_foundation_gate(
     if overrides:
         report.audit_status = "completed_with_overrides"
         report.summary = "completed_with_overrides"
+    execution["gate_opened"] = True
     return True
 
 
@@ -555,6 +588,8 @@ def run_audit(
         raise AuditError("At least one rule pack is required")
 
     report.project_profile = confident[0] if len(confident) == 1 else {"outcome": "insufficient_evidence", "profiles": profiles, "missing_evidence": ["Exactly one confident project profile is required for automatic guard selection."]}
+    report.guard_catalog = select_guard_catalog(report.project_profile)
+    report.guard_catalog["foundation_applicability"] = resolve_foundation_guards(report.project_profile)
     report.profile_snapshot = profiler.snapshot(confident[0]) if len(confident) == 1 else {}
     if len(confident) == 1:
         signal_references = [
@@ -566,6 +601,10 @@ def run_audit(
                 "pack_id": pack_id,
                 "rationale": "Selected from approved project signals.",
                 "evidence_references": signal_references,
+                "rule_ids": [
+                    rule_id for rule_id in report.guard_catalog["optional_guard_ids"]
+                    if rule_id.startswith(pack_id + ".")
+                ],
             }
             for pack_id in requested
         ]

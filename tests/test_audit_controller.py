@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from agent import Context, KnowledgeRoot
+import audit_controller
 from audit_controller import RuleResult, _rule_registry, run_audit
 
 
@@ -38,6 +39,9 @@ def test_controller_profiles_one_workspace_and_reports_guard_rationale(tmp_path,
     assert report.project_profile["workspace_id"].startswith("workspace_")
     assert report.packs_evaluated == ["generic"]
     assert report.guard_selection[0]["pack_id"] == "generic"
+    assert report.guard_catalog["foundation_guard_ids"] == [
+        "generic.index_present", "generic.forbidden_roots",
+    ]
     assert report.guard_selection[0]["evidence_references"] == [
         {
             "path": "package.json",
@@ -215,6 +219,8 @@ def test_foundation_failure_blocks_optional_execution(tmp_path, monkeypatch):
     assert "optional_start" not in calls
     assert report.audit_status == "BLOCKED"
     assert report.foundation_guard_execution["stop_reason"].startswith("FOUNDATION_GATE_FAILED")
+    assert report.foundation_guard_execution["first_blocking_guard_id"] == "generic.forbidden_roots"
+    assert report.foundation_guard_execution["gate_opened"] is False
     assert report.optional_guard_execution == []
 
 
@@ -299,3 +305,40 @@ def test_foundation_override_is_audit_scoped(tmp_path, monkeypatch):
     assert overridden.audit_status == "completed_with_overrides"
     assert next_audit.audit_status == "BLOCKED"
     assert next_audit.foundation_guard_execution["results"][1]["status"] == "failed"
+
+
+def test_missing_foundation_registration_blocks_before_optional_execution(tmp_path, monkeypatch):
+    calls = []
+
+    def resolve_only_index(pack_id, rule_id):
+        if rule_id == "generic.index_present":
+            return lambda ctx, params: RuleResult("generic.index_present", "passed", "ok")
+        raise audit_controller.AuditError("required foundation guard is not registered")
+
+    monkeypatch.setattr(audit_controller, "resolve_rule", resolve_only_index)
+    _install_optional_rule(monkeypatch, calls)
+
+    report = run_audit(ctx=_context(tmp_path), pack_ids=["optional"])
+
+    assert report.audit_status == "BLOCKED"
+    assert report.foundation_guard_execution["first_blocking_guard_id"] == "generic.forbidden_roots"
+    assert report.optional_guard_execution == []
+
+
+def test_foundation_exception_is_blocked_and_prevents_optional_execution(tmp_path, monkeypatch):
+    calls = []
+
+    def explode(ctx, params):
+        raise RuntimeError("boom")
+
+    monkeypatch.setitem(_rule_registry, "generic", {
+        "generic.index_present": explode,
+        "generic.forbidden_roots": lambda ctx, params: RuleResult("generic.forbidden_roots", "passed", "ok"),
+    })
+    _install_optional_rule(monkeypatch, calls)
+
+    report = run_audit(ctx=_context(tmp_path), pack_ids=["optional"])
+
+    assert report.foundation_guard_execution["results"][0]["status"] == "blocked"
+    assert report.audit_status == "BLOCKED"
+    assert calls == []
