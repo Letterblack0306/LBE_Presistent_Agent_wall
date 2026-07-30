@@ -11,6 +11,7 @@ __all__ = [
     "runtime_integration_profile",
     "rule_gatekeeper",
     "reasoning_contracts",
+    "reasoning_provider",
     "request_controller",
     "server",
 ]
