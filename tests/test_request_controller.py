@@ -74,7 +74,7 @@ def _plan(**overrides):
         "interpreted_problem": "Inspect the canonical CEP manifest.", "ambiguities": [],
         "candidate_guard_ids": ["cep.manifest_exists"],
         "evidence_requests": [{"tool_id": "workspace.read", "path": "CSXS/manifest.xml", "reason": "canonical manifest"}],
-        "validation_requests": ["guard_runner.independent_reread"], "explanation_focus": ["state current evidence"],
+        "validation_requests": [], "explanation_focus": ["state current evidence"],
     }
     value.update(overrides)
     return value
@@ -113,6 +113,7 @@ def test_valid_typed_plan_runs_registered_guard_and_preserves_verdict(tmp_path):
 @pytest.mark.parametrize("plan,code", [
     (_plan(candidate_guard_ids=["unknown.guard"]), "UNKNOWN_GUARD"),
     (_plan(candidate_guard_ids=["cep.manifest_exists", "unknown.guard"]), "MULTIPLE_GUARDS_SELECTED"),
+    (_plan(validation_requests=["guard_runner.independent_reread"]), "MODEL_VALIDATION_REQUEST_FORBIDDEN"),
     (_plan(evidence_requests=[{"tool_id": "shell.execute", "path": "CSXS/manifest.xml", "reason": "bad"}]), "UNKNOWN_TOOL"),
     (_plan(evidence_requests=[{"tool_id": "workspace.read", "path": "../outside.txt", "reason": "bad"}]), "OUT_OF_WORKSPACE_PATH"),
 ])

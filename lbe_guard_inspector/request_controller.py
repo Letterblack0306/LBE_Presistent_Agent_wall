@@ -27,7 +27,6 @@ from .workspace_identity import resolve_workspace_identity, scoped_context
 
 
 _APPROVED_TOOLS = frozenset({"workspace.read"})
-_APPROVED_VALIDATIONS = frozenset({"guard_runner.independent_reread"})
 
 
 class LBERequestController:
@@ -144,9 +143,12 @@ class LBERequestController:
         unknown_guards = sorted(set(plan.candidate_guard_ids) - set(approved_guards))
         if unknown_guards:
             raise _ControllerFailure("UNKNOWN_GUARD", "Reasoning plan requested unknown guard IDs.", tuple(unknown_guards))
-        unknown_validations = sorted(set(plan.validation_requests) - _APPROVED_VALIDATIONS)
-        if unknown_validations:
-            raise _ControllerFailure("UNKNOWN_VALIDATION", "Reasoning plan requested unknown validation IDs.", tuple(unknown_validations))
+        if plan.validation_requests:
+            raise _ControllerFailure(
+                "MODEL_VALIDATION_REQUEST_FORBIDDEN",
+                "Reasoning plans must not select validation IDs; deterministic validation is owned by LBE.",
+                tuple(plan.validation_requests),
+            )
         for evidence in plan.evidence_requests:
             if evidence.tool_id not in _APPROVED_TOOLS:
                 raise _ControllerFailure("UNKNOWN_TOOL", f"Reasoning plan requested unknown tool: {evidence.tool_id}")

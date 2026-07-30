@@ -70,7 +70,7 @@ def valid_plan(path: str = "package.json") -> dict:
                 "reason": "inspect metadata",
             }
         ],
-        "validation_requests": ["guard_runner.independent_reread"],
+        "validation_requests": [],
         "explanation_focus": ["package metadata"],
     }
 
@@ -117,6 +117,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     assert schema["type"] == "object"
     assert schema["additionalProperties"] is False
     assert schema["properties"]["candidate_guard_ids"]["maxItems"] == 1
+    assert schema["properties"]["validation_requests"]["maxItems"] == 0
     assert set(schema["required"]) == {
         "interpreted_problem",
         "ambiguities",

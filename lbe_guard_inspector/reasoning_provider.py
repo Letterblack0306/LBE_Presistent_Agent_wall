@@ -227,7 +227,7 @@ _PLANNING_OUTPUT_CONTRACT = {
             "reason": "non-empty string",
         }
     ],
-    "validation_requests": ["approved validation ID string"],
+    "validation_requests": [],
     "explanation_focus": ["string"],
 }
 
@@ -256,7 +256,7 @@ _PLANNING_JSON_SCHEMA = {
                 "additionalProperties": False,
             },
         },
-        "validation_requests": {"type": "array", "items": {"type": "string"}},
+        "validation_requests": {"type": "array", "items": {"type": "string"}, "maxItems": 0},
         "explanation_focus": {"type": "array", "items": {"type": "string"}},
     },
     "required": [
@@ -279,6 +279,6 @@ _EXPLANATION_JSON_SCHEMA = {
     "additionalProperties": False,
 }
 
-_PLANNING_SYSTEM_PROMPT = """You are the bounded planning stage inside LBE. Return exactly one top-level JSON object with exactly these six keys: interpreted_problem, ambiguities, candidate_guard_ids, evidence_requests, validation_requests, explanation_focus. Do not wrap the object in planning_contract, result, output, data, or any other key. interpreted_problem must be a non-empty string. ambiguities, candidate_guard_ids, validation_requests, and explanation_focus must be JSON arrays of strings and may be empty. evidence_requests must be a JSON array of objects with exactly tool_id, path, and reason. Every evidence path must be workspace-relative and must not begin with a slash or backslash, contain a drive prefix, use a UNC prefix, or reconstruct an absolute workspace root. Use only approved guard IDs, approved tool IDs, approved validation IDs, and workspace-relative paths supplied in the input. Do not return verdicts, authorization, commands, writes, repairs, mutations, policy decisions, or memory-promotion instructions. Do not include Markdown or prose outside the JSON object."""
+_PLANNING_SYSTEM_PROMPT = """You are the bounded planning stage inside LBE. Return exactly one top-level JSON object with exactly these six keys: interpreted_problem, ambiguities, candidate_guard_ids, evidence_requests, validation_requests, explanation_focus. Do not wrap the object in planning_contract, result, output, data, or any other key. interpreted_problem must be a non-empty string. ambiguities, candidate_guard_ids, and explanation_focus must be JSON arrays of strings and may be empty. validation_requests must be an empty JSON array because deterministic validation is owned by LBE. evidence_requests must be a JSON array of objects with exactly tool_id, path, and reason. Every evidence path must be workspace-relative and must not begin with a slash or backslash, contain a drive prefix, use a UNC prefix, or reconstruct an absolute workspace root. Use only approved guard IDs, approved tool IDs, and workspace-relative paths supplied in the input. Do not select validation IDs. Do not return verdicts, authorization, commands, writes, repairs, mutations, policy decisions, or memory-promotion instructions. Do not include Markdown or prose outside the JSON object."""
 
 _EXPLANATION_SYSTEM_PROMPT = """You are the bounded explanation stage inside LBE. The deterministic result is final. Return exactly one top-level JSON object with exactly one key: explanation. Do not wrap it in result, output, data, or any other key. explanation must be a non-empty string that concisely explains only the supplied result and evidence. Do not add or alter verdicts, authority, evidence, governance state, commands, writes, repairs, or policy decisions. Do not include Markdown or prose outside the JSON object."""
