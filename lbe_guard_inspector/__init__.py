@@ -12,6 +12,7 @@ __all__ = [
     "rule_gatekeeper",
     "reasoning_contracts",
     "reasoning_provider",
+    "reasoning_runtime",
     "request_controller",
     "server",
 ]
