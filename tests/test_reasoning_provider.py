@@ -108,7 +108,24 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     assert call["headers"]["Authorization"] == "Bearer secret"
     assert call["payload"]["model"] == "local-model"
     assert call["payload"]["temperature"] == 0
-    assert call["payload"]["response_format"] == {"type": "json_object"}
+    response_format = call["payload"]["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["name"] == "lbe_planning_response"
+    assert response_format["json_schema"]["strict"] is True
+    schema = response_format["json_schema"]["schema"]
+    assert schema["type"] == "object"
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == {
+        "interpreted_problem",
+        "ambiguities",
+        "candidate_guard_ids",
+        "evidence_requests",
+        "validation_requests",
+        "explanation_focus",
+    }
+    evidence_schema = schema["properties"]["evidence_requests"]["items"]
+    assert evidence_schema["required"] == ["tool_id", "path", "reason"]
+    assert evidence_schema["additionalProperties"] is False
     user_payload = json.loads(call["payload"]["messages"][1]["content"])
     assert user_payload["stage"] == "planning"
     assert set(user_payload["output_contract"]) == {
@@ -138,7 +155,16 @@ def test_explanation_call_is_separate_and_typed():
     user_payload = json.loads(call["payload"]["messages"][1]["content"])
     assert user_payload["stage"] == "explanation"
     assert user_payload["output_contract"] == {"explanation": "non-empty string"}
-    assert call["payload"]["response_format"] == {"type": "json_object"}
+    response_format = call["payload"]["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["name"] == "lbe_explanation_response"
+    assert response_format["json_schema"]["strict"] is True
+    assert response_format["json_schema"]["schema"] == {
+        "type": "object",
+        "properties": {"explanation": {"type": "string", "minLength": 1}},
+        "required": ["explanation"],
+        "additionalProperties": False,
+    }
     assert "exactly one top-level JSON object" in call["payload"]["messages"][0]["content"]
 
 
