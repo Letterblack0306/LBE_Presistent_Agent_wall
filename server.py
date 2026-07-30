@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Mapping
+from typing import Any, Mapping, Protocol
 from urllib.parse import urlparse
 
 from agent import (
@@ -11,9 +12,17 @@ from agent import (
 )
 from lbe_guard_inspector.callback_vertical_slice import CallbackVerticalSlice
 from lbe_guard_inspector.module_registry_vertical_slice import ModuleRegistryVerticalSlice
+from lbe_guard_inspector.reasoning_contracts import LBERequest, LBEResponse
 
 _INSPECTION_FIELDS = frozenset({"workspace_root", "workspace_id", "reason", "max_results"})
 _MAX_INSPECTION_RESULTS = 50
+_REASONING_FIELDS = frozenset({
+    "problem", "workspace_root", "reference_context", "task_id", "max_results"
+})
+
+
+class _ReasoningController(Protocol):
+    def run(self, request: LBERequest) -> LBEResponse: ...
 
 
 def _inspection_kwargs(payload: Mapping[str, Any], *, label: str) -> dict[str, Any]:
@@ -54,6 +63,46 @@ def _inspection_kwargs(payload: Mapping[str, Any], *, label: str) -> dict[str, A
     return kwargs
 
 
+def _reasoning_request(payload: Mapping[str, Any]) -> LBERequest:
+    unknown = sorted(set(payload) - _REASONING_FIELDS)
+    if unknown:
+        raise GovernanceError(f"Unsupported reasoning fields: {unknown}")
+
+    problem = payload.get("problem")
+    if not isinstance(problem, str) or not problem.strip():
+        raise GovernanceError("'problem' must be a non-empty string")
+
+    workspace_root = payload.get("workspace_root")
+    if not isinstance(workspace_root, str) or not workspace_root.strip():
+        raise GovernanceError("'workspace_root' must be a non-empty string")
+
+    reference_context = payload.get("reference_context", [])
+    if not isinstance(reference_context, list) or not all(
+        isinstance(item, Mapping) for item in reference_context
+    ):
+        raise GovernanceError("'reference_context' must be an array of objects")
+
+    task_id = payload.get("task_id")
+    if task_id is not None and (not isinstance(task_id, str) or not task_id.strip()):
+        raise GovernanceError("'task_id' must be a non-empty string when provided")
+
+    max_results = payload.get("max_results", 10)
+    if isinstance(max_results, bool) or not isinstance(max_results, int):
+        raise GovernanceError("'max_results' must be an integer")
+    if max_results < 1 or max_results > _MAX_INSPECTION_RESULTS:
+        raise GovernanceError(
+            f"'max_results' must be between 1 and {_MAX_INSPECTION_RESULTS}"
+        )
+
+    return LBERequest(
+        problem=problem.strip(),
+        workspace_root=workspace_root.strip(),
+        reference_context=tuple(dict(item) for item in reference_context),
+        task_id=task_id.strip() if isinstance(task_id, str) else None,
+        max_results=max_results,
+    )
+
+
 def run_callback_inspection(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Validate and invoke the fixed read-only callback Guard Inspector slice."""
     return CallbackVerticalSlice().run(**_inspection_kwargs(payload, label="callback"))
@@ -68,6 +117,7 @@ def run_module_registry_inspection(payload: Mapping[str, Any]) -> dict[str, Any]
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "CEPKnowledgeAgent/0.8-guard-inspector"
+    reasoning_controller: _ReasoningController | None = None
 
     def send_json(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -129,7 +179,12 @@ class Handler(BaseHTTPRequestHandler):
             path = urlparse(self.path).path
             payload = self.read_json()
 
-            if path == "/guard-inspector/callback":
+            if path == "/reasoning/run":
+                controller = self.reasoning_controller
+                if controller is None:
+                    raise GovernanceError("Reasoning controller is not configured")
+                result = asdict(controller.run(_reasoning_request(payload)))
+            elif path == "/guard-inspector/callback":
                 result = run_callback_inspection(payload)
             elif path == "/guard-inspector/module-registry":
                 result = run_module_registry_inspection(payload)
@@ -173,6 +228,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args) -> None:
         return
+
+
+def make_handler(reasoning_controller: _ReasoningController) -> type[Handler]:
+    """Bind one explicit reasoning controller without global runtime mutation."""
+    if reasoning_controller is None:
+        raise TypeError("reasoning_controller is required")
+
+    class BoundHandler(Handler):
+        pass
+
+    BoundHandler.reasoning_controller = reasoning_controller
+    return BoundHandler
 
 
 def main() -> None:
