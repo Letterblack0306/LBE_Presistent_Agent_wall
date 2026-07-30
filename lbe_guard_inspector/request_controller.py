@@ -189,6 +189,21 @@ def _coerce_explanation(value: ExplanationResult | Mapping[str, Any]) -> Explana
 
 def _bounded_path(root: Path, value: str) -> None:
     path = Path(value)
+    semantic_parts = tuple(
+        part.casefold()
+        for part in value.replace(chr(92), "/").split("/")
+        if part not in {"", "."}
+    )
+    root_parts = tuple(
+        part.strip(chr(92) + "/").rstrip(":").casefold()
+        for part in root.resolve().parts
+        if part.strip(chr(92) + "/").rstrip(":")
+    )
+    if root_parts and semantic_parts[: len(root_parts)] == root_parts:
+        raise _ControllerFailure(
+            "OUT_OF_WORKSPACE_PATH",
+            f"Evidence path reconstructs the workspace root: {value}",
+        )
     if path.is_absolute() or ".." in path.parts:
         raise _ControllerFailure("OUT_OF_WORKSPACE_PATH", f"Evidence path escapes the workspace: {value}")
     try:

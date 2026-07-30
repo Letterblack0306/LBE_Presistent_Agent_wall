@@ -165,3 +165,18 @@ def test_controller_performs_no_workspace_write(tmp_path):
     after = {path.relative_to(workspace).as_posix(): path.read_bytes() for path in workspace.rglob("*") if path.is_file()}
     assert response.read_only is True
     assert before == after
+
+def test_disguised_absolute_workspace_root_is_rejected(tmp_path):
+    from lbe_guard_inspector.request_controller import _ControllerFailure, _bounded_path
+
+    root = tmp_path.resolve()
+    disguised_root = "/".join(
+        part.strip(chr(92) + "/").rstrip(":")
+        for part in root.parts
+        if part.strip(chr(92) + "/").rstrip(":")
+    )
+
+    with pytest.raises(_ControllerFailure) as error:
+        _bounded_path(root, disguised_root + "/pyproject.toml")
+
+    assert error.value.code == "OUT_OF_WORKSPACE_PATH"
