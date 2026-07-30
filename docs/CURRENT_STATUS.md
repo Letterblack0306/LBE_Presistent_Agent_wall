@@ -27,9 +27,10 @@ Live target workspace state and current validation remain authoritative.
 - Runtime integration profile PR `#5`: merged at `575283ab986abc723de226c0340ec88c81ea2a10`
 - Profile-driven proof PR `#6`: merged at `f41dd154a7450f30b92c05c358220606f5da95fa`
 - Second deterministic guard PR `#7`: merged at `7345149b99d09ac34debaf16bd006107510b8095`
-- Active branch: `feat/module-registry-profile-proof`
-- Validated implementation head: `b74f2c14b8f9409cf76b401961b5174e0fd3edf9`
-- Merge status: Phase 19 branch not merged
+- Authority-evidence PR `#9`: closed as already integrated/stale; its older
+  branch must not be merged into `main`.
+- Only valid implementation baseline: `main`.
+- Current baseline head: `536ac8143fc380c6d9f821881eaa8d7f6691dd03`.
 
 ## Completed foundation
 
@@ -249,11 +250,19 @@ It must not add repair authority, arbitrary guard selection, or vendor-specific 
 
 ## Not yet completed
 
-- merge of `feat/module-registry-profile-proof` into `main`;
-- release-readiness contract and packaging validation;
+- remote GitHub Actions proof: the active `validate` workflow currently fails
+  with `startup_failure` before any job is created; this is an external
+  Actions scheduling/startup problem, not an audit-code defect;
 - optional external-runtime integration packages;
 - broader guard gallery coverage;
 - complete UI beyond the minimum read-only proof surface.
+
+## Integration policy
+
+- Do not merge stale feature branches into `main` merely because they contain
+  older slices of the implementation.
+- Treat `main` as the only integration and release baseline.
+- Resolve GitHub Actions startup failures separately from audit-code changes.
 
 ## No-drift boundary
 
