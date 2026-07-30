@@ -98,7 +98,7 @@ def test_installed_wheel_runs_both_fixed_guard_slices(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     governance.write_text(
-        json.dumps({"allowed_read_paths": ["."], "forbidden_globs": []}),
+        json.dumps({"allowed_read_paths": ["."], "forbidden_globs": ["*.secret"]}),
         encoding="utf-8",
     )
     subprocess.run(
@@ -170,3 +170,22 @@ print(json.dumps({"callback": "PASS", "module_registry": "PASS"}))
         "callback": "PASS",
         "module_registry": "PASS",
     }
+
+    audit = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "audit_controller",
+            "audit",
+            "--workspace-root",
+            str(workspace),
+        ],
+        check=True,
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    audit_payload = json.loads(audit.stdout.split("\nReport:", 1)[0])
+    assert audit_payload["audit_status"] == "completed"
+    assert audit_payload["project_profile"]["workspace_root"] == str(workspace.resolve())

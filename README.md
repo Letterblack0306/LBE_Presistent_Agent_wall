@@ -10,7 +10,8 @@ does not modify the audited workspace or generate repairs.
 - Stable inspection endpoints: `POST /guard-inspector/callback` and
   `POST /guard-inspector/module-registry`.
 - Stable commands: `lbe-guard-inspector` for the fixed inspection endpoints,
-  and `lbe-guard-inspector-evidence` for the evidence API.
+  `lbe-guard-inspector-evidence` for the evidence API, and
+  `lbe-guard-audit` for the deterministic project-scoped audit controller.
 - Runtime configuration is explicit. Set
   `LBE_GUARD_INSPECTOR_CONFIG_PATH`,
   `LBE_GUARD_INSPECTOR_GOVERNANCE_PATH`, and
@@ -79,6 +80,12 @@ $env:LBE_GUARD_INSPECTOR_CONFIG_PATH = "C:\\GuardInspector\\config.json"
 $env:LBE_GUARD_INSPECTOR_GOVERNANCE_PATH = "C:\\GuardInspector\\governance.json"
 $env:LBE_GUARD_INSPECTOR_STATE_DIR = "C:\\GuardInspector\\state"
 lbe-guard-inspector
+```
+
+Run a project-scoped audit with an explicit current workspace root:
+
+```powershell
+lbe-guard-audit audit --workspace-root "C:\\Projects\\target-project"
 ```
 
 ## Test

@@ -20,6 +20,7 @@ test = [
 [project.scripts]
 lbe-guard-inspector = "server:main"
 lbe-guard-inspector-evidence = "lbe_guard_inspector.server:main"
+lbe-guard-audit = "audit_controller:main"
 
 [tool.setuptools]
 py-modules = ["agent", "audit_controller", "server"]

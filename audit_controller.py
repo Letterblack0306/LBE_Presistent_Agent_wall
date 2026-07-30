@@ -724,6 +724,7 @@ def _run_cli_audit(args: argparse.Namespace) -> None:
         pack_ids=pack_ids,
         project_type=args.project_type,
         roots=roots,
+        workspace_root=args.workspace_root,
     )
     path = save_report(report)
     print(json.dumps(audit_to_json(report), indent=2, ensure_ascii=False))
@@ -740,6 +741,7 @@ def main() -> None:
     audit_parser.add_argument("--pack", action="append", dest="packs")
     audit_parser.add_argument("--project-type")
     audit_parser.add_argument("--roots")
+    audit_parser.add_argument("--workspace-root")
     audit_parser.set_defaults(func=_run_cli_audit)
 
     packs_parser = subcommands.add_parser("packs")
