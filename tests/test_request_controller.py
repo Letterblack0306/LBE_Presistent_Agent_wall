@@ -1,0 +1,163 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from agent import Context, KnowledgeRoot
+from lbe_guard_inspector.request_controller import LBERequestController
+from lbe_guard_inspector.reasoning_contracts import LBERequest
+
+
+class FakeBackend:
+    def __init__(self, plan, explanation={"explanation": "Deterministic result explained."}):
+        self.plan_value = plan
+        self.explanation_value = explanation
+        self.plan_requests = []
+        self.explanation_requests = []
+
+    def plan(self, request):
+        self.plan_requests.append(request)
+        if isinstance(self.plan_value, Exception):
+            raise self.plan_value
+        return self.plan_value
+
+    def explain(self, request):
+        self.explanation_requests.append(request)
+        if isinstance(self.explanation_value, Exception):
+            raise self.explanation_value
+        return self.explanation_value
+
+
+class FakeRunner:
+    def __init__(self, verdict="PASS"):
+        self.calls = []
+        self.verdict = verdict
+
+    def run(self, **kwargs):
+        self.calls.append(kwargs)
+        workspace_id = kwargs["workspace_id"]
+        evidence = [] if self.verdict == "INSUFFICIENT_EVIDENCE" else [_evidence(workspace_id, kwargs["workspace_root"])]
+        validation = [] if self.verdict == "INSUFFICIENT_EVIDENCE" else [_validation(workspace_id, kwargs["workspace_root"])]
+        return {
+            "guard_result": {
+                "result_id": "gr-1", "guard_id": kwargs["guard_id"], "guard_version": None,
+                "workspace_id": workspace_id, "verdict": self.verdict, "summary": "deterministic",
+                "findings": [], "evidence_refs": [item["ref"] for item in evidence], "validation_refs": [item["ref"] for item in validation],
+                "governance_state": "READ_ONLY", "executed_at": "2026-07-30T00:00:00+00:00",
+            },
+            "evidence_package": {
+                "package_id": "ep-1", "task_id": "task-1", "query": "CSXS/manifest.xml", "workspace_id": workspace_id,
+                "indexed_reference_evidence": [], "current_workspace_evidence": evidence,
+                "validation_evidence": validation, "contradictions": [], "missing_evidence": [],
+                "generated_at": "2026-07-30T00:00:00+00:00",
+            },
+        }
+
+
+def _evidence(workspace_id: str, root: str):
+    return {
+        "ref": f"workspace:{workspace_id}:CSXS/manifest.xml", "source_type": "workspace", "record_id": None,
+        "workspace_id": workspace_id, "path": str(Path(root) / "CSXS" / "manifest.xml"), "hash": "a" * 64,
+        "line_start": 1, "line_end": 1, "snippet": "manifest", "score": None, "matched_terms": [],
+        "exact_phrase": None, "authority": 9, "verified": True, "classification": "source", "metadata": {},
+    }
+
+
+def _validation(workspace_id: str, root: str):
+    value = _evidence(workspace_id, root)
+    return {**value, "ref": f"validation:{workspace_id}:CSXS/manifest.xml", "source_type": "validation"}
+
+
+def _plan(**overrides):
+    value = {
+        "interpreted_problem": "Inspect the canonical CEP manifest.", "ambiguities": [],
+        "candidate_guard_ids": ["cep.manifest_exists"],
+        "evidence_requests": [{"tool_id": "workspace.read", "path": "CSXS/manifest.xml", "reason": "canonical manifest"}],
+        "validation_requests": ["guard_runner.independent_reread"], "explanation_focus": ["state current evidence"],
+    }
+    value.update(overrides)
+    return value
+
+
+def _controller(tmp_path: Path, backend: FakeBackend, runner: FakeRunner | None = None):
+    configured = tmp_path / "configured"; configured.mkdir()
+    workspace = configured / "project"; (workspace / "CSXS").mkdir(parents=True)
+    (workspace / "CSXS" / "manifest.xml").write_text("<ExtensionManifest/>", encoding="utf-8")
+    context = Context(config={}, governance={}, roots=(KnowledgeRoot("dev", configured),))
+    resolved_runner = runner or FakeRunner()
+    controller = LBERequestController(
+        backend=backend, context=context, runner=resolved_runner,
+        rule_resolver=lambda pack, rule: object() if (pack, rule) == ("cep", "cep.manifest_exists") else (_ for _ in ()).throw(ValueError("unregistered")),
+    )
+    return controller, resolved_runner, workspace
+
+
+def _run(controller, workspace):
+    return controller.run(LBERequest(problem="Why did this fail?", workspace_root=workspace, task_id="task-1"))
+
+
+def test_valid_typed_plan_runs_registered_guard_and_preserves_verdict(tmp_path):
+    backend = FakeBackend(_plan())
+    controller, runner, workspace = _controller(tmp_path, backend)
+    response = _run(controller, workspace)
+    assert response.outcome == "COMPLETED"
+    assert runner.calls[0]["guard_id"] == "cep.manifest_exists"
+    assert response.deterministic_result["verdict"] == "PASS"
+    assert response.explanation.explanation == "Deterministic result explained."
+    assert backend.plan_requests[0].workspace_identity["target_project_root"] == str(workspace.resolve())
+
+
+@pytest.mark.parametrize("plan,code", [
+    (_plan(candidate_guard_ids=["unknown.guard"]), "UNKNOWN_GUARD"),
+    (_plan(evidence_requests=[{"tool_id": "shell.execute", "path": "CSXS/manifest.xml", "reason": "bad"}]), "UNKNOWN_TOOL"),
+    (_plan(evidence_requests=[{"tool_id": "workspace.read", "path": "../outside.txt", "reason": "bad"}]), "OUT_OF_WORKSPACE_PATH"),
+])
+def test_plan_rejects_unknown_or_unbounded_requests(tmp_path, plan, code):
+    controller, runner, workspace = _controller(tmp_path, FakeBackend(plan))
+    response = _run(controller, workspace)
+    assert response.outcome == "ORCHESTRATION_ERROR"
+    assert response.error.code == code
+    assert runner.calls == []
+
+
+@pytest.mark.parametrize("field", ["verdict", "write", "apply", "memory_promotion", "authorization"])
+def test_plan_rejects_forbidden_authority_fields(tmp_path, field):
+    plan = _plan(); plan[field] = "forbidden"
+    controller, runner, workspace = _controller(tmp_path, FakeBackend(plan))
+    response = _run(controller, workspace)
+    assert response.outcome == "ORCHESTRATION_ERROR"
+    assert field in response.error.message
+    assert runner.calls == []
+
+
+def test_missing_evidence_verdict_remains_deterministic(tmp_path):
+    controller, _, workspace = _controller(tmp_path, FakeBackend(_plan()), FakeRunner("INSUFFICIENT_EVIDENCE"))
+    response = _run(controller, workspace)
+    assert response.outcome == "COMPLETED"
+    assert response.deterministic_result["verdict"] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_explanation_cannot_alter_verdict(tmp_path):
+    controller, _, workspace = _controller(tmp_path, FakeBackend(_plan(), {"explanation": "override", "verdict": "FAIL"}))
+    response = _run(controller, workspace)
+    assert response.outcome == "ORCHESTRATION_ERROR"
+    assert response.deterministic_result["verdict"] == "PASS"
+    assert response.error.code == "EXPLANATION_FAILED"
+
+
+def test_backend_failure_returns_structured_error(tmp_path):
+    controller, _, workspace = _controller(tmp_path, FakeBackend(RuntimeError("provider unavailable")))
+    response = _run(controller, workspace)
+    assert response.outcome == "ORCHESTRATION_ERROR"
+    assert "provider unavailable" in response.error.message
+
+
+def test_controller_performs_no_workspace_write(tmp_path):
+    backend = FakeBackend(_plan())
+    controller, _, workspace = _controller(tmp_path, backend)
+    before = {path.relative_to(workspace).as_posix(): path.read_bytes() for path in workspace.rglob("*") if path.is_file()}
+    response = _run(controller, workspace)
+    after = {path.relative_to(workspace).as_posix(): path.read_bytes() for path in workspace.rglob("*") if path.is_file()}
+    assert response.read_only is True
+    assert before == after

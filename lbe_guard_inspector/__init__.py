@@ -10,5 +10,7 @@ __all__ = [
     "module_registry",
     "runtime_integration_profile",
     "rule_gatekeeper",
+    "reasoning_contracts",
+    "request_controller",
     "server",
 ]
