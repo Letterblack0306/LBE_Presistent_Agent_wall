@@ -126,6 +126,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     evidence_schema = schema["properties"]["evidence_requests"]["items"]
     assert evidence_schema["required"] == ["tool_id", "path", "reason"]
     assert evidence_schema["additionalProperties"] is False
+    assert "Workspace-relative path only" in evidence_schema["properties"]["path"]["description"]
     user_payload = json.loads(call["payload"]["messages"][1]["content"])
     assert user_payload["stage"] == "planning"
     assert set(user_payload["output_contract"]) == {
@@ -136,9 +137,15 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
         "validation_requests",
         "explanation_focus",
     }
+    assert user_payload["input"]["workspace_identity"] == {
+        "configured_root_id": "root-1",
+        "workspace_id": "workspace-1",
+    }
+    assert "C:/repo" not in call["payload"]["messages"][1]["content"]
     system_prompt = call["payload"]["messages"][0]["content"]
     assert "exactly these six keys" in system_prompt
     assert "Do not wrap the object in planning_contract" in system_prompt
+    assert "absolute target_project_root is intentionally withheld" in system_prompt
 
 
 def test_explanation_call_is_separate_and_typed():
