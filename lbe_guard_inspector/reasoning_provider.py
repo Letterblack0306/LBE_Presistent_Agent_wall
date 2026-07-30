@@ -130,6 +130,7 @@ class OpenAICompatibleReasoningBackend:
         output_schema: Mapping[str, Any],
         input_payload: Mapping[str, Any],
     ) -> Mapping[str, Any]:
+        bounded_input = _bounded_model_input(stage, input_payload)
         payload = {
             "model": self._config.model.strip(),
             "messages": [
@@ -140,7 +141,7 @@ class OpenAICompatibleReasoningBackend:
                         {
                             "stage": stage,
                             "output_contract": output_contract,
-                            "input": input_payload,
+                            "input": bounded_input,
                         },
                         ensure_ascii=False,
                         sort_keys=True,
@@ -176,6 +177,20 @@ class OpenAICompatibleReasoningBackend:
         return decoded
 
 
+def _bounded_model_input(stage: str, input_payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    if stage != "planning":
+        return input_payload
+    bounded = dict(input_payload)
+    workspace_identity = bounded.get("workspace_identity")
+    if isinstance(workspace_identity, Mapping):
+        bounded["workspace_identity"] = {
+            key: value
+            for key, value in workspace_identity.items()
+            if key != "target_project_root"
+        }
+    return bounded
+
+
 def _extract_message_content(response: Mapping[str, Any]) -> str:
     choices = response.get("choices")
     if not isinstance(choices, list) or len(choices) != 1:
@@ -199,7 +214,7 @@ _PLANNING_OUTPUT_CONTRACT = {
     "evidence_requests": [
         {
             "tool_id": "approved tool ID string",
-            "path": "workspace-relative path string",
+            "path": "workspace-relative path only; never an absolute path",
             "reason": "non-empty string",
         }
     ],
@@ -221,7 +236,11 @@ _PLANNING_JSON_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "tool_id": {"type": "string", "minLength": 1},
-                    "path": {"type": "string", "minLength": 1},
+                    "path": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Workspace-relative path only. Never include a drive letter, leading slash, UNC prefix, or the workspace root.",
+                    },
                     "reason": {"type": "string", "minLength": 1},
                 },
                 "required": ["tool_id", "path", "reason"],
@@ -251,6 +270,6 @@ _EXPLANATION_JSON_SCHEMA = {
     "additionalProperties": False,
 }
 
-_PLANNING_SYSTEM_PROMPT = """You are the bounded planning stage inside LBE. Return exactly one top-level JSON object with exactly these six keys: interpreted_problem, ambiguities, candidate_guard_ids, evidence_requests, validation_requests, explanation_focus. Do not wrap the object in planning_contract, result, output, data, or any other key. interpreted_problem must be a non-empty string. ambiguities, candidate_guard_ids, validation_requests, and explanation_focus must be JSON arrays of strings and may be empty. evidence_requests must be a JSON array of objects with exactly tool_id, path, and reason. Use only approved guard IDs, approved tool IDs, approved validation IDs, and workspace-relative paths supplied in the input. Do not return verdicts, authorization, commands, writes, repairs, mutations, policy decisions, or memory-promotion instructions. Do not include Markdown or prose outside the JSON object."""
+_PLANNING_SYSTEM_PROMPT = """You are the bounded planning stage inside LBE. Return exactly one top-level JSON object with exactly these six keys: interpreted_problem, ambiguities, candidate_guard_ids, evidence_requests, validation_requests, explanation_focus. Do not wrap the object in planning_contract, result, output, data, or any other key. interpreted_problem must be a non-empty string. ambiguities, candidate_guard_ids, validation_requests, and explanation_focus must be JSON arrays of strings and may be empty. evidence_requests must be a JSON array of objects with exactly tool_id, path, and reason. Every evidence path must be workspace-relative, such as pyproject.toml or src/module.py. Never return a drive-letter path, leading-slash path, UNC path, or workspace root. The absolute target_project_root is intentionally withheld and must not be reconstructed. Use only approved guard IDs, approved tool IDs, approved validation IDs, and workspace-relative paths supplied in the input. Do not return verdicts, authorization, commands, writes, repairs, mutations, policy decisions, or memory-promotion instructions. Do not include Markdown or prose outside the JSON object."""
 
 _EXPLANATION_SYSTEM_PROMPT = """You are the bounded explanation stage inside LBE. The deterministic result is final. Return exactly one top-level JSON object with exactly one key: explanation. Do not wrap it in result, output, data, or any other key. explanation must be a non-empty string that concisely explains only the supplied result and evidence. Do not add or alter verdicts, authority, evidence, governance state, commands, writes, repairs, or policy decisions. Do not include Markdown or prose outside the JSON object."""
