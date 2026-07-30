@@ -3,9 +3,10 @@ requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lbe-guard-inspector-phase1"
-version = "0.1.0"
-description = "Typed contracts and read-only evidence endpoint for the LBE Guard Inspector"
+name = "lbe-guard-inspector"
+version = "0.2.0"
+description = "Deterministic local workspace inspection with evidence-bound guard verdicts"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "jsonschema==4.23.0"
@@ -15,6 +16,21 @@ dependencies = [
 test = [
   "pytest==8.3.5"
 ]
+
+[project.scripts]
+lbe-guard-inspector = "server:main"
+lbe-guard-inspector-evidence = "lbe_guard_inspector.server:main"
+
+[tool.setuptools]
+py-modules = ["agent", "audit_controller", "server"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["lbe_guard_inspector*", "rules*", "schemas*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+schemas = ["*.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

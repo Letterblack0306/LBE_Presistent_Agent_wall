@@ -1,6 +1,23 @@
-# LBE Phase 1 — Typed Contracts and Evidence Endpoint
+# LBE Guard Inspector
 
-This package implements the first required files for the Guard Inspector:
+This package provides deterministic, evidence-bound workspace inspection. It
+does not modify the audited workspace or generate repairs.
+
+## Release contract
+
+- Python: 3.11 or later.
+- Network surface: local-only by default (`127.0.0.1`).
+- Stable inspection endpoints: `POST /guard-inspector/callback` and
+  `POST /guard-inspector/module-registry`.
+- Stable commands: `lbe-guard-inspector` for the fixed inspection endpoints,
+  and `lbe-guard-inspector-evidence` for the evidence API.
+- Runtime configuration is explicit. Set
+  `LBE_GUARD_INSPECTOR_CONFIG_PATH`,
+  `LBE_GUARD_INSPECTOR_GOVERNANCE_PATH`, and
+  `LBE_GUARD_INSPECTOR_STATE_DIR` for an installed package; absent variables
+  preserve the repository-local defaults.
+
+The package includes:
 
 - five JSON Schema contracts;
 - runtime JSON Schema validation;
@@ -47,13 +64,22 @@ tests/
 
 ```powershell
 Set-Location "<repo-path>"
-python -m pip install -r requirements.txt
+python -m pip install .
 Copy-Item .\config.example.json .\config.json
 ```
 
 Edit `config.json` and set `database_path`.
 
 The adapter automatically discovers a table containing path and content columns. For deterministic production use, configure the exact table and column names.
+
+For an installed package, keep runtime configuration outside `site-packages`:
+
+```powershell
+$env:LBE_GUARD_INSPECTOR_CONFIG_PATH = "C:\\GuardInspector\\config.json"
+$env:LBE_GUARD_INSPECTOR_GOVERNANCE_PATH = "C:\\GuardInspector\\governance.json"
+$env:LBE_GUARD_INSPECTOR_STATE_DIR = "C:\\GuardInspector\\state"
+lbe-guard-inspector
+```
 
 ## Test
 

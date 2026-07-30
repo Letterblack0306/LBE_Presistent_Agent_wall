@@ -5,6 +5,7 @@ import fnmatch
 import hashlib
 import heapq
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -16,9 +17,19 @@ from pathlib import Path
 from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parent
-STATE_DIR = ROOT / "state"
-CONFIG_PATH = ROOT / "config.json"
-GOVERNANCE_PATH = ROOT / "governance.json"
+
+
+def _runtime_path(variable: str, default: Path) -> Path:
+    """Resolve an explicit local runtime path without changing package defaults."""
+    configured = os.environ.get(variable)
+    return Path(configured).expanduser().resolve() if configured else default
+
+
+STATE_DIR = _runtime_path("LBE_GUARD_INSPECTOR_STATE_DIR", ROOT / "state")
+CONFIG_PATH = _runtime_path("LBE_GUARD_INSPECTOR_CONFIG_PATH", ROOT / "config.json")
+GOVERNANCE_PATH = _runtime_path(
+    "LBE_GUARD_INSPECTOR_GOVERNANCE_PATH", ROOT / "governance.json"
+)
 DATABASE_PATH = STATE_DIR / "workspace.db"
 PROGRESS_PATH = STATE_DIR / "trace_progress.json"
 SUMMARY_PATH = STATE_DIR / "workspace_trace.json"
