@@ -5,7 +5,15 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .models import MemoryRecord, MemoryType, ValidationStatus, canonical_root
+from lbe_guard_inspector.contracts import validate_contract
+
+from .models import (
+    CompactionCheckpoint,
+    MemoryRecord,
+    MemoryType,
+    ValidationStatus,
+    canonical_root,
+)
 from .store import WorkspaceMemoryStore
 
 
@@ -67,6 +75,109 @@ def invalidate_changed_sources(
             stale_ids.append(record.memory_id)
     store.mark_stale(stale_ids)
     return current
+
+
+def protected_checkpoint_eligibility(
+    *,
+    checkpoint: CompactionCheckpoint | None,
+    current_workspace_id: str,
+    current_workspace_root: str | Path,
+    current_git_state: dict[str, Any],
+    current_source_prefix_hash: str | None = None,
+) -> dict[str, Any]:
+    check_names = (
+        "workspace_identity",
+        "workspace_root",
+        "source_prefix",
+        "branch",
+        "head",
+    )
+
+    if checkpoint is None:
+        report = {
+            "status": "INSUFFICIENT_EVIDENCE",
+            "checkpoint_id": None,
+            "reasons": ["CHECKPOINT_NOT_FOUND"],
+            "checks": {name: "UNKNOWN" for name in check_names},
+            "authority_owner": "LBE_MEMORY_RUNTIME",
+            "reactivation_allowed": False,
+        }
+        validate_contract("protected_checkpoint_eligibility", report)
+        return report
+
+    current_branch = current_git_state.get("branch")
+    current_head = current_git_state.get("head")
+    checks = {
+        "workspace_identity": (
+            "MATCH"
+            if checkpoint.project_workspace_id == current_workspace_id
+            else "MISMATCH"
+        ),
+        "workspace_root": (
+            "MATCH"
+            if checkpoint.canonical_workspace_root
+            == canonical_root(current_workspace_root)
+            else "MISMATCH"
+        ),
+        "source_prefix": (
+            "UNKNOWN"
+            if current_source_prefix_hash is None
+            else (
+                "MATCH"
+                if checkpoint.source_prefix_hash == current_source_prefix_hash
+                else "MISMATCH"
+            )
+        ),
+        "branch": (
+            "UNKNOWN"
+            if checkpoint.branch is None or not current_branch
+            else (
+                "MATCH"
+                if checkpoint.branch == current_branch
+                else "MISMATCH"
+            )
+        ),
+        "head": (
+            "UNKNOWN"
+            if checkpoint.head is None or not current_head
+            else (
+                "MATCH"
+                if checkpoint.head == current_head
+                else "MISMATCH"
+            )
+        ),
+    }
+
+    mismatches = sorted(
+        name for name, result in checks.items() if result == "MISMATCH"
+    )
+    unknowns = sorted(
+        name for name, result in checks.items() if result == "UNKNOWN"
+    )
+
+    if mismatches:
+        status = "INELIGIBLE"
+        reasons = [f"{name.upper()}_MISMATCH" for name in mismatches]
+    elif unknowns:
+        status = "INSUFFICIENT_EVIDENCE"
+        reasons = [
+            f"{name.upper()}_EVIDENCE_MISSING"
+            for name in unknowns
+        ]
+    else:
+        status = "ELIGIBLE"
+        reasons = []
+
+    report = {
+        "status": status,
+        "checkpoint_id": checkpoint.checkpoint_id,
+        "reasons": reasons,
+        "checks": checks,
+        "authority_owner": "LBE_MEMORY_RUNTIME",
+        "reactivation_allowed": status == "ELIGIBLE",
+    }
+    validate_contract("protected_checkpoint_eligibility", report)
+    return report
 
 
 def build_context_packet(

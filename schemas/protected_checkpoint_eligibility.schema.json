@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "authority_owner": {
+      "const": "LBE_MEMORY_RUNTIME"
+    },
+    "checkpoint_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "checks": {
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "UNKNOWN"
+          ]
+        },
+        "head": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "UNKNOWN"
+          ]
+        },
+        "source_prefix": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "UNKNOWN"
+          ]
+        },
+        "workspace_identity": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "UNKNOWN"
+          ]
+        },
+        "workspace_root": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "workspace_identity",
+        "workspace_root",
+        "source_prefix",
+        "branch",
+        "head"
+      ],
+      "type": "object"
+    },
+    "reactivation_allowed": {
+      "type": "boolean"
+    },
+    "reasons": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "status": {
+      "enum": [
+        "ELIGIBLE",
+        "INELIGIBLE",
+        "INSUFFICIENT_EVIDENCE"
+      ]
+    }
+  },
+  "required": [
+    "status",
+    "checkpoint_id",
+    "reasons",
+    "checks",
+    "authority_owner",
+    "reactivation_allowed"
+  ],
+  "title": "Protected Checkpoint Eligibility",
+  "type": "object"
+}
