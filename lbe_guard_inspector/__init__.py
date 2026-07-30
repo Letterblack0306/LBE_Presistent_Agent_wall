@@ -10,6 +10,7 @@ __all__ = [
     "module_registry",
     "runtime_integration_profile",
     "rule_gatekeeper",
+    "reasoning_config",
     "reasoning_contracts",
     "reasoning_provider",
     "reasoning_runtime",
