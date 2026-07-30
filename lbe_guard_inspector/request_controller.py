@@ -98,7 +98,6 @@ class LBERequestController:
             self._rule_resolver(pack_id, guard_id)
         except (AuditError, OSError, ValueError) as exc:
             raise _ControllerFailure("UNREGISTERED_GUARD", f"Approved guard is not registered: {guard_id}: {exc}") from exc
-        evidence = plan.evidence_requests[0]
         decision = self._runner.run(
             problem=problem,
             workspace_root=str(identity.target_project_root),
@@ -107,12 +106,12 @@ class LBERequestController:
             rule_id=guard_id,
             guard_id=guard_id,
             roots=[identity.configured_root_id],
-            extensions=[Path(evidence.path).suffix] if Path(evidence.path).suffix else None,
-            reason=evidence.reason,
+            extensions=None,
+            reason=f"controller-selected guard inspection: {guard_id}",
             retrieval_mode="guard",
-            query=evidence.path,
-            path_patterns=[evidence.path],
-            evidence_requirements=[evidence.reason],
+            query=problem,
+            path_patterns=None,
+            evidence_requirements=None,
         )
         guard_result = decision.get("guard_result")
         package = decision.get("evidence_package")
@@ -140,6 +139,8 @@ class LBERequestController:
         return self._response(request, identity, profile, plan, validated_result, explanation, "COMPLETED", None)
 
     def _validate_plan(self, plan: ReasoningPlan, root: Path, approved_guards: tuple[str, ...]) -> None:
+        if len(plan.candidate_guard_ids) > 1:
+            raise _ControllerFailure("MULTIPLE_GUARDS_SELECTED", "Reasoning plan must select at most one approved guard.")
         unknown_guards = sorted(set(plan.candidate_guard_ids) - set(approved_guards))
         if unknown_guards:
             raise _ControllerFailure("UNKNOWN_GUARD", "Reasoning plan requested unknown guard IDs.", tuple(unknown_guards))

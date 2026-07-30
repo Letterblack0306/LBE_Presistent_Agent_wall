@@ -238,7 +238,7 @@ _PLANNING_JSON_SCHEMA = {
     "properties": {
         "interpreted_problem": {"type": "string", "minLength": 1},
         "ambiguities": {"type": "array", "items": {"type": "string"}},
-        "candidate_guard_ids": {"type": "array", "items": {"type": "string"}},
+        "candidate_guard_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 1},
         "evidence_requests": {
             "type": "array",
             "items": {

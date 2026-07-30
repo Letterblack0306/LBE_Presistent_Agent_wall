@@ -103,6 +103,8 @@ def test_valid_typed_plan_runs_registered_guard_and_preserves_verdict(tmp_path):
     response = _run(controller, workspace)
     assert response.outcome == "COMPLETED"
     assert runner.calls[0]["guard_id"] == "cep.manifest_exists"
+    assert runner.calls[0]["extensions"] is None
+    assert runner.calls[0]["reason"] == "controller-selected guard inspection: cep.manifest_exists"
     assert response.deterministic_result["verdict"] == "PASS"
     assert response.explanation.explanation == "Deterministic result explained."
     assert backend.plan_requests[0].workspace_identity["target_project_root"] == str(workspace.resolve())
@@ -110,6 +112,7 @@ def test_valid_typed_plan_runs_registered_guard_and_preserves_verdict(tmp_path):
 
 @pytest.mark.parametrize("plan,code", [
     (_plan(candidate_guard_ids=["unknown.guard"]), "UNKNOWN_GUARD"),
+    (_plan(candidate_guard_ids=["cep.manifest_exists", "unknown.guard"]), "MULTIPLE_GUARDS_SELECTED"),
     (_plan(evidence_requests=[{"tool_id": "shell.execute", "path": "CSXS/manifest.xml", "reason": "bad"}]), "UNKNOWN_TOOL"),
     (_plan(evidence_requests=[{"tool_id": "workspace.read", "path": "../outside.txt", "reason": "bad"}]), "OUT_OF_WORKSPACE_PATH"),
 ])

@@ -116,6 +116,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     schema = response_format["json_schema"]["schema"]
     assert schema["type"] == "object"
     assert schema["additionalProperties"] is False
+    assert schema["properties"]["candidate_guard_ids"]["maxItems"] == 1
     assert set(schema["required"]) == {
         "interpreted_problem",
         "ambiguities",
