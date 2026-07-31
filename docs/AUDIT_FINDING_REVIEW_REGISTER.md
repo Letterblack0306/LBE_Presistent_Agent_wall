@@ -66,6 +66,45 @@ Existing guards  Discover patterns
 Evidence only    Create candidates
 Findings         Validate changes
 ```
+This architecture effectively solves the core failure mode of workspace-level analysis: **mixing discovery with execution.**
+
+By formalizing the separation between **Audit Mode** and **Development Mode**, you establish a firm operational boundary. Audit Mode operates strictly as a deterministic diagnostic pass (measuring reality against proven rules), while Development Mode remains the generative, creative space for problem-solving and rule proposal.
+
+### Key Strengths of This Final Model
+
+1. **Elimination of "Premature Refactoring":** In Audit Mode, the agent is constrained from attempting quick code edits or inventing new speculative rules on the fly. It forces every observation into a review queue (`AUDIT_FINDING_REVIEW_REGISTER.md`) as a candidate finding rather than an immediate task.
+2. **Context Window Insurance:** The **Guard Knowledge Graph / Rule Discovery Flow** ensures that lightweight models don't drop related rules due to context limits. The system uses deterministic guard retrieval to expand candidate rules based on failure domain, rather than relying on LLM memory recall.
+3. **Evidence-Driven Decision Tree:** Requiring an explicit `INSUFFICIENT_EVIDENCE` state prevents hallucinated conclusions when data is missing, upholding the LBE evidence boundary.
+
+---
+
+### Operating Lifecycle Overview
+
+```
+                      ┌────────────────────────┐
+                      │    USER REQUEST        │
+                      └───────────┬────────────┘
+                                  │
+                           Mode Detection
+                                  │
+         ┌────────────────────────┴────────────────────────┐
+         ▼                                                 ▼
+┌─────────────────────────┐               ┌─────────────────────────┐
+│       AUDIT MODE        │               │    DEVELOPMENT MODE     │
+├─────────────────────────┤               ├─────────────────────────┤
+│ • Read-Only             │               │ • Read / Write          │
+│ • Existing Guards Only  │               │ • Discover Patterns     │
+│ • Evidence Collection   │               │ • Propose & Test Rules  │
+│ • Findings Output       │               │ • Code Modifications    │
+└────────┬────────────────┘               └────────┬────────────────┘
+         │                                         │
+         ▼                                         ▼
+Finding Review Register                    Candidate Rules / Code
+(Historical Baseline)                      (Validated Memory)
+
+```
+
+The system now has a controlled, verifiable pipeline that honors historical context without letting speculative observations disrupt the workspace state.
 
 ## Audit Mode
 
