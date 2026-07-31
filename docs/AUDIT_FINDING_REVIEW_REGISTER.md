@@ -1,3 +1,4 @@
+> **Governance Notice:** This workspace operates under a strict **no destructive action** policy. No file modification, code generation, rule creation, memory promotion, or workspace mutation is permitted without explicit user authorization. All operations are read-only unless explicitly approved. Violations must be reported as findings, not silently corrected.
 # Audit Finding Review Register
 
 ## Purpose
@@ -105,6 +106,7 @@ Finding Review Register                    Candidate Rules / Code
 ```
 
 The system now has a controlled, verifiable pipeline that honors historical context without letting speculative observations disrupt the workspace state.
+> **Note — Target Architecture:** The Operating Lifecycle Overview above describes the **target architecture**. The current implementation (see workspace structure below) has the building blocks for the audit side but does not yet have an explicit Mode Detector, a formal Development Mode pipeline, or automated Finding Review Register population. No structural changes to the codebase are required — the existing modular layout supports this evolution.
 
 ## Audit Mode
 
@@ -299,3 +301,43 @@ Confirmed / False / Changed
 ```
 
 This keeps historical audits useful without allowing stale observations to override current workspace reality.
+## Current Workspace Structure
+
+The workspace is organized as follows — all components are modular; adding or removing a module does not break the rest:
+
+```
+/
+├── agent.py                         # Core runtime: Context, Governance, search, inspect
+├── audit_controller.py              # Rule registry + resolve_rule + run_rule + audit reporting
+├── server.py                        # Local HTTP entry point
+├── migrate_legacy_state.py          # Standalone migration utility
+├── governance.json                  # Allowed-read / forbidden-glob governance config
+├── lbe_guard_inspector/             # Guard inspector framework
+│   ├── authority_ownership*.py      # Authority ownership contracts + inspector + extractor (3 files)
+│   ├── reasoning_*.py               # Reasoning provider, contracts, config, runtime (4 files)
+│   ├── memory/                      # SQLite-backed validated workspace memory (7 files)
+│   ├── module_registry/             # Module registry models + store + watcher (4 files)
+│   ├── callback_vertical_slice.py   # Callback inspection vertical slice
+│   ├── module_registry_vertical_slice.py
+│   ├── contracts.py / evidence_service.py / guard_*.py
+│   ├── invocation_adapter.py / project_*.py
+│   ├── registry_inspection.py / request_controller.py
+│   ├── rule_gatekeeper.py / runtime_*.py
+│   ├── session_memory_runtime.py / workspace_identity.py
+│   └── __init__.py
+├── rules/                           # Deterministic rule packs (4 files)
+│   ├── generic.py                   # Foundation guards: index_present, forbidden_roots
+│   ├── cep.py                       # CEP guards: manifest, host, menu, debug, zip, symlink
+│   ├── cep_callback.py              # Callback contract guard
+│   └── module_registry.py           # Module registry loaded-module guard
+├── schemas/                         # JSON validation schemas
+├── tests/                           # Test suite mirroring source structure
+├── tools/                           # Standalone utility scripts
+├── docs/                            # Documentation
+├── state/                           # Generated runtime state (git-ignored)
+├── pyproject.toml
+├── requirements.txt
+└── MANIFEST.json
+```
+
+All local imports flow one direction: `core (agent.py, audit_controller.py)` → `lbe_guard_inspector/` → `rules/`. No circular imports exist.

@@ -1,3 +1,4 @@
+> **Governance Notice:** This workspace operates under a strict **no destructive action** policy. No file modification, code generation, rule creation, memory promotion, or workspace mutation is permitted without explicit user authorization. All operations are read-only unless explicitly approved. Governance violations must be reported as findings, not silently corrected. See `governance.json` for the current allowed-read and forbidden-glob configuration.
 # Current Status
 
 Updated: 2026-07-30
