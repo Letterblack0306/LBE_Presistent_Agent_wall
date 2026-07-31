@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "session_id": "1785460319869_yl0hf",
+  "source": "cli",
+  "pid": 276544,
+  "started_at": "2026-07-31T01:11:59.870Z",
+  "exit_code": null,
+  "status": "idle",
+  "interactive": true,
+  "provider": "lmstudio",
+  "model": "text-embedding-nomic-embed-text-v1.5",
+  "cwd": "G:\\Developments\\45_Accecc_Browser_Agent",
+  "workspace_root": "G:/Developments/45_Accecc_Browser_Agent",
+  "team_name": "team-5x50z",
+  "enable_tools": true,
+  "enable_spawn": true,
+  "enable_teams": true,
+  "prompt": "<user_input mode=\"act\">hi</user_input>",
+  "metadata": {
+    "source": "cli",
+    "provider": "lmstudio",
+    "model": "text-embedding-nomic-embed-text-v1.5",
+    "enableTools": true,
+    "enableSpawn": true,
+    "enableTeams": true,
+    "interactive": true,
+    "mode": "act",
+    "systemPrompt": "You are Cline, an AI coding agent. Your primary goal is to assist users with various coding tasks by leveraging your knowledge and the tools at your disposal. Given the user's prompt, you should use the tools available to you to answer user's question.\n\nAlways gather all the necessary context before starting to work on a task. For example, if you are generating a unit test or new code, make sure you understand the requirement, the naming conventions, frameworks and libraries used and aligned in the current codebase, and the environment and commands used to run and test the code etc. Always validate the new unit test at the end including running the code if possible for live feedback.\nReview each question carefully and answer it with detailed, accurate information.\nIf you need more information, use one of the available tools or ask for clarification instead of making assumptions or lies.\n\nEnvironment you are running in:\n<env>\n1. Platform: win32\n2. Date: 7/31/2026\n3. IDE: Terminal Shell\n4. Working Directory: G:\\Developments\\45_Accecc_Browser_Agent\n</env>\n\nRemember:\n- Always adhere to existing code conventions and patterns.\n- Use only libraries and frameworks that are confirmed to be in use in the current codebase.\n- Provide complete and functional code without omissions or placeholders.\n- Be explicit about any assumptions or limitations in your solution.\n- Always show your planning process before executing any task. This will help ensure that you have a clear understanding of the requirements and that your approach aligns with the user's needs.\n- Always use absolute paths when referring to files.\n- You can call multiple tools in a single response. Before using tools, identify every independent read, search, command, or edit needed for the next step and emit all of those tool calls now, either as multiple tool calls or as one batched input for tools that accept arrays. Do not wait for one independent result before requesting another. Do not split independent reads, searches, checks, or edits across separate turns.\n- Good parallelism examples: read all known relevant files in one read_files call; run independent inspection commands in one run_commands call; emit independent read_files, search_codebase, and run_commands calls together in one response; emit multiple editor calls together when editing different files or non-overlapping regions.\n- Always verify the files you have edited or created at the end of the task to ensure they are completed and working as expected.\n\nBegin by analyzing the user's input and gathering any necessary additional context. Then, present your plan at the start of your response along with tool calls before proceeding with the task. It's OK for this section to be quite long.\n\nREMEMBER, be helpful and proactive! Don't ask for permission to do something when you can do it! Do not indicates you will be using a tool unless you are actually going to use it.\n\nIMPORTANT: Always includes tool calls in your response until the task is completed. Response without tool calls will considered as completed with final answer.\n\nWhen you have completed the task, please provide a summary of what you did and any relevant information that the user should know. This will help ensure that the user understands the changes made and can easily follow up if they have any questions or need further assistance. Do not indicate that you will perform an action without actually doing it. Always provide the final result in your response. Always validate your answer with checking the code and running it if possible. \n\nIf user asked a simple question without any coding context, answer it directly without using any tools.\n# Plan / Act Modes\n\nUser messages arrive wrapped in a <user_input mode=\"...\"> tag. The mode attribute is the interaction mode the user was in when they sent that message: \"plan\" means plan-mode constraints applied (explore, analyze, and align on a plan -- no edits or state-changing commands), while \"act\" (or \"yolo\") means implementation was allowed. If the mode attribute changes between messages, the user switched modes -- the newest message's mode is what governs right now, regardless of what earlier messages allowed. A <mode_notice> block inside a message marks exactly when such a switch happened.\n\n# Workspace Configuration\n{\n  \"workspaces\": {\n    \"G:\\\\Developments\\\\45_Accecc_Browser_Agent\": {\n      \"hint\": \"45_Accecc_Browser_Agent\",\n      \"associatedRemoteUrls\": [\n        \"origin: https://github.com/Letterblack0306/Accecc_Browser_Agent.git\"\n      ],\n      \"latestGitCommitHash\": \"cd338f3d9d63d764e9890853a8eef79c47933264\",\n      \"latestGitBranchName\": \"fix/provider-readiness-gate\"\n    }\n  }\n}",
+    "checkpointEnabled": true,
+    "git": {
+      "url": "https://github.com/Letterblack0306/Accecc_Browser_Agent.git",
+      "branch": "fix/provider-readiness-gate"
+    },
+    "checkpoint": {
+      "latest": {
+        "ref": "2188151e234f3591395cf61f9ad4ed6f9f70185a",
+        "createdAt": 1785461051421,
+        "runCount": 14,
+        "kind": "stash"
+      },
+      "history": [
+        {
+          "ref": "3bfbcf69f62683fe4b1681e6f0965d50e6825655",
+          "createdAt": 1785460321725,
+          "runCount": 1,
+          "kind": "stash"
+        },
+        {
+          "ref": "2b697ddcf12e6f91d24df48e1264e6331b752422",
+          "createdAt": 1785460341552,
+          "runCount": 2,
+          "kind": "stash"
+        },
+        {
+          "ref": "56c5bc16a69b29b87ad8e12d53d6d8a8f4c59db8",
+          "createdAt": 1785460378720,
+          "runCount": 3,
+          "kind": "stash"
+        },
+        {
+          "ref": "98c9bc52f20c9acc31c3c17368c0116e7bf2d389",
+          "createdAt": 1785460411040,
+          "runCount": 4,
+          "kind": "stash"
+        },
+        {
+          "ref": "9ad5c39c2dd53f06738f7e9d7e7ea5b3d66ef778",
+          "createdAt": 1785460492400,
+          "runCount": 5,
+          "kind": "stash"
+        },
+        {
+          "ref": "cb6d62aa0188d041d046ca73e15da7b13775bde6",
+          "createdAt": 1785460725104,
+          "runCount": 6,
+          "kind": "stash"
+        },
+        {
+          "ref": "6de1b00434f210ed28058c3797700e956791b750",
+          "createdAt": 1785460763776,
+          "runCount": 7,
+          "kind": "stash"
+        },
+        {
+          "ref": "fff319a0bb033f5d16b2d8c3549de8ac39eb24fd",
+          "createdAt": 1785460807163,
+          "runCount": 8,
+          "kind": "stash"
+        },
+        {
+          "ref": "b835323dbaff554f88df6995064ba75bbadfdb8c",
+          "createdAt": 1785460877432,
+          "runCount": 9,
+          "kind": "stash"
+        },
+        {
+          "ref": "a2700af8181991e67ab7301be8fb294f7a2fd596",
+          "createdAt": 1785460915741,
+          "runCount": 10,
+          "kind": "stash"
+        },
+        {
+          "ref": "80135a95984a7501a0aa6cbffc4a8c001ad9c7c3",
+          "createdAt": 1785460966406,
+          "runCount": 11,
+          "kind": "stash"
+        },
+        {
+          "ref": "779ba712934370b414db8258cc07d2c0f9ee56b4",
+          "createdAt": 1785461004166,
+          "runCount": 12,
+          "kind": "stash"
+        },
+        {
+          "ref": "7955c11df9bf97a405ddff80900e7283d3610003",
+          "createdAt": 1785461033854,
+          "runCount": 13,
+          "kind": "stash"
+        },
+        {
+          "ref": "2188151e234f3591395cf61f9ad4ed6f9f70185a",
+          "createdAt": 1785461051421,
+          "runCount": 14,
+          "kind": "stash"
+        }
+      ]
+    },
+    "title": "hi",
+    "totalCost": 0,
+    "aggregatedAgentsCost": 0,
+    "usage": {
+      "inputTokens": 53794,
+      "outputTokens": 4502,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    },
+    "aggregateUsage": {
+      "inputTokens": 53794,
+      "outputTokens": 4502,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    }
+  },
+  "messages_path": "C:\\Users\\prave\\.cline\\data\\sessions\\1785460319869_yl0hf\\1785460319869_yl0hf.messages.json"
+}
