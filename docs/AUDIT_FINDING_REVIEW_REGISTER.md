@@ -48,71 +48,186 @@ Each finding should contain:
 }
 ```
 
+# Mode Controller Architecture
+
+The system must separate audit behavior from development behavior. The same reasoning capability is useful in both modes, but the authority boundaries are different.
+
+```
+User Request
+      ↓
+Mode Detector
+      ↓
+ ┌───────────────┬────────────────┐
+ │               │                │
+Audit Mode       Development Mode
+ │               │
+Read-only        Read/write
+Existing guards  Discover patterns
+Evidence only    Create candidates
+Findings         Validate changes
+```
+
+## Audit Mode
+
+Purpose:
+
+> Measure current workspace reality against existing guards.
+
+Rules:
+
+```json
+{
+  "mode": "audit",
+  "capabilities": [
+    "read workspace",
+    "select existing guards",
+    "collect evidence",
+    "produce findings"
+  ],
+  "restrictions": [
+    "no file modification",
+    "no new guard creation",
+    "no unsupported assumptions",
+    "stop on insufficient evidence"
+  ]
+}
+```
+
+Workflow:
+
+```
+Audit request
+      ↓
+Workspace identity
+      ↓
+Failure domain detection
+      ↓
+Guard retrieval
+      ↓
+Evidence requirements
+      ↓
+Bounded inspection
+      ↓
+Finding output
+      ↓
+Stop
+```
+
+Audit mode does not allow:
+
+- broad uncontrolled exploration;
+- creating rules from observations;
+- converting model reasoning into truth;
+- proposing code changes without evidence.
+
+## Development Mode
+
+Purpose:
+
+> Explore, implement, discover patterns, and create validated improvements.
+
+Rules:
+
+```json
+{
+  "mode": "development",
+  "capabilities": [
+    "read workspace",
+    "modify files with approval",
+    "discover patterns",
+    "create candidate rules"
+  ],
+  "requirements": [
+    "provenance tracking",
+    "validation before promotion",
+    "evidence-backed decisions"
+  ]
+}
+```
+
+Workflow:
+
+```
+Development request
+      ↓
+Workspace identity
+      ↓
+Explore problem
+      ↓
+Discover patterns
+      ↓
+Create candidate rule
+      ↓
+Validate
+      ↓
+Promote only if proven
+```
+
+## Mode Detection
+
+Mode detection should be explicit and conservative.
+
+Examples:
+
+| Request | Mode |
+|---|---|
+| audit workspace for feature gaps | audit |
+| review module ownership | audit |
+| check contract validity | audit |
+| fix callback registration bug | development |
+| implement new feature | development |
+| ambiguous request | ask user |
+
+Keyword matching may assist detection, but ambiguous requests should not silently choose a mutation-capable mode.
+
 ## Model Selection Boundary
 
 The reasoning model is an investigation assistant, not the source of truth.
 
 Model selection should balance:
 
-- reasoning capability for broad workspace investigation;
-- coding understanding for implementation-related audits;
+- reasoning capability;
+- coding understanding;
 - context efficiency;
-- local/runtime cost.
+- runtime cost.
 
 DeepSeek coding models remain valid options for implementation-heavy analysis because of their coding capability. However, audits should not depend only on the largest coding model.
 
-Preferred future architecture:
+Preferred architecture:
 
 ```
 Lightweight model
         ↓
 Problem classification
 Guard catalog retrieval
-Candidate rule discovery
         ↓
 Reasoning model (when required)
 Complex investigation
-Architecture comparison
         ↓
 Deterministic guards
 Evidence validation
 Final verdict
 ```
 
-The model should not be required to remember every rule. Rule discovery must expand through registered guards and relationships.
+The model should not remember every rule. Registered guard relationships must expand the investigation boundary.
 
 ## Guard Discovery Requirement
 
-Before applying a guard, the system should identify:
+Before applying a guard:
 
 ```
 Problem domain
         ↓
-Possible affected areas
+Affected areas
         ↓
 Related guards
         ↓
 Required evidence
         ↓
-Selected inspection path
+Inspection path
 ```
 
-This prevents narrow-context failures where a model selects one visible rule and misses related rules.
-
-Example:
-
-```
-callback failure
-        ↓
-Possible checks:
-- callback contract
-- module registration
-- bridge communication
-- runtime ownership
-- dependency compatibility
-```
-
-The final selected guard must still be evidence-backed.
+This prevents narrow-context failures where a model selects one visible rule and misses related checks.
 
 ## Review Rules
 
