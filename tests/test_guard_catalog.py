@@ -1,8 +1,16 @@
 from lbe_guard_inspector.guard_catalog import (
     FOUNDATION_GUARD_IDS,
+    evidence_contract_for_guard,
     resolve_foundation_guards,
     select_guard_catalog,
 )
+
+
+def test_catalog_exposes_registered_evidence_contract_for_selected_guard():
+    contract = evidence_contract_for_guard("cep.manifest_exists")
+
+    assert contract["path_patterns"] == ("CSXS/manifest.xml",)
+    assert contract["extensions"] == (".xml",)
 
 
 def test_catalog_selects_only_approved_cep_guards_from_profile_signals():
