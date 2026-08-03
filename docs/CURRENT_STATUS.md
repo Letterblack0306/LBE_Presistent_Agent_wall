@@ -238,6 +238,81 @@ Validation for this checkpoint:
 - full repository suite: `283 passed`;
 - `git diff --check`: passed.
 
+## Indexed corpus integration checkpoint
+
+The indexed corpus is global reference knowledge. It may contain examples from
+the developer's repositories, but those records are never the target workspace
+and never become current truth. The LLM uses them for cross-project,
+request-time pattern specialization; this is retrieval-based specialization,
+not model training.
+
+The intended runtime is:
+
+```text
+curated cross-project corpus
+-> pattern retrieval
+-> candidate guards / likely failure domains
+-> inspect the current arbitrary workspace
+-> deterministic validation
+-> verdict
+```
+
+PASS:
+
+- corpus indexing;
+- ranked retrieval;
+- evidence metadata and exclusions;
+- indexed/current evidence separation;
+- LLM reasoning route;
+- deterministic guard execution;
+- automatic injection of bounded `indexed_reference_evidence` into
+  `ReasoningRequest.reference_context`.
+
+Historical open-defect proof, now resolved in the current worktree:
+
+```text
+INDEXED_EVIDENCE_COUNT=3
+CURRENT_EVIDENCE_COUNT=3
+REASONING_REFERENCE_CONTEXT_COUNT=0
+```
+
+The required implementation now runs bounded task-scoped reference retrieval
+before `backend.plan()`, preserves path, hash, source classification, authority,
+verification, and exclusion metadata, and injects only indexed reference
+evidence. Current-workspace and validation evidence remain separate
+deterministic inputs.
+
+### Reasoning Context Contract
+
+Before `backend.plan()` executes:
+
+1. Perform bounded task-scoped retrieval.
+2. Build an evidence package.
+3. Inject only `indexed_reference_evidence` into
+   `ReasoningRequest.reference_context`.
+4. Never inject current workspace evidence into `reference_context`.
+5. Never inject validation evidence into `reference_context`.
+6. Preserve evidence IDs, hashes, provenance, authority metadata, and source
+   classifications.
+7. Excluded records must never enter the reasoning context.
+
+Current proof:
+
+```text
+INDEXED_EVIDENCE_COUNT=5
+REASONING_REFERENCE_CONTEXT_COUNT=5
+injected evidence IDs/hashes match selected indexed records: PASS
+excluded records absent: PASS
+current workspace evidence remains separate: PASS
+```
+
+The next active implementation step, before Phase 20 release readiness, is a
+cross-project retrieval proof on unfamiliar workspaces. It must resolve each
+selected workspace independently, use corpus matches only as pattern
+candidates, inspect current files before project-specific claims, bind verdicts
+to current evidence and validation, and preserve corpus provenance and
+authority metadata.
+
 ## Completed project-scoped audit proof
 
 The end-to-end project-scoped chain is now proven through the installed

@@ -1,0 +1,21 @@
+include README.md
+include LICENSE
+recursive-include lbe_guard_inspector *.py
+recursive-include rules *.py
+recursive-include schemas *.json
+prune tests
+prune build
+prune dist
+prune .pytest_cache
+prune .truth
+prune state
+prune docs
+prune acceptance
+prune examples
+prune .github
+exclude config.json
+exclude reasoning-provider.json
+exclude governance.json
+exclude MANIFEST.json
+global-exclude *.py[cod]
+global-exclude __pycache__

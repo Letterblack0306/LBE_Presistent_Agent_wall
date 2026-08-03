@@ -307,6 +307,84 @@ Validated at `b74f2c14b8f9409cf76b401961b5174e0fd3edf9`:
 - `git diff --check` passes: complete;
 - working tree remains clean: complete.
 
+## Indexed corpus integration checkpoint
+
+The indexed corpus is global reference knowledge. It may include examples from
+the developer's repositories, but those records are not the target workspace
+and must never be treated as current truth. This is cross-project,
+request-time retrieval specialization, not model training; model weights do not
+change.
+
+The intended runtime is:
+
+```text
+curated cross-project corpus
+-> pattern retrieval
+-> candidate guards / likely failure domains
+-> inspect the current arbitrary workspace
+-> deterministic validation
+-> verdict
+```
+
+PASS:
+
+- corpus indexing;
+- ranked retrieval;
+- evidence metadata and exclusions;
+- indexed/current evidence separation;
+- LLM reasoning route;
+- deterministic guard execution;
+- automatic injection of bounded `indexed_reference_evidence` into
+  `ReasoningRequest.reference_context`.
+
+Historical open-defect proof, resolved before this checkpoint was marked
+complete:
+
+```text
+INDEXED_EVIDENCE_COUNT=3
+CURRENT_EVIDENCE_COUNT=3
+REASONING_REFERENCE_CONTEXT_COUNT=0
+```
+
+Required implementation now present:
+
+- run bounded task-scoped reference retrieval before `backend.plan()`;
+- preserve authority, path, hash, classification, verification, and exclusion
+  metadata;
+- inject only `indexed_reference_evidence` into `reference_context`;
+- keep current-workspace and validation evidence separate.
+
+### Reasoning Context Contract
+
+Before `backend.plan()` executes:
+
+1. Perform bounded task-scoped retrieval.
+2. Build an evidence package.
+3. Inject only `indexed_reference_evidence` into
+   `ReasoningRequest.reference_context`.
+4. Never inject current workspace evidence into `reference_context`.
+5. Never inject validation evidence into `reference_context`.
+6. Preserve evidence IDs, hashes, provenance, authority metadata, and source
+   classifications.
+7. Excluded records must never enter the reasoning context.
+
+Current proof:
+
+```text
+INDEXED_EVIDENCE_COUNT=5
+REASONING_REFERENCE_CONTEXT_COUNT=5
+injected evidence IDs/hashes match selected indexed records: PASS
+excluded records absent: PASS
+current workspace evidence remains separate: PASS
+```
+
+The next active implementation step, before Phase 20 release readiness, is a
+cross-project retrieval proof on unfamiliar workspaces. The proof must resolve
+the selected workspace independently, treat corpus matches only as pattern
+candidates, inspect current files before project-specific claims, bind verdicts
+to current workspace evidence and validation, and preserve corpus provenance
+and authority metadata.
+
 ## Phase 20 - Minimum release-readiness boundary
 
 ### Objective
@@ -353,8 +431,11 @@ Make the proven read-only Guard Inspector distributable and verifiable without e
 
 ## Immediate next task
 
-1. open and review the Phase 19 pull request;
-2. verify mergeability and repository checks;
-3. merge only after the mutually exclusive fixed-capability boundary is accepted;
-4. create a separate Phase 20 branch from updated `main`;
-5. inspect current packaging and CI truth before modifying release files.
+1. prove cross-project indexed retrieval on unfamiliar workspaces;
+2. retain evidence IDs, hashes, classifications, exclusions, and workspace
+   separation in the proof receipt;
+3. open and review the Phase 19 pull request;
+4. verify mergeability and repository checks;
+5. merge only after the mutually exclusive fixed-capability boundary is accepted;
+6. create a separate Phase 20 branch from updated `main`;
+7. inspect current packaging and CI truth before modifying release files.

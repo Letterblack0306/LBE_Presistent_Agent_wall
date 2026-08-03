@@ -9,7 +9,8 @@ from agent import Context, GovernanceError
 from audit_controller import AuditError, resolve_rule
 
 from .contracts import ContractValidationError, validate_contract
-from .guard_catalog import select_guard_catalog
+from .evidence_service import EvidenceService
+from .guard_catalog import evidence_contract_for_guard, select_guard_catalog
 from .guard_runner import GuardRunner
 from .project_profiler import ProjectProfiler
 from .reasoning_contracts import (
@@ -39,6 +40,7 @@ class LBERequestController:
         context: Context | None = None,
         context_loader: Callable[[], Context] = Context.load,
         profiler: ProjectProfiler | None = None,
+        evidence_service: EvidenceService | None = None,
         catalog_selector: Callable[[dict[str, Any]], dict[str, Any]] = select_guard_catalog,
         runner: GuardRunner | None = None,
         rule_resolver: Callable[[str, str], Any] = resolve_rule,
@@ -47,6 +49,7 @@ class LBERequestController:
         self._context = context
         self._context_loader = context_loader
         self._profiler = profiler or ProjectProfiler()
+        self._evidence_service = evidence_service or EvidenceService()
         self._catalog_selector = catalog_selector
         self._runner = runner or GuardRunner()
         self._rule_resolver = rule_resolver
@@ -71,6 +74,15 @@ class LBERequestController:
         approved_guards = tuple(dict.fromkeys(
             [*catalog.get("foundation_guard_ids", []), *catalog.get("optional_guard_ids", [])]
         ))
+        evidence_package = self._evidence_service.build_evidence_package(
+            task_id=request.task_id or f"task-{uuid.uuid4()}",
+            query=problem,
+            workspace_id=identity.workspace_id,
+            workspace_root=str(identity.target_project_root),
+            max_results=request.max_results,
+            roots=[identity.configured_root_id],
+        )
+        validated_evidence_package = validate_contract("evidence_package", evidence_package)
         reasoning_request = ReasoningRequest(
             problem=problem,
             workspace_identity={
@@ -81,7 +93,9 @@ class LBERequestController:
             workspace_profile=profile,
             approved_guard_ids=approved_guards,
             approved_tools=tuple(sorted(_APPROVED_TOOLS)),
-            reference_context=tuple(dict(item) for item in request.reference_context),
+            reference_context=tuple(
+                dict(item) for item in validated_evidence_package["indexed_reference_evidence"]
+            ),
         )
         plan = _coerce_plan(self._backend.plan(reasoning_request))
         self._validate_plan(plan, identity.target_project_root, approved_guards)
@@ -97,6 +111,7 @@ class LBERequestController:
             self._rule_resolver(pack_id, guard_id)
         except (AuditError, OSError, ValueError) as exc:
             raise _ControllerFailure("UNREGISTERED_GUARD", f"Approved guard is not registered: {guard_id}: {exc}") from exc
+        evidence_contract = evidence_contract_for_guard(guard_id)
         decision = self._runner.run(
             problem=problem,
             workspace_root=str(identity.target_project_root),
@@ -105,12 +120,12 @@ class LBERequestController:
             rule_id=guard_id,
             guard_id=guard_id,
             roots=[identity.configured_root_id],
-            extensions=None,
+            extensions=evidence_contract.get("extensions"),
             reason=f"controller-selected guard inspection: {guard_id}",
             retrieval_mode="guard",
             query=problem,
-            path_patterns=None,
-            evidence_requirements=None,
+            path_patterns=list(evidence_contract["path_patterns"]),
+            evidence_requirements=list(evidence_contract["evidence_requirements"]),
         )
         guard_result = decision.get("guard_result")
         package = decision.get("evidence_package")

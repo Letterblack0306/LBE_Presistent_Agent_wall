@@ -1,7 +1,20 @@
 """Approved deterministic guard catalog selected from a verified project profile."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
+
+
+def _evidence_contract(
+    *,
+    path_patterns: tuple[str, ...],
+    evidence_requirements: tuple[str, ...],
+    extensions: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
+    return {
+        "path_patterns": path_patterns,
+        "evidence_requirements": evidence_requirements,
+        "extensions": extensions,
+    }
 
 
 FOUNDATION_GUARDS = (
@@ -10,12 +23,22 @@ FOUNDATION_GUARDS = (
         "pack_id": "generic",
         "condition": "always",
         "category": "mandatory_policy",
+        "evidence_contract": _evidence_contract(
+            path_patterns=("pyproject.toml", "package.json", "README.md"),
+            extensions=(".toml", ".json", ".md"),
+            evidence_requirements=("bounded project metadata",),
+        ),
     },
     {
         "guard_id": "generic.forbidden_roots",
         "pack_id": "generic",
         "condition": "always",
         "category": "mandatory_policy",
+        "evidence_contract": _evidence_contract(
+            path_patterns=("governance.json", "pyproject.toml", "package.json"),
+            extensions=(".json", ".toml"),
+            evidence_requirements=("bounded governance and project metadata",),
+        ),
     },
 )
 FOUNDATION_GUARD_IDS = tuple(item["guard_id"] for item in FOUNDATION_GUARDS)
@@ -87,3 +110,53 @@ def resolve_foundation_guards(profile: dict[str, Any] | None = None) -> dict[str
             "reason": "No approved lbe.validation foundation guard is registered.",
         },
     }
+
+
+_EVIDENCE_CONTRACTS: dict[str, dict[str, Any]] = {
+    "cep.manifest_exists": _evidence_contract(
+        path_patterns=("CSXS/manifest.xml",),
+        extensions=(".xml",),
+        evidence_requirements=("canonical CEP manifest",),
+    ),
+    "cep.host_version": _evidence_contract(
+        path_patterns=("CSXS/manifest.xml",),
+        extensions=(".xml",),
+        evidence_requirements=("canonical CEP manifest",),
+    ),
+    "cep.menubar_extension": _evidence_contract(
+        path_patterns=("CSXS/manifest.xml",),
+        extensions=(".xml",),
+        evidence_requirements=("canonical CEP manifest",),
+    ),
+    "cep.debug_mode": _evidence_contract(
+        path_patterns=("CSXS/manifest.xml",),
+        extensions=(".xml",),
+        evidence_requirements=("canonical CEP manifest",),
+    ),
+    "cep.no_zip_in_repo": _evidence_contract(
+        path_patterns=("**/*.zip",),
+        extensions=(".zip",),
+        evidence_requirements=("repository archive files",),
+    ),
+    "cep.symlink_free": _evidence_contract(
+        path_patterns=("*",),
+        evidence_requirements=("current workspace paths",),
+    ),
+    "module_registry.loaded_module_registration": _evidence_contract(
+        path_patterns=(".lbe/module-registry.json",),
+        extensions=(".json",),
+        evidence_requirements=("canonical module registry artifact",),
+    ),
+}
+
+
+def evidence_contract_for_guard(guard_id: str) -> Mapping[str, Any]:
+    """Return the registered deterministic evidence contract for one guard."""
+    normalized = str(guard_id).strip()
+    for item in (*FOUNDATION_GUARDS,):
+        if item["guard_id"] == normalized:
+            return item["evidence_contract"]
+    contract = _EVIDENCE_CONTRACTS.get(normalized)
+    if contract is None:
+        raise KeyError(f"No evidence contract registered for guard: {normalized}")
+    return contract

@@ -55,6 +55,16 @@ class FakeRunner:
         }
 
 
+class FakeEvidenceService:
+    def __init__(self, package):
+        self.package = package
+        self.calls = []
+
+    def build_evidence_package(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.package
+
+
 def _evidence(workspace_id: str, root: str):
     return {
         "ref": f"workspace:{workspace_id}:CSXS/manifest.xml", "source_type": "workspace", "record_id": None,
@@ -80,14 +90,36 @@ def _plan(**overrides):
     return value
 
 
-def _controller(tmp_path: Path, backend: FakeBackend, runner: FakeRunner | None = None):
+def _evidence_package(indexed=None, current=None, validation=None):
+    return {
+        "package_id": "ep-reasoning",
+        "task_id": "task-1",
+        "query": "Why did this fail?",
+        "workspace_id": "workspace-test",
+        "indexed_reference_evidence": indexed or [],
+        "current_workspace_evidence": current or [],
+        "validation_evidence": validation or [],
+        "contradictions": [],
+        "missing_evidence": [],
+        "generated_at": "2026-07-30T00:00:00+00:00",
+    }
+
+
+def _controller(
+    tmp_path: Path,
+    backend: FakeBackend,
+    runner: FakeRunner | None = None,
+    evidence_service: FakeEvidenceService | None = None,
+):
     configured = tmp_path / "configured"; configured.mkdir()
     workspace = configured / "project"; (workspace / "CSXS").mkdir(parents=True)
     (workspace / "CSXS" / "manifest.xml").write_text("<ExtensionManifest/>", encoding="utf-8")
     context = Context(config={}, governance={}, roots=(KnowledgeRoot("dev", configured),))
     resolved_runner = runner or FakeRunner()
+    resolved_evidence = evidence_service or FakeEvidenceService(_evidence_package())
     controller = LBERequestController(
         backend=backend, context=context, runner=resolved_runner,
+        evidence_service=resolved_evidence,
         rule_resolver=lambda pack, rule: object() if (pack, rule) == ("cep", "cep.manifest_exists") else (_ for _ in ()).throw(ValueError("unregistered")),
     )
     return controller, resolved_runner, workspace
@@ -103,11 +135,30 @@ def test_valid_typed_plan_runs_registered_guard_and_preserves_verdict(tmp_path):
     response = _run(controller, workspace)
     assert response.outcome == "COMPLETED"
     assert runner.calls[0]["guard_id"] == "cep.manifest_exists"
-    assert runner.calls[0]["extensions"] is None
+    assert runner.calls[0]["extensions"] == (".xml",)
+    assert runner.calls[0]["path_patterns"] == ["CSXS/manifest.xml"]
+    assert runner.calls[0]["evidence_requirements"] == ["canonical CEP manifest"]
     assert runner.calls[0]["reason"] == "controller-selected guard inspection: cep.manifest_exists"
     assert response.deterministic_result["verdict"] == "PASS"
     assert response.explanation.explanation == "Deterministic result explained."
     assert backend.plan_requests[0].workspace_identity["target_project_root"] == str(workspace.resolve())
+
+
+def test_planning_receives_only_indexed_evidence_from_task_retrieval(tmp_path):
+    indexed = [_evidence("index-workspace", "index/path.py")]
+    current = [_evidence("current-workspace", "current/path.py")]
+    validation = [_evidence("validation-workspace", "validation/path.py")]
+    evidence_service = FakeEvidenceService(_evidence_package(indexed, current, validation))
+    backend = FakeBackend(_plan())
+    controller, _, workspace = _controller(tmp_path, backend, evidence_service=evidence_service)
+
+    response = _run(controller, workspace)
+
+    assert response.outcome == "COMPLETED"
+    assert backend.plan_requests[0].reference_context == tuple(indexed)
+    assert evidence_service.calls[0]["query"] == "Why did this fail?"
+    assert evidence_service.calls[0]["workspace_root"] == str(workspace.resolve())
+    assert evidence_service.calls[0]["max_results"] == 10
 
 
 @pytest.mark.parametrize("plan,code", [
