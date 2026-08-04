@@ -1,6 +1,7 @@
 """Read-only, evidence-bound rule proposal and revalidation boundary."""
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -17,6 +18,8 @@ from .workspace_identity import WorkspaceIdentity, resolve_workspace_identity
 STATUS_APPLICABLE = "APPLICABLE"
 STATUS_PROPOSAL_READY = "PROPOSAL_READY"
 STATUS_INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+STATUS_APPLIED = "APPLIED"
+STATUS_ACTIVATION_FAILED = "ACTIVATION_FAILED"
 
 
 class RuleGatekeeper:
@@ -28,10 +31,12 @@ class RuleGatekeeper:
         context: Context,
         rule_resolver: Callable[[str, str], Any] = resolve_rule,
         clock: Callable[[], datetime] | None = None,
+        authorization_checker: Callable[[Mapping[str, Any], Mapping[str, Any]], bool] | None = None,
     ) -> None:
         self._context = context
         self._rule_resolver = rule_resolver
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._authorization_checker = authorization_checker
 
     def inspect(
         self,
@@ -109,6 +114,17 @@ class RuleGatekeeper:
 
         rule_id = _text(guard_result.get("guard_id"), "guard_result.guard_id")
         target_relative = target.relative_to(identity.target_project_root)
+        current_profile = _load_profile(target)
+        proposed_rule = _proposed_rule(
+            rule_id=rule_id,
+            trigger=trigger,
+            required_action=required_action,
+            severity=severity,
+            scope=normalized_scope,
+            exceptions=exceptions,
+        )
+        computed_equivalent = _check_equivalent_rule(current_profile, proposed_rule)
+        exact_diff = _profile_diff(current_profile, proposed_rule, target_relative)
         source_hashes = sorted(item["hash"] for item in evidence)
         profile_ref = _workspace_ref(identity.workspace_id, target_relative, _sha256(target))
         refs = sorted({*(item["ref"] for item in evidence), profile_ref})
@@ -143,11 +159,11 @@ class RuleGatekeeper:
             "severity": _text(severity, "severity"),
             "exceptions": _text_list(exceptions, "exceptions", allow_empty=True),
             "equivalent_rule_checked": True,
-            "equivalent_rule_result": _json_value(equivalent_rule_result, "equivalent_rule_result"),
+            "equivalent_rule_result": computed_equivalent,
             "contradiction_result": _json_value(contradiction_result, "contradiction_result"),
             "evidence_refs": refs,
             "source_hashes": source_hashes,
-            "diff": "Application is unavailable in this read-only boundary; no workspace diff was generated.",
+            "diff": exact_diff,
             "validation_plan": _text_list(validation_plan, "validation_plan"),
             "rollback_plan": _text_list(rollback_plan, "rollback_plan"),
             "provenance": enriched_provenance,
@@ -255,6 +271,78 @@ class RuleGatekeeper:
         validate_contract("rule_proposal", proposal)
         raise PermissionError("RuleGatekeeper is read-only: proposal application is blocked.")
 
+    def apply_approved_proposal(
+        self,
+        *,
+        workspace_root: str | Path,
+        proposal: Mapping[str, Any],
+        decision_record: Mapping[str, Any],
+        activation_validator: Callable[[Path, Mapping[str, Any]], bool],
+    ) -> dict[str, Any]:
+        """Apply one explicitly approved profile diff and validate activation.
+
+        This is the narrow governed write boundary. It does not create rollback
+        artifacts, persist provenance, or attempt repair beyond the profile diff.
+        """
+        validated_proposal = validate_contract("rule_proposal", proposal)
+        validated_decision = validate_contract("rule_proposal_decision", decision_record)
+        if validated_decision["decision"] != "APPROVED":
+            raise PermissionError("Only an APPROVED governance decision may apply a proposal.")
+        if validated_decision["proposal_id"] != validated_proposal["proposal_id"]:
+            raise ValueError("Governance decision does not match the proposal.")
+        if validated_decision["workspace_id"] != validated_proposal["workspace_id"]:
+            raise ValueError("Governance decision does not match the proposal workspace.")
+        if validated_decision["proposal_hash"] != _stable_hash(validated_proposal):
+            raise ValueError("Governance decision does not match the proposal hash.")
+        if self._authorization_checker is None:
+            raise PermissionError("LBE authorization checker is required for profile application.")
+        if not self._authorization_checker(validated_proposal, validated_decision):
+            raise PermissionError("LBE authorization denied profile application.")
+
+        revalidation = self.revalidate_proposal(
+            workspace_root=workspace_root, proposal=validated_proposal
+        )
+        if revalidation.get("status") != STATUS_PROPOSAL_READY:
+            raise ValueError("Proposal is stale or otherwise ineligible for application.")
+        identity = resolve_workspace_identity(self._context, workspace_root)
+        target, target_error = _profile_target(
+            identity.target_project_root, validated_proposal["target_profile_path"]
+        )
+        if target_error or target is None:
+            raise ValueError(target_error or "Target profile is unavailable.")
+        current_profile = _load_profile(target)
+        proposed_rule = _proposed_rule(
+            rule_id=validated_proposal["rule_id"],
+            trigger=validated_proposal["trigger"],
+            required_action=validated_proposal["required_action"],
+            severity=validated_proposal["severity"],
+            scope=validated_proposal["scope"],
+            exceptions=validated_proposal["exceptions"],
+        )
+        target_relative = target.relative_to(identity.target_project_root)
+        if _profile_diff(current_profile, proposed_rule, target_relative) != validated_proposal["diff"]:
+            raise ValueError("Current profile no longer matches the approved exact diff.")
+        updated_profile = _updated_profile(current_profile, proposed_rule)
+        target.write_text(
+            json.dumps(updated_profile, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        activated = bool(activation_validator(target, validated_proposal))
+        status = STATUS_APPLIED if activated else STATUS_ACTIVATION_FAILED
+        return {
+            "mode": "apply_proposal",
+            "status": status,
+            "workspace_id": identity.workspace_id,
+            "proposal_id": validated_proposal["proposal_id"],
+            "decision_id": validated_decision["decision_id"],
+            "activation_validated": activated,
+            "runtime_mutations_performed": True,
+            "target_workspace_changed": True,
+            "target_profile_changed": True,
+            "rule_registry_changed": False,
+            "index_changed": False,
+        }
+
     def _validate_inputs(
         self, identity: WorkspaceIdentity, pack_id: str, guard_result: Mapping[str, Any],
         evidence_package: Mapping[str, Any], governance_state: str,
@@ -305,6 +393,67 @@ def _current_workspace_evidence(package: Mapping[str, Any], workspace_id: str, r
         if candidate.is_file() and not candidate.is_symlink() and _sha256(candidate) == digest:
             result.append({"ref": _workspace_ref(workspace_id, relative, digest), "hash": digest})
     return result
+
+
+def _load_profile(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Target profile is not valid JSON: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError("Target profile must contain a JSON object.")
+    return value
+
+
+def _proposed_rule(*, rule_id: str, trigger: str, required_action: str,
+                   severity: str, scope: Sequence[str], exceptions: Sequence[str]) -> dict[str, Any]:
+    return {
+        "rule_id": rule_id,
+        "trigger": _text(trigger, "trigger"),
+        "required_action": _text(required_action, "required_action"),
+        "severity": _text(severity, "severity"),
+        "scope": sorted(set(_text_list(scope, "scope"))),
+        "exceptions": sorted(set(_text_list(exceptions, "exceptions", allow_empty=True))),
+    }
+
+
+def _check_equivalent_rule(profile: Mapping[str, Any], proposed: Mapping[str, Any]) -> dict[str, Any]:
+    rules = profile.get("rules", {})
+    if not isinstance(rules, Mapping):
+        return {"status": "NONE", "matches": []}
+    canonical = _canonical_rule(proposed)
+    matches = sorted(
+        str(rule_id) for rule_id, value in rules.items()
+        if isinstance(value, Mapping) and _canonical_rule(value) == canonical
+    )
+    return {"status": "EQUIVALENT" if matches else "NONE", "matches": matches}
+
+
+def _canonical_rule(value: Mapping[str, Any]) -> dict[str, Any]:
+    fields = ("trigger", "required_action", "severity", "scope", "exceptions")
+    return {
+        field: sorted(value.get(field, [])) if field in {"scope", "exceptions"} else value.get(field)
+        for field in fields
+    }
+
+
+def _profile_diff(profile: Mapping[str, Any], proposed: Mapping[str, Any], target: Path) -> str:
+    updated = _updated_profile(profile, proposed)
+    before = json.dumps(profile, indent=2, sort_keys=True) + "\n"
+    after = json.dumps(updated, indent=2, sort_keys=True) + "\n"
+    return "".join(difflib.unified_diff(
+        before.splitlines(keepends=True), after.splitlines(keepends=True),
+        fromfile=f"a/{target.as_posix()}", tofile=f"b/{target.as_posix()}"
+    )) or "No profile change: equivalent rule already exists."
+
+
+def _updated_profile(profile: Mapping[str, Any], proposed: Mapping[str, Any]) -> dict[str, Any]:
+    updated = json.loads(json.dumps(profile))
+    rules = updated.setdefault("rules", {})
+    if not isinstance(rules, dict):
+        raise ValueError("Target profile 'rules' must be a JSON object.")
+    rules[str(proposed["rule_id"])] = dict(proposed)
+    return updated
 
 
 def _profile_target(root: Path, value: str | Path) -> tuple[Path | None, str | None]:

@@ -313,6 +313,28 @@ candidates, inspect current files before project-specific claims, bind verdicts
 to current evidence and validation, and preserve corpus provenance and
 authority metadata.
 
+## Phase 6 — Governed workspace-rule proposals
+
+The read-only proposal boundary is now the active implementation surface:
+
+```text
+verified finding
+-> equivalent-rule check from the current profile
+-> workspace-specific rule proposal
+-> exact unified profile diff
+-> explicit user approval record
+```
+
+Proposal generation and approval recording do not write the workspace, profile,
+rule registry, or index. Automatic application and autonomous repair remain
+disabled. Applying a proposal must remain a separate governed step with
+activation validation, provenance, and rollback proof.
+
+The governed apply slice now requires an `APPROVED` decision whose proposal
+hash and workspace match, an injected LBE authorization check, and an injected
+activation validator before reporting `APPLIED`. Rollback artifacts,
+persistent provenance, and autonomous repair remain open follow-on work.
+
 ## Completed project-scoped audit proof
 
 The end-to-end project-scoped chain is now proven through the installed
