@@ -385,6 +385,29 @@ candidates, inspect current files before project-specific claims, bind verdicts
 to current workspace evidence and validation, and preserve corpus provenance
 and authority metadata.
 
+## Phase 6 — Governed workspace-rule proposals
+
+The current implementation target is the read-only proposal flow:
+
+```text
+verified finding
+-> equivalent-rule check from the current profile
+-> workspace-specific rule proposal
+-> exact unified profile diff
+-> explicit user approval record
+```
+
+The proposal boundary computes equivalence from the current target profile and
+never trusts caller- or model-supplied equivalence claims. Proposal generation
+and approval recording do not write the workspace, profile, rule registry, or
+index. Automatic application and autonomous repair remain disabled until a
+separate governed apply step proves activation validation, provenance, and
+rollback.
+
+The next governed apply slice is now bounded to explicit approval, LBE
+authorization, exact profile-diff application, and activation validation. It
+does not create rollback artifacts, persist provenance, or perform repair.
+
 ## Phase 20 - Minimum release-readiness boundary
 
 ### Objective

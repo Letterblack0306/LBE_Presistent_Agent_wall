@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from agent import Context, KnowledgeRoot
 from lbe_guard_inspector.contracts import validate_contract
 from lbe_guard_inspector.rule_gatekeeper import (
     RuleGatekeeper,
+    STATUS_ACTIVATION_FAILED,
+    STATUS_APPLIED,
     STATUS_INSUFFICIENT_EVIDENCE,
     STATUS_PROPOSAL_READY,
 )
@@ -20,7 +23,7 @@ def _context(root: Path) -> Context:
     return Context(config={}, governance={}, roots=(KnowledgeRoot("dev", root),))
 
 
-def _gatekeeper(root: Path, resolver=None) -> RuleGatekeeper:
+def _gatekeeper(root: Path, resolver=None, authorization_checker=None) -> RuleGatekeeper:
     def registered(pack_id, rule_id):
         if (pack_id, rule_id) == ("generic", "generic.test"):
             return object()
@@ -28,6 +31,7 @@ def _gatekeeper(root: Path, resolver=None) -> RuleGatekeeper:
     return RuleGatekeeper(
         context=_context(root), rule_resolver=resolver or registered,
         clock=lambda: datetime(2026, 7, 30, tzinfo=timezone.utc),
+        authorization_checker=authorization_checker,
     )
 
 
@@ -128,8 +132,10 @@ def test_proposal_preserves_contract_fields_and_does_not_write(tmp_path: Path):
     proposal = result["proposal"]
     assert result["status"] == STATUS_PROPOSAL_READY
     assert proposal["pack_id"] == "generic" and proposal["target_profile_path"] == "profile.json"
-    assert proposal["equivalent_rule_result"] == "NONE" and proposal["contradiction_result"] == "NONE"
+    assert proposal["equivalent_rule_result"] == {"status": "NONE", "matches": []}
+    assert proposal["contradiction_result"] == "NONE"
     assert proposal["source_hashes"] and proposal["provenance"]["source_guard_id"] == "generic.test"
+    assert '"generic.test"' in proposal["diff"]
     assert result["runtime_mutations_performed"] is False
     assert before == {path.name: path.read_bytes() for path in tmp_path.iterdir()}
 
@@ -152,6 +158,38 @@ def test_apply_is_explicitly_blocked(tmp_path: Path):
     proposal = _propose(gatekeeper, tmp_path)["proposal"]
     with pytest.raises(PermissionError, match="read-only"):
         gatekeeper.apply_proposal(proposal)
+
+
+def test_equivalent_rule_is_computed_from_profile_and_diff_is_noop(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    _, guard, package = _inputs(tmp_path)
+    (tmp_path / "profile.json").write_text(
+        '{"rules": {"existing": {"trigger": "missing deterministic protection", '
+        '"required_action": "Define a deterministic guard.", "severity": "error", '
+        '"scope": ["src.py"], "exceptions": []}}}', encoding="utf-8"
+    )
+    result = gatekeeper.propose_rule(**_proposal_arguments(tmp_path, guard, package))
+    proposal = result["proposal"]
+    assert proposal["equivalent_rule_result"] == {"status": "EQUIVALENT", "matches": ["existing"]}
+    assert proposal["diff"].startswith("---")
+    assert '"generic.test"' in proposal["diff"]
+
+
+def test_equivalent_rule_result_is_not_trusted_from_caller(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    _, guard, package = _inputs(tmp_path)
+    result = gatekeeper.propose_rule(**_proposal_arguments(
+        tmp_path, guard, package, equivalent_rule_result={"status": "EQUIVALENT", "matches": ["forged"]}
+    ))
+    assert result["proposal"]["equivalent_rule_result"] == {"status": "NONE", "matches": []}
+
+
+def test_invalid_profile_is_rejected_without_writing(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    _, guard, package = _inputs(tmp_path)
+    (tmp_path / "profile.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(ValueError, match="JSON object"):
+        gatekeeper.propose_rule(**_proposal_arguments(tmp_path, guard, package))
 
 
 def test_inspect_and_revalidate_are_read_only(tmp_path: Path):
@@ -239,3 +277,77 @@ def test_record_decision_rejects_stale_proposal(tmp_path: Path):
 
     with pytest.raises(PermissionError, match="read-only"):
         gatekeeper.apply_proposal(proposal)
+
+
+def test_apply_requires_explicit_lbe_authorization(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path)
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+    decision = gatekeeper.record_decision(
+        workspace_root=tmp_path, proposal=proposal, decision="APPROVED",
+        actor="user:test-operator", reason="Explicit user approval.",
+    )["decision_record"]
+    with pytest.raises(PermissionError, match="authorization checker"):
+        gatekeeper.apply_approved_proposal(
+            workspace_root=tmp_path, proposal=proposal, decision_record=decision,
+            activation_validator=lambda *_: True,
+        )
+
+
+def test_apply_requires_approved_matching_decision(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path, authorization_checker=lambda *_: True)
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+    decision = gatekeeper.record_decision(
+        workspace_root=tmp_path, proposal=proposal, decision="REJECTED",
+        actor="user:test-operator", reason="Rejected.",
+    )["decision_record"]
+    with pytest.raises(PermissionError, match="APPROVED"):
+        gatekeeper.apply_approved_proposal(
+            workspace_root=tmp_path, proposal=proposal, decision_record=decision,
+            activation_validator=lambda *_: True,
+        )
+
+
+def test_apply_exact_profile_diff_and_validate_activation(tmp_path: Path):
+    authorization_calls = []
+    gatekeeper = _gatekeeper(
+        tmp_path,
+        authorization_checker=lambda proposal, decision: authorization_calls.append(
+            (proposal["proposal_id"], decision["decision"])
+        ) or True,
+    )
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+    decision = gatekeeper.record_decision(
+        workspace_root=tmp_path, proposal=proposal, decision="APPROVED",
+        actor="user:test-operator", reason="Explicit user approval.",
+    )["decision_record"]
+    observed = []
+
+    def validate_activation(path: Path, approved):
+        observed.append((path, approved["proposal_id"]))
+        profile = json.loads(path.read_text(encoding="utf-8"))
+        return "generic.test" in profile["rules"]
+
+    result = gatekeeper.apply_approved_proposal(
+        workspace_root=tmp_path, proposal=proposal, decision_record=decision,
+        activation_validator=validate_activation,
+    )
+    assert result["status"] == STATUS_APPLIED
+    assert result["activation_validated"] is True
+    assert result["runtime_mutations_performed"] is True
+    assert authorization_calls == [(proposal["proposal_id"], "APPROVED")]
+    assert observed == [(tmp_path / "profile.json", proposal["proposal_id"])]
+
+
+def test_activation_failure_is_reported_without_claiming_success(tmp_path: Path):
+    gatekeeper = _gatekeeper(tmp_path, authorization_checker=lambda *_: True)
+    proposal = _propose(gatekeeper, tmp_path)["proposal"]
+    decision = gatekeeper.record_decision(
+        workspace_root=tmp_path, proposal=proposal, decision="APPROVED",
+        actor="user:test-operator", reason="Explicit user approval.",
+    )["decision_record"]
+    result = gatekeeper.apply_approved_proposal(
+        workspace_root=tmp_path, proposal=proposal, decision_record=decision,
+        activation_validator=lambda *_: False,
+    )
+    assert result["status"] == STATUS_ACTIVATION_FAILED
+    assert result["activation_validated"] is False
