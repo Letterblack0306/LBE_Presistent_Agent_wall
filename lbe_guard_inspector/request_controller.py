@@ -11,13 +11,13 @@ from audit_controller import AuditError, resolve_rule
 
 from .contracts import ContractValidationError, validate_contract
 from .evidence_service import EvidenceService
+from .explanation_planner import ExplanationPlanner
 from .guard_catalog import evidence_contract_for_guard, select_guard_catalog
 from .guard_runner import GuardRunner
 from .reasoning_guard_planner import GuardCandidate, GuardPlanner
 from .project_profiler import ProjectProfiler
 from .reasoning_contracts import (
     EvidenceRequest,
-    ExplanationRequest,
     ExplanationResult,
     LBERequest,
     LBEResponse,
@@ -49,6 +49,7 @@ class LBERequestController:
         rule_resolver: Callable[[str, str], Any] = resolve_rule,
         policy: ReasoningPolicy | None = None,
         guard_planner: GuardPlanner | None = None,
+        explanation_planner: ExplanationPlanner | None = None,
     ) -> None:
         self._backend = backend
         self._context = context
@@ -60,6 +61,7 @@ class LBERequestController:
         self._rule_resolver = rule_resolver
         self._policy = policy or ReasoningPolicy()
         self._guard_planner = guard_planner or GuardPlanner()
+        self._explanation_planner = explanation_planner or ExplanationPlanner()
 
     def run(self, request: LBERequest) -> LBEResponse:
         """Run planning, deterministic inspection, and explanation in read-only mode."""
@@ -222,15 +224,23 @@ class LBERequestController:
             validated_package = validate_contract("evidence_package", package)
         except ContractValidationError as exc:
             raise _ControllerFailure("INVALID_DETERMINISTIC_RESULT", str(exc), tuple(exc.errors)) from exc
-        explanation_request = ExplanationRequest(
+        outcome = self._explanation_planner.build_request(
             guard_result=validated_result,
-            current_workspace_evidence=tuple(validated_package["current_workspace_evidence"]),
-            validation_evidence=tuple(validated_package["validation_evidence"]),
+            current_workspace_evidence=validated_package["current_workspace_evidence"],
+            validation_evidence=validated_package["validation_evidence"],
             governance_state=validated_result["governance_state"],
             explanation_focus=plan.explanation_focus,
         )
+        if not outcome.executable or outcome.request is None:
+            return self._response(
+                request, identity, profile, plan, validated_result, None, "ORCHESTRATION_ERROR",
+                OrchestrationError(
+                    outcome.stop_reason or "EXPLANATION_UNAVAILABLE",
+                    f"Explanation could not be built: {outcome.stop_reason}",
+                ),
+            )
         try:
-            explanation = _coerce_explanation(self._backend.explain(explanation_request))
+            explanation = _coerce_explanation(self._backend.explain(outcome.request))
         except Exception as exc:
             return self._response(
                 request, identity, profile, plan, validated_result, None, "ORCHESTRATION_ERROR",
