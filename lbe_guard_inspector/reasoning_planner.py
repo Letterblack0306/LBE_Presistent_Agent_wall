@@ -5,6 +5,8 @@ keep retrieval, evidence requirements, conflict handling, and explanation focus
 bounded and reproducible.
 """
 from __future__ import annotations
+import fnmatch
+
 
 from dataclasses import dataclass
 from enum import Enum
@@ -137,17 +139,27 @@ class ReasoningPolicy:
             "optional_evidence_requirements",
             allow_empty=True,
         )
-        available = {
-            str(item.get("requirement"))
+        path_patterns = tuple(guard_contract.get("path_patterns", ()))
+        satisfied = set()
+        if path_patterns:
             for collection in (
                 evidence_package.get("indexed_reference_evidence", ()),
                 evidence_package.get("current_workspace_evidence", ()),
                 evidence_package.get("validation_evidence", ()),
-            )
-            if isinstance(collection, Sequence) and not isinstance(collection, (str, bytes))
-            for item in collection
-            if isinstance(item, Mapping) and item.get("requirement")
-        }
+            ):
+                if not isinstance(collection, Sequence) or isinstance(collection, (str, bytes)):
+                    continue
+                for item in collection:
+                    if not isinstance(item, Mapping):
+                        continue
+                    if any(
+                        _evidence_matches_path(item, pattern) for pattern in path_patterns
+                    ):
+                        for requirement in required:
+                            satisfied.add(requirement)
+                        break
+                if satisfied:
+                    break
         declared_missing = {
             str(item)
             for item in evidence_package.get("missing_evidence", ())
@@ -156,7 +168,7 @@ class ReasoningPolicy:
         missing = tuple(
             requirement
             for requirement in required
-            if requirement in declared_missing or (available and requirement not in available)
+            if requirement in declared_missing or (required and requirement not in satisfied)
         )
         return EvidencePlan(required=required, optional=optional, missing=missing)
 
@@ -238,3 +250,23 @@ def _strings(value: Any, field: str, *, allow_empty: bool = False) -> tuple[str,
     if not allow_empty and not result:
         raise ValueError(f"{field} must not be empty")
     return result
+
+
+def _evidence_path(item: Mapping[str, Any]) -> str:
+    path = str(item.get("path") or "")
+    if path:
+        return path.replace("\\", "/")
+    metadata = item.get("metadata") or {}
+    return str(metadata.get("relative_path") or "").replace(chr(92), "/")
+
+
+def _evidence_matches_path(item: Mapping[str, Any], pattern: str) -> bool:
+    path = _evidence_path(item)
+    if not path or not pattern:
+        return False
+    normalized_pattern = pattern.replace("\\", "/").strip("/")
+    if fnmatch.fnmatch(path, normalized_pattern):
+        return True
+    if path.endswith("/" + normalized_pattern) or path.endswith(normalized_pattern):
+        return True
+    return False

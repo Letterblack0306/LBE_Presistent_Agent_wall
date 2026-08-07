@@ -90,6 +90,128 @@ def test_evidence_plan_reports_declared_missing_requirements():
     assert result.complete is False
 
 
+def test_evidence_plan_satisfied_by_exact_path_match():
+    policy = ReasoningPolicy()
+    result = policy.plan_evidence(
+        guard_contract=_guard_contract(),
+        evidence_package={
+            "indexed_reference_evidence": [],
+            "current_workspace_evidence": [
+                {
+                    "path": "CSXS/manifest.xml",
+                    "source_type": "workspace",
+                    "authority": 9,
+                    "verified": True,
+                    "classification": "source",
+                },
+            ],
+            "validation_evidence": [],
+            "missing_evidence": [],
+        },
+    )
+    assert result.missing == ()
+    assert result.complete is True
+
+
+def test_evidence_plan_satisfied_by_glob_pattern():
+    policy = ReasoningPolicy()
+    result = policy.plan_evidence(
+        guard_contract={**_guard_contract(), "path_patterns": ["**/manifest.xml"]},
+        evidence_package={
+            "indexed_reference_evidence": [],
+            "current_workspace_evidence": [
+                {
+                    "path": "a/b/CSXS/manifest.xml",
+                    "source_type": "workspace",
+                    "authority": 9,
+                    "verified": True,
+                    "classification": "source",
+                },
+            ],
+            "validation_evidence": [],
+            "missing_evidence": [],
+        },
+    )
+    assert result.missing == ()
+    assert result.complete is True
+
+
+def test_evidence_plan_normalizes_windows_path_separators():
+    policy = ReasoningPolicy()
+    result = policy.plan_evidence(
+        guard_contract=_guard_contract(),
+        evidence_package={
+            "indexed_reference_evidence": [],
+            "current_workspace_evidence": [
+                {
+                    "path": r"CSXS\manifest.xml",
+                    "source_type": "workspace",
+                    "authority": 9,
+                    "verified": True,
+                    "classification": "source",
+                },
+            ],
+            "validation_evidence": [],
+            "missing_evidence": [],
+        },
+    )
+    assert result.missing == ()
+    assert result.complete is True
+
+
+def test_evidence_plan_unrelated_path_does_not_match():
+    policy = ReasoningPolicy()
+    result = policy.plan_evidence(
+        guard_contract=_guard_contract(),
+        evidence_package={
+            "indexed_reference_evidence": [],
+            "current_workspace_evidence": [
+                {
+                    "path": "src/app.py",
+                    "source_type": "workspace",
+                    "authority": 9,
+                    "verified": True,
+                    "classification": "source",
+                },
+            ],
+            "validation_evidence": [],
+            "missing_evidence": [],
+        },
+    )
+    assert result.missing == ("canonical CEP manifest",)
+    assert result.complete is False
+
+
+def test_evidence_plan_multiple_requirements_satisfied_by_single_path_match():
+    policy = ReasoningPolicy()
+    result = policy.plan_evidence(
+        guard_contract={
+            "path_patterns": ["CSXS/manifest.xml"],
+            "extensions": [".xml"],
+            "evidence_requirements": [
+                "canonical CEP manifest",
+                "bounded project metadata",
+            ],
+        },
+        evidence_package={
+            "indexed_reference_evidence": [],
+            "current_workspace_evidence": [
+                {
+                    "path": "CSXS/manifest.xml",
+                    "source_type": "workspace",
+                    "authority": 9,
+                    "verified": True,
+                    "classification": "source",
+                },
+            ],
+            "validation_evidence": [],
+            "missing_evidence": [],
+        },
+    )
+    assert result.missing == ()
+    assert result.complete is True
+
+
 def test_conflict_resolver_prefers_verified_higher_authority():
     policy = ReasoningPolicy()
     result = policy.resolve_conflicts([

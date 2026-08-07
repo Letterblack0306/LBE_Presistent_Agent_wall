@@ -62,6 +62,20 @@ class FakeEvidenceService:
 
     def build_evidence_package(self, **kwargs):
         self.calls.append(kwargs)
+        if kwargs.get("retrieval_mode") == "guard":
+            return {
+                **self.package,
+                "current_workspace_evidence": [
+                    {
+                        "ref": "workspace:test:CSXS/manifest.xml",
+                        "path": "CSXS/manifest.xml",
+                        "source_type": "workspace",
+                        "authority": 9,
+                        "verified": True,
+                        "classification": "source",
+                    }
+                ],
+            }
         return self.package
 
 
@@ -163,7 +177,7 @@ def test_planning_receives_only_indexed_evidence_from_task_retrieval(tmp_path):
 
 @pytest.mark.parametrize("plan,code", [
     (_plan(candidate_guard_ids=["unknown.guard"]), "UNKNOWN_GUARD"),
-    (_plan(candidate_guard_ids=["cep.manifest_exists", "unknown.guard"]), "MULTIPLE_GUARDS_SELECTED"),
+    (_plan(candidate_guard_ids=["cep.manifest_exists", "unknown.guard"]), "UNKNOWN_GUARD"),
     (_plan(validation_requests=["guard_runner.independent_reread"]), "MODEL_VALIDATION_REQUEST_FORBIDDEN"),
     (_plan(evidence_requests=[{"tool_id": "shell.execute", "path": "CSXS/manifest.xml", "reason": "bad"}]), "UNKNOWN_TOOL"),
     (_plan(evidence_requests=[{"tool_id": "workspace.read", "path": "../outside.txt", "reason": "bad"}]), "OUT_OF_WORKSPACE_PATH"),
@@ -173,6 +187,37 @@ def test_plan_rejects_unknown_or_unbounded_requests(tmp_path, plan, code):
     response = _run(controller, workspace)
     assert response.outcome == "ORCHESTRATION_ERROR"
     assert response.error.code == code
+    assert runner.calls == []
+
+
+def test_guard_planner_stops_on_ambiguous_approved_guards(tmp_path):
+    backend = FakeBackend(_plan(candidate_guard_ids=["cep.manifest_exists", "cep.host_version"]))
+    controller, runner, workspace = _controller(tmp_path, backend)
+    response = _run(controller, workspace)
+    assert response.outcome == "INSUFFICIENT_EVIDENCE"
+    assert response.error.code == "AMBIGUOUS_GUARD_SELECTION"
+    assert runner.calls == []
+
+
+class FakeInsufficientEvidenceService:
+    def __init__(self, package):
+        self.package = package
+        self.calls = []
+
+    def build_evidence_package(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.package
+
+
+def test_guard_planner_stops_on_insufficient_evidence(tmp_path):
+    backend = FakeBackend(_plan(candidate_guard_ids=["cep.manifest_exists"]))
+    evidence_service = FakeInsufficientEvidenceService(_evidence_package(
+        current=[{"ref": "workspace:test:src/app.py", "path": "src/app.py", "source_type": "workspace", "authority": 9, "verified": True, "classification": "source"}]
+    ))
+    controller, runner, workspace = _controller(tmp_path, backend, evidence_service=evidence_service)
+    response = _run(controller, workspace)
+    assert response.outcome == "INSUFFICIENT_EVIDENCE"
+    assert response.error.code == "INSUFFICIENT_EVIDENCE"
     assert runner.calls == []
 
 
