@@ -16,6 +16,8 @@ from .guard_catalog import evidence_contract_for_guard, select_guard_catalog
 from .guard_runner import GuardRunner
 from .reasoning_guard_planner import GuardCandidate, GuardPlanner
 from .project_profiler import ProjectProfiler
+from .proposal_planner import ProposalPlanner
+from .rule_gatekeeper import RuleGatekeeper
 from .reasoning_contracts import (
     EvidenceRequest,
     ExplanationResult,
@@ -50,6 +52,7 @@ class LBERequestController:
         policy: ReasoningPolicy | None = None,
         guard_planner: GuardPlanner | None = None,
         explanation_planner: ExplanationPlanner | None = None,
+        proposal_planner: ProposalPlanner | None = None,
     ) -> None:
         self._backend = backend
         self._context = context
@@ -62,6 +65,7 @@ class LBERequestController:
         self._policy = policy or ReasoningPolicy()
         self._guard_planner = guard_planner or GuardPlanner()
         self._explanation_planner = explanation_planner or ExplanationPlanner()
+        self._proposal_planner = proposal_planner
 
     def run(self, request: LBERequest) -> LBEResponse:
         """Run planning, deterministic inspection, and explanation in read-only mode."""
@@ -246,7 +250,15 @@ class LBERequestController:
                 request, identity, profile, plan, validated_result, None, "ORCHESTRATION_ERROR",
                 OrchestrationError("EXPLANATION_FAILED", f"{type(exc).__name__}: {exc}"),
             )
-        return self._response(request, identity, profile, plan, validated_result, explanation, "COMPLETED", None)
+        proposal = self._maybe_propose(
+            context=context,
+            identity=identity,
+            plan=plan,
+            pack_id=pack_id,
+            validated_result=validated_result,
+            validated_package=validated_package,
+        )
+        return self._response(request, identity, profile, plan, validated_result, explanation, "COMPLETED", None, proposal=proposal)
 
     def _validate_plan(self, plan: ReasoningPlan, root: Path, approved_guards: tuple[str, ...]) -> None:
         unknown_guards = sorted(set(plan.candidate_guard_ids) - set(approved_guards))
@@ -265,13 +277,43 @@ class LBERequestController:
         if plan.candidate_guard_ids and not plan.evidence_requests:
             raise _ControllerFailure("MISSING_EVIDENCE_REQUEST", "A selected guard requires a bounded evidence request.")
 
+    def _maybe_propose(self, *, context, identity, plan, pack_id, validated_result, validated_package):
+        candidate = plan.proposal_candidate
+        if candidate is None:
+            return None
+        if validated_package.get("contradictions"):
+            return None
+        planner = self._proposal_planner or ProposalPlanner(
+            RuleGatekeeper(context=context, rule_resolver=self._rule_resolver)
+        )
+        provenance = {
+            "origin": "lbe_reasoning_controller",
+            "guard_result_id": validated_result.get("result_id"),
+            "workspace_id": identity.workspace_id,
+        }
+        contradiction_result = validated_package.get("contradictions") or "NONE"
+        outcome = planner.build(
+            workspace_root=identity.target_project_root,
+            pack_id=pack_id,
+            guard_result=validated_result,
+            evidence_package=validated_package,
+            governance_state=validated_result["governance_state"],
+            candidate=candidate,
+            provenance=provenance,
+            equivalent_rule_result="NONE",
+            contradiction_result=contradiction_result,
+        )
+        if not outcome.executable or outcome.proposal is None:
+            return None
+        return outcome.proposal
+
     @staticmethod
-    def _response(request, identity, profile, plan, result, explanation, outcome, error) -> LBEResponse:
+    def _response(request, identity, profile, plan, result, explanation, outcome, error, proposal=None) -> LBEResponse:
         return LBEResponse(
             task_id=request.task_id or f"task-{uuid.uuid4()}",
             workspace_identity={"configured_root_id": identity.configured_root_id, "target_project_root": str(identity.target_project_root), "workspace_id": identity.workspace_id},
             workspace_profile=profile, plan=plan, deterministic_result=result,
-            explanation=explanation, outcome=outcome, error=error,
+            explanation=explanation, outcome=outcome, error=error, proposal=proposal,
         )
 
     def _error_response(self, request: LBERequest, code: str, message: str, details: tuple[str, ...]) -> LBEResponse:

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from agent import Context, KnowledgeRoot
+from lbe_guard_inspector.proposal_planner import ProposalOutcome
 from lbe_guard_inspector.request_controller import LBERequestController
 from lbe_guard_inspector.reasoning_contracts import LBERequest
 
@@ -30,9 +31,10 @@ class FakeBackend:
 
 
 class FakeRunner:
-    def __init__(self, verdict="PASS"):
+    def __init__(self, verdict="PASS", contradictions=()):
         self.calls = []
         self.verdict = verdict
+        self.contradictions = tuple(contradictions)
 
     def run(self, **kwargs):
         self.calls.append(kwargs)
@@ -49,7 +51,7 @@ class FakeRunner:
             "evidence_package": {
                 "package_id": "ep-1", "task_id": "task-1", "query": "CSXS/manifest.xml", "workspace_id": workspace_id,
                 "indexed_reference_evidence": [], "current_workspace_evidence": evidence,
-                "validation_evidence": validation, "contradictions": [], "missing_evidence": [],
+                "validation_evidence": validation, "contradictions": list(self.contradictions), "missing_evidence": [],
                 "generated_at": "2026-07-30T00:00:00+00:00",
             },
         }
@@ -104,6 +106,35 @@ def _plan(**overrides):
     return value
 
 
+def _proposal_candidate(**overrides):
+    value = {
+        "target_profile_path": "profile.json",
+        "trigger": "missing protection",
+        "rationale": "verify evidence",
+        "scope": ["CSXS/manifest.xml"],
+        "required_action": "Define a deterministic guard.",
+        "severity": "error",
+        "exceptions": [],
+        "validation_plan": ["run focused validation"],
+        "rollback_plan": ["do not apply"],
+    }
+    value.update(overrides)
+    return value
+
+
+class FakeProposalPlanner:
+    def __init__(self, outcome=None, proposal=None):
+        self.calls = []
+        self.outcome = outcome
+        self.proposal = proposal
+
+    def build(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.outcome is not None:
+            return self.outcome
+        return ProposalOutcome(self.proposal, None, read_only=True)
+
+
 def _evidence_package(indexed=None, current=None, validation=None):
     return {
         "package_id": "ep-reasoning",
@@ -124,6 +155,7 @@ def _controller(
     backend: FakeBackend,
     runner: FakeRunner | None = None,
     evidence_service: FakeEvidenceService | None = None,
+    proposal_planner: FakeProposalPlanner | None = None,
 ):
     configured = tmp_path / "configured"; configured.mkdir()
     workspace = configured / "project"; (workspace / "CSXS").mkdir(parents=True)
@@ -133,7 +165,7 @@ def _controller(
     resolved_evidence = evidence_service or FakeEvidenceService(_evidence_package())
     controller = LBERequestController(
         backend=backend, context=context, runner=resolved_runner,
-        evidence_service=resolved_evidence,
+        evidence_service=resolved_evidence, proposal_planner=proposal_planner,
         rule_resolver=lambda pack, rule: object() if (pack, rule) == ("cep", "cep.manifest_exists") else (_ for _ in ()).throw(ValueError("unregistered")),
     )
     return controller, resolved_runner, workspace
@@ -276,3 +308,52 @@ def test_disguised_absolute_workspace_root_is_rejected(tmp_path):
         _bounded_path(root, disguised_root + "/pyproject.toml")
 
     assert error.value.code == "OUT_OF_WORKSPACE_PATH"
+
+
+def test_optional_proposal_included_when_plan_has_candidate(tmp_path):
+    proposal = {"proposal_id": "prop-test", "approval_required": True, "workspace_id": "workspace-1"}
+    planner = FakeProposalPlanner(proposal=proposal)
+    controller, _, workspace = _controller(
+        tmp_path, FakeBackend(_plan(proposal_candidate=_proposal_candidate())),
+        proposal_planner=planner,
+    )
+    response = _run(controller, workspace)
+    assert response.outcome == "COMPLETED"
+    assert response.proposal == proposal
+    assert response.read_only is True
+    assert len(planner.calls) == 1
+    assert planner.calls[0]["candidate"] == _proposal_candidate()
+
+
+def test_optional_proposal_absent_when_no_candidate(tmp_path):
+    planner = FakeProposalPlanner(proposal={"proposal_id": "prop"})
+    controller, _, workspace = _controller(tmp_path, FakeBackend(_plan()), proposal_planner=planner)
+    response = _run(controller, workspace)
+    assert response.outcome == "COMPLETED"
+    assert response.proposal is None
+    assert planner.calls == []
+
+
+def test_optional_proposal_insufficient_still_completes(tmp_path):
+    planner = FakeProposalPlanner(outcome=ProposalOutcome(None, "INSUFFICIENT_EVIDENCE", read_only=True))
+    controller, _, workspace = _controller(
+        tmp_path, FakeBackend(_plan(proposal_candidate=_proposal_candidate())),
+        proposal_planner=planner,
+    )
+    response = _run(controller, workspace)
+    assert response.outcome == "COMPLETED"
+    assert response.proposal is None
+
+
+def test_optional_proposal_skipped_on_unresolved_contradictions(tmp_path):
+    planner = FakeProposalPlanner(proposal={"proposal_id": "prop"})
+    controller, _, workspace = _controller(
+        tmp_path,
+        FakeBackend(_plan(proposal_candidate=_proposal_candidate())),
+        runner=FakeRunner(contradictions=["conflict-1"]),
+        proposal_planner=planner,
+    )
+    response = _run(controller, workspace)
+    assert response.outcome == "COMPLETED"
+    assert response.proposal is None
+    assert planner.calls == []
