@@ -7,6 +7,18 @@ description: Inspect, diagnose, implement, validate, and finish a repository tas
 
 Use this procedure for repository implementation and debugging tasks. It is a method, not a new runtime authority.
 
+## 0. Bind work to the current milestone
+Before editing roadmap or milestone work, read `.agent/PROJECT_CONTEXT.md` and identify the currently active milestone and the exact slice requested.
+
+For the current project state, the next major milestone is **Persistent Runtime Integration**, and the first implementation slice is **R1: live runtime ownership audit + lifecycle contract**.
+
+Rules:
+- verify the live repository before trusting the milestone baseline recorded in `.agent`;
+- execute only the requested slice, not the whole milestone;
+- do not pre-implement later runtime persistence, resume, retry, recovery, tool-orchestration, or repair features unless the current slice proves they are required;
+- if an equivalent active runtime owner or contract already exists, extend it instead of creating another one;
+- when the milestone status in `.agent` conflicts with current source, Git state, tests, or runtime evidence, follow current evidence and report the stale context.
+
 ## 1. Establish identity
 Before editing, collect:
 - repository root;
@@ -65,13 +77,14 @@ For this repository preserve these authority boundaries:
 - deterministic guards produce guard truth;
 - validation proves the result;
 - governance/LBE authorizes mutation;
-- controller/orchestrator coordinates and must not absorb those authorities.
+- controller/orchestrator coordinates and must not absorb those authorities;
+- persistent runtime owns only session/task lifecycle, orchestration state, checkpoint/recovery state, and lifecycle evidence.
 
 Never promote indexed reference evidence into current workspace truth.
 
 ## 6. Choose the smallest correct change
 - Reuse existing types and services before introducing new ones.
-- Do not create a parallel planner, gatekeeper, validation layer, proposal engine, or verdict path when an existing owner can be extended.
+- Do not create a parallel planner, gatekeeper, validation layer, proposal engine, verdict path, session owner, or runtime state owner when an existing owner can be extended.
 - Keep changes task-scoped.
 - Do not mix cleanup/refactoring with a feature fix unless the cleanup is required for correctness.
 - Do not implement deferred roadmap capabilities as side effects of the current task.
@@ -103,6 +116,7 @@ Examples:
 - contract helper changed -> focused unit/contract tests;
 - controller wiring changed -> controller + provider/integration tests;
 - `/reasoning/run` claim -> live route/runtime proof when available;
+- persistent runtime claim -> process/session lifecycle proof including stop/resume when applicable;
 - packaging/release claim -> build + fresh install + installed-artifact smoke;
 - UI/runtime claim -> user-visible action plus backend consequence.
 
@@ -114,6 +128,7 @@ After the fix, inspect the affected neighborhood for:
 - alternate adapters/providers;
 - stale compatibility paths;
 - multiple state/config owners;
+- multiple session/task/runtime owners;
 - test-only implementations mistaken for runtime paths;
 - hardcoded fallback behavior that bypasses the new owner.
 
