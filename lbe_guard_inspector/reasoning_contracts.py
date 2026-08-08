@@ -56,6 +56,7 @@ class ReasoningPlan:
     evidence_requests: tuple[EvidenceRequest, ...]
     validation_requests: tuple[str, ...]
     explanation_focus: tuple[str, ...]
+    proposal_candidate: Mapping[str, Any] | None = None
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "ReasoningPlan":
@@ -64,12 +65,16 @@ class ReasoningPlan:
             value,
             {"interpreted_problem", "ambiguities", "candidate_guard_ids", "evidence_requests", "validation_requests", "explanation_focus"},
             "reasoning plan",
+            optional={"proposal_candidate"},
         )
         evidence = value.get("evidence_requests")
         if not isinstance(evidence, list):
             raise ValueError("reasoning_plan.evidence_requests must be an array")
         if not all(isinstance(item, Mapping) for item in evidence):
             raise ValueError("reasoning_plan.evidence_requests must contain objects")
+        proposal_candidate = value.get("proposal_candidate")
+        if proposal_candidate is not None and not isinstance(proposal_candidate, Mapping):
+            raise ValueError("reasoning_plan.proposal_candidate must be an object")
         return cls(
             interpreted_problem=_text(value.get("interpreted_problem"), "reasoning_plan.interpreted_problem"),
             ambiguities=_strings(value.get("ambiguities"), "reasoning_plan.ambiguities", allow_empty=True),
@@ -77,6 +82,7 @@ class ReasoningPlan:
             evidence_requests=tuple(EvidenceRequest.from_mapping(item) for item in evidence),
             validation_requests=_strings(value.get("validation_requests"), "reasoning_plan.validation_requests", allow_empty=True),
             explanation_focus=_strings(value.get("explanation_focus"), "reasoning_plan.explanation_focus", allow_empty=True),
+            proposal_candidate=proposal_candidate,
         )
 
 
@@ -124,6 +130,7 @@ class LBEResponse:
     deterministic_result: Mapping[str, Any] | None
     explanation: ExplanationResult | None
     outcome: str
+    proposal: Mapping[str, Any] | None = None
     error: OrchestrationError | None = None
     read_only: bool = True
 
@@ -149,11 +156,12 @@ def _reject_forbidden(value: Mapping[str, Any], name: str) -> None:
         raise ValueError(f"{name} contains forbidden fields: {', '.join(present)}")
 
 
-def _require_exact_keys(value: Mapping[str, Any], expected: set[str], name: str) -> None:
+def _require_exact_keys(value: Mapping[str, Any], expected: set[str], name: str, *, optional: set[str] | None = None) -> None:
+    optional = optional or set()
     actual = set(value)
-    if actual != expected:
+    if actual - optional != expected:
         missing = sorted(expected - actual)
-        extra = sorted(actual - expected)
+        extra = sorted(actual - expected - optional)
         parts = []
         if missing:
             parts.append("missing " + ", ".join(missing))

@@ -139,6 +139,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
         "evidence_requests",
         "validation_requests",
         "explanation_focus",
+        "proposal_candidate",
     }
     assert user_payload["input"]["workspace_identity"] == {
         "configured_root_id": "root-1",
@@ -146,7 +147,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     }
     assert "C:/repo" not in call["payload"]["messages"][1]["content"]
     system_prompt = call["payload"]["messages"][0]["content"]
-    assert "exactly these six keys" in system_prompt
+    assert "exactly these six required keys" in system_prompt
     assert "Do not wrap the object in planning_contract" in system_prompt
     assert "must not begin with a slash or backslash" in system_prompt
 
@@ -304,3 +305,37 @@ def test_urllib_transport_maps_http_error(monkeypatch):
         )
 
     assert exc.value.code == "PROVIDER_HTTP_ERROR"
+
+
+def test_planning_carries_optional_proposal_candidate():
+    plan_value = valid_plan()
+    plan_value["proposal_candidate"] = {
+        "target_profile_path": "profile.json",
+        "trigger": "missing protection",
+        "rationale": "verify evidence",
+        "scope": ["package.json"],
+        "required_action": "Define a deterministic guard.",
+        "severity": "error",
+        "exceptions": [],
+        "validation_plan": ["run focused validation"],
+        "rollback_plan": ["do not apply"],
+    }
+    backend = OpenAICompatibleReasoningBackend(
+        config=ProviderConfig(endpoint="http://provider", model="model", timeout_seconds=5),
+        transport=FakeTransport(choice(plan_value)),
+    )
+    plan = backend.plan(planning_request())
+    assert plan.proposal_candidate["trigger"] == "missing protection"
+    assert plan.proposal_candidate["severity"] == "error"
+
+
+def test_planning_rejects_non_mapping_proposal_candidate():
+    plan_value = valid_plan()
+    plan_value["proposal_candidate"] = "not an object"
+    backend = OpenAICompatibleReasoningBackend(
+        config=ProviderConfig(endpoint="http://provider", model="model", timeout_seconds=5),
+        transport=FakeTransport(choice(plan_value)),
+    )
+    with pytest.raises(ProviderError) as exc:
+        backend.plan(planning_request())
+    assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
