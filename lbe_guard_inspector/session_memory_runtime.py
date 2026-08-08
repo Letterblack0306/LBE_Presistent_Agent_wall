@@ -9,8 +9,17 @@ from .memory import (
     MemoryType,
     SessionMemoryAdapter,
     SourceType,
+    TaskState,
+    TaskStatus,
     WorkspaceMemoryStore,
 )
+
+
+_REASONING_OUTCOME_TO_TASK_STATUS = {
+    "COMPLETED": TaskStatus.COMPLETED,
+    "ORCHESTRATION_ERROR": TaskStatus.FAILED,
+    "INSUFFICIENT_EVIDENCE": TaskStatus.BLOCKED,
+}
 
 
 class SessionMemoryRuntimeBridge:
@@ -48,6 +57,60 @@ class SessionMemoryRuntimeBridge:
     @property
     def workspace_root(self) -> Path:
         return self.adapter.workspace_root
+
+    def task_status_for_outcome(self, outcome: str) -> TaskStatus:
+        """Map a reasoning-layer outcome to the canonical task lifecycle status.
+
+        Only outcomes produced by the existing reasoning boundary are accepted.
+        Unknown or fabricated outcome strings are rejected so the runtime never
+        invents task status from model prose or unverified input.
+        """
+        if not isinstance(outcome, str):
+            raise ValueError("reasoning outcome must be a string")
+        try:
+            return _REASONING_OUTCOME_TO_TASK_STATUS[outcome]
+        except KeyError as exc:
+            message = "Unknown reasoning outcome for task status: " + outcome
+            raise ValueError(message) from exc
+
+    def record_task_status(self, *, task_id: str, status: TaskStatus | str) -> TaskState:
+        """Persist the canonical status for one task in this session."""
+        clean_task = task_id.strip()
+        if not clean_task:
+            raise ValueError("task_id must not be empty")
+        status_value = status if isinstance(status, TaskStatus) else TaskStatus(status)
+        if not isinstance(status_value, TaskStatus):
+            raise ValueError(f"status must be a TaskStatus value, got {status!r}")
+        state = TaskState(
+            session_id=self.session_id,
+            task_id=clean_task,
+            project_workspace_id=self.project_workspace_id,
+            canonical_workspace_root=str(self.workspace_root),
+            status=status_value,
+        )
+        self.store.save_session_task(state)
+        return state
+
+    def record_task_outcome(self, *, task_id: str, outcome: str) -> TaskState:
+        """Persist a task status derived from an existing reasoning outcome."""
+        return self.record_task_status(
+            task_id=task_id, status=self.task_status_for_outcome(outcome)
+        )
+
+    def load_task_status(self, *, task_id: str) -> TaskState | None:
+        """Reload persisted task state for this session, or None when absent.
+
+        Corrupted or invalid persisted state raises a visible error instead of
+        silently returning unusable state.
+        """
+        clean_task = task_id.strip()
+        if not clean_task:
+            raise ValueError("task_id must not be empty")
+        return self.store.load_session_task(
+            session_id=self.session_id,
+            task_id=clean_task,
+            project_workspace_id=self.project_workspace_id,
+        )
 
     def start_or_resume(
         self,
