@@ -22,6 +22,8 @@ from .models import (
     MemoryRecord,
     MemoryType,
     SourceType,
+    TaskState,
+    TaskStatus,
     ValidationStatus,
 )
 from .promoter import CandidateClaim, MemoryPromoter
@@ -35,6 +37,8 @@ __all__ = [
  "SessionMemoryAdapter",
     "MemoryType",
     "SourceType",
+    "TaskState",
+    "TaskStatus",
     "ValidationStatus",
     "WorkspaceMemoryStore",
     "build_context_packet",
