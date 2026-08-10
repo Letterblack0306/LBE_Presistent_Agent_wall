@@ -1,41 +1,36 @@
-# Mode Policy Production Wiring Evidence
+# Runtime Policy Production Wiring Evidence
 
 Updated: 2026-08-10
 Status: Documentation-only architecture checkpoint
 
 ## Finding
 
-The typed R6B mode policy engine exists and is tested, but current production inspection found no consumers of `ModeRequest`, `ModeDecision`, or `resolve_mode()` outside the mode-controller module itself.
+Current evidence shows that the typed R6B mode engine, R6C authorization resolver, and R6E governed tool orchestration exist and are tested, but are not yet composed into the normal agent/CLI request path.
 
-That means the current gateway validates a caller-supplied/persisted mode identity, but does not yet prove that the effective runtime mode, allowed behaviors, and capabilities were deterministically resolved through the R6B policy engine for a normal agent request.
-
-This matters before completion-contract establishment because completion requirements must be derived from authoritative LBE runtime policy, not from a disconnected helper, provider prose, CLI arguments, or ad-hoc defaults.
-
-## Evidence
-
-### Current repository
-
-Verified local/main head during inspection:
-
-- `74d9142c1da04a23abe3962f79630d02cc1d13a1`
-
-Observed production search result:
+Observed production searches:
 
 ```text
 MODE_HIT_COUNT=0
+AUTH_HIT_COUNT=0
 ```
 
-for production consumers of:
+The CLI currently persists `mode`, `active_profile_id`, `permission_policy_id`, and `evidence_policy_id` as session references. `GovernedAgentGateway` verifies request identity against the persisted session and routes reasoning, but current production evidence does not show the gateway resolving effective R6B policy or exposing a real R6B `ModeDecision` to R6C/R6E.
 
-- `ModeRequest(`
-- `ModeDecision`
-- `resolve_mode(`
+Therefore C0 must be broader than merely calling `resolve_mode()`. It must establish the smallest authoritative runtime-policy composition path using the owners already implemented.
 
-The `AgentRequestEnvelope` currently carries request/session/task/workspace/mode/operation identity and arguments, while `GovernedAgentGateway._validate_identity()` verifies request mode equals persisted session mode. That proves identity consistency, not R6B policy resolution.
+## Research discipline
 
-### Existing behavior contract
+This decision follows the project research sequence:
 
-`validation_before_acceptance` requires independent validation. `development_mode_capabilities` includes proposal/testing/validation behavior. These are policy vocabulary, but current evidence does not show the normal gateway path consuming them through R6B resolution.
+1. GPT-Knowledge architecture references;
+2. live GitHub repository state;
+3. local Git/BirdEye diff evidence;
+4. comparable live workflow/runtime patterns;
+5. architecture/roadmap update before code.
+
+This is informative engineering discipline, not a hard runtime blocker.
+
+## Internal architecture evidence
 
 ### GPT-Knowledge
 
@@ -53,25 +48,76 @@ control plane owns session + policy + permissions
 execution surfaces request capabilities
 runtime resolves authority
 validation proves
-completion is separate from loop termination/model opinion
+completion is separate from model opinion
 ```
 
-### External live references
+### R6B
 
-OpenHands SDK architecture separates model output, confirmation checks, execution, observation events, and runtime conversation status.
+`runtime/mode_controller.py` already defines:
 
-LangGraph persistence keeps thread-bound checkpointed state and task writes so resumed execution uses durable recorded state.
+- `ModeRequest`
+- `ModeDecision`
+- `resolve_mode()`
+- deterministic allowed behaviors/capabilities.
 
-OpenAI Codex documents runtime approval/execution modes governing what the agent can do separately from model reasoning.
+But current production inspection found no normal-path consumers.
 
-These patterns support connecting policy/mode state to the actual execution path before downstream completion semantics depend on it.
+### R6C
+
+`runtime/authorization_resolver.py` already accepts a `ModeDecision` and returns deterministic `ALLOW`, `DENY`, or `ESCALATE`.
+
+But current production inspection found no external normal-path callers; it is currently consumed by the standalone R6E orchestrator implementation rather than by the gateway/CLI composition path.
+
+### R6E
+
+`runtime/tool_orchestration.py` already requires `ToolExecutionContext.mode_decision` and routes registered capabilities through R6C before execution.
+
+This is the correct downstream boundary. The missing piece is not another tool or permission engine; it is production composition supplying authoritative runtime policy to the existing owners.
+
+### Gateway and CLI
+
+`AgentRequestEnvelope` carries request/session/task/workspace/mode/operation identity. `GovernedAgentGateway._validate_identity()` verifies request mode equals persisted session mode.
+
+The CLI creates/reconstructs `SessionMemoryRuntimeBridge` from persisted values:
+
+```text
+mode
+active_profile_id
+permission_policy_id
+evidence_policy_id
+provider_id/provider_model
+```
+
+Current inspection found these policy/profile fields functioning primarily as durable references. No new generic policy registry or resolver should be invented merely to make C0 compile.
+
+## External live patterns
+
+Comparable systems reinforce the same separation:
+
+- GitHub required checks: requirements exist independently, producers report structured status, and the gate evaluates satisfaction.
+- LangGraph durable execution: thread/task state and task writes are persisted independently of model prose.
+- OpenHands/Codex-style agent runtimes separate model reasoning from execution/approval/runtime state.
+
+Reusable lesson:
+
+```text
+configured identity/reference
+!=
+resolved runtime authority
+!=
+execution result
+!=
+completion proof
+```
 
 ## Revised dependency order
 
 ```text
-C0  production mode-policy wiring
-    -> resolve effective mode/behaviors/capabilities through R6B in the real request path
-    -> preserve persisted session identity and permission authority
+C0  minimal authoritative runtime-policy composition
+    -> resolve effective R6B mode/behaviors/capabilities in the real request path
+    -> preserve persisted session identity and existing policy references
+    -> supply ModeDecision to existing downstream R6C/R6E consumers
+    -> do not invent a second policy/permission/tool system
 
 C1  establish immutable task completion contract
     -> consume already-authoritative runtime/task policy facts
@@ -86,29 +132,51 @@ C3  thin session validate
     -> call existing completion gate
 ```
 
-## C0 requirements
+## C0 implementation boundary
 
-- reuse existing `ModeRequest` / `ModeDecision` / `resolve_mode()`;
-- wire it into the normal runtime/gateway composition rather than create another resolver;
-- derive inputs from authoritative session/request policy facts;
-- reject contradictions between resolved mode and persisted/request identity;
-- expose resolved behaviors/capabilities to downstream runtime consumers;
-- never grant write authority merely because provider output asks for coding;
-- preserve audit/investigation read-only behavior unless policy grants otherwise;
-- keep provider/model selection independent from policy authority.
+C0 should:
 
-## Non-goals
+- reuse `ModeRequest`, `ModeDecision`, and `resolve_mode()`;
+- reuse the existing persisted session/runtime identity;
+- resolve policy at the normal gateway/runtime composition boundary;
+- reject contradictions between resolved mode and persisted/request mode;
+- make the resolved `ModeDecision` available to downstream runtime consumers;
+- preserve R6C as the authorization owner;
+- preserve R6E as the governed tool orchestration owner;
+- keep provider/model selection independent from workspace authority;
+- keep audit/investigation from gaining coding capabilities through provider output;
+- fail closed when authoritative input required for policy resolution is unavailable rather than fabricate policy semantics.
 
-C0 does not define completion evidence kinds, add `session validate`, add a permission system, let the model select validation requirements, change guard verdict ownership, or add unrestricted tool execution.
+C0 should **not**:
+
+- create a generic `RuntimePolicyResolver` parallel to R6B;
+- create a second permission system;
+- reinterpret arbitrary `permission_policy_id` or `evidence_policy_id` strings as permissions without an existing authoritative mapping;
+- add unrestricted shell/tool execution;
+- define completion evidence kinds;
+- add `session validate`;
+- let the provider select validation/completion requirements;
+- make the CLI the policy authority.
+
+## Open implementation question
+
+Before the code PR, determine the smallest authoritative mapping for R6B inputs from existing session/request state.
+
+The key unresolved point is **not** whether R6B/R6C/R6E should be used; that is now supported. The remaining question is which existing persisted/session facts legitimately supply `permission` and `runtime_policy` without inventing semantics for opaque policy IDs.
+
+If current code contains no authoritative mapping, C0 must fail closed or introduce only the minimum explicit typed session-policy state required by the existing R6B contract, with documentation and migration kept bounded.
 
 ## Acceptance proof before C1
 
-Before C1 begins, prove from the installed/normal request path that:
+Before C1 begins, prove through the installed/normal request path that:
 
-1. the mode controller is invoked;
-2. the decision is deterministic from authoritative inputs;
-3. request/session identity cannot silently contradict the resolved decision;
-4. resolved behaviors/capabilities are available to runtime consumers;
-5. provider switching does not change workspace policy;
-6. audit/investigation cannot gain coding capabilities through provider output alone;
-7. local Git/BirdEye evidence shows only intended wiring changes.
+1. R6B is invoked;
+2. its inputs come from authoritative runtime/session state rather than provider prose;
+3. resolved mode cannot silently contradict persisted/request identity;
+4. the resolved `ModeDecision` reaches downstream consumers;
+5. R6C remains the authorization decision owner;
+6. R6E remains the tool orchestration owner;
+7. provider switching does not alter workspace policy;
+8. audit/investigation cannot gain coding capabilities through model output alone;
+9. no duplicate policy/session/permission/tool authority was introduced;
+10. local Git/BirdEye evidence shows only intended wiring changes.
