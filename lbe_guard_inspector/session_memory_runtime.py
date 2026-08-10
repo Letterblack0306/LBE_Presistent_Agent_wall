@@ -8,6 +8,7 @@ from .memory import (
     MemoryPromoter,
     MemoryType,
     SessionMemoryAdapter,
+    SessionState,
     SourceType,
     TaskState,
     TaskStatus,
@@ -44,6 +45,12 @@ class SessionMemoryRuntimeBridge:
         project_workspace_id: str,
         workspace_root: str | Path,
         session_id: str,
+        mode: str = "unspecified",
+        provider_id: str | None = None,
+        provider_model: str | None = None,
+        active_profile_id: str | None = None,
+        permission_policy_id: str | None = None,
+        evidence_policy_id: str | None = None,
     ) -> None:
         clean_session = session_id.strip()
         if not clean_session:
@@ -56,6 +63,31 @@ class SessionMemoryRuntimeBridge:
             workspace_root=workspace_root,
         )
         self.promoter = MemoryPromoter(self.store)
+        existing = self.store.load_session_state(session_id=self.session_id)
+        if existing is not None:
+            if existing.project_workspace_id != self.project_workspace_id:
+                raise ValueError("persisted session workspace identity does not match runtime")
+            if Path(existing.canonical_workspace_root).resolve() != self.workspace_root:
+                raise ValueError("persisted session workspace root does not match runtime")
+        self.session_state = SessionState(
+            session_id=self.session_id,
+            project_workspace_id=self.project_workspace_id,
+            canonical_workspace_root=str(self.workspace_root),
+            mode=mode if existing is None else existing.mode,
+            provider_id=provider_id if existing is None else existing.provider_id,
+            provider_model=provider_model if existing is None else existing.provider_model,
+            active_profile_id=(active_profile_id if existing is None else existing.active_profile_id),
+            permission_policy_id=(
+                permission_policy_id if existing is None else existing.permission_policy_id
+            ),
+            evidence_policy_id=(
+                evidence_policy_id if existing is None else existing.evidence_policy_id
+            ),
+            checkpoint_id=None if existing is None else existing.checkpoint_id,
+            created_at=existing.created_at if existing is not None else SessionState.__dataclass_fields__["created_at"].default_factory(),
+            updated_at=existing.updated_at if existing is not None else SessionState.__dataclass_fields__["updated_at"].default_factory(),
+        )
+        self.adapter.save_session_state(self.session_state)
 
     @property
     def project_workspace_id(self) -> str:
@@ -65,13 +97,46 @@ class SessionMemoryRuntimeBridge:
     def workspace_root(self) -> Path:
         return self.adapter.workspace_root
 
-    def task_status_for_outcome(self, outcome: str) -> TaskStatus:
-        """Map a reasoning-layer outcome to the canonical task lifecycle status.
+    def configure_session(
+        self,
+        *,
+        mode: str | None = None,
+        provider_id: str | None = None,
+        provider_model: str | None = None,
+        active_profile_id: str | None = None,
+        permission_policy_id: str | None = None,
+        evidence_policy_id: str | None = None,
+    ) -> SessionState:
+        current = self.store.load_session_state(session_id=self.session_id)
+        if current is None:
+            raise RuntimeError("persistent session state is missing")
+        state = SessionState(
+            session_id=current.session_id,
+            project_workspace_id=current.project_workspace_id,
+            canonical_workspace_root=current.canonical_workspace_root,
+            mode=current.mode if mode is None else mode,
+            provider_id=current.provider_id if provider_id is None else provider_id,
+            provider_model=current.provider_model if provider_model is None else provider_model,
+            active_profile_id=(
+                current.active_profile_id if active_profile_id is None else active_profile_id
+            ),
+            permission_policy_id=(
+                current.permission_policy_id
+                if permission_policy_id is None
+                else permission_policy_id
+            ),
+            evidence_policy_id=(
+                current.evidence_policy_id if evidence_policy_id is None else evidence_policy_id
+            ),
+            checkpoint_id=current.checkpoint_id,
+            created_at=current.created_at,
+            updated_at=current.updated_at,
+        )
+        self.session_state = self.adapter.save_session_state(state)
+        return self.session_state
 
-        Only outcomes produced by the existing reasoning boundary are accepted.
-        Unknown or fabricated outcome strings are rejected so the runtime never
-        invents task status from model prose or unverified input.
-        """
+    def task_status_for_outcome(self, outcome: str) -> TaskStatus:
+        """Map a reasoning-layer outcome to the canonical task lifecycle status."""
         if not isinstance(outcome, str):
             raise ValueError("reasoning outcome must be a string")
         try:
@@ -94,6 +159,7 @@ class SessionMemoryRuntimeBridge:
         status_value = status if isinstance(status, TaskStatus) else TaskStatus(status)
         if not isinstance(status_value, TaskStatus):
             raise ValueError(f"status must be a TaskStatus value, got {status!r}")
+        existing = self.load_task_status(task_id=clean_task)
         state = TaskState(
             session_id=self.session_id,
             task_id=clean_task,
@@ -101,6 +167,7 @@ class SessionMemoryRuntimeBridge:
             canonical_workspace_root=str(self.workspace_root),
             status=status_value,
             last_outcome=last_outcome,
+            created_at=existing.created_at if existing else TaskState.__dataclass_fields__["created_at"].default_factory(),
         )
         self.store.save_session_task(state)
         return state
@@ -122,11 +189,7 @@ class SessionMemoryRuntimeBridge:
         reference_context: tuple[Mapping[str, Any], ...] = (),
         max_results: int = 10,
     ) -> LBEResponse:
-        """Invoke the existing reasoning boundary and persist task lifecycle state.
-
-        The runtime owns persistence. The reasoning controller remains unaware of
-        session storage and its response is returned unchanged.
-        """
+        """Invoke the existing reasoning boundary and persist task lifecycle state."""
         clean_problem = problem.strip()
         clean_task = task_id.strip()
         if not clean_problem:
@@ -178,11 +241,6 @@ class SessionMemoryRuntimeBridge:
         return response
 
     def load_task_status(self, *, task_id: str) -> TaskState | None:
-        """Reload persisted task state for this session, or None when absent.
-
-        Corrupted or invalid persisted state raises a visible error instead of
-        silently returning unusable state.
-        """
         clean_task = task_id.strip()
         if not clean_task:
             raise ValueError("task_id must not be empty")
@@ -198,11 +256,13 @@ class SessionMemoryRuntimeBridge:
         task_id: str | None = None,
         recent_messages: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        return self.adapter.rehydrate(
+        packet = self.adapter.rehydrate(
             session_id=self.session_id,
             task_id=task_id,
             recent_messages=recent_messages,
         )
+        self.session_state = self.store.load_session_state(session_id=self.session_id) or self.session_state
+        return packet
 
     def ingest_command_result(
         self,
@@ -263,11 +323,13 @@ class SessionMemoryRuntimeBridge:
         compaction: str | Path | dict[str, Any],
         active_constraints: list[str] | tuple[str, ...] = (),
     ) -> str:
-        return self.adapter.checkpoint_compaction(
+        checkpoint_id = self.adapter.checkpoint_compaction(
             session_id=self.session_id,
             compaction=compaction,
             active_constraints=active_constraints,
         )
+        self.session_state = self.store.load_session_state(session_id=self.session_id) or self.session_state
+        return checkpoint_id
 
     def correlate_registry_receipt(
         self,
