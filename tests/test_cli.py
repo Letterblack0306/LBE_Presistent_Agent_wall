@@ -235,3 +235,143 @@ def test_session_create_rejects_missing_workspace(tmp_path: Path, capsys) -> Non
     assert code == 2
     assert payload["ok"] is False
     assert payload["error"] == "FileNotFoundError"
+
+
+def test_text_output_is_human_readable_without_changing_state(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+        provider_id="openai-compatible",
+        provider_model="model-a",
+    )
+
+    code = main([
+        "--format", "text",
+        "session", "status",
+        "--database", str(database),
+        "--session-id", "session-1",
+    ])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "session.status" in output
+    assert "session_id: session-1" in output
+    assert "mode: audit" in output
+    assert "provider_id: openai-compatible" in output
+    assert not output.lstrip().startswith("{")
+
+
+def test_provider_select_changes_only_provider_fields(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="coding",
+        provider_id="openai-compatible",
+        provider_model="model-a",
+        active_profile_id="profile-a",
+        permission_policy_id="permissions-a",
+        evidence_policy_id="evidence-a",
+    )
+    before = runtime.store.load_session_state(session_id="session-1")
+    assert before is not None
+
+    code = main([
+        "provider", "select",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--provider", "openai-compatible",
+        "--model", "model-b",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["action"] == "provider.select"
+    assert payload["provider_model"] == "model-b"
+    assert all(payload["policy_unchanged"].values())
+    after = runtime.store.load_session_state(session_id="session-1")
+    assert after is not None
+    assert after.provider_model == "model-b"
+    assert after.canonical_workspace_root == before.canonical_workspace_root
+    assert after.mode == before.mode
+    assert after.active_profile_id == before.active_profile_id
+    assert after.permission_policy_id == before.permission_policy_id
+    assert after.evidence_policy_id == before.evidence_policy_id
+
+
+def test_session_continue_can_switch_provider_without_changing_policy(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+        provider_id="openai-compatible",
+        provider_model="model-a",
+        active_profile_id="profile-a",
+        permission_policy_id="permissions-a",
+        evidence_policy_id="evidence-a",
+    )
+
+    code = main([
+        "session", "continue",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--provider", "openai-compatible",
+        "--model", "model-b",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["session"]["provider_model"] == "model-b"
+    stored = runtime.store.load_session_state(session_id="session-1")
+    assert stored is not None
+    assert stored.mode == "audit"
+    assert stored.active_profile_id == "profile-a"
+    assert stored.permission_policy_id == "permissions-a"
+    assert stored.evidence_policy_id == "evidence-a"
+
+
+def test_unknown_provider_is_rejected_without_mutating_session(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="coding",
+        provider_id="openai-compatible",
+        provider_model="model-a",
+        permission_policy_id="permissions-a",
+    )
+    before = runtime.store.load_session_state(session_id="session-1")
+    assert before is not None
+
+    code = main([
+        "provider", "select",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--provider", "not-registered",
+        "--model", "model-x",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 2
+    assert payload["ok"] is False
+    assert payload["error"] == "ValueError"
+    after = runtime.store.load_session_state(session_id="session-1")
+    assert after is not None
+    assert after.provider_id == before.provider_id
+    assert after.provider_model == before.provider_model
+    assert after.permission_policy_id == before.permission_policy_id
