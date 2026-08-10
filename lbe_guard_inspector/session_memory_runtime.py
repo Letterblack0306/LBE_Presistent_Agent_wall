@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Mapping, Protocol
+from typing import Any, Callable, Mapping, Protocol, TypeVar
 
 from .memory import (
     CandidateClaim,
@@ -15,7 +15,18 @@ from .memory import (
     WorkspaceMemoryStore,
 )
 from .reasoning_contracts import LBERequest, LBEResponse
+from .recovery import (
+    CancellationSignal,
+    EvidenceCallback,
+    FailureClassifier,
+    RetryPolicy,
+    classify_failure,
+    load_recovery_state,
+    run_with_recovery,
+)
 
+
+T = TypeVar("T")
 
 _REASONING_OUTCOME_TO_TASK_STATUS = {
     "COMPLETED": TaskStatus.COMPLETED,
@@ -239,6 +250,43 @@ class SessionMemoryRuntimeBridge:
 
         self.record_task_outcome(task_id=clean_task, outcome=response.outcome)
         return response
+
+    def run_recoverable(
+        self,
+        *,
+        task_id: str,
+        operation_id: str,
+        operation: Callable[[], T],
+        policy: RetryPolicy,
+        idempotent: bool,
+        cancellation: CancellationSignal | None = None,
+        evidence_between_attempts: EvidenceCallback | None = None,
+        classify: FailureClassifier = classify_failure,
+    ) -> T:
+        """Execute one bounded operation under the persisted R5 recovery contract."""
+        return run_with_recovery(
+            operation=operation,
+            policy=policy,
+            store=self.store,
+            promoter=self.promoter,
+            project_workspace_id=self.project_workspace_id,
+            canonical_workspace_root=str(self.workspace_root),
+            task_id=task_id,
+            operation_id=operation_id,
+            idempotent=idempotent,
+            cancellation=cancellation,
+            evidence_between_attempts=evidence_between_attempts,
+            classify=classify,
+        )
+
+    def load_recovery_state(self, *, task_id: str, operation_id: str):
+        """Reload the persisted recovery receipt for one task operation."""
+        return load_recovery_state(
+            store=self.store,
+            project_workspace_id=self.project_workspace_id,
+            task_id=task_id,
+            operation_id=operation_id,
+        )
 
     def load_task_status(self, *, task_id: str) -> TaskState | None:
         clean_task = task_id.strip()
