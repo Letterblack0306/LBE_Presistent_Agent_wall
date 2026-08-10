@@ -11,11 +11,13 @@ from typing import Mapping, Sequence
 
 from ..memory import TaskState, TaskStatus
 from ..memory.completion_contracts import TaskCompletionContractPersistence
+from ..memory.completion_evidence import TaskCompletionEvidencePersistence
 from ..reasoning_contracts import LBEResponse
 from ..session_memory_runtime import ReasoningController, SessionMemoryRuntimeBridge
 from .completion_gate import (
     CompletionDecision,
     CompletionEvidence,
+    CompletionEvidenceStatus,
     CompletionRequirement,
     CompletionVerdict,
     TaskCompletionContract,
@@ -37,6 +39,7 @@ class CodingCompletionRuntime:
             raise TypeError("runtime must be SessionMemoryRuntimeBridge")
         self._runtime = runtime
         self._contracts = TaskCompletionContractPersistence(runtime.store)
+        self._evidence = TaskCompletionEvidencePersistence(runtime.store)
 
     def persist_contract(
         self,
@@ -97,6 +100,37 @@ class CodingCompletionRuntime:
                 for item in stored.requirements
             )
         )
+
+    def load_evidence(self, *, task_id: str) -> tuple[CompletionEvidence, ...]:
+        """Load producer-bound completion evidence for this runtime session/task.
+
+        This is deliberately read-only. Evidence classification belongs to the
+        authorized validation producer, not to the CLI, provider, or completion gate.
+        """
+        stored = self._evidence.load(
+            session_id=self._runtime.session_id,
+            task_id=task_id,
+            project_workspace_id=self._runtime.project_workspace_id,
+        )
+        expected_root = str(self._runtime.workspace_root).replace("\\", "/")
+        evidence: list[CompletionEvidence] = []
+        for item in stored:
+            if item.canonical_workspace_root != expected_root:
+                raise ValueError("persisted completion evidence workspace root does not match runtime")
+            evidence.append(
+                CompletionEvidence(
+                    evidence_id=item.evidence_id,
+                    kind=item.kind,
+                    status=CompletionEvidenceStatus(item.status),
+                    source=item.source,
+                    details={
+                        **dict(item.details),
+                        "producer_id": item.producer_id,
+                        "operation_id": item.operation_id,
+                    },
+                )
+            )
+        return tuple(evidence)
 
     def run_reasoning(
         self,

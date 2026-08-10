@@ -131,3 +131,23 @@ CREATE TABLE IF NOT EXISTS task_completion_contracts (
 
 CREATE INDEX IF NOT EXISTS idx_task_completion_contracts_project
     ON task_completion_contracts(project_workspace_id, task_id);
+
+CREATE TABLE IF NOT EXISTS task_completion_evidence (
+    session_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    project_workspace_id TEXT NOT NULL,
+    canonical_workspace_root TEXT NOT NULL,
+    evidence_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('PASS','FAIL','STALE')),
+    source TEXT NOT NULL,
+    producer_id TEXT NOT NULL,
+    operation_id TEXT NOT NULL,
+    details_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, task_id, evidence_id),
+    FOREIGN KEY (session_id) REFERENCES session_state(session_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_completion_evidence_task
+    ON task_completion_evidence(project_workspace_id, task_id, created_at DESC);
