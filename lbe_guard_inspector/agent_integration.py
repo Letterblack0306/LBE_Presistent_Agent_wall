@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from .memory import TaskStatus
 from .reasoning_contracts import LBEResponse
+from .runtime.completion_runtime import CodingCompletionRuntime
 from .session_memory_runtime import ReasoningController, SessionMemoryRuntimeBridge
 
 
@@ -120,19 +121,30 @@ class GovernedAgentGateway:
                 "invalid_request", "arguments.max_results must be a positive integer"
             )
 
-        response = self._runtime.run_reasoning(
-            controller=self._reasoning_controller,
-            problem=problem,
-            task_id=request.task_id,
-            reference_context=reference_context,
-            max_results=max_results,
-        )
-        state = self._runtime.load_task_status(task_id=request.task_id)
-        if state is None:
-            raise AgentIntegrationError(
-                "runtime_state_missing",
-                "reasoning completed without persisted task lifecycle state",
+        if request.mode is AgentMode.CODING:
+            result = CodingCompletionRuntime(runtime=self._runtime).run_reasoning(
+                controller=self._reasoning_controller,
+                problem=problem,
+                task_id=request.task_id,
+                reference_context=reference_context,
+                max_results=max_results,
             )
+            response = result.response
+            state = result.task_state
+        else:
+            response = self._runtime.run_reasoning(
+                controller=self._reasoning_controller,
+                problem=problem,
+                task_id=request.task_id,
+                reference_context=reference_context,
+                max_results=max_results,
+            )
+            state = self._runtime.load_task_status(task_id=request.task_id)
+            if state is None:
+                raise AgentIntegrationError(
+                    "runtime_state_missing",
+                    "reasoning completed without persisted task lifecycle state",
+                )
         return AgentResultEnvelope(
             request_id=request.request_id,
             session_id=request.session_id,
@@ -155,4 +167,9 @@ class GovernedAgentGateway:
         if Path(request.workspace_root).resolve() != self._runtime.workspace_root.resolve():
             raise AgentIntegrationError(
                 "workspace_mismatch", "request workspace root does not match runtime workspace"
+            )
+        if request.mode.value != self._runtime.session_state.mode:
+            raise AgentIntegrationError(
+                "mode_mismatch",
+                "request mode does not match persisted session mode",
             )

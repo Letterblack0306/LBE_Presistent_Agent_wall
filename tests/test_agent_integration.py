@@ -49,12 +49,18 @@ class _Controller:
         )
 
 
-def _runtime(tmp_path: Path, root: Path) -> SessionMemoryRuntimeBridge:
+def _runtime(
+    tmp_path: Path,
+    root: Path,
+    *,
+    mode: str = "audit",
+) -> SessionMemoryRuntimeBridge:
     return SessionMemoryRuntimeBridge(
         database_path=tmp_path / "memory.sqlite",
         project_workspace_id="project-1",
         workspace_root=root,
         session_id="session-1",
+        mode=mode,
     )
 
 
@@ -97,6 +103,36 @@ def test_gateway_routes_agent_request_to_existing_runtime_and_reasoning_owner(tm
     assert state.last_outcome == "COMPLETED"
 
 
+def test_coding_gateway_keeps_model_completion_provisional(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    controller = _Controller("COMPLETED")
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
+
+    result = gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert result.outcome == "COMPLETED"
+    assert result.status is TaskStatus.RUNNING
+    state = runtime.load_task_status(task_id="task-1")
+    assert state is not None
+    assert state.status is TaskStatus.RUNNING
+    assert state.last_outcome == "AWAITING_VALIDATION"
+
+
+def test_gateway_rejects_request_mode_that_differs_from_persisted_session(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="audit")
+    controller = _Controller()
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
+
+    with pytest.raises(AgentIntegrationError) as exc:
+        gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert exc.value.code == "mode_mismatch"
+    assert controller.requests == []
+    assert runtime.load_task_status(task_id="task-1") is None
+
+
 @pytest.mark.parametrize(
     "field,value,code",
     [
@@ -135,7 +171,7 @@ def test_gateway_rejects_workspace_root_mismatch_before_reasoning(tmp_path: Path
 
 def test_gateway_does_not_treat_terminal_capability_as_authority(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    runtime = _runtime(tmp_path, root)
+    runtime = _runtime(tmp_path, root, mode="coding")
     controller = _Controller()
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
 
@@ -149,7 +185,7 @@ def test_gateway_does_not_treat_terminal_capability_as_authority(tmp_path: Path)
 
 def test_gateway_preserves_blocked_outcome_as_persisted_lifecycle_state(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    runtime = _runtime(tmp_path, root)
+    runtime = _runtime(tmp_path, root, mode="investigation")
     gateway = GovernedAgentGateway(
         runtime=runtime,
         reasoning_controller=_Controller("INSUFFICIENT_EVIDENCE"),
