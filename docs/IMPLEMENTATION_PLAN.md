@@ -1,464 +1,1143 @@
-# Implementation Plan
+# LBE Persistent Agent — Canonical Implementation Plan
 
-Updated: 2026-07-28
+Updated: 2026-08-10
+Status: Active canonical roadmap
+
+This document is the implementation sequence for `Letterblack0306/LBE_Presistent_Agent_wall`.
+
+For architecture rationale and provider/CLI boundaries, also read:
+
+- `docs/design/CLI_CONTROL_PLANE_PROVIDER_BOUNDARY.md`
+- `docs/design/LLM_REASONING_LAYER_ROADMAP.md`
+- `docs/VALIDATED_WORKSPACE_MEMORY.md`
+- `docs/CURRENT_STATUS.md`
+
+When this plan and live repository evidence disagree, current source, current Git state, runtime evidence, and current validation win. Update this plan rather than silently creating a competing roadmap.
+
+---
+
+## 1. Product goal
+
+Build a persistent, provider-neutral LBE agent runtime where:
+
+```text
+user / external agent
+        |
+        v
+LBE CLI / API
+        |
+        v
+persistent session controller
+        |
+        +-- workspace identity
+        +-- execution mode
+        +-- active workspace policy
+        +-- permissions
+        +-- guard/profile selection
+        +-- evidence requirements
+        +-- validation/completion requirements
+        |
+        v
+provider adapter
+        |
+        +-- OpenAI-compatible providers
+        +-- Claude/provider APIs
+        +-- LM Studio
+        +-- Ollama
+        +-- future providers
+        |
+        v
+reasoning layer
+        |
+        v
+LBE tools / guards / validation / governance
+        |
+        v
+current workspace
+```
+
+The provider reasons. LBE owns the workspace contract.
+
+The product must support two primary user-facing operating paths:
+
+1. **Coding** — governed modification and validation inside authority already granted by the user.
+2. **Audit / investigation** — evidence-first inspection without workspace mutation.
+
+Additional surfaces such as a TUI are optional views over the same runtime state. They must not become parallel controllers.
+
+---
+
+## 2. Non-negotiable architecture invariants
+
+### 2.1 LBE remains stable when the model changes
+
+Changing the provider or model must not change:
+
+- workspace identity;
+- active rules and profiles;
+- permissions;
+- deterministic guard semantics;
+- evidence authority;
+- validation requirements;
+- completion requirements;
+- persistent session/task state.
+
+Provider changes affect reasoning implementation only.
+
+### 2.2 CLI is a control surface, not the source of authority
+
+The CLI owns user/runtime interaction. LBE Core and the persistent runtime own policy enforcement and execution authority.
+
+Do not implement:
+
+```text
+CLI -> model -> raw unrestricted tools
+```
+
+Required boundary:
+
+```text
+CLI
+ -> session controller
+ -> LBE policy/capability resolution
+ -> provider reasoning
+ -> governed tools
+ -> current workspace
+```
+
+### 2.3 Modes are execution contracts, not model personalities
+
+Do not create separate permanent "coding LLM", "audit LLM", or "rule-learning LLM" authorities.
+
+Use one provider abstraction with mode-specific:
+
+- tool permissions;
+- write authority;
+- evidence requirements;
+- guard requirements;
+- validation requirements;
+- completion rules.
+
+### 2.4 Rules are injected and enforced, not passively learned
+
+Agents do not become reliable because a model saw a rule previously.
+
+Relevant rules, guards, validated patterns, constraints, and known risks are loaded into the active session contract when applicable.
+
+Permanent policy changes must follow the configured governance path.
+
+### 2.5 Existing authorization must not become repeated confirmation
+
+The runtime must distinguish authorization from per-action confirmation.
+
+If user/session/workspace settings already authorize a class of action, such as applying an existing approved rule, editing allowed source files, or running approved validation, the coding runtime may continue without asking again for every matching action.
+
+Escalation is required only when an operation exceeds active authority, for example:
+
+- path or workspace scope expansion;
+- capability class not enabled by policy;
+- destructive action outside delegated authority;
+- persistent rule/profile creation or widening not already delegated;
+- unresolved intent or scope conflict.
+
+### 2.6 Workspace truth remains live
+
+Authority order remains:
+
+```text
+current validation
+    > current workspace/Git/runtime evidence
+    > active workspace policy
+    > verified memory/checkpoints
+    > verified historical repairs
+    > curated reference patterns
+    > unverified history
+    > model inference
+```
+
+Persistent memory must never replace live inspection.
+
+---
+
+## 3. Existing foundation to preserve
+
+The following capabilities are foundation, not targets for redesign:
+
+- reference corpus retrieval and evidence classification;
+- target workspace resolution and project-scoped identity;
+- typed evidence packages and guard requests/results;
+- deterministic guard execution;
+- validation and verdict ownership separation;
+- reasoning retrieval/query/evidence/guard/investigation/explanation planning;
+- governed rule proposal and apply boundary;
+- validated project-scoped memory;
+- `WorkspaceMemoryStore`;
+- `SessionMemoryRuntimeBridge`;
+- Module Registry / runtime-map concepts;
+- Authority Ownership inspection;
+- runtime-neutral invocation concepts.
+
+New work must reuse existing owners rather than create parallel substitutes.
+
+---
+
+# 4. Current gate — finish R2 before expanding runtime
+
+## R2 — Canonical session/task lifecycle persistence
+
+Current PR: `#28`
+
+Current branch:
+
+```text
+feat/persistent-runtime-session-task-state
+```
+
+Recorded PR head:
+
+```text
+124347e6504140682b744c6cafbe98a55fd635f5
+```
+
+Current R2 scope:
+
+- canonical `TaskStatus`;
+- persisted `session_id`;
+- persisted `task_id`;
+- project/workspace identity;
+- status;
+- outcome;
+- timestamps;
+- existing `WorkspaceMemoryStore` reused;
+- existing `SessionMemoryRuntimeBridge` reused.
+
+Explicitly excluded from R2:
+
+- resume execution;
+- retry/recovery;
+- checkpoint expansion;
+- reasoning ownership changes;
+- validation ownership changes;
+- tool orchestration;
+- CLI/provider implementation.
+
+### R2 merge gate
+
+Before R3 begins:
+
+1. update/reconcile PR #28 against current `main` without expanding scope;
+2. run the full repository suite on the exact final R2 head;
+3. record the full-suite evidence;
+4. run focused session-runtime tests;
+5. run `git diff --check`;
+6. confirm changed files remain inside R2 scope;
+7. merge only after the exact head is proven.
+
+Do not use an older reported test count as proof for a newer head.
+
+---
+
+# 5. R3 — Persistent runtime → existing reasoning boundary
 
 ## Goal
 
-Build a deterministic, read-only-first Guard Inspector that diagnoses concrete workspace problems through this authority chain:
+Make the existing runtime owner invoke the existing reasoning controller and persist the lifecycle outcome.
+
+Required path:
 
 ```text
-reference corpus suggests
-current workspace inspection supplies facts
-reasoning selects and explains
-deterministic guards detect
-LBE Core authorizes
-validation proves
+SessionMemoryRuntimeBridge
+        |
+        v
+construct existing LBERequest
+        |
+        v
+LBERequestController.run()
+        |
+        v
+existing LBEResponse
+        |
+        v
+persist task/session outcome
 ```
 
-The model may select guards, form hypotheses, and explain results. It must not invent or reinterpret the verdict.
+## Requirements
 
-## Non-negotiable invariants
+- no second reasoning controller;
+- no second session lifecycle owner;
+- no reasoning knowledge of persistence internals;
+- no new verdict authority;
+- no tool execution yet;
+- no retry/recovery yet;
+- preserve project/workspace identity across request and response;
+- persist success/failure/interruption outcomes using existing task-state storage.
 
-- Live target workspace and current validation outrank stored memory and indexed reference knowledge.
-- Session history and compaction are historical context, not workspace truth.
-- Reference-corpus evidence and target-workspace evidence remain separate.
-- Registry evidence is read before broad source reconstruction.
-- Source inspection remains available when registry evidence is missing, contradictory, stale, ownership-sensitive, or insufficiently exact.
-- Ordinary verdicts come only from deterministic guard execution plus required validation and LBE authorization.
-- Invocation boundaries remain configurable and do not hardcode a runtime, workspace, path, port, application, company, vendor, environment, or transport.
-- Runtime integrations may map capabilities and configuration, but must not reimplement or reinterpret Guard Inspector decisions.
-- Runtime profiles cannot add arbitrary guard selection, mutation, or repair authority.
+## Exit proof
 
-## Controlled integration checkpoint - deterministic project profiling
+- one session can create a task;
+- runtime calls the existing reasoning boundary;
+- response is returned unchanged except for runtime envelope metadata;
+- task lifecycle outcome is persisted;
+- reasoning remains independently testable;
+- full suite passes.
 
-Status: complete in the current worktree; integration proof remains the next
-milestone.
+---
 
-The audit controller profiles the selected canonical project root using an
-approved signal allowlist. The canonical-root hash produces the target
-`workspace_id`; a configured root is therefore not reused as a shared project
-identity. Automatic pack selection requires exactly one confident profile. An
-unknown or ambiguous profile returns `insufficient_evidence` and does not
-guess.
+# 6. R4 — Checkpoint, resume, and rehydration
 
-The report preserves the selected pack rationale as signal path/hash evidence.
-Generated inspector state stores historical snapshots outside the audited
-workspace and compares them on later audits. Snapshot data is historical
-memory only: the current filesystem remains the sole source of workspace
-truth.
+## Goal
 
-The CEP manifest guard is part of this proof boundary: it reads the exact
-`CSXS/manifest.xml` below the selected workspace root rather than treating
-shared-index or sibling-project matches as evidence.
+Allow a persistent session to stop and continue without treating remembered state as live workspace truth.
 
-All CEP checks now use bounded selected-workspace evidence. The generic
-inventory precondition uses the controller's selected-workspace inventory,
-not global index state. Callback and module-registry guards retain their
-existing bounded live-workspace paths. Callback inspection rejects missing
-`workspace_root` scope instead of using a shared-index fallback.
+## Required session data
 
-## Completed foundation: Phases 1-12
-
-Completed foundation includes:
-
-- Module Registry contracts, lifecycle receipts, state derivation, validation, and Module Watcher;
-- minimal registered runtime slice and read-only `/module-registry` surface;
-- registry-first inspection with bounded source fallback;
-- Authority Ownership declaration, schemas, deterministic inspector, and read-only enforcement;
-- runtime confirmation without hidden activation;
-- validated workspace memory and session-memory runtime wiring;
-- complete Phase 12 end-to-end proof.
-
-Foundation was merged in PR `#2` at `7f212f406331dfaf7961143eefbf45f8ceaf6a17`.
-
-## Phase 13 - First complete Guard Inspector vertical slice
-
-Status: complete and merged through PR `#3`.
-
-Problem:
+A persisted session contract must carry at least:
 
 ```text
-Provided callback is not a function
+session_id
+task_id
+project_workspace_id
+canonical_workspace_root
+mode
+provider_id/provider_model
+active_profile_id
+permission_policy_id
+evidence_policy_id
+TaskStatus
+last_outcome
+checkpoint identity
+created_at
+updated_at
 ```
 
-Completed sequence:
+Provider credentials or raw secrets must not be persisted in session state.
+
+## Resume flow
 
 ```text
-fixed callback request
--> exact workspace resolution
--> independently scoped reference retrieval
--> bounded live target-workspace inspection
--> evidence package
--> registered cep.callback_contract selection
--> deterministic guard execution
--> LBE authorization
--> independent narrow validation
--> structured verdict
--> evidence-only explanation
+resume requested
+      |
+      v
+resolve canonical workspace
+      |
+      v
+inspect current Git/runtime/workspace state
+      |
+      v
+load persisted session + verified memory
+      |
+      v
+invalidate stale source-backed claims
+      |
+      v
+rebuild bounded context packet
+      |
+      v
+continue through current provider adapter
 ```
 
-## Phase 14 - Minimal read-only invocation surface
+## Revalidation requirements
 
-Status: complete and merged through PR `#3`.
+Before continuing a resumed task:
 
-Implemented surface:
+- re-resolve workspace identity;
+- compare relevant Git branch/HEAD state;
+- revalidate required source hashes;
+- mark stale memory stale rather than silently reuse it;
+- preserve active task constraints unless explicitly superseded;
+- treat compaction summaries as history only.
+
+## Exit proof
+
+Controlled end-to-end proof:
+
+1. start a session;
+2. establish a validated workspace fact;
+3. persist active task constraint;
+4. checkpoint/compact;
+5. change the underlying source;
+6. restart/resume;
+7. old source fact becomes stale;
+8. active constraint survives;
+9. current workspace/Git state wins;
+10. task continues without trusting summary text as proof.
+
+---
+
+# 7. R5 — Bounded classified retry and recovery
+
+## Goal
+
+Recover from transient or classified failures without turning the agent into an uncontrolled loop.
+
+## Failure classes
+
+At minimum distinguish:
+
+- provider/inference failure;
+- timeout;
+- temporary tool failure;
+- deterministic validation failure;
+- permission denial;
+- stale workspace state;
+- specification/scope conflict;
+- missing dependency/resource;
+- cancellation/interruption.
+
+## Retry contract
+
+Retry is allowed only when policy explicitly declares:
+
+- retryable failure class;
+- maximum attempts;
+- delay/backoff if applicable;
+- idempotency expectation;
+- evidence required between attempts;
+- terminal stop condition.
+
+Do not retry deterministic policy denial, scope conflict, or known-invalid input as though it were transient.
+
+## Exit proof
+
+- transient provider/tool failure can recover within policy;
+- deterministic failure does not loop;
+- retry count persists across session state where required;
+- duplicate writes are prevented;
+- cancellation stops the loop cleanly;
+- final outcome records exact recovery evidence.
+
+---
+
+# 8. R6A — Provider abstraction layer
+
+## Goal
+
+Make the reasoning provider user-selectable without moving authority out of LBE.
+
+## Provider interface
+
+Define one provider contract with capabilities such as:
 
 ```text
-POST /guard-inspector/callback
+provider_id
+model_id
+health_check()
+capabilities()
+generate()/complete()
+stream()              optional capability
+tool_call_support     capability metadata
+context_limit         capability metadata
 ```
 
-The endpoint accepts only the narrow callback request, invokes `CallbackVerticalSlice`, remains local-only and read-only, preserves exact workspace resolution, and rejects arbitrary pack or rule selection.
+Exact method names are implementation details; the stable contract is provider neutrality.
 
-Phases 13 and 14 were merged at `0376f52093d079a5911b8c8b164492373e386046`.
+## Initial provider targets
 
-## Phase 15 - Runtime-neutral invocation adapter
+Recommended first adapters:
 
-Status: complete and merged through PR `#4` at `25ea2560dbd9d440f3caf3be9f9c3b286aed1f5d`.
+1. OpenAI-compatible HTTP provider;
+2. LM Studio through OpenAI-compatible local endpoint;
+3. Ollama;
+4. Anthropic/Claude adapter when its API-specific mapping is needed.
 
-Implemented:
+Do not hardcode workspace policy into provider adapters.
 
-- one transport-neutral invocation protocol;
-- configurable in-process callable transport;
-- configurable local HTTP transport;
-- unchanged response propagation;
-- structured endpoint and transport errors;
-- bounded timeout and cancellation;
-- no automatic retry;
-- no fixed runtime, vendor, workspace, path, endpoint, or port.
+## Adapter responsibilities
 
-Validation:
+Provider adapters may translate:
 
-- focused Phase 15 suite: `13 passed`;
-- full repository suite: `189 passed`;
-- `git diff --check`: passed.
+- authentication/configuration;
+- request/response formats;
+- streaming format;
+- tool-call serialization;
+- context-window/capability metadata;
+- health/model discovery.
 
-## Phase 16 - Configurable runtime integration profile contract
+They may not reinterpret:
 
-Status: complete and merged through PR `#5` at `575283ab986abc723de226c0340ec88c81ea2a10`.
+- workspace permissions;
+- guard verdicts;
+- evidence authority;
+- completion truth;
+- persistent rules.
 
-Implemented:
+## Provider switching proof
 
-- stable `profile_id` and `version`;
-- named `transport_factory` resolved through an externally supplied factory registry;
-- externally supplied `transport_config`;
-- explicit `request_mapping` into the narrow inspection request fields;
-- explicit capability declarations;
-- deterministic rejection of arbitrary guard selection, workspace mutation, and repair execution;
-- bounded timeout configuration;
-- explicit cancellation support declaration;
-- deterministic validation of unknown, missing, malformed, and contradictory fields;
-- unchanged adapter response propagation;
-- no direct vendor-specific integration.
-
-Validation:
-
-- focused Phase 16 suite: `16 passed`;
-- full repository suite: `205 passed`;
-- `git diff --check`: passed.
-
-## Phase 17 - Profile-driven callback invocation proof
-
-Status: complete and merged through PR `#6` at `f41dd154a7450f30b92c05c358220606f5da95fa`.
-
-Proven path:
+Within the same workspace/session contract:
 
 ```text
-generic runtime input
--> validated callback RuntimeIntegrationProfile
--> externally supplied transport factory
--> mapped callback request
--> RuntimeNeutralInvocationAdapter
--> fixed CallbackVerticalSlice
--> unchanged structured result or structured error
+provider A -> reasoning request -> response
+provider B -> same logical reasoning request -> response
 ```
 
-Validation:
+The switch must preserve:
 
-- focused Phase 17 suite: `10 passed`;
-- full repository suite: `215 passed`;
-- `git diff --check`: passed.
+- workspace identity;
+- policy;
+- permissions;
+- guards;
+- evidence package semantics;
+- task lifecycle.
 
-## Phase 18 - Second deterministic guard vertical slice
+---
 
-Status: complete and merged through PR `#7` at `7345149b99d09ac34debaf16bd006107510b8095`.
+# 9. R6B — Mode policy engine
 
-### Selected problem
+## Goal
+
+Represent coding, audit, and investigation as typed runtime policy rather than prompt-only behavior.
+
+## Coding mode
+
+Purpose: build, fix, modify, and validate within granted authority.
+
+Potential capabilities when enabled by active policy:
+
+- inspect workspace;
+- search/retrieve evidence;
+- edit approved paths;
+- create bounded patches;
+- run approved commands/tests/builds;
+- apply existing approved workspace rules;
+- invoke relevant guards;
+- validate before completion.
+
+Coding mode does not automatically mean unrestricted write authority.
+
+## Audit mode
+
+Purpose: determine current reality.
+
+Default characteristics:
+
+- read-only;
+- current workspace evidence required for project-specific claims;
+- deterministic guard results;
+- strict validation requirements;
+- no repair/edit path;
+- explanations cannot alter verdicts.
+
+## Investigation mode
+
+Purpose: diagnose an unknown failure or expand from a known failure.
+
+Characteristics:
+
+- starts from error/evidence/guard result/runtime event;
+- may search semantically and trace callers/handlers/dependencies;
+- remains project-scoped by default;
+- produces diagnosis/evidence;
+- no mutation unless explicitly operating under coding authority.
+
+## Exit proof
+
+The same provider can run under each mode and receives different allowed capabilities from LBE policy, not from separate model identities.
+
+---
+
+# 10. R6C — Permission and authorization resolver
+
+## Goal
+
+Turn user-configured authority into deterministic runtime decisions and remove unnecessary repeated prompts.
+
+## Inputs
 
 ```text
-Loaded module receipt has no matching declaration
+workspace identity
+session mode
+user settings
+workspace profile
+requested capability/action
+path/scope
+risk class
+persistent-policy impact
 ```
 
-The problem comes directly from `docs/PRIORITY_MODULE_REGISTRY.md`: loaded modules absent from the canonical declaration inventory are blocking defects.
-
-### Fixed identities
-
-- pack: `module_registry`;
-- rule: `module_registry.loaded_module_registration`;
-- vertical slice: `ModuleRegistryVerticalSlice`;
-- current workspace artifact: `.lbe/module-registry.json`.
-
-### Implemented path
+## Output
 
 ```text
-fixed module-registry request
--> exact configured workspace resolution
--> current canonical registry artifact inspection
--> bounded declaration and lifecycle-receipt parsing
--> loaded-module/declaration comparison
--> registered deterministic rule execution
--> GuardRunner evidence scoping
--> independent validation re-read
--> LBE authorization
--> structured verdict and evidence-only explanation
+ALLOW
+DENY
+ESCALATE
 ```
 
-### Deterministic verdict semantics
+with reason and policy provenance.
 
-- `FAIL`: at least one loaded receipt names a module absent from declarations;
-- `PASS`: loaded receipts exist and every loaded module is declared;
-- `INSUFFICIENT_EVIDENCE`: the registry exists but contains no loaded receipts or cannot establish runtime load state;
-- `NOT_APPLICABLE`: the exact configured workspace has no canonical registry artifact.
+## Rules
 
-### Validation record
+### ALLOW
 
-- focused Phase 18 suite: `11 passed`;
-- full repository suite: `226 passed`;
-- `git diff --check`: passed.
+Use when the active policy already grants the exact operation class and scope.
 
-## Phase 19 - Profile-driven invocation proof for the second guard
+Examples:
 
-Status: complete on `feat/module-registry-profile-proof`.
+- edit inside configured source scope;
+- run approved test command class;
+- apply an existing approved workspace rule;
+- execute allowed validation.
 
-### Proven path
+### ESCALATE
+
+Use when additional user authority is genuinely required.
+
+Examples:
+
+- write outside configured scope;
+- destructive action not delegated;
+- new external/network capability not permitted;
+- creation/widening of persistent policy when not delegated;
+- unresolved conflict with active intent.
+
+### DENY
+
+Use when policy explicitly prohibits the action or it violates a hard safety/workspace boundary.
+
+## Important distinction
 
 ```text
-generic runtime input
--> validated module_registry_inspection capability
--> externally supplied transport factory
--> narrow module-registry request mapping
--> RuntimeNeutralInvocationAdapter
--> fixed ModuleRegistryVerticalSlice
--> unchanged structured result or structured error
+existing approved rule + already delegated apply authority
+    -> may apply without another prompt
+
+new rule / wider policy / new authority class
+    -> follow policy-change authorization rules
 ```
 
-### Implemented contract
+## Exit proof
 
-`RuntimeIntegrationProfile` now accepts exactly one enabled fixed inspection capability:
+- repeated allowed edits do not repeatedly ask permission;
+- out-of-scope action cannot bypass resolver;
+- policy provenance is recorded;
+- provider cannot self-upgrade its authority.
 
-- `callback_inspection`; or
-- `module_registry_inspection`.
+---
 
-Profiles enabling neither or both are rejected deterministically. The profile continues to map only:
+# 11. R6D — Context assembly and guard/rule injection
 
-- `workspace_root`;
-- `workspace_id`;
-- `reason`;
-- `max_results`.
+## Goal
 
-The following remain prohibited:
+Build the exact bounded context needed for the current turn instead of dumping memory or workspace content into the model.
 
-- `arbitrary_guard_selection`;
-- `workspace_mutation`;
-- `repair_execution`.
+## Context sources
 
-### Fixed HTTP surface
+Potential packet sections:
 
 ```text
-POST /guard-inspector/module-registry
+current session/task identity
+current mode
+provider capability summary
+active workspace identity
+active permissions
+current task/goal
+verified active constraints
+relevant workspace rules
+applicable guard metadata
+bounded indexed reference evidence
+current workspace evidence requested for reasoning
+recent validated failures/patterns
+checkpoint context
+missing/contradictory evidence
 ```
 
-The endpoint accepts the same narrow request field set and invokes only `ModuleRegistryVerticalSlice`. Caller-supplied pack IDs, rule IDs, guard IDs, repair requests, and mutation controls remain invalid.
+Evidence classes must remain distinguishable.
 
-### Proven behavior
+## Rule selection behavior
 
-`tests/test_module_registry_profile_end_to_end.py` proves:
+Do not inject every rule.
 
-1. callback and module-registry profiles remain independently explicit;
-2. contradictory capability combinations are rejected;
-3. the in-process profile path preserves `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE`;
-4. the temporary local HTTP path preserves the complete endpoint result;
-5. authorization, evidence refs, validation refs, explanation, decision fingerprint, and workspace immutability remain intact;
-6. arbitrary guard-selection fields are rejected;
-7. missing factory and endpoint rejection remain structured;
-8. timeout and cancellation remain deterministic;
-9. transport failures are not retried;
-10. temporary workspaces and ephemeral ports avoid fixed environment assumptions;
-11. callback profile and callback endpoint behavior remain unchanged.
+Use:
 
-### Validation record
+- workspace profile;
+- current project type;
+- task/failure domain;
+- guard applicability;
+- previous validated pattern triggers.
 
-Validated at `b74f2c14b8f9409cf76b401961b5174e0fd3edf9`:
+A model may request additional evidence but cannot invent a guard or declare a rule applied when runtime did not apply it.
 
-- focused Phase 19 suite: `54 passed`;
-- full repository suite: `238 passed`;
-- `git diff --check`: passed;
-- working tree: clean;
-- branch synchronized with origin.
+## Exit proof
 
-### Phase 19 exit criteria
+- context is bounded and reproducible;
+- irrelevant rules are absent;
+- current workspace facts are not replaced by reference matches;
+- provider switch receives equivalent authoritative context;
+- reason/planning text cannot contaminate retrieval queries.
 
-- fixed module-registry profile capability exists without arbitrary selection: complete;
-- in-process and temporary HTTP proofs pass: complete;
-- all four verdicts remain unchanged: complete;
-- callback profile behavior remains unchanged: complete;
-- structured failures remain deterministic: complete;
-- no workspace mutation or retry occurs: complete;
-- focused and full suites pass: complete;
-- `git diff --check` passes: complete;
-- working tree remains clean: complete.
+---
 
-## Indexed corpus integration checkpoint
+# 12. R6E — Governed tool orchestration
 
-The indexed corpus is global reference knowledge. It may include examples from
-the developer's repositories, but those records are not the target workspace
-and must never be treated as current truth. This is cross-project,
-request-time retrieval specialization, not model training; model weights do not
-change.
+## Goal
 
-The intended runtime is:
+Allow coding mode to use real tools while LBE remains the authority boundary.
+
+## Tool lifecycle
 
 ```text
-curated cross-project corpus
--> pattern retrieval
--> candidate guards / likely failure domains
--> inspect the current arbitrary workspace
--> deterministic validation
--> verdict
+reasoning requests tool
+        |
+        v
+registered tool lookup
+        |
+        v
+permission resolver
+        |
+        v
+preconditions / workspace boundary
+        |
+        v
+execute
+        |
+        v
+capture structured evidence
+        |
+        v
+update task/runtime state
+        |
+        v
+validation when required
 ```
 
-PASS:
+## Tool registry requirements
 
-- corpus indexing;
-- ranked retrieval;
-- evidence metadata and exclusions;
-- indexed/current evidence separation;
-- LLM reasoning route;
-- deterministic guard execution;
-- automatic injection of bounded `indexed_reference_evidence` into
-  `ReasoningRequest.reference_context`.
+Each executable capability must declare:
 
-Historical open-defect proof, resolved before this checkpoint was marked
-complete:
+- tool ID;
+- schema;
+- read/write class;
+- network behavior;
+- risk class;
+- timeout;
+- retry policy;
+- preconditions;
+- expected evidence;
+- failure modes.
+
+## Initial coding tool classes
+
+Implement only what is required by real workflows, for example:
+
+- workspace tree/read/search/hash;
+- controlled file patch/write;
+- approved command execution;
+- test/build/validation execution;
+- Git status/diff inspection;
+- optional governed commit/push only if later explicitly included by policy.
+
+Do not give models a generic unrestricted shell bypass around registered tool policy.
+
+## Exit proof
+
+- model requests cannot bypass the registry;
+- write scope is checked before mutation;
+- tool outputs become structured evidence;
+- duplicate operation identity is available for recovery/idempotency;
+- validation can bind to actual execution receipts.
+
+---
+
+# 13. R6F — Completion and validation gate
+
+## Goal
+
+Prevent the coding runtime from converting a plausible model response into `DONE`.
+
+## Completion predicate
+
+Task completion must evaluate the claim actually being made.
+
+Possible evidence:
+
+- required source changes exist;
+- expected diff scope is satisfied;
+- targeted tests pass;
+- required full suite passes;
+- build/package validation passes;
+- current Git/workspace state is known;
+- relevant deterministic guards pass where required;
+- no unresolved required validation remains.
+
+Not every task requires every evidence type. The task contract defines the required proof.
+
+## Exit proof
+
+- model saying "done" is insufficient;
+- missing required validation keeps task incomplete;
+- failures are preserved as evidence;
+- successful completion stores a validated lifecycle outcome rather than model opinion.
+
+---
+
+# 14. CLI implementation
+
+## Goal
+
+Expose the persistent runtime through one stable, automation-friendly interface.
+
+The CLI must remain thin: it parses user intent/configuration and invokes runtime services. It must not duplicate provider, permission, memory, guard, or validation logic.
+
+## Core command families
+
+Exact names may evolve, but the required capabilities are:
 
 ```text
-INDEXED_EVIDENCE_COUNT=3
-CURRENT_EVIDENCE_COUNT=3
-REASONING_REFERENCE_CONTEXT_COUNT=0
+lbe session create
+lbe session continue
+lbe session status
+lbe session inspect
+lbe session evidence
+lbe session validate
+
+lbe code
+lbe audit
+lbe investigate
+
+lbe provider list
+lbe provider check
+lbe provider select
+
+lbe policy show
+lbe permissions show
 ```
 
-Required implementation now present:
+Convenience commands such as `lbe code` may create/continue the appropriate session internally, but session state remains canonical.
 
-- run bounded task-scoped reference retrieval before `backend.plan()`;
-- preserve authority, path, hash, classification, verification, and exclusion
-  metadata;
-- inject only `indexed_reference_evidence` into `reference_context`;
-- keep current-workspace and validation evidence separate.
+## Session creation inputs
 
-### Reasoning Context Contract
-
-Before `backend.plan()` executes:
-
-1. Perform bounded task-scoped retrieval.
-2. Build an evidence package.
-3. Inject only `indexed_reference_evidence` into
-   `ReasoningRequest.reference_context`.
-4. Never inject current workspace evidence into `reference_context`.
-5. Never inject validation evidence into `reference_context`.
-6. Preserve evidence IDs, hashes, provenance, authority metadata, and source
-   classifications.
-7. Excluded records must never enter the reasoning context.
-
-Current proof:
+At minimum:
 
 ```text
-INDEXED_EVIDENCE_COUNT=5
-REASONING_REFERENCE_CONTEXT_COUNT=5
-injected evidence IDs/hashes match selected indexed records: PASS
-excluded records absent: PASS
-current workspace evidence remains separate: PASS
+workspace
+mode
+provider/model
+workspace/profile policy
+permission policy
 ```
 
-The next active implementation step, before Phase 20 release readiness, is a
-cross-project retrieval proof on unfamiliar workspaces. The proof must resolve
-the selected workspace independently, treat corpus matches only as pattern
-candidates, inspect current files before project-specific claims, bind verdicts
-to current workspace evidence and validation, and preserve corpus provenance
-and authority metadata.
+Defaults may come from user configuration, but the resolved values must be visible through `session status`.
 
-## Phase 6 — Governed workspace-rule proposals
+## CLI exit proof
 
-The current implementation target is the read-only proposal flow:
+- non-interactive use works;
+- structured output is available for external agents/scripts;
+- human-readable output is available for terminal users;
+- no CLI command bypasses runtime authority;
+- session can be continued with a different provider without changing workspace policy.
+
+---
+
+# 15. Configuration system
+
+## Goal
+
+Make provider and permission choices user-configurable without embedding environment-specific assumptions into source.
+
+## Configuration levels
+
+Recommended precedence:
 
 ```text
-verified finding
--> equivalent-rule check from the current profile
--> workspace-specific rule proposal
--> exact unified profile diff
--> explicit user approval record
+explicit command/session override
+        > workspace profile
+        > user configuration
+        > safe product defaults
 ```
 
-The proposal boundary computes equivalence from the current target profile and
-never trusts caller- or model-supplied equivalence claims. Proposal generation
-and approval recording do not write the workspace, profile, rule registry, or
-index. Automatic application and autonomous repair remain disabled until a
-separate governed apply step proves activation validation, provenance, and
-rollback.
+Only values allowed to be overridden should participate in this precedence.
 
-The next governed apply slice is now bounded to explicit approval, LBE
-authorization, exact profile-diff application, and activation validation. It
-does not create rollback artifacts, persist provenance, or perform repair.
+## User configuration may define
 
-## Phase 20 - Minimum release-readiness boundary
+- default provider/model;
+- provider endpoint references;
+- default operating mode;
+- automatic application of existing approved rules;
+- allowed write/tool classes;
+- network policy;
+- validation behavior;
+- interactive escalation preference;
+- output format preferences.
 
-### Objective
+## Secret handling
 
-Make the proven read-only Guard Inspector distributable and verifiable without expanding product authority.
+Configuration should reference credentials through secure environment/provider mechanisms. Do not persist raw credentials in workspace memory, task records, or logs.
 
-### Required scope
+---
 
-- define the supported Python and operating-system compatibility matrix from actual CI/runtime evidence;
-- define stable public entry points for callback and module-registry inspection;
-- document the two fixed profile capabilities and their request/result contracts;
-- add packaging metadata and build validation only where missing;
-- validate installation into a clean temporary environment;
-- validate both in-process and local HTTP smoke paths from the installed package;
-- ensure package contents exclude development-only, private, generated, cache, and workspace-specific artifacts;
-- preserve local-only HTTP defaults and read-only behavior;
-- preserve all deterministic verdict, evidence, authorization, timeout, cancellation, and no-retry semantics;
-- avoid release automation that publishes externally without explicit user action.
+# 16. Optional API surface
 
-### Phase 20 exit criteria
+The API should expose the same runtime/session operations needed by external integrations.
 
-- one reproducible package build succeeds from a clean tree;
-- one clean-environment installation succeeds;
-- both fixed guard slices execute from the installed artifact;
-- callback and module-registry profile examples validate;
-- public documentation matches actual invocation contracts;
-- package-content audit passes;
-- focused and full suites pass;
-- `git diff --check` passes;
-- working tree remains clean;
-- no publish action occurs automatically.
+It must not implement a second policy engine.
 
-## Deferred work
+Potential operations:
 
-- broad autonomous repair;
-- unrestricted planning;
-- passive corpus learning;
-- cross-project truth sharing;
-- cloud synchronization;
-- automatic global-rule creation;
-- complete UI beyond the minimum read-only proof surface;
-- direct vendor-specific integrations inside the core package;
-- additional guard gallery expansion until release readiness is established.
+```text
+create session
+continue session
+submit task/input
+inspect status
+retrieve evidence
+validate
+cancel
+provider health
+```
 
-## Immediate next task
+CLI and API should converge on the same runtime service layer.
 
-1. prove cross-project indexed retrieval on unfamiliar workspaces;
-2. retain evidence IDs, hashes, classifications, exclusions, and workspace
-   separation in the proof receipt;
-3. open and review the Phase 19 pull request;
-4. verify mergeability and repository checks;
-5. merge only after the mutually exclusive fixed-capability boundary is accepted;
-6. create a separate Phase 20 branch from updated `main`;
-7. inspect current packaging and CI truth before modifying release files.
+---
+
+# 17. Optional TUI/operator console — after CLI/runtime proof
+
+Do not make TUI a prerequisite for runtime completion.
+
+The TUI may display/control existing runtime state:
+
+- active sessions;
+- workspace;
+- provider/model;
+- mode;
+- task status;
+- active guards/profile;
+- permissions;
+- evidence;
+- validation;
+- escalations;
+- failures/recovery state.
+
+It must consume the same API/runtime contract as CLI and must not become another agent implementation.
+
+---
+
+# 18. R7 — End-to-end persistent coding/audit runtime proof
+
+## Goal
+
+Prove the full architecture with real provider switching, governed coding, read-only audit, persistence, resume, and validation.
+
+## Proof A — coding session
+
+1. create session for a real controlled repository;
+2. choose provider A;
+3. coding mode loads workspace identity, rules, permissions, and evidence policy;
+4. user grants/uses a profile allowing bounded edits and tests;
+5. reasoning requests permitted inspection/edit tools;
+6. permission resolver allows pre-authorized actions without repeated prompts;
+7. change is applied only inside allowed scope;
+8. required validation executes;
+9. completion gate records validated outcome;
+10. session state persists.
+
+## Proof B — provider switch
+
+1. continue same session;
+2. switch to provider B;
+3. rehydrate current authoritative context;
+4. verify workspace policy and permissions are unchanged;
+5. continue reasoning without provider becoming authority.
+
+## Proof C — resume after workspace change
+
+1. checkpoint session;
+2. modify relevant source externally;
+3. restart runtime;
+4. resume;
+5. stale source-backed memory is invalidated;
+6. current workspace evidence wins;
+7. session/task constraints survive appropriately.
+
+## Proof D — audit mode
+
+1. open audit session on same or another project;
+2. enforce read-only policy;
+3. retrieve patterns where useful;
+4. inspect live current workspace;
+5. run deterministic guards/validation;
+6. produce evidence-backed verdict/explanation;
+7. prove no workspace mutation occurred.
+
+## Proof E — escalation
+
+1. coding model requests operation outside configured authority;
+2. resolver returns `ESCALATE` or `DENY`;
+3. provider cannot bypass the decision;
+4. after explicit authority change, runtime can proceed according to the newly active policy.
+
+## R7 completion condition
+
+The runtime is considered architecture-complete for this milestone only when all required proofs pass from the installed/normal execution path, not just unit-test fakes.
+
+---
+
+# 19. Release and packaging
+
+After R7 proof:
+
+- define supported Python/runtime matrix from evidence;
+- ensure provider dependencies remain optional/modular where possible;
+- validate clean installation;
+- validate CLI entry points from installed package;
+- audit package contents;
+- ensure state/config/secrets/workspace artifacts are excluded;
+- document configuration and migration;
+- run focused and full suites;
+- run installed end-to-end smoke proof;
+- do not publish externally without explicit release action.
+
+---
+
+# 20. Implementation sequence
+
+Use this order unless current evidence proves a dependency must change:
+
+```text
+CURRENT
+R2 merge readiness (#28)
+        |
+        v
+R3 runtime -> existing reasoning controller
+        |
+        v
+R4 checkpoint / resume / rehydration
+        |
+        v
+R5 bounded classified recovery
+        |
+        v
+R6A provider abstraction
+        |
+        v
+R6B typed mode policies
+        |
+        v
+R6C permission / authorization resolver
+        |
+        v
+R6D context assembly + relevant rule/guard injection
+        |
+        v
+R6E governed tool orchestration
+        |
+        v
+R6F completion / validation gate
+        |
+        v
+CLI command surface over the proven runtime services
+        |
+        v
+optional API integration surface
+        |
+        v
+R7 real end-to-end proof
+        |
+        v
+release/package readiness
+        |
+        v
+optional TUI operator console
+```
+
+### Important implementation note
+
+The CLI shell can be scaffolded earlier if useful, but it must remain a thin wrapper. Do not implement CLI-owned behavior before the corresponding runtime service exists and is tested.
+
+---
+
+# 21. Slice discipline
+
+Every implementation slice must define:
+
+- exact objective;
+- existing authoritative owner being extended;
+- allowed files/components;
+- explicit exclusions;
+- typed input/output contract;
+- failure behavior;
+- targeted tests;
+- full regression requirement when appropriate;
+- Git diff/scope evidence;
+- acceptance condition.
+
+Do not combine provider adapters, CLI UX, tool orchestration, retry, resume, and policy changes into one large patch.
+
+Recommended branch/PR granularity follows the numbered runtime slices above.
+
+---
+
+# 22. Explicit non-goals for the current roadmap
+
+Do not drift into:
+
+- training a dedicated LBE foundation model;
+- passive model learning from all conversations;
+- separate coding/audit model authorities;
+- unrestricted autonomous repair;
+- unrestricted shell access;
+- model-authored guard verdicts;
+- cross-project memory as current truth;
+- replacing Git/current workspace inspection with memory;
+- automatic global-rule creation from one finding;
+- TUI-first product development;
+- provider-specific governance forks;
+- cloud synchronization before local runtime proof;
+- broad multi-agent orchestration before one persistent agent path is proven.
+
+---
+
+# 23. Canonical responsibility map
+
+```text
+User configuration
+    -> delegated authority and defaults
+
+CLI / API / optional TUI
+    -> control surfaces
+
+Persistent runtime
+    -> session/task lifecycle, orchestration, recovery
+
+Provider adapter
+    -> translates provider-specific inference capabilities
+
+LLM reasoning layer
+    -> interpretation, planning, hypotheses, explanation, proposals
+
+Reference retrieval
+    -> historical patterns and candidate guidance
+
+Current workspace inspector
+    -> current project facts
+
+Rules / deterministic guards
+    -> deterministic condition detection
+
+Permission/governance layer
+    -> authorization
+
+Validation
+    -> proof
+
+Validated memory/checkpoints
+    -> bounded persistent context, never replacement truth
+```
+
+---
+
+# 24. Final invariant
+
+Every future implementation decision should preserve this chain:
+
+```text
+Provider reasons.
+Persistent runtime orchestrates.
+CLI/API/TUI expose the runtime.
+Current workspace supplies facts.
+Relevant rules and guards are selected/injected by LBE.
+Permission policy authorizes actions.
+Pre-authorized actions proceed without repetitive approval.
+Authority expansion is escalated according to policy.
+Deterministic guards detect.
+Validation proves.
+Persistent memory carries only bounded supported context.
+```
+
+If a proposed feature creates another owner for any of these responsibilities, stop and reconcile the ownership boundary before implementation.
