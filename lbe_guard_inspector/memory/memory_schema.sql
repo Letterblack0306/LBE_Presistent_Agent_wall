@@ -117,3 +117,17 @@ CREATE TABLE IF NOT EXISTS session_tasks (
 
 CREATE INDEX IF NOT EXISTS idx_session_tasks_session
     ON session_tasks(session_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS task_completion_contracts (
+    session_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    project_workspace_id TEXT NOT NULL,
+    canonical_workspace_root TEXT NOT NULL,
+    requirements_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, task_id),
+    FOREIGN KEY (session_id) REFERENCES session_state(session_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_completion_contracts_project
+    ON task_completion_contracts(project_workspace_id, task_id);
