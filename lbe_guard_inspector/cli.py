@@ -2,7 +2,7 @@
 
 The CLI parses operator input and delegates to existing runtime/data owners. It
 must not become a second session controller, provider authority, permission
-resolver, tool executor, or completion gate.
+resolver, tool executor, evidence authority, or completion gate.
 """
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
+from .evidence_service import EvidenceService
 from .memory import WorkspaceMemoryStore
 from .provider_registry import default_provider_registry
 from .session_memory_runtime import SessionMemoryRuntimeBridge
@@ -73,6 +74,16 @@ def build_parser() -> argparse.ArgumentParser:
     inspect_parser.add_argument("--task-id")
     inspect_parser.set_defaults(handler=_session_inspect)
 
+    evidence = session_commands.add_parser(
+        "evidence", help="Retrieve bounded evidence for an existing session"
+    )
+    _add_database_argument(evidence)
+    evidence.add_argument("--session-id", required=True)
+    evidence.add_argument("--task-id", required=True)
+    evidence.add_argument("--query", required=True)
+    evidence.add_argument("--max-results", type=int, default=10)
+    evidence.set_defaults(handler=_session_evidence)
+
     provider = commands.add_parser("provider", help="Inspect or select reasoning providers")
     provider_commands = provider.add_subparsers(dest="provider_command", required=True)
     provider_list = provider_commands.add_parser("list", help="List registered providers")
@@ -86,6 +97,20 @@ def build_parser() -> argparse.ArgumentParser:
     provider_select.add_argument("--provider", required=True)
     provider_select.add_argument("--model", required=True)
     provider_select.set_defaults(handler=_provider_select)
+
+    policy = commands.add_parser("policy", help="Inspect active session policy references")
+    policy_commands = policy.add_subparsers(dest="policy_command", required=True)
+    policy_show = policy_commands.add_parser("show", help="Show active workspace/evidence policy")
+    _add_database_argument(policy_show)
+    policy_show.add_argument("--session-id", required=True)
+    policy_show.set_defaults(handler=_policy_show)
+
+    permissions = commands.add_parser("permissions", help="Inspect active permission policy")
+    permission_commands = permissions.add_subparsers(dest="permissions_command", required=True)
+    permissions_show = permission_commands.add_parser("show", help="Show active permission policy")
+    _add_database_argument(permissions_show)
+    permissions_show.add_argument("--session-id", required=True)
+    permissions_show.set_defaults(handler=_permissions_show)
 
     return parser
 
@@ -189,6 +214,31 @@ def _session_inspect(args: argparse.Namespace) -> dict[str, Any]:
     return payload
 
 
+def _session_evidence(args: argparse.Namespace) -> dict[str, Any]:
+    if args.max_results < 1:
+        raise ValueError("max_results must be a positive integer")
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    retrieval_mode = "investigation" if state.mode == "investigation" else "diagnostic"
+    package = EvidenceService().build_evidence_package(
+        task_id=args.task_id,
+        query=args.query,
+        workspace_id=state.project_workspace_id,
+        workspace_root=state.canonical_workspace_root,
+        max_results=args.max_results,
+        roots=[state.project_workspace_id],
+        retrieval_mode=retrieval_mode,
+    )
+    return {
+        "action": "session.evidence",
+        "session_id": state.session_id,
+        "task_id": args.task_id,
+        "mode": state.mode,
+        "evidence_policy_id": state.evidence_policy_id,
+        "package": package,
+    }
+
+
 def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
     del args
     registry = default_provider_registry()
@@ -220,6 +270,29 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
             "permission_policy_id": before.permission_policy_id == updated.permission_policy_id,
             "evidence_policy_id": before.evidence_policy_id == updated.evidence_policy_id,
         },
+    }
+
+
+def _policy_show(args: argparse.Namespace) -> dict[str, Any]:
+    state = _require_session(WorkspaceMemoryStore(args.database), args.session_id)
+    return {
+        "action": "policy.show",
+        "session_id": state.session_id,
+        "workspace": state.canonical_workspace_root,
+        "mode": state.mode,
+        "active_profile_id": state.active_profile_id,
+        "evidence_policy_id": state.evidence_policy_id,
+    }
+
+
+def _permissions_show(args: argparse.Namespace) -> dict[str, Any]:
+    state = _require_session(WorkspaceMemoryStore(args.database), args.session_id)
+    return {
+        "action": "permissions.show",
+        "session_id": state.session_id,
+        "workspace": state.canonical_workspace_root,
+        "mode": state.mode,
+        "permission_policy_id": state.permission_policy_id,
     }
 
 
