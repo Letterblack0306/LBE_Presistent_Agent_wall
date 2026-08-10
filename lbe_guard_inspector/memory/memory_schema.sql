@@ -84,6 +84,25 @@ CREATE TABLE IF NOT EXISTS memory_checkpoints (
 CREATE INDEX IF NOT EXISTS idx_memory_checkpoints_session
     ON memory_checkpoints(session_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS session_state (
+    session_id TEXT PRIMARY KEY,
+    project_workspace_id TEXT NOT NULL,
+    canonical_workspace_root TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    provider_id TEXT,
+    provider_model TEXT,
+    active_profile_id TEXT,
+    permission_policy_id TEXT,
+    evidence_policy_id TEXT,
+    checkpoint_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (checkpoint_id) REFERENCES memory_checkpoints(checkpoint_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_state_project
+    ON session_state(project_workspace_id, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS session_tasks (
     session_id TEXT NOT NULL,
     task_id TEXT NOT NULL,
