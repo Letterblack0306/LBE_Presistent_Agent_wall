@@ -39,6 +39,14 @@ class SourceType(StrEnum):
     USER_INSTRUCTION = "user_instruction"
 
 
+class TaskStatus(StrEnum):
+    CREATED = "created"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    BLOCKED = "blocked"
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -141,3 +149,31 @@ class CompactionCheckpoint:
     verified_memory_ids: tuple[str, ...]
     active_constraints: tuple[str, ...]
     created_at: str
+
+
+@dataclass(slots=True)
+class TaskState:
+    session_id: str
+    task_id: str
+    project_workspace_id: str
+    canonical_workspace_root: str
+    status: TaskStatus
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+    last_outcome: str | None = None
+
+    def __post_init__(self) -> None:
+        self.session_id = self.session_id.strip()
+        self.task_id = self.task_id.strip()
+        self.project_workspace_id = self.project_workspace_id.strip()
+        self.canonical_workspace_root = canonical_root(self.canonical_workspace_root)
+        if not self.session_id:
+            raise ValueError("session_id must not be empty")
+        if not self.task_id:
+            raise ValueError("task_id must not be empty")
+        if not self.project_workspace_id:
+            raise ValueError("project_workspace_id must not be empty")
+        if not isinstance(self.status, TaskStatus):
+            raise ValueError(f"status must be a TaskStatus, got {self.status!r}")
+        if self.last_outcome is not None:
+            self.last_outcome = self.last_outcome.strip() or None

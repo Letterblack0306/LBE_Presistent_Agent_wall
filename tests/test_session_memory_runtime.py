@@ -4,8 +4,13 @@ import hashlib
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from lbe_guard_inspector.memory import ValidationStatus, WorkspaceMemoryStore
-from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
+from lbe_guard_inspector.session_memory_runtime import (
+    SessionMemoryRuntimeBridge,
+    TaskStatus,
+)
 
 
 def repo(tmp_path: Path) -> Path:
@@ -137,3 +142,99 @@ def test_registry_receipt_remains_separate_but_correlated(tmp_path: Path) -> Non
         "memory_evidence_stored": False,
     }
     assert runtime.store.query(project_workspace_id="project-1") == []
+
+
+def test_task_outcome_maps_to_canonical_status(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+
+    assert runtime.task_status_for_outcome("COMPLETED") is TaskStatus.COMPLETED
+    assert runtime.task_status_for_outcome("ORCHESTRATION_ERROR") is TaskStatus.FAILED
+    assert runtime.task_status_for_outcome("INSUFFICIENT_EVIDENCE") is TaskStatus.BLOCKED
+
+
+def test_unknown_or_fabricated_outcome_is_rejected(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+
+    with pytest.raises(ValueError):
+        runtime.task_status_for_outcome("fabricated")
+    with pytest.raises(ValueError):
+        runtime.task_status_for_outcome("PASS")
+    with pytest.raises(ValueError):
+        runtime.task_status_for_outcome("")
+
+
+def test_session_task_create_persist_reload(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+    state = runtime.record_task_status(task_id="task-r2", status=TaskStatus.RUNNING)
+    assert state.status is TaskStatus.RUNNING
+    loaded = runtime.load_task_status(task_id="task-r2")
+    assert loaded is not None
+    assert loaded.session_id == "session-1"
+    assert loaded.task_id == "task-r2"
+    assert loaded.project_workspace_id == "project-1"
+    assert loaded.status is TaskStatus.RUNNING
+
+
+def test_task_status_transitions_are_persisted(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+    runtime.record_task_status(task_id="task-t", status=TaskStatus.CREATED)
+    runtime.record_task_status(task_id="task-t", status=TaskStatus.COMPLETED)
+    loaded = runtime.load_task_status(task_id="task-t")
+    assert loaded is not None and loaded.status is TaskStatus.COMPLETED
+
+
+def test_task_outcome_maps_to_persisted_status(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+    runtime.record_task_outcome(task_id="task-o", outcome="ORCHESTRATION_ERROR")
+    loaded = runtime.load_task_status(task_id="task-o")
+    assert loaded is not None and loaded.status is TaskStatus.FAILED
+
+
+def test_invalid_outcome_does_not_persist(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+    with pytest.raises(ValueError):
+        runtime.record_task_outcome(task_id="task-x", outcome="fabricated")
+    assert runtime.load_task_status(task_id="task-x") is None
+
+
+def test_task_state_is_isolated_between_sessions(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    a = bridge(tmp_path, root)
+    b = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "memory.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-2",
+    )
+    a.record_task_status(task_id="shared-task", status=TaskStatus.RUNNING)
+    assert a.load_task_status(task_id="shared-task") is not None
+    assert b.load_task_status(task_id="shared-task") is None
+
+
+def test_corrupted_persisted_status_fails_visibly(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+
+    class _BadRow:
+        values = {
+            "status": "bogus-status",
+            "session_id": "session-1",
+            "task_id": "bad",
+            "project_workspace_id": "project-1",
+            "canonical_workspace_root": "x",
+            "last_outcome": None,
+            "created_at": "t",
+            "updated_at": "t",
+        }
+
+        def __getitem__(self, key):
+            return self.values[key]
+
+    with pytest.raises(ValueError):
+        runtime.store._row_to_task_state(_BadRow())

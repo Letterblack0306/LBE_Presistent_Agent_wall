@@ -11,6 +11,8 @@ from .models import (
     MemoryRecord,
     MemoryType,
     SourceType,
+    TaskState,
+    TaskStatus,
     ValidationStatus,
     utc_now,
 )
@@ -240,6 +242,68 @@ class WorkspaceMemoryStore:
             verified_memory_ids=tuple(json.loads(row["verified_memory_ids_json"])),
             active_constraints=tuple(json.loads(row["active_constraints_json"])),
             created_at=str(row["created_at"]),
+        )
+
+    def save_session_task(self, state: TaskState) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO session_tasks (
+                    session_id, task_id, project_workspace_id, canonical_workspace_root,
+                    status, last_outcome, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_id, task_id) DO UPDATE SET
+                    project_workspace_id=excluded.project_workspace_id,
+                    canonical_workspace_root=excluded.canonical_workspace_root,
+                    status=excluded.status,
+                    last_outcome=excluded.last_outcome,
+                    updated_at=excluded.updated_at
+                """,
+                (state.session_id, state.task_id, state.project_workspace_id,
+                 state.canonical_workspace_root, state.status.value, state.last_outcome,
+                 state.created_at, state.updated_at),
+            )
+
+    def load_session_task(self, *, session_id: str, task_id: str, project_workspace_id: str) -> TaskState | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM session_tasks
+                WHERE session_id=? AND task_id=? AND project_workspace_id=?
+                """,
+                (session_id, task_id, project_workspace_id),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_task_state(row)
+
+    def list_session_tasks(self, *, session_id: str, project_workspace_id: str) -> tuple[TaskState, ...]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM session_tasks
+                WHERE session_id=? AND project_workspace_id=?
+                ORDER BY updated_at DESC
+                """,
+                (session_id, project_workspace_id),
+            ).fetchall()
+        return tuple(self._row_to_task_state(row) for row in rows)
+
+    @staticmethod
+    def _row_to_task_state(row: sqlite3.Row) -> TaskState:
+        try:
+            status = TaskStatus(str(row["status"]))
+        except ValueError as exc:
+            raise ValueError("Corrupted session task state: invalid status " + repr(row["status"])) from exc
+        return TaskState(
+            session_id=str(row["session_id"]),
+            task_id=str(row["task_id"]),
+            project_workspace_id=str(row["project_workspace_id"]),
+            canonical_workspace_root=str(row["canonical_workspace_root"]),
+            status=status,
+            last_outcome=row["last_outcome"],
+            created_at=str(row["created_at"]),
+            updated_at=str(row["updated_at"]),
         )
 
     @staticmethod
