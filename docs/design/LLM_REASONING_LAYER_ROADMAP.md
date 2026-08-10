@@ -7,6 +7,7 @@
 
 - `docs/IMPLEMENTATION_PLAN.md`
 - `docs/CURRENT_STATUS.md`
+- `docs/reference/COMPLETION_CONTRACT_RESEARCH_EVIDENCE.md`
 - Architecture and runtime pipeline design records
 - Tool registry and guard selector contracts
 - Retrieval, validation, governance, and execution-mode documentation
@@ -359,6 +360,8 @@ Determines:
 - missing evidence;
 - validation requirements.
 
+The reasoning layer may identify that validation is needed, but it must not define authoritative task-completion evidence kinds or select validation IDs. Current runtime source rejects model-selected `validation_requests`; deterministic validation and completion requirements belong to LBE-owned task/policy state.
+
 ### Conflict resolver
 
 Ranks contradictory evidence according to authority and records unresolved contradictions without guessing.
@@ -394,7 +397,10 @@ Future runtime responsibilities include:
 - tool orchestration;
 - retries and recovery;
 - scheduling;
-- runtime lifecycle events.
+- runtime lifecycle events;
+- resolution and persistence of task completion requirements;
+- trusted semantic validation production;
+- deterministic completion evaluation.
 
 The runtime may call the reasoning layer, but runtime state and tool execution remain outside model authority.
 
@@ -485,6 +491,8 @@ Map registered guard metadata to:
 - required validation;
 - not-applicable conditions.
 
+These reasoning-time validation needs remain advisory/request-oriented. They must not be converted directly into the task's authoritative `TaskCompletionContract`.
+
 ### Slice 4 — Guard request generation
 
 Generate schema-valid guard requests from the evidence package and catalog without allowing model-invented guard IDs.
@@ -516,7 +524,9 @@ Tests must prove that the reasoning layer:
 9. cannot emit authoritative `PASS` or `FAIL` without deterministic guard output;
 10. cannot authorize writes or modify the workspace;
 11. can explain an existing result without changing its verdict;
-12. can propose, but not silently apply, a workspace-specific rule.
+12. can propose, but not silently apply, a workspace-specific rule;
+13. cannot define or mutate the authoritative task completion contract;
+14. cannot classify arbitrary command/tool success as semantic completion evidence.
 
 ## Non-goals
 
@@ -544,3 +554,37 @@ The reasoning layer is complete when it can transform an ambiguous user problem 
 - runtime execution.
 
 At that point it becomes the decision-support component of the LBE architecture. Deterministic guards, validation, and LBE Core remain authoritative for inspection results, proof, and execution.
+
+---
+
+## 2026-08-10 completion-contract research checkpoint
+
+Research recorded in `docs/reference/COMPLETION_CONTRACT_RESEARCH_EVIDENCE.md` changes the dependency order for the next agent/CLI milestone.
+
+Verified current behavior:
+
+- provider `COMPLETED` is provisional for coding tasks;
+- model-selected `validation_requests` are forbidden;
+- durable completion-contract storage exists;
+- durable producer-bound completion-evidence storage exists;
+- production task establishment does not yet prove where the authoritative completion contract is resolved.
+
+Therefore the next implementation sequence is:
+
+```text
+identify existing LBE-owned task/policy completion-requirement source
+        ↓
+resolve + persist immutable task completion contract
+        ↓
+execute trusted registered semantic validation producers
+        ↓
+persist producer-bound completion evidence
+        ↓
+existing deterministic completion gate
+        ↓
+thin CLI/API validation surface
+```
+
+Do not implement `lbe session validate` as a place that invents requirements, accepts caller-selected PASS evidence, or classifies raw command success.
+
+Before introducing a new completion-contract resolver, prove from current source that no existing task, session-policy, mode, behavior, or evidence-policy owner already contains the required semantics.
