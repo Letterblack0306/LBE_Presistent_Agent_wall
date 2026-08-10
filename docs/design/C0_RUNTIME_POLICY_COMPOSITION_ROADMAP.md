@@ -9,6 +9,8 @@ Define the smallest correct production slice that connects the already-implement
 
 This roadmap follows the evidence recorded in `docs/reference/MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` and must be completed before C1 task-completion-contract establishment.
 
+It must also preserve `docs/reference/AGENT_REASONING_TRANSPORT_BOUNDARY.md`: agents/LLMs remain reasoning-capable participants; relays/bridges preserve transport and integrity; LBE governance constrains authority without becoming a second conversational reasoning engine.
+
 ## Evidence-backed finding
 
 Current repository inspection shows:
@@ -65,6 +67,24 @@ existing R6E governed tool orchestrator
 ```
 
 The provider remains advisory and replaceable. It cannot supply or widen these policy facts.
+
+## Reasoning / transport invariant
+
+The policy chain above is an **authority boundary**, not a replacement for agent cognition.
+
+For browser/local agent flows:
+
+```text
+reasoning agent
+    -> transport/relay
+    -> reasoning agent
+```
+
+The relay may attach and enforce session/workspace/target identity, authentication, cancellation, transport-level idempotency, and hard capability/security constraints. It should not independently decide whether user/agent language is a continuation, correction, historical message, redundant request, completed task, or new semantic task when the receiving reasoning agent can decide that from preserved conversational context and live evidence.
+
+Do not grow C0/R6B/R6C/R6E into another planner, conversational classifier, or semantic state machine. Their job is deterministic authority and execution integrity.
+
+Transport deduplication must use delivery/operation identity where possible. Content hashes or wording similarity must not silently become semantic-intent classifiers.
 
 ## Legacy-session rule
 
@@ -133,6 +153,7 @@ C0 does not:
 - add unrestricted shell execution;
 - create a generic policy registry;
 - create a second permission system;
+- create a second conversational reasoning/task-classification engine in the gateway or relay;
 - change guard verdict ownership;
 - let the model choose validation requirements;
 - broaden persistent rule/profile authority.
