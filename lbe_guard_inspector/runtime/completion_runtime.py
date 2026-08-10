@@ -10,11 +10,13 @@ from dataclasses import dataclass
 from typing import Mapping, Sequence
 
 from ..memory import TaskState, TaskStatus
+from ..memory.completion_contracts import TaskCompletionContractPersistence
 from ..reasoning_contracts import LBEResponse
 from ..session_memory_runtime import ReasoningController, SessionMemoryRuntimeBridge
 from .completion_gate import (
     CompletionDecision,
     CompletionEvidence,
+    CompletionRequirement,
     CompletionVerdict,
     TaskCompletionContract,
     evaluate_completion,
@@ -34,6 +36,67 @@ class CodingCompletionRuntime:
         if not isinstance(runtime, SessionMemoryRuntimeBridge):
             raise TypeError("runtime must be SessionMemoryRuntimeBridge")
         self._runtime = runtime
+        self._contracts = TaskCompletionContractPersistence(runtime.store)
+
+    def persist_contract(
+        self,
+        *,
+        task_id: str,
+        contract: TaskCompletionContract,
+    ) -> TaskCompletionContract:
+        """Persist an already-resolved LBE completion contract for one task.
+
+        This method does not derive policy and does not expose a replacement path.
+        Once a different contract exists for the task, persistence fails closed.
+        """
+        if not isinstance(contract, TaskCompletionContract):
+            raise TypeError("contract must be TaskCompletionContract")
+        stored = self._contracts.save(
+            session_id=self._runtime.session_id,
+            task_id=task_id,
+            project_workspace_id=self._runtime.project_workspace_id,
+            canonical_workspace_root=str(self._runtime.workspace_root),
+            requirements=[
+                {
+                    "requirement_id": item.requirement_id,
+                    "evidence_kind": item.evidence_kind,
+                    "description": item.description,
+                }
+                for item in contract.requirements
+            ],
+        )
+        return TaskCompletionContract(
+            requirements=tuple(
+                CompletionRequirement(
+                    requirement_id=item.requirement_id,
+                    evidence_kind=item.evidence_kind,
+                    description=item.description,
+                )
+                for item in stored.requirements
+            )
+        )
+
+    def load_contract(self, *, task_id: str) -> TaskCompletionContract | None:
+        """Load the persisted completion contract for this runtime session/task."""
+        stored = self._contracts.load(
+            session_id=self._runtime.session_id,
+            task_id=task_id,
+            project_workspace_id=self._runtime.project_workspace_id,
+        )
+        if stored is None:
+            return None
+        if stored.canonical_workspace_root != str(self._runtime.workspace_root).replace("\\", "/"):
+            raise ValueError("persisted completion contract workspace root does not match runtime")
+        return TaskCompletionContract(
+            requirements=tuple(
+                CompletionRequirement(
+                    requirement_id=item.requirement_id,
+                    evidence_kind=item.evidence_kind,
+                    description=item.description,
+                )
+                for item in stored.requirements
+            )
+        )
 
     def run_reasoning(
         self,
