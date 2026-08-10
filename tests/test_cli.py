@@ -375,3 +375,149 @@ def test_unknown_provider_is_rejected_without_mutating_session(tmp_path: Path, c
     assert after.provider_id == before.provider_id
     assert after.provider_model == before.provider_model
     assert after.permission_policy_id == before.permission_policy_id
+
+
+def test_session_evidence_delegates_to_canonical_evidence_service(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="investigation",
+        evidence_policy_id="evidence-a",
+    )
+
+    calls: list[dict] = []
+
+    class _EvidenceService:
+        def build_evidence_package(self, **kwargs):
+            calls.append(kwargs)
+            return {
+                "package_id": "ep-test",
+                "task_id": kwargs["task_id"],
+                "current_workspace_evidence": [{"ref": "workspace:tracked.txt"}],
+                "indexed_reference_evidence": [],
+                "validation_evidence": [],
+                "contradictions": [],
+                "gaps": [],
+            }
+
+    monkeypatch.setattr("lbe_guard_inspector.cli.EvidenceService", _EvidenceService)
+
+    code = main([
+        "session", "evidence",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--task-id", "task-1",
+        "--query", "tracked workspace fact",
+        "--max-results", "7",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["action"] == "session.evidence"
+    assert payload["mode"] == "investigation"
+    assert payload["evidence_policy_id"] == "evidence-a"
+    assert payload["package"]["package_id"] == "ep-test"
+    assert len(calls) == 1
+    assert calls[0]["task_id"] == "task-1"
+    assert calls[0]["workspace_id"] == "project-1"
+    assert Path(calls[0]["workspace_root"]).resolve() == root.resolve()
+    assert calls[0]["roots"] == ["project-1"]
+    assert calls[0]["retrieval_mode"] == "investigation"
+    assert calls[0]["max_results"] == 7
+
+
+def test_session_evidence_rejects_invalid_result_limit_before_retrieval(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+    )
+
+    constructed = False
+
+    class _EvidenceService:
+        def __init__(self):
+            nonlocal constructed
+            constructed = True
+
+    monkeypatch.setattr("lbe_guard_inspector.cli.EvidenceService", _EvidenceService)
+
+    code = main([
+        "session", "evidence",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--task-id", "task-1",
+        "--query", "fact",
+        "--max-results", "0",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 2
+    assert payload["error"] == "ValueError"
+    assert constructed is False
+
+
+def test_policy_and_permissions_show_only_persisted_session_references(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="coding",
+        active_profile_id="profile-a",
+        permission_policy_id="permissions-a",
+        evidence_policy_id="evidence-a",
+    )
+    before = runtime.store.load_session_state(session_id="session-1")
+    assert before is not None
+
+    policy_code = main([
+        "policy", "show",
+        "--database", str(database),
+        "--session-id", "session-1",
+    ])
+    policy = _json_output(capsys)
+
+    permissions_code = main([
+        "permissions", "show",
+        "--database", str(database),
+        "--session-id", "session-1",
+    ])
+    permissions = _json_output(capsys)
+
+    assert policy_code == 0
+    assert policy == {
+        "action": "policy.show",
+        "active_profile_id": "profile-a",
+        "evidence_policy_id": "evidence-a",
+        "mode": "coding",
+        "ok": True,
+        "session_id": "session-1",
+        "workspace": before.canonical_workspace_root,
+    }
+    assert permissions_code == 0
+    assert permissions == {
+        "action": "permissions.show",
+        "mode": "coding",
+        "ok": True,
+        "permission_policy_id": "permissions-a",
+        "session_id": "session-1",
+        "workspace": before.canonical_workspace_root,
+    }
+    after = runtime.store.load_session_state(session_id="session-1")
+    assert after is not None
+    assert after.as_dict() == before.as_dict()
