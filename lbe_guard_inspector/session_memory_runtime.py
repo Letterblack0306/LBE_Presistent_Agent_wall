@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Protocol
 
 from .memory import (
     CandidateClaim,
@@ -13,6 +13,7 @@ from .memory import (
     TaskStatus,
     WorkspaceMemoryStore,
 )
+from .reasoning_contracts import LBERequest, LBEResponse
 
 
 _REASONING_OUTCOME_TO_TASK_STATUS = {
@@ -20,6 +21,12 @@ _REASONING_OUTCOME_TO_TASK_STATUS = {
     "ORCHESTRATION_ERROR": TaskStatus.FAILED,
     "INSUFFICIENT_EVIDENCE": TaskStatus.BLOCKED,
 }
+
+
+class ReasoningController(Protocol):
+    """Existing reasoning boundary required by the persistent runtime."""
+
+    def run(self, request: LBERequest) -> LBEResponse: ...
 
 
 class SessionMemoryRuntimeBridge:
@@ -73,7 +80,13 @@ class SessionMemoryRuntimeBridge:
             message = "Unknown reasoning outcome for task status: " + outcome
             raise ValueError(message) from exc
 
-    def record_task_status(self, *, task_id: str, status: TaskStatus | str) -> TaskState:
+    def record_task_status(
+        self,
+        *,
+        task_id: str,
+        status: TaskStatus | str,
+        last_outcome: str | None = None,
+    ) -> TaskState:
         """Persist the canonical status for one task in this session."""
         clean_task = task_id.strip()
         if not clean_task:
@@ -87,6 +100,7 @@ class SessionMemoryRuntimeBridge:
             project_workspace_id=self.project_workspace_id,
             canonical_workspace_root=str(self.workspace_root),
             status=status_value,
+            last_outcome=last_outcome,
         )
         self.store.save_session_task(state)
         return state
@@ -94,8 +108,74 @@ class SessionMemoryRuntimeBridge:
     def record_task_outcome(self, *, task_id: str, outcome: str) -> TaskState:
         """Persist a task status derived from an existing reasoning outcome."""
         return self.record_task_status(
-            task_id=task_id, status=self.task_status_for_outcome(outcome)
+            task_id=task_id,
+            status=self.task_status_for_outcome(outcome),
+            last_outcome=outcome,
         )
+
+    def run_reasoning(
+        self,
+        *,
+        controller: ReasoningController,
+        problem: str,
+        task_id: str,
+        reference_context: tuple[Mapping[str, Any], ...] = (),
+        max_results: int = 10,
+    ) -> LBEResponse:
+        """Invoke the existing reasoning boundary and persist task lifecycle state.
+
+        The runtime owns persistence. The reasoning controller remains unaware of
+        session storage and its response is returned unchanged.
+        """
+        clean_problem = problem.strip()
+        clean_task = task_id.strip()
+        if not clean_problem:
+            raise ValueError("problem must not be empty")
+        if not clean_task:
+            raise ValueError("task_id must not be empty")
+
+        self.record_task_status(task_id=clean_task, status=TaskStatus.RUNNING)
+        request = LBERequest(
+            problem=clean_problem,
+            workspace_root=self.workspace_root,
+            reference_context=reference_context,
+            task_id=clean_task,
+            max_results=max_results,
+        )
+        try:
+            response = controller.run(request)
+        except KeyboardInterrupt:
+            self.record_task_status(
+                task_id=clean_task,
+                status=TaskStatus.BLOCKED,
+                last_outcome="INTERRUPTED",
+            )
+            raise
+        except Exception:
+            self.record_task_status(
+                task_id=clean_task,
+                status=TaskStatus.FAILED,
+                last_outcome="RUNTIME_REASONING_ERROR",
+            )
+            raise
+
+        if not isinstance(response, LBEResponse):
+            self.record_task_status(
+                task_id=clean_task,
+                status=TaskStatus.FAILED,
+                last_outcome="INVALID_REASONING_RESPONSE",
+            )
+            raise TypeError("reasoning controller must return LBEResponse")
+        if response.task_id != clean_task:
+            self.record_task_status(
+                task_id=clean_task,
+                status=TaskStatus.FAILED,
+                last_outcome="TASK_ID_MISMATCH",
+            )
+            raise ValueError("reasoning response task_id does not match runtime task_id")
+
+        self.record_task_outcome(task_id=clean_task, outcome=response.outcome)
+        return response
 
     def load_task_status(self, *, task_id: str) -> TaskState | None:
         """Reload persisted task state for this session, or None when absent.
