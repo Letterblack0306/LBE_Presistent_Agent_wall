@@ -156,6 +156,81 @@ For each first supported policy entry, require an explicit bounded task/operatio
 
 If the current `reasoning.inspect` coding path is not semantically sufficient to determine a concrete completion contract, leave it fail-closed rather than assigning fabricated requirements.
 
+## Initial supported policy entry
+
+Current production source gives one bounded coding task identity that is sufficient for an initial contract:
+
+- registered operation: `reasoning.inspect`;
+- resolved mode: `coding`;
+- bounded R6B intent used by the gateway: `fix_issue`;
+- task class: governed coding fix/repository change.
+
+For that exact combination, declare the first authoritative policy record:
+
+```text
+policy_id: coding.reasoning.inspect.fix_issue.v1
+operation_id: reasoning.inspect
+task_class: coding_fix
+applicable_mode: coding
+requirements:
+  - requirement_id: source-change
+    evidence_kind: source_change
+  - requirement_id: focused-tests
+    evidence_kind: focused_test
+  - requirement_id: git-state
+    evidence_kind: git_status
+```
+
+These evidence kinds are now deliberate LBE completion-policy vocabulary for this bounded task class. Their previous use in completion-gate tests is supporting precedent, not the authority for the declaration.
+
+### C2 producer semantics for the declared kinds
+
+C1 declares the requirements only. C2 must later provide trusted producers with these exact semantics:
+
+#### `source_change`
+
+Future producer responsibility:
+
+- inspect current live workspace diff for the task workspace;
+- prove that the governed coding task produced a non-empty repository change consistent with the task operation;
+- bind the result to session/task/workspace/producer/operation identity;
+- never accept provider prose or a raw command exit code as proof of change.
+
+A PASS means a current task-scoped source/repository change is present and attributable to the governed operation. Missing, stale, or unrelated diff cannot satisfy it.
+
+#### `focused_test`
+
+Future producer responsibility:
+
+- execute a bounded validation command selected from LBE/repository-owned validation policy or registered validation capability;
+- persist the structured result as producer-bound completion evidence;
+- never allow the provider to choose an arbitrary evidence kind or relabel generic command success as `focused_test`.
+
+A PASS means the registered focused validation for the task completed successfully against the current workspace state.
+
+#### `git_status`
+
+Future producer responsibility:
+
+- inspect current repository status/diff state after the coding operation;
+- reconcile that live state with the expected task-owned changes;
+- detect unexpected, unrelated, stale, or unaccounted-for changes.
+
+A PASS does **not** require a globally clean working tree. It means current Git/workspace state has been inspected and is consistent with the task's expected governed diff.
+
+### Scope of this first entry
+
+This policy entry applies only when all of the following are true:
+
+- the operation is the registered `reasoning.inspect` operation;
+- R6B resolved mode is `coding`;
+- the gateway's bounded intent is `fix_issue`;
+- authoritative persisted session policy permits that coding mode.
+
+Audit and investigation modes do not receive this contract. Unknown operations or future coding task classes without their own explicit policy entries remain fail closed.
+
+The provider cannot widen, remove, replace, or reorder these requirements. Provider switching and resume must reload the immutable persisted contract once established.
+
 ## Non-goals
 
 C1 must not:
