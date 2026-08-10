@@ -1,13 +1,14 @@
-"""Trusted live-repository completion-evidence producers for C2-A.
+"""Trusted live-repository completion-evidence producers for C2.
 
 The producers observe current Git state and persist their own classifications.
-They do not accept provider claims, execute validation commands, or evaluate
-task completion.
+They run a validation command only when fixed LBE policy selects it. They do
+not accept provider claims or evaluate task completion.
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,12 +19,18 @@ from ..memory.completion_evidence import (
 from ..memory.context import inspect_git_state
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
 from .completion_runtime import CodingCompletionRuntime
+from .validation_command_policy import (
+    DEFAULT_VALIDATION_COMMAND_POLICY_CATALOG,
+    ValidationCommandPolicyCatalog,
+)
 
 
 SOURCE_CHANGE_PRODUCER_ID = "lbe.completion.source_change.v1"
 GIT_STATUS_PRODUCER_ID = "lbe.completion.git_status.v1"
+FOCUSED_TEST_PRODUCER_ID = "lbe.completion.focused_test.v1"
 _SOURCE_CHANGE_KIND = "source_change"
 _GIT_STATUS_KIND = "git_status"
+_FOCUSED_TEST_KIND = "focused_test"
 _SUPPORTED_OPERATION_ID = "reasoning.inspect"
 
 
@@ -39,11 +46,19 @@ class LiveRepositorySnapshot:
 class CompletionEvidenceProducers:
     """Emit only C2-A evidence from current bounded workspace state."""
 
-    def __init__(self, *, runtime: SessionMemoryRuntimeBridge) -> None:
+    def __init__(
+        self,
+        *,
+        runtime: SessionMemoryRuntimeBridge,
+        validation_command_catalog: ValidationCommandPolicyCatalog = DEFAULT_VALIDATION_COMMAND_POLICY_CATALOG,
+    ) -> None:
         if not isinstance(runtime, SessionMemoryRuntimeBridge):
             raise TypeError("runtime must be SessionMemoryRuntimeBridge")
+        if not isinstance(validation_command_catalog, ValidationCommandPolicyCatalog):
+            raise TypeError("validation_command_catalog must be ValidationCommandPolicyCatalog")
         self._runtime = runtime
         self._persistence = TaskCompletionEvidencePersistence(runtime.store)
+        self._validation_command_catalog = validation_command_catalog
 
     def capture_workspace_snapshot(self) -> LiveRepositorySnapshot:
         """Capture the bounded workspace state before governed task execution."""
@@ -150,6 +165,68 @@ class CompletionEvidenceProducers:
             kind=_GIT_STATUS_KIND,
             status=status,
             producer_id=GIT_STATUS_PRODUCER_ID,
+            details=details,
+        )
+
+    def produce_focused_test(
+        self,
+        *,
+        task_id: str,
+        operation_id: str,
+    ) -> StoredCompletionEvidence:
+        """Run only the policy-selected validation command for this contract."""
+        self._require_declared_requirement(
+            task_id=task_id,
+            operation_id=operation_id,
+            evidence_kind=_FOCUSED_TEST_KIND,
+        )
+        policy = self._validation_command_catalog.find(
+            operation_id=operation_id,
+            mode=self._runtime.session_state.mode,
+            evidence_kind=_FOCUSED_TEST_KIND,
+        )
+        if policy is None:
+            raise ValueError("no LBE validation command policy applies to focused_test")
+        state_before = _live_git_state(self._runtime.workspace_root)
+        try:
+            completed = _run_validation_command(
+                command=policy.command,
+                workspace_root=self._runtime.workspace_root,
+                timeout_seconds=policy.timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as error:
+            status = "FAIL"
+            exit_code: int | None = None
+            stdout = _text(error.stdout)
+            stderr = _text(error.stderr)
+            reason = "The registered focused validation command exceeded its policy timeout."
+        else:
+            status = "PASS" if completed.returncode == 0 else "FAIL"
+            exit_code = completed.returncode
+            stdout = completed.stdout
+            stderr = completed.stderr
+            reason = (
+                "The registered focused validation command completed successfully."
+                if status == "PASS"
+                else "The registered focused validation command failed."
+            )
+        details = {
+            "validation_policy_id": policy.policy_id,
+            "command": list(policy.command),
+            "timeout_seconds": policy.timeout_seconds,
+            "workspace_state_before": state_before,
+            "workspace_state_after": _live_git_state(self._runtime.workspace_root),
+            "exit_code": exit_code,
+            "stdout_sha256": _sha256_text(stdout),
+            "stderr_sha256": _sha256_text(stderr),
+            "classification_reason": reason,
+        }
+        return self._persist(
+            task_id=task_id,
+            operation_id=operation_id,
+            kind=_FOCUSED_TEST_KIND,
+            status=status,
+            producer_id=FOCUSED_TEST_PRODUCER_ID,
             details=details,
         )
 
@@ -271,3 +348,34 @@ def _evidence_id(
         separators=(",", ":"),
     )
     return f"evidence-{kind}-{hashlib.sha256(payload.encode('utf-8')).hexdigest()[:24]}"
+
+
+def _text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _run_validation_command(
+    *,
+    command: tuple[str, ...],
+    workspace_root: object,
+    timeout_seconds: float,
+) -> subprocess.CompletedProcess[str]:
+    """Execute a command already selected by fixed LBE validation policy."""
+    return subprocess.run(
+        command,
+        cwd=workspace_root,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds,
+    )

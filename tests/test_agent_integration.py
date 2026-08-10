@@ -231,6 +231,7 @@ def test_provider_completion_cannot_manufacture_live_repository_evidence(tmp_pat
     evidence = CodingCompletionRuntime(runtime=runtime).load_evidence(task_id="task-1")
     assert [(item.kind, item.status.value) for item in evidence] == [
         ("source_change", "FAIL"),
+        ("focused_test", "FAIL"),
         ("git_status", "FAIL"),
     ]
 

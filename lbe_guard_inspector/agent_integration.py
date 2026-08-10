@@ -160,6 +160,10 @@ class GovernedAgentGateway:
                 operation_id=request.operation_id,
                 baseline=task_baseline,
             )
+            producers.produce_focused_test(
+                task_id=request.task_id,
+                operation_id=request.operation_id,
+            )
             producers.produce_git_status(
                 task_id=request.task_id,
                 operation_id=request.operation_id,
