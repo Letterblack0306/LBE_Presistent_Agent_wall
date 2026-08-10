@@ -6,6 +6,9 @@ from pathlib import Path
 
 from lbe_guard_inspector.cli import main
 from lbe_guard_inspector.memory import TaskStatus, WorkspaceMemoryStore
+from lbe_guard_inspector.memory.completion_evidence import TaskCompletionEvidencePersistence
+from lbe_guard_inspector.runtime.completion_gate import CompletionRequirement, TaskCompletionContract
+from lbe_guard_inspector.runtime.completion_runtime import CodingCompletionRuntime
 from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
 
 
@@ -24,6 +27,35 @@ def _repo(tmp_path: Path) -> Path:
 def _json_output(capsys):
     output = capsys.readouterr().out.strip()
     return json.loads(output)
+
+
+def _persist_completion_contract(runtime: SessionMemoryRuntimeBridge) -> None:
+    CodingCompletionRuntime(runtime=runtime).persist_contract(
+        task_id="task-1",
+        contract=TaskCompletionContract(
+            requirements=(
+                CompletionRequirement("source-change", "source_change"),
+                CompletionRequirement("focused-tests", "focused_test"),
+                CompletionRequirement("git-state", "git_status"),
+            )
+        ),
+    )
+
+
+def _persist_completion_evidence(runtime: SessionMemoryRuntimeBridge, *, kind: str, status: str) -> None:
+    TaskCompletionEvidencePersistence(runtime.store).save(
+        session_id=runtime.session_id,
+        task_id="task-1",
+        project_workspace_id=runtime.project_workspace_id,
+        canonical_workspace_root=str(runtime.workspace_root),
+        evidence_id=f"evidence-{kind}-{status}",
+        kind=kind,
+        status=status,
+        source="lbe.test",
+        producer_id="lbe.test.producer",
+        operation_id="reasoning.inspect",
+        details={"fixture": True},
+    )
 
 
 def test_session_create_persists_explicit_runtime_contract(tmp_path: Path, capsys) -> None:
@@ -521,3 +553,90 @@ def test_policy_and_permissions_show_only_persisted_session_references(tmp_path:
     after = runtime.store.load_session_state(session_id="session-1")
     assert after is not None
     assert after.as_dict() == before.as_dict()
+
+
+def test_session_validate_uses_existing_gate_for_persisted_evidence(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+    )
+    _persist_completion_contract(runtime)
+    for kind in ("source_change", "focused_test", "git_status"):
+        _persist_completion_evidence(runtime, kind=kind, status="PASS")
+
+    code = main([
+        "session", "validate",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--task-id", "task-1",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["action"] == "session.validate"
+    assert payload["completion"]["verdict"] == "READY"
+    assert payload["task"]["status"] == "completed"
+
+
+def test_session_validate_exposes_existing_blocked_result_without_cli_evidence_input(
+    tmp_path: Path, capsys
+) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+    )
+    _persist_completion_contract(runtime)
+    _persist_completion_evidence(runtime, kind="source_change", status="PASS")
+
+    code = main([
+        "session", "validate",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--task-id", "task-1",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["completion"]["verdict"] == "BLOCKED"
+    assert payload["completion"]["missing_requirement_ids"] == ["focused-tests", "git-state"]
+    assert payload["task"]["status"] == "blocked"
+
+
+def test_session_validate_rejects_task_without_persisted_contract(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+    )
+
+    code = main([
+        "session", "validate",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--task-id", "task-1",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 2
+    assert payload["error"] == "ValueError"
+    assert "completion contract" in payload["message"]

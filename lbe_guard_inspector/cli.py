@@ -14,6 +14,7 @@ from typing import Any, Sequence
 from .evidence_service import EvidenceService
 from .memory import WorkspaceMemoryStore
 from .provider_registry import default_provider_registry
+from .runtime.completion_runtime import CodingCompletionRuntime
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 
 
@@ -85,6 +86,14 @@ def build_parser() -> argparse.ArgumentParser:
     evidence.add_argument("--query", required=True)
     evidence.add_argument("--max-results", type=int, default=10)
     evidence.set_defaults(handler=_session_evidence)
+
+    validate = session_commands.add_parser(
+        "validate", help="Evaluate persisted completion evidence for an existing task"
+    )
+    _add_database_argument(validate)
+    validate.add_argument("--session-id", required=True)
+    validate.add_argument("--task-id", required=True)
+    validate.set_defaults(handler=_session_validate)
 
     provider = commands.add_parser("provider", help="Inspect or select reasoning providers")
     provider_commands = provider.add_subparsers(dest="provider_command", required=True)
@@ -240,6 +249,37 @@ def _session_evidence(args: argparse.Namespace) -> dict[str, Any]:
         "mode": state.mode,
         "evidence_policy_id": state.evidence_policy_id,
         "package": package,
+    }
+
+
+def _session_validate(args: argparse.Namespace) -> dict[str, Any]:
+    """Thin C3 adapter over the existing completion runtime and gate."""
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    completion_runtime = CodingCompletionRuntime(runtime=runtime)
+    contract = completion_runtime.load_contract(task_id=args.task_id)
+    if contract is None:
+        raise ValueError("persisted task completion contract not found")
+    decision, task = completion_runtime.finalize(
+        task_id=args.task_id,
+        contract=contract,
+        evidence=completion_runtime.load_evidence(task_id=args.task_id),
+        claimed_complete=True,
+    )
+    return {
+        "action": "session.validate",
+        "session_id": state.session_id,
+        "task_id": args.task_id,
+        "completion": {
+            "verdict": decision.verdict.value,
+            "satisfied_requirement_ids": list(decision.satisfied_requirement_ids),
+            "missing_requirement_ids": list(decision.missing_requirement_ids),
+            "failed_requirement_ids": list(decision.failed_requirement_ids),
+            "evidence_ids": list(decision.evidence_ids),
+            "rationale": decision.rationale,
+        },
+        "task": _task_payload(task),
     }
 
 
