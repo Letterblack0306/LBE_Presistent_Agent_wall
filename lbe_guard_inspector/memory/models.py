@@ -55,6 +55,13 @@ def canonical_root(value: str | Path) -> str:
     return str(Path(value).expanduser().resolve()).replace("\\", "/").rstrip("/")
 
 
+def _optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
 @dataclass(slots=True)
 class MemoryRecord:
     project_workspace_id: str
@@ -149,6 +156,56 @@ class CompactionCheckpoint:
     verified_memory_ids: tuple[str, ...]
     active_constraints: tuple[str, ...]
     created_at: str
+
+
+@dataclass(slots=True)
+class SessionState:
+    session_id: str
+    project_workspace_id: str
+    canonical_workspace_root: str
+    mode: str
+    provider_id: str | None = None
+    provider_model: str | None = None
+    active_profile_id: str | None = None
+    permission_policy_id: str | None = None
+    evidence_policy_id: str | None = None
+    checkpoint_id: str | None = None
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+
+    def __post_init__(self) -> None:
+        self.session_id = self.session_id.strip()
+        self.project_workspace_id = self.project_workspace_id.strip()
+        self.canonical_workspace_root = canonical_root(self.canonical_workspace_root)
+        self.mode = self.mode.strip()
+        if not self.session_id:
+            raise ValueError("session_id must not be empty")
+        if not self.project_workspace_id:
+            raise ValueError("project_workspace_id must not be empty")
+        if not self.mode:
+            raise ValueError("mode must not be empty")
+        self.provider_id = _optional_text(self.provider_id)
+        self.provider_model = _optional_text(self.provider_model)
+        self.active_profile_id = _optional_text(self.active_profile_id)
+        self.permission_policy_id = _optional_text(self.permission_policy_id)
+        self.evidence_policy_id = _optional_text(self.evidence_policy_id)
+        self.checkpoint_id = _optional_text(self.checkpoint_id)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "project_workspace_id": self.project_workspace_id,
+            "canonical_workspace_root": self.canonical_workspace_root,
+            "mode": self.mode,
+            "provider_id": self.provider_id,
+            "provider_model": self.provider_model,
+            "active_profile_id": self.active_profile_id,
+            "permission_policy_id": self.permission_policy_id,
+            "evidence_policy_id": self.evidence_policy_id,
+            "checkpoint_id": self.checkpoint_id,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
 
 @dataclass(slots=True)
