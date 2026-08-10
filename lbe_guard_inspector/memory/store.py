@@ -10,6 +10,7 @@ from .models import (
     CompactionCheckpoint,
     MemoryRecord,
     MemoryType,
+    SessionState,
     SourceType,
     TaskState,
     TaskStatus,
@@ -242,6 +243,75 @@ class WorkspaceMemoryStore:
             verified_memory_ids=tuple(json.loads(row["verified_memory_ids_json"])),
             active_constraints=tuple(json.loads(row["active_constraints_json"])),
             created_at=str(row["created_at"]),
+        )
+
+    def save_session_state(self, state: SessionState) -> SessionState:
+        with self._connect() as connection:
+            existing = connection.execute(
+                "SELECT created_at FROM session_state WHERE session_id=?",
+                (state.session_id,),
+            ).fetchone()
+            if existing:
+                state.created_at = str(existing["created_at"])
+                state.updated_at = utc_now()
+            connection.execute(
+                """
+                INSERT INTO session_state (
+                    session_id, project_workspace_id, canonical_workspace_root,
+                    mode, provider_id, provider_model, active_profile_id,
+                    permission_policy_id, evidence_policy_id, checkpoint_id,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    project_workspace_id=excluded.project_workspace_id,
+                    canonical_workspace_root=excluded.canonical_workspace_root,
+                    mode=excluded.mode,
+                    provider_id=excluded.provider_id,
+                    provider_model=excluded.provider_model,
+                    active_profile_id=excluded.active_profile_id,
+                    permission_policy_id=excluded.permission_policy_id,
+                    evidence_policy_id=excluded.evidence_policy_id,
+                    checkpoint_id=excluded.checkpoint_id,
+                    updated_at=excluded.updated_at
+                """,
+                (
+                    state.session_id,
+                    state.project_workspace_id,
+                    state.canonical_workspace_root,
+                    state.mode,
+                    state.provider_id,
+                    state.provider_model,
+                    state.active_profile_id,
+                    state.permission_policy_id,
+                    state.evidence_policy_id,
+                    state.checkpoint_id,
+                    state.created_at,
+                    state.updated_at,
+                ),
+            )
+        return state
+
+    def load_session_state(self, *, session_id: str) -> SessionState | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM session_state WHERE session_id=?",
+                (session_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return SessionState(
+            session_id=str(row["session_id"]),
+            project_workspace_id=str(row["project_workspace_id"]),
+            canonical_workspace_root=str(row["canonical_workspace_root"]),
+            mode=str(row["mode"]),
+            provider_id=row["provider_id"],
+            provider_model=row["provider_model"],
+            active_profile_id=row["active_profile_id"],
+            permission_policy_id=row["permission_policy_id"],
+            evidence_policy_id=row["evidence_policy_id"],
+            checkpoint_id=row["checkpoint_id"],
+            created_at=str(row["created_at"]),
+            updated_at=str(row["updated_at"]),
         )
 
     def save_session_task(self, state: TaskState) -> None:
