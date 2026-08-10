@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 import subprocess
 from pathlib import Path
 
@@ -42,6 +43,102 @@ def test_bridge_initializes_store_and_adapter(tmp_path: Path) -> None:
     assert isinstance(runtime.store, WorkspaceMemoryStore)
     assert runtime.project_workspace_id == "project-1"
     assert runtime.workspace_root == root.resolve()
+    assert runtime.session_state.permission == "read_only"
+    assert runtime.session_state.runtime_policy == "audit"
+
+
+def test_typed_session_policy_persists_across_runtime_reconstruction(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    first = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "memory.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="policy-session",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        permission_policy_id="opaque-permissions",
+    )
+
+    second = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "memory.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="policy-session",
+    )
+
+    assert first.session_state.permission == second.session_state.permission == "write_allowed"
+    assert first.session_state.runtime_policy == second.session_state.runtime_policy == "permissive"
+    assert second.session_state.permission_policy_id == "opaque-permissions"
+
+
+def test_provider_switch_preserves_typed_session_policy(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "memory.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="provider-policy-session",
+        permission="audit_only",
+        runtime_policy="strict",
+    )
+
+    updated = runtime.configure_session(provider_id="provider-b", provider_model="model-b")
+
+    assert updated.permission == "audit_only"
+    assert updated.runtime_policy == "strict"
+
+
+def test_invalid_typed_session_policy_is_rejected(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    with pytest.raises(ValueError, match="permission"):
+        SessionMemoryRuntimeBridge(
+            database_path=tmp_path / "memory.sqlite",
+            project_workspace_id="project-1",
+            workspace_root=root,
+            session_id="bad-policy-session",
+            permission="opaque-permissions",
+        )
+
+
+def test_legacy_session_schema_loads_without_fabricating_typed_authority(tmp_path: Path) -> None:
+    database = tmp_path / "legacy.sqlite"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """
+            CREATE TABLE session_state (
+                session_id TEXT PRIMARY KEY,
+                project_workspace_id TEXT NOT NULL,
+                canonical_workspace_root TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                provider_id TEXT,
+                provider_model TEXT,
+                active_profile_id TEXT,
+                permission_policy_id TEXT,
+                evidence_policy_id TEXT,
+                checkpoint_id TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO session_state VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy-session", "project-1", str(tmp_path), "coding", None, None,
+                "opaque-profile", "opaque-permission", "opaque-evidence", None, "t", "t",
+            ),
+        )
+
+    store = WorkspaceMemoryStore(database)
+    state = store.load_session_state(session_id="legacy-session")
+
+    assert state is not None
+    assert state.permission is None
+    assert state.runtime_policy is None
+    assert state.permission_policy_id == "opaque-permission"
 
 
 def test_deterministic_command_and_tool_results_are_verified(tmp_path: Path) -> None:

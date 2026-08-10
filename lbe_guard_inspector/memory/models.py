@@ -164,6 +164,8 @@ class SessionState:
     project_workspace_id: str
     canonical_workspace_root: str
     mode: str
+    permission: str | None = None
+    runtime_policy: str | None = None
     provider_id: str | None = None
     provider_model: str | None = None
     active_profile_id: str | None = None
@@ -184,6 +186,12 @@ class SessionState:
             raise ValueError("project_workspace_id must not be empty")
         if not self.mode:
             raise ValueError("mode must not be empty")
+        self.permission = _optional_text(self.permission)
+        self.runtime_policy = _optional_text(self.runtime_policy)
+        if self.permission not in {None, "read_only", "write_allowed", "audit_only", "elevated"}:
+            raise ValueError("permission must use the supported runtime-policy vocabulary")
+        if self.runtime_policy not in {None, "audit", "development", "strict", "permissive"}:
+            raise ValueError("runtime_policy must use the supported runtime-policy vocabulary")
         self.provider_id = _optional_text(self.provider_id)
         self.provider_model = _optional_text(self.provider_model)
         self.active_profile_id = _optional_text(self.active_profile_id)
@@ -197,6 +205,8 @@ class SessionState:
             "project_workspace_id": self.project_workspace_id,
             "canonical_workspace_root": self.canonical_workspace_root,
             "mode": self.mode,
+            "permission": self.permission,
+            "runtime_policy": self.runtime_policy,
             "provider_id": self.provider_id,
             "provider_model": self.provider_model,
             "active_profile_id": self.active_profile_id,

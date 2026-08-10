@@ -35,6 +35,14 @@ class WorkspaceMemoryStore:
         schema_path = Path(__file__).with_name("memory_schema.sql")
         with self._connect() as connection:
             connection.executescript(schema_path.read_text(encoding="utf-8"))
+            columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(session_state)")
+            }
+            if "permission" not in columns:
+                connection.execute("ALTER TABLE session_state ADD COLUMN permission TEXT")
+            if "runtime_policy" not in columns:
+                connection.execute("ALTER TABLE session_state ADD COLUMN runtime_policy TEXT")
 
     def upsert(self, record: MemoryRecord) -> MemoryRecord:
         values = record.as_dict()
@@ -258,14 +266,16 @@ class WorkspaceMemoryStore:
                 """
                 INSERT INTO session_state (
                     session_id, project_workspace_id, canonical_workspace_root,
-                    mode, provider_id, provider_model, active_profile_id,
+                    mode, permission, runtime_policy, provider_id, provider_model, active_profile_id,
                     permission_policy_id, evidence_policy_id, checkpoint_id,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(session_id) DO UPDATE SET
                     project_workspace_id=excluded.project_workspace_id,
                     canonical_workspace_root=excluded.canonical_workspace_root,
                     mode=excluded.mode,
+                    permission=excluded.permission,
+                    runtime_policy=excluded.runtime_policy,
                     provider_id=excluded.provider_id,
                     provider_model=excluded.provider_model,
                     active_profile_id=excluded.active_profile_id,
@@ -279,6 +289,8 @@ class WorkspaceMemoryStore:
                     state.project_workspace_id,
                     state.canonical_workspace_root,
                     state.mode,
+                    state.permission,
+                    state.runtime_policy,
                     state.provider_id,
                     state.provider_model,
                     state.active_profile_id,
@@ -304,6 +316,8 @@ class WorkspaceMemoryStore:
             project_workspace_id=str(row["project_workspace_id"]),
             canonical_workspace_root=str(row["canonical_workspace_root"]),
             mode=str(row["mode"]),
+            permission=row["permission"],
+            runtime_policy=row["runtime_policy"],
             provider_id=row["provider_id"],
             provider_model=row["provider_model"],
             active_profile_id=row["active_profile_id"],

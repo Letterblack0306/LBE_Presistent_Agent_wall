@@ -89,6 +89,8 @@ CREATE TABLE IF NOT EXISTS session_state (
     project_workspace_id TEXT NOT NULL,
     canonical_workspace_root TEXT NOT NULL,
     mode TEXT NOT NULL,
+    permission TEXT CHECK (permission IN ('read_only','write_allowed','audit_only','elevated')),
+    runtime_policy TEXT CHECK (runtime_policy IN ('audit','development','strict','permissive')),
     provider_id TEXT,
     provider_model TEXT,
     active_profile_id TEXT,

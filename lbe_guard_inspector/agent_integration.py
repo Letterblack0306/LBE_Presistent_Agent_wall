@@ -8,6 +8,8 @@ from typing import Any, Mapping
 from .memory import TaskStatus
 from .reasoning_contracts import LBEResponse
 from .runtime.completion_runtime import CodingCompletionRuntime
+from .runtime.mode_controller import ModeDecision, ModeRequest, resolve_mode
+from .runtime.tool_orchestration import ToolExecutionContext, ToolRequest
 from .session_memory_runtime import ReasoningController, SessionMemoryRuntimeBridge
 
 
@@ -64,6 +66,7 @@ class AgentResultEnvelope:
     task_id: str
     operation_id: str
     mode: AgentMode
+    mode_decision: ModeDecision
     status: TaskStatus
     outcome: str
     response: LBEResponse
@@ -79,6 +82,11 @@ class GovernedAgentGateway:
 
     _REASONING_OPERATION = "reasoning.inspect"
     _REASONING_ARGUMENTS = frozenset({"problem", "reference_context", "max_results"})
+    _MODE_INTENTS = {
+        AgentMode.CODING: "fix_issue",
+        AgentMode.AUDIT: "inspect_workspace",
+        AgentMode.INVESTIGATION: "diagnose_failure",
+    }
 
     def __init__(
         self,
@@ -92,7 +100,7 @@ class GovernedAgentGateway:
     def invoke(self, request: AgentRequestEnvelope) -> AgentResultEnvelope:
         if not isinstance(request, AgentRequestEnvelope):
             raise AgentIntegrationError("invalid_request", "request must be AgentRequestEnvelope")
-        self._validate_identity(request)
+        mode_decision = self.resolve_runtime_mode(request)
         if request.operation_id != self._REASONING_OPERATION:
             raise AgentIntegrationError(
                 "unsupported_operation",
@@ -151,9 +159,60 @@ class GovernedAgentGateway:
             task_id=request.task_id,
             operation_id=request.operation_id,
             mode=request.mode,
+            mode_decision=mode_decision,
             status=state.status,
             outcome=response.outcome,
             response=response,
+        )
+
+    def resolve_runtime_mode(self, request: AgentRequestEnvelope) -> ModeDecision:
+        """Resolve R6B from persisted policy and bounded request identity.
+
+        Request mode is checked as an identity assertion after resolution; it
+        never supplies permission or runtime-policy authority.
+        """
+        self._validate_identity(request)
+        state = self._runtime.session_state
+        if state.permission is None or state.runtime_policy is None:
+            raise AgentIntegrationError(
+                "policy_state_missing",
+                "persisted session lacks authoritative permission and runtime_policy",
+            )
+        decision = resolve_mode(ModeRequest(
+            intent=self._MODE_INTENTS[request.mode],
+            permission=state.permission,
+            runtime_policy=state.runtime_policy,
+            workspace_root=str(self._runtime.workspace_root),
+        ))
+        if decision.mode != state.mode or decision.mode != request.mode.value:
+            raise AgentIntegrationError(
+                "resolved_mode_mismatch",
+                "R6B resolved mode contradicts persisted or request mode identity",
+            )
+        return decision
+
+    def tool_execution_context(self, request: AgentRequestEnvelope) -> ToolExecutionContext:
+        """Supply the R6B decision to the existing R6E context contract."""
+        return ToolExecutionContext(
+            mode_decision=self.resolve_runtime_mode(request),
+            workspace_id=self._runtime.project_workspace_id,
+            workspace_root=self._runtime.workspace_root,
+            configured_root_id=self._runtime.project_workspace_id,
+        )
+
+    def tool_request(
+        self,
+        *,
+        request: AgentRequestEnvelope,
+        tool_id: str,
+        arguments: Mapping[str, Any],
+    ) -> ToolRequest:
+        """Create an R6E request without reconstructing policy authority."""
+        return ToolRequest(
+            operation_id=f"{request.operation_id}:{request.request_id}:{tool_id}",
+            tool_id=tool_id,
+            arguments=arguments,
+            context=self.tool_execution_context(request),
         )
 
     def _validate_identity(self, request: AgentRequestEnvelope) -> None:

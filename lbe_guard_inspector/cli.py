@@ -43,6 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--project-workspace-id", required=True)
     create.add_argument("--session-id", required=True)
     create.add_argument("--mode", required=True, choices=_MODES)
+    create.add_argument("--permission", choices=("read_only", "write_allowed", "audit_only", "elevated"), default="read_only")
+    create.add_argument("--runtime-policy", choices=("audit", "development", "strict", "permissive"), default="audit")
     create.add_argument("--provider")
     create.add_argument("--model")
     create.add_argument("--profile")
@@ -143,6 +145,8 @@ def _session_create(args: argparse.Namespace) -> dict[str, Any]:
         workspace_root=workspace,
         session_id=args.session_id,
         mode=args.mode,
+        permission=args.permission,
+        runtime_policy=args.runtime_policy,
         provider_id=args.provider,
         provider_model=args.model,
         active_profile_id=args.profile,
@@ -269,6 +273,8 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
             "active_profile_id": before.active_profile_id == updated.active_profile_id,
             "permission_policy_id": before.permission_policy_id == updated.permission_policy_id,
             "evidence_policy_id": before.evidence_policy_id == updated.evidence_policy_id,
+            "permission": before.permission == updated.permission,
+            "runtime_policy": before.runtime_policy == updated.runtime_policy,
         },
     }
 
@@ -303,6 +309,8 @@ def _runtime_from_state(*, database: str | Path, state: Any) -> SessionMemoryRun
         workspace_root=state.canonical_workspace_root,
         session_id=state.session_id,
         mode=state.mode,
+        permission=state.permission,
+        runtime_policy=state.runtime_policy,
         provider_id=state.provider_id,
         provider_model=state.provider_model,
         active_profile_id=state.active_profile_id,

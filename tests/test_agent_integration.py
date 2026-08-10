@@ -13,6 +13,13 @@ from lbe_guard_inspector.agent_integration import (
 )
 from lbe_guard_inspector.memory import TaskStatus
 from lbe_guard_inspector.reasoning_contracts import LBEResponse
+from lbe_guard_inspector.runtime.tool_orchestration import (
+    GovernedToolOrchestrator,
+    ToolExecutionResult,
+    ToolReceiptStatus,
+    ToolRegistry,
+    workspace_read_spec,
+)
 from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
 
 
@@ -54,13 +61,21 @@ def _runtime(
     root: Path,
     *,
     mode: str = "audit",
+    permission: str | None = None,
+    runtime_policy: str | None = None,
 ) -> SessionMemoryRuntimeBridge:
+    if permission is None:
+        permission = "write_allowed" if mode == "coding" else "read_only"
+    if runtime_policy is None:
+        runtime_policy = "permissive" if mode in {"coding", "investigation"} else "audit"
     return SessionMemoryRuntimeBridge(
         database_path=tmp_path / "memory.sqlite",
         project_workspace_id="project-1",
         workspace_root=root,
         session_id="session-1",
         mode=mode,
+        permission=permission,
+        runtime_policy=runtime_policy,
     )
 
 
@@ -105,7 +120,13 @@ def test_gateway_routes_agent_request_to_existing_runtime_and_reasoning_owner(tm
 
 def test_coding_gateway_keeps_model_completion_provisional(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    runtime = _runtime(tmp_path, root, mode="coding")
+    runtime = _runtime(
+        tmp_path,
+        root,
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+    )
     controller = _Controller("COMPLETED")
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
 
@@ -117,6 +138,86 @@ def test_coding_gateway_keeps_model_completion_provisional(tmp_path: Path) -> No
     assert state is not None
     assert state.status is TaskStatus.RUNNING
     assert state.last_outcome == "AWAITING_VALIDATION"
+
+
+def test_gateway_rejects_legacy_session_missing_authoritative_typed_policy(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root)
+    with runtime.store._connect() as connection:
+        connection.execute(
+            "UPDATE session_state SET permission=NULL, runtime_policy=NULL WHERE session_id=?",
+            (runtime.session_id,),
+        )
+    runtime = _runtime(tmp_path, root)
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_Controller())
+
+    with pytest.raises(AgentIntegrationError) as exc:
+        gateway.invoke(_request(root))
+
+    assert exc.value.code == "policy_state_missing"
+
+
+def test_gateway_rejects_resolved_mode_contradiction(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(
+        tmp_path,
+        root,
+        mode="coding",
+        permission="read_only",
+        runtime_policy="permissive",
+    )
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_Controller())
+
+    with pytest.raises(AgentIntegrationError) as exc:
+        gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert exc.value.code == "resolved_mode_mismatch"
+
+
+def test_opaque_permission_policy_id_cannot_widen_r6b_authority(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "memory.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+        permission="read_only",
+        runtime_policy="permissive",
+        permission_policy_id="write_allowed",
+    )
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_Controller())
+
+    decision = gateway.resolve_runtime_mode(_request(root))
+
+    assert decision.mode == "audit"
+    assert "propose" not in decision.capabilities
+
+
+def test_gateway_uses_r6b_decision_for_existing_r6e_context(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, permission="read_only", runtime_policy="audit")
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_Controller())
+    context = gateway.tool_execution_context(_request(root))
+    registry = ToolRegistry()
+    calls = []
+    registry.register(
+        workspace_read_spec(),
+        lambda request: calls.append(request) or ToolExecutionResult(output={"ok": True}),
+    )
+
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        gateway.tool_request(
+            request=_request(root),
+            tool_id="workspace.read",
+            arguments={"path": "README.md"},
+        )
+    )
+
+    assert context.mode_decision.mode == "audit"
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert receipt.authorization is not None
+    assert calls[0].context.mode_decision == context.mode_decision
 
 
 def test_gateway_rejects_request_mode_that_differs_from_persisted_session(tmp_path: Path) -> None:

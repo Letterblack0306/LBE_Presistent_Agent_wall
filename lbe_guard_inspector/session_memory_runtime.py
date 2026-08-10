@@ -57,6 +57,8 @@ class SessionMemoryRuntimeBridge:
         workspace_root: str | Path,
         session_id: str,
         mode: str = "unspecified",
+        permission: str | None = "read_only",
+        runtime_policy: str | None = "audit",
         provider_id: str | None = None,
         provider_model: str | None = None,
         active_profile_id: str | None = None,
@@ -85,6 +87,8 @@ class SessionMemoryRuntimeBridge:
             project_workspace_id=self.project_workspace_id,
             canonical_workspace_root=str(self.workspace_root),
             mode=mode if existing is None else existing.mode,
+            permission=permission if existing is None else existing.permission,
+            runtime_policy=runtime_policy if existing is None else existing.runtime_policy,
             provider_id=provider_id if existing is None else existing.provider_id,
             provider_model=provider_model if existing is None else existing.provider_model,
             active_profile_id=(active_profile_id if existing is None else existing.active_profile_id),
@@ -112,6 +116,8 @@ class SessionMemoryRuntimeBridge:
         self,
         *,
         mode: str | None = None,
+        permission: str | None = None,
+        runtime_policy: str | None = None,
         provider_id: str | None = None,
         provider_model: str | None = None,
         active_profile_id: str | None = None,
@@ -126,6 +132,10 @@ class SessionMemoryRuntimeBridge:
             project_workspace_id=current.project_workspace_id,
             canonical_workspace_root=current.canonical_workspace_root,
             mode=current.mode if mode is None else mode,
+            permission=current.permission if permission is None else permission,
+            runtime_policy=(
+                current.runtime_policy if runtime_policy is None else runtime_policy
+            ),
             provider_id=current.provider_id if provider_id is None else provider_id,
             provider_model=current.provider_model if provider_model is None else provider_model,
             active_profile_id=(
