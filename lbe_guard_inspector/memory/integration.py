@@ -6,7 +6,7 @@ from typing import Any
 
 from .compaction import persist_compaction_checkpoint
 from .context import inspect_git_state, rehydrate_context
-from .models import MemoryType, SourceType, ValidationStatus, canonical_root
+from .models import MemoryType, SessionState, SourceType, ValidationStatus, canonical_root
 from .promoter import CandidateClaim, MemoryPromoter
 from .store import WorkspaceMemoryStore
 
@@ -36,6 +36,13 @@ class SessionMemoryAdapter:
                 f"Workspace root does not exist or is not a directory: {self.workspace_root}"
             )
         self.promoter = MemoryPromoter(store)
+
+    def save_session_state(self, state: SessionState) -> SessionState:
+        if state.project_workspace_id != self.project_workspace_id:
+            raise ValueError("session state workspace identity does not match adapter")
+        if state.canonical_workspace_root != canonical_root(self.workspace_root):
+            raise ValueError("session state workspace root does not match adapter")
+        return self.store.save_session_state(state)
 
     def record_git_state(
         self,
@@ -193,6 +200,10 @@ class SessionMemoryAdapter:
             branch=git_state.get("branch"),
             head=git_state.get("head"),
         )
+        session = self.store.load_session_state(session_id=session_id)
+        if session is not None:
+            session.checkpoint_id = checkpoint.checkpoint_id
+            self.save_session_state(session)
         return checkpoint.checkpoint_id
 
     def rehydrate(
