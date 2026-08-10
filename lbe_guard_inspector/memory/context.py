@@ -115,8 +115,7 @@ def protected_checkpoint_eligibility(
         ),
         "workspace_root": (
             "MATCH"
-            if checkpoint.canonical_workspace_root
-            == canonical_root(current_workspace_root)
+            if checkpoint.canonical_workspace_root == canonical_root(current_workspace_root)
             else "MISMATCH"
         ),
         "source_prefix": (
@@ -131,39 +130,24 @@ def protected_checkpoint_eligibility(
         "branch": (
             "UNKNOWN"
             if checkpoint.branch is None or not current_branch
-            else (
-                "MATCH"
-                if checkpoint.branch == current_branch
-                else "MISMATCH"
-            )
+            else ("MATCH" if checkpoint.branch == current_branch else "MISMATCH")
         ),
         "head": (
             "UNKNOWN"
             if checkpoint.head is None or not current_head
-            else (
-                "MATCH"
-                if checkpoint.head == current_head
-                else "MISMATCH"
-            )
+            else ("MATCH" if checkpoint.head == current_head else "MISMATCH")
         ),
     }
 
-    mismatches = sorted(
-        name for name, result in checks.items() if result == "MISMATCH"
-    )
-    unknowns = sorted(
-        name for name, result in checks.items() if result == "UNKNOWN"
-    )
+    mismatches = sorted(name for name, result in checks.items() if result == "MISMATCH")
+    unknowns = sorted(name for name, result in checks.items() if result == "UNKNOWN")
 
     if mismatches:
         status = "INELIGIBLE"
         reasons = [f"{name.upper()}_MISMATCH" for name in mismatches]
     elif unknowns:
         status = "INSUFFICIENT_EVIDENCE"
-        reasons = [
-            f"{name.upper()}_EVIDENCE_MISSING"
-            for name in unknowns
-        ]
+        reasons = [f"{name.upper()}_EVIDENCE_MISSING" for name in unknowns]
     else:
         status = "ELIGIBLE"
         reasons = []
@@ -189,6 +173,9 @@ def build_context_packet(
     task_id: str | None = None,
     recent_messages: list[dict[str, Any]] | None = None,
     checkpoint: dict[str, Any] | None = None,
+    session_state: dict[str, Any] | None = None,
+    task_state: dict[str, Any] | None = None,
+    checkpoint_revalidation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     verified_facts: list[dict[str, Any]] = []
     active_constraints: list[dict[str, Any]] = []
@@ -202,7 +189,9 @@ def build_context_packet(
         else:
             verified_facts.append(payload)
 
+    task_payload = task_state or {"task_id": task_id, "current_status": "in_progress"}
     return {
+        "session": session_state,
         "workspace": {
             "project_workspace_id": project_workspace_id,
             "canonical_root": canonical_root(workspace_root),
@@ -210,10 +199,12 @@ def build_context_packet(
             "head": git_state.get("head"),
             "status_short": list(git_state.get("status_short") or []),
         },
-        "task": {"task_id": task_id, "current_status": "in_progress"},
+        "task": task_payload,
         "checkpoint": checkpoint,
+        "checkpoint_revalidation": checkpoint_revalidation,
         "verified_facts": verified_facts,
         "active_constraints": active_constraints,
+        "checkpoint_constraints": list((checkpoint or {}).get("active_constraints") or []),
         "recent_failures": recent_failures,
         "live_evidence_required": [
             "Revalidate Git state before write operations.",
@@ -233,15 +224,24 @@ def rehydrate_context(
     recent_messages: list[dict[str, Any]] | None = None,
     session_id: str | None = None,
 ) -> dict[str, Any]:
+    root = canonical_root(workspace_root)
+    session = store.load_session_state(session_id=session_id) if session_id else None
+    if session is not None:
+        if session.project_workspace_id != project_workspace_id:
+            raise ValueError("persisted session workspace identity does not match runtime workspace")
+        if session.canonical_workspace_root != root:
+            raise ValueError("persisted session workspace root does not match runtime workspace")
+
+    git_state = inspect_git_state(workspace_root)
     records = store.query(
         project_workspace_id=project_workspace_id,
         statuses=(ValidationStatus.VERIFIED,),
         limit=500,
     )
     current_records = invalidate_changed_sources(store, records, workspace_root)
-    git_state = inspect_git_state(workspace_root)
     checkpoint = store.latest_checkpoint(session_id) if session_id else None
     checkpoint_payload = None
+    checkpoint_revalidation = None
     if checkpoint:
         checkpoint_payload = {
             "checkpoint_id": checkpoint.checkpoint_id,
@@ -250,7 +250,23 @@ def rehydrate_context(
             "branch": checkpoint.branch,
             "head": checkpoint.head,
             "active_constraints": list(checkpoint.active_constraints),
+            "created_at": checkpoint.created_at,
         }
+        checkpoint_revalidation = protected_checkpoint_eligibility(
+            checkpoint=checkpoint,
+            current_workspace_id=project_workspace_id,
+            current_workspace_root=workspace_root,
+            current_git_state=git_state,
+        )
+
+    task = None
+    if session_id and task_id:
+        task = store.load_session_task(
+            session_id=session_id,
+            task_id=task_id,
+            project_workspace_id=project_workspace_id,
+        )
+
     return build_context_packet(
         project_workspace_id=project_workspace_id,
         workspace_root=workspace_root,
@@ -259,4 +275,17 @@ def rehydrate_context(
         task_id=task_id,
         recent_messages=recent_messages,
         checkpoint=checkpoint_payload,
+        session_state=session.as_dict() if session else None,
+        task_state=(
+            {
+                "task_id": task.task_id,
+                "current_status": task.status.value,
+                "last_outcome": task.last_outcome,
+                "created_at": task.created_at,
+                "updated_at": task.updated_at,
+            }
+            if task
+            else None
+        ),
+        checkpoint_revalidation=checkpoint_revalidation,
     )
