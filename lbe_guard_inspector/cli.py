@@ -17,12 +17,19 @@ from .session_memory_runtime import SessionMemoryRuntimeBridge
 
 
 _MODES = ("coding", "audit", "investigation")
+_OUTPUT_FORMATS = ("json", "text")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="lbe",
         description="Persistent LBE runtime control plane",
+    )
+    parser.add_argument(
+        "--format",
+        choices=_OUTPUT_FORMATS,
+        default="json",
+        help="Output format for terminal users or automation",
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -48,6 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_database_argument(continue_parser)
     continue_parser.add_argument("--session-id", required=True)
     continue_parser.add_argument("--task-id")
+    continue_parser.add_argument("--provider")
+    continue_parser.add_argument("--model")
     continue_parser.set_defaults(handler=_session_continue)
 
     status = session_commands.add_parser("status", help="Read persisted session status")
@@ -64,10 +73,19 @@ def build_parser() -> argparse.ArgumentParser:
     inspect_parser.add_argument("--task-id")
     inspect_parser.set_defaults(handler=_session_inspect)
 
-    provider = commands.add_parser("provider", help="Inspect reasoning providers")
+    provider = commands.add_parser("provider", help="Inspect or select reasoning providers")
     provider_commands = provider.add_subparsers(dest="provider_command", required=True)
     provider_list = provider_commands.add_parser("list", help="List registered providers")
     provider_list.set_defaults(handler=_provider_list)
+
+    provider_select = provider_commands.add_parser(
+        "select", help="Select a provider/model for an existing session"
+    )
+    _add_database_argument(provider_select)
+    provider_select.add_argument("--session-id", required=True)
+    provider_select.add_argument("--provider", required=True)
+    provider_select.add_argument("--model", required=True)
+    provider_select.set_defaults(handler=_provider_select)
 
     return parser
 
@@ -78,18 +96,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         payload = args.handler(args)
     except (ValueError, TypeError, FileNotFoundError, RuntimeError) as exc:
-        _emit({
-            "ok": False,
-            "error": type(exc).__name__,
-            "message": str(exc),
-        })
+        _emit(
+            {
+                "ok": False,
+                "error": type(exc).__name__,
+                "message": str(exc),
+            },
+            args.format,
+        )
         return 2
-    _emit({"ok": True, **payload})
+    _emit({"ok": True, **payload}, args.format)
     return 0
 
 
 def _session_create(args: argparse.Namespace) -> dict[str, Any]:
     workspace = _workspace_root(args.workspace)
+    _validate_provider_selection(args.provider, args.model, require_pair=False)
     runtime = SessionMemoryRuntimeBridge(
         database_path=args.database,
         project_workspace_id=args.project_workspace_id,
@@ -111,18 +133,15 @@ def _session_create(args: argparse.Namespace) -> dict[str, Any]:
 def _session_continue(args: argparse.Namespace) -> dict[str, Any]:
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
-    runtime = SessionMemoryRuntimeBridge(
-        database_path=args.database,
-        project_workspace_id=state.project_workspace_id,
-        workspace_root=state.canonical_workspace_root,
-        session_id=state.session_id,
-        mode=state.mode,
-        provider_id=state.provider_id,
-        provider_model=state.provider_model,
-        active_profile_id=state.active_profile_id,
-        permission_policy_id=state.permission_policy_id,
-        evidence_policy_id=state.evidence_policy_id,
-    )
+    runtime = _runtime_from_state(database=args.database, state=state)
+    if args.provider is not None or args.model is not None:
+        provider_id = state.provider_id if args.provider is None else args.provider
+        provider_model = state.provider_model if args.model is None else args.model
+        _validate_provider_selection(provider_id, provider_model, require_pair=True)
+        runtime.configure_session(
+            provider_id=provider_id,
+            provider_model=provider_model,
+        )
     packet = runtime.start_or_resume(task_id=args.task_id)
     return {
         "action": "session.continue",
@@ -179,6 +198,64 @@ def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
+    _validate_provider_selection(args.provider, args.model, require_pair=True)
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    before = runtime.session_state
+    updated = runtime.configure_session(
+        provider_id=args.provider,
+        provider_model=args.model,
+    )
+    return {
+        "action": "provider.select",
+        "session_id": updated.session_id,
+        "provider_id": updated.provider_id,
+        "provider_model": updated.provider_model,
+        "workspace": updated.canonical_workspace_root,
+        "mode": updated.mode,
+        "policy_unchanged": {
+            "active_profile_id": before.active_profile_id == updated.active_profile_id,
+            "permission_policy_id": before.permission_policy_id == updated.permission_policy_id,
+            "evidence_policy_id": before.evidence_policy_id == updated.evidence_policy_id,
+        },
+    }
+
+
+def _runtime_from_state(*, database: str | Path, state: Any) -> SessionMemoryRuntimeBridge:
+    return SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id=state.project_workspace_id,
+        workspace_root=state.canonical_workspace_root,
+        session_id=state.session_id,
+        mode=state.mode,
+        provider_id=state.provider_id,
+        provider_model=state.provider_model,
+        active_profile_id=state.active_profile_id,
+        permission_policy_id=state.permission_policy_id,
+        evidence_policy_id=state.evidence_policy_id,
+    )
+
+
+def _validate_provider_selection(
+    provider_id: str | None,
+    provider_model: str | None,
+    *,
+    require_pair: bool,
+) -> None:
+    if provider_id is None and provider_model is None and not require_pair:
+        return
+    if not provider_id or not str(provider_id).strip():
+        raise ValueError("provider_id must be supplied with provider model")
+    if not provider_model or not str(provider_model).strip():
+        raise ValueError("provider model must be supplied with provider_id")
+    registry = default_provider_registry()
+    clean_provider = str(provider_id).strip()
+    if clean_provider not in registry.provider_ids():
+        raise ValueError(f"provider is not registered: {clean_provider}")
+
+
 def _require_session(store: WorkspaceMemoryStore, session_id: str):
     clean_id = str(session_id).strip()
     if not clean_id:
@@ -219,8 +296,40 @@ def _add_database_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _emit(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str))
+def _emit(payload: dict[str, Any], output_format: str) -> None:
+    if output_format == "json":
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str))
+        return
+    for line in _human_lines(payload):
+        print(line)
+
+
+def _human_lines(payload: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    action = payload.get("action")
+    if action:
+        lines.append(str(action))
+    if payload.get("ok") is False:
+        lines.append(f"error: {payload.get('error')}: {payload.get('message')}")
+        return lines
+    for key, value in payload.items():
+        if key in {"ok", "action"}:
+            continue
+        _append_human_value(lines, key, value, indent=0)
+    return lines or ["ok"]
+
+
+def _append_human_value(lines: list[str], key: str, value: Any, *, indent: int) -> None:
+    prefix = "  " * indent
+    if isinstance(value, dict):
+        lines.append(f"{prefix}{key}:")
+        for nested_key, nested_value in value.items():
+            _append_human_value(lines, str(nested_key), nested_value, indent=indent + 1)
+        return
+    if isinstance(value, list):
+        lines.append(f"{prefix}{key}: {', '.join(str(item) for item in value)}")
+        return
+    lines.append(f"{prefix}{key}: {value}")
 
 
 if __name__ == "__main__":
