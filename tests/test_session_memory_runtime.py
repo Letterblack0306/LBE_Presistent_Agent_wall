@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from lbe_guard_inspector.memory import ValidationStatus, WorkspaceMemoryStore
+from lbe_guard_inspector.reasoning_contracts import LBEResponse
 from lbe_guard_inspector.session_memory_runtime import (
     SessionMemoryRuntimeBridge,
     TaskStatus,
@@ -193,6 +194,7 @@ def test_task_outcome_maps_to_persisted_status(tmp_path: Path) -> None:
     runtime.record_task_outcome(task_id="task-o", outcome="ORCHESTRATION_ERROR")
     loaded = runtime.load_task_status(task_id="task-o")
     assert loaded is not None and loaded.status is TaskStatus.FAILED
+    assert loaded.last_outcome == "ORCHESTRATION_ERROR"
 
 
 def test_invalid_outcome_does_not_persist(tmp_path: Path) -> None:
@@ -238,3 +240,127 @@ def test_corrupted_persisted_status_fails_visibly(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         runtime.store._row_to_task_state(_BadRow())
+
+
+class _FakeReasoningController:
+    def __init__(self, outcome: str = "COMPLETED") -> None:
+        self.outcome = outcome
+        self.requests = []
+
+    def run(self, request):
+        self.requests.append(request)
+        return LBEResponse(
+            task_id=request.task_id,
+            workspace_identity={
+                "workspace_id": "project-1",
+                "target_project_root": str(Path(request.workspace_root).resolve()),
+            },
+            workspace_profile={},
+            plan=None,
+            deterministic_result=None,
+            explanation=None,
+            outcome=self.outcome,
+        )
+
+
+def test_runtime_invokes_existing_reasoning_boundary_and_persists_completed_outcome(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+    controller = _FakeReasoningController()
+
+    response = runtime.run_reasoning(
+        controller=controller,
+        problem="Inspect current workspace",
+        task_id="task-r3",
+    )
+
+    assert len(controller.requests) == 1
+    request = controller.requests[0]
+    assert request.problem == "Inspect current workspace"
+    assert request.task_id == "task-r3"
+    assert Path(request.workspace_root).resolve() == root.resolve()
+    assert response is not None
+    assert response.task_id == "task-r3"
+    assert response.outcome == "COMPLETED"
+    state = runtime.load_task_status(task_id="task-r3")
+    assert state is not None
+    assert state.status is TaskStatus.COMPLETED
+    assert state.last_outcome == "COMPLETED"
+
+
+def test_runtime_persists_blocked_reasoning_outcome(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+    controller = _FakeReasoningController("INSUFFICIENT_EVIDENCE")
+
+    response = runtime.run_reasoning(
+        controller=controller,
+        problem="Inspect",
+        task_id="task-blocked",
+    )
+
+    assert response.outcome == "INSUFFICIENT_EVIDENCE"
+    state = runtime.load_task_status(task_id="task-blocked")
+    assert state is not None
+    assert state.status is TaskStatus.BLOCKED
+    assert state.last_outcome == "INSUFFICIENT_EVIDENCE"
+
+
+def test_runtime_persists_failed_reasoning_outcome(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+    controller = _FakeReasoningController("ORCHESTRATION_ERROR")
+
+    response = runtime.run_reasoning(
+        controller=controller,
+        problem="Inspect",
+        task_id="task-failed",
+    )
+
+    assert response.outcome == "ORCHESTRATION_ERROR"
+    state = runtime.load_task_status(task_id="task-failed")
+    assert state is not None
+    assert state.status is TaskStatus.FAILED
+    assert state.last_outcome == "ORCHESTRATION_ERROR"
+
+
+def test_runtime_persists_interruption_without_swallowing_it(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+
+    class _InterruptingController:
+        def run(self, request):
+            raise KeyboardInterrupt()
+
+    with pytest.raises(KeyboardInterrupt):
+        runtime.run_reasoning(
+            controller=_InterruptingController(),
+            problem="Inspect",
+            task_id="task-interrupted",
+        )
+
+    state = runtime.load_task_status(task_id="task-interrupted")
+    assert state is not None
+    assert state.status is TaskStatus.BLOCKED
+    assert state.last_outcome == "INTERRUPTED"
+
+
+def test_runtime_persists_boundary_exception_and_reraises(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    runtime = bridge(tmp_path, root)
+
+    class _FailingController:
+        def run(self, request):
+            raise RuntimeError("boundary failed")
+
+    with pytest.raises(RuntimeError, match="boundary failed"):
+        runtime.run_reasoning(
+            controller=_FailingController(),
+            problem="Inspect",
+            task_id="task-boundary-error",
+        )
+
+    state = runtime.load_task_status(task_id="task-boundary-error")
+    assert state is not None
+    assert state.status is TaskStatus.FAILED
+    assert state.last_outcome == "RUNTIME_REASONING_ERROR"
