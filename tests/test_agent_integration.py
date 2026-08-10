@@ -221,6 +221,20 @@ def test_provider_plan_cannot_widen_lbe_completion_requirements(tmp_path: Path) 
     )
 
 
+def test_provider_completion_cannot_manufacture_live_repository_evidence(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_Controller("COMPLETED"))
+
+    gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    evidence = CodingCompletionRuntime(runtime=runtime).load_evidence(task_id="task-1")
+    assert [(item.kind, item.status.value) for item in evidence] == [
+        ("source_change", "FAIL"),
+        ("git_status", "FAIL"),
+    ]
+
+
 def test_gateway_rejects_legacy_session_missing_authoritative_typed_policy(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     runtime = _runtime(tmp_path, root)

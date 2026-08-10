@@ -8,6 +8,7 @@ from typing import Any, Mapping
 from .memory import TaskStatus
 from .reasoning_contracts import LBEResponse
 from .runtime.completion_runtime import CodingCompletionRuntime
+from .runtime.completion_evidence_producers import CompletionEvidenceProducers
 from .runtime.mode_controller import ModeDecision, ModeRequest, resolve_mode
 from .runtime.task_completion_policy import (
     DEFAULT_TASK_COMPLETION_POLICY_CATALOG,
@@ -145,12 +146,23 @@ class GovernedAgentGateway:
                 mode_decision=mode_decision,
                 completion_runtime=completion_runtime,
             )
+            producers = CompletionEvidenceProducers(runtime=self._runtime)
+            task_baseline = producers.capture_workspace_snapshot()
             result = completion_runtime.run_reasoning(
                 controller=self._reasoning_controller,
                 problem=problem,
                 task_id=request.task_id,
                 reference_context=reference_context,
                 max_results=max_results,
+            )
+            producers.produce_source_change(
+                task_id=request.task_id,
+                operation_id=request.operation_id,
+                baseline=task_baseline,
+            )
+            producers.produce_git_status(
+                task_id=request.task_id,
+                operation_id=request.operation_id,
             )
             response = result.response
             state = result.task_state
