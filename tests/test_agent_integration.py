@@ -12,7 +12,7 @@ from lbe_guard_inspector.agent_integration import (
     GovernedAgentGateway,
 )
 from lbe_guard_inspector.memory import TaskStatus
-from lbe_guard_inspector.reasoning_contracts import LBEResponse
+from lbe_guard_inspector.reasoning_contracts import LBEResponse, ReasoningPlan
 from lbe_guard_inspector.runtime.tool_orchestration import (
     GovernedToolOrchestrator,
     ToolExecutionResult,
@@ -20,6 +20,9 @@ from lbe_guard_inspector.runtime.tool_orchestration import (
     ToolRegistry,
     workspace_read_spec,
 )
+from lbe_guard_inspector.runtime.task_completion_policy import TaskCompletionPolicyCatalog
+from lbe_guard_inspector.runtime.completion_runtime import CodingCompletionRuntime
+from lbe_guard_inspector.runtime.completion_gate import CompletionRequirement
 from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
 
 
@@ -138,6 +141,84 @@ def test_coding_gateway_keeps_model_completion_provisional(tmp_path: Path) -> No
     assert state is not None
     assert state.status is TaskStatus.RUNNING
     assert state.last_outcome == "AWAITING_VALIDATION"
+    assert CodingCompletionRuntime(runtime=runtime).load_contract(task_id="task-1").requirements == (
+        CompletionRequirement("source-change", "source_change"),
+        CompletionRequirement("focused-tests", "focused_test"),
+        CompletionRequirement("git-state", "git_status"),
+    )
+
+
+def test_coding_gateway_fails_closed_when_no_lbe_completion_policy_matches(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    gateway = GovernedAgentGateway(
+        runtime=runtime,
+        reasoning_controller=_Controller(),
+        completion_policy_catalog=TaskCompletionPolicyCatalog(()),
+    )
+
+    with pytest.raises(AgentIntegrationError) as exc:
+        gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert exc.value.code == "completion_policy_missing"
+    assert runtime.load_task_status(task_id="task-1") is None
+
+
+def test_coding_provider_switch_reuses_existing_completion_contract(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_Controller())
+    gateway.invoke(_request(root, mode=AgentMode.CODING))
+    initial = CodingCompletionRuntime(runtime=runtime).load_contract(task_id="task-1")
+    assert initial is not None
+
+    runtime.configure_session(provider_id="provider-b", provider_model="model-b")
+    resumed = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "memory.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+    )
+    resumed_gateway = GovernedAgentGateway(runtime=resumed, reasoning_controller=_Controller())
+    resumed_gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert CodingCompletionRuntime(runtime=resumed).load_contract(task_id="task-1") == initial
+
+
+def test_provider_plan_cannot_widen_lbe_completion_requirements(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+
+    class _ProviderPlanController(_Controller):
+        def run(self, request):
+            response = super().run(request)
+            return LBEResponse(
+                task_id=response.task_id,
+                workspace_identity=response.workspace_identity,
+                workspace_profile=response.workspace_profile,
+                plan=ReasoningPlan(
+                    interpreted_problem="provider attempt",
+                    ambiguities=(),
+                    candidate_guard_ids=(),
+                    evidence_requests=(),
+                    validation_requests=("provider-selected-validation",),
+                    explanation_focus=(),
+                ),
+                deterministic_result=None,
+                explanation=None,
+                outcome=response.outcome,
+            )
+
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_ProviderPlanController())
+    gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    contract = CodingCompletionRuntime(runtime=runtime).load_contract(task_id="task-1")
+    assert contract is not None
+    assert tuple(item.evidence_kind for item in contract.requirements) == (
+        "source_change",
+        "focused_test",
+        "git_status",
+    )
 
 
 def test_gateway_rejects_legacy_session_missing_authoritative_typed_policy(tmp_path: Path) -> None:

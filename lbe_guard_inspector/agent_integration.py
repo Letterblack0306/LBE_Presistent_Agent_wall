@@ -9,6 +9,10 @@ from .memory import TaskStatus
 from .reasoning_contracts import LBEResponse
 from .runtime.completion_runtime import CodingCompletionRuntime
 from .runtime.mode_controller import ModeDecision, ModeRequest, resolve_mode
+from .runtime.task_completion_policy import (
+    DEFAULT_TASK_COMPLETION_POLICY_CATALOG,
+    TaskCompletionPolicyCatalog,
+)
 from .runtime.tool_orchestration import ToolExecutionContext, ToolRequest
 from .session_memory_runtime import ReasoningController, SessionMemoryRuntimeBridge
 
@@ -87,15 +91,20 @@ class GovernedAgentGateway:
         AgentMode.AUDIT: "inspect_workspace",
         AgentMode.INVESTIGATION: "diagnose_failure",
     }
+    _CODING_TASK_CLASS = "coding_fix"
 
     def __init__(
         self,
         *,
         runtime: SessionMemoryRuntimeBridge,
         reasoning_controller: ReasoningController,
+        completion_policy_catalog: TaskCompletionPolicyCatalog = DEFAULT_TASK_COMPLETION_POLICY_CATALOG,
     ) -> None:
+        if not isinstance(completion_policy_catalog, TaskCompletionPolicyCatalog):
+            raise TypeError("completion_policy_catalog must be TaskCompletionPolicyCatalog")
         self._runtime = runtime
         self._reasoning_controller = reasoning_controller
+        self._completion_policy_catalog = completion_policy_catalog
 
     def invoke(self, request: AgentRequestEnvelope) -> AgentResultEnvelope:
         if not isinstance(request, AgentRequestEnvelope):
@@ -130,7 +139,13 @@ class GovernedAgentGateway:
             )
 
         if request.mode is AgentMode.CODING:
-            result = CodingCompletionRuntime(runtime=self._runtime).run_reasoning(
+            completion_runtime = CodingCompletionRuntime(runtime=self._runtime)
+            self._establish_coding_contract(
+                request=request,
+                mode_decision=mode_decision,
+                completion_runtime=completion_runtime,
+            )
+            result = completion_runtime.run_reasoning(
                 controller=self._reasoning_controller,
                 problem=problem,
                 task_id=request.task_id,
@@ -199,6 +214,33 @@ class GovernedAgentGateway:
             workspace_root=self._runtime.workspace_root,
             configured_root_id=self._runtime.project_workspace_id,
         )
+
+    def _establish_coding_contract(
+        self,
+        *,
+        request: AgentRequestEnvelope,
+        mode_decision: ModeDecision,
+        completion_runtime: CodingCompletionRuntime,
+    ) -> None:
+        existing = completion_runtime.load_contract(task_id=request.task_id)
+        if existing is not None:
+            return
+        if self._MODE_INTENTS[request.mode] != "fix_issue":
+            raise AgentIntegrationError(
+                "completion_policy_missing",
+                "no LBE completion policy applies to the governed coding task",
+            )
+        policy = self._completion_policy_catalog.find(
+            operation_id=request.operation_id,
+            task_class=self._CODING_TASK_CLASS,
+            mode=mode_decision.mode,
+        )
+        if policy is None:
+            raise AgentIntegrationError(
+                "completion_policy_missing",
+                "no LBE completion policy applies to the governed coding task",
+            )
+        completion_runtime.persist_contract(task_id=request.task_id, contract=policy.contract())
 
     def tool_request(
         self,
