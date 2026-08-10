@@ -83,3 +83,18 @@ CREATE TABLE IF NOT EXISTS memory_checkpoints (
 
 CREATE INDEX IF NOT EXISTS idx_memory_checkpoints_session
     ON memory_checkpoints(session_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS session_tasks (
+    session_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    project_workspace_id TEXT NOT NULL,
+    canonical_workspace_root TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('created','running','completed','failed','blocked')),
+    last_outcome TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, task_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_tasks_session
+    ON session_tasks(session_id, updated_at DESC);
