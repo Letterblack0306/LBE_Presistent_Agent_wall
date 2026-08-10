@@ -29,6 +29,7 @@ from .reasoning_contracts import (
     ReasoningRequest,
 )
 from .reasoning_planner import ReasoningPolicy
+from .runtime.context_assembly import assemble_reasoning_context
 from .workspace_identity import resolve_workspace_identity, scoped_context
 
 
@@ -106,8 +107,9 @@ class LBERequestController:
             workspace_profile=profile,
             approved_guard_ids=approved_guards,
             approved_tools=tuple(sorted(_APPROVED_TOOLS)),
-            reference_context=tuple(
-                dict(item) for item in validated_evidence_package["indexed_reference_evidence"]
+            reference_context=assemble_reasoning_context(
+                request_context=request.reference_context,
+                indexed_reference_evidence=validated_evidence_package["indexed_reference_evidence"],
             ),
         )
         plan = _coerce_plan(self._backend.plan(reasoning_request))
