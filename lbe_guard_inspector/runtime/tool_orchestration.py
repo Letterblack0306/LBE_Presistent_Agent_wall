@@ -370,13 +370,14 @@ def build_workspace_replace_text_handler() -> ToolHandler:
         if relative.is_absolute() or ".." in relative.parts:
             raise ValueError("path must stay within the active workspace")
         root = request.context.workspace_root.resolve()
-        candidate = (root / relative).resolve()
+        unresolved = root / relative
+        if unresolved.is_symlink():
+            raise ValueError("workspace.replace_text does not write through symlinks")
+        candidate = unresolved.resolve()
         try:
             candidate.relative_to(root)
         except ValueError as exc:
             raise ValueError("path must stay within the active workspace") from exc
-        if candidate.is_symlink():
-            raise ValueError("workspace.replace_text does not write through symlinks")
         if not candidate.is_file():
             raise FileNotFoundError(f"target file does not exist: {relative.as_posix()}")
 
