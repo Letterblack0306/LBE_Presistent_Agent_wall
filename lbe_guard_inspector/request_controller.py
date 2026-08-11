@@ -33,7 +33,7 @@ from .runtime.context_assembly import assemble_reasoning_context
 from .workspace_identity import resolve_workspace_identity, scoped_context
 
 
-_APPROVED_TOOLS = frozenset({"workspace.read"})
+_APPROVED_TOOLS = frozenset({"workspace.read", "workspace.replace_text"})
 
 
 class LBERequestController:
@@ -276,6 +276,10 @@ class LBERequestController:
             if evidence.tool_id not in _APPROVED_TOOLS:
                 raise _ControllerFailure("UNKNOWN_TOOL", f"Reasoning plan requested unknown tool: {evidence.tool_id}")
             _bounded_path(root, evidence.path)
+        for tool_request in getattr(plan, "tool_requests", ()):
+            if tool_request.tool_id not in _APPROVED_TOOLS:
+                raise _ControllerFailure("UNKNOWN_TOOL", f"Reasoning plan requested unknown tool: {tool_request.tool_id}")
+            _bounded_path(root, tool_request.path)
         if plan.candidate_guard_ids and not plan.evidence_requests:
             raise _ControllerFailure("MISSING_EVIDENCE_REQUEST", "A selected guard requires a bounded evidence request.")
 
