@@ -8,12 +8,18 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Sequence
+from uuid import uuid4
 
+from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
 from .evidence_service import EvidenceService
 from .memory import WorkspaceMemoryStore
+from .provider_health import check_provider_health
 from .provider_registry import default_provider_registry
+from .reasoning_config import load_provider_config
+from .reasoning_runtime import build_provider_controller
 from .runtime.completion_runtime import CodingCompletionRuntime
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 
@@ -100,6 +106,13 @@ def build_parser() -> argparse.ArgumentParser:
     provider_list = provider_commands.add_parser("list", help="List registered providers")
     provider_list.set_defaults(handler=_provider_list)
 
+    provider_check = provider_commands.add_parser(
+        "check", help="Check a provider against the structured reasoning contract"
+    )
+    provider_check.add_argument("--provider", required=True)
+    provider_check.add_argument("--provider-config", required=True)
+    provider_check.set_defaults(handler=_provider_check)
+
     provider_select = provider_commands.add_parser(
         "select", help="Select a provider/model for an existing session"
     )
@@ -108,6 +121,15 @@ def build_parser() -> argparse.ArgumentParser:
     provider_select.add_argument("--provider", required=True)
     provider_select.add_argument("--model", required=True)
     provider_select.set_defaults(handler=_provider_select)
+
+    _add_mode_command(commands, "code", AgentMode.CODING, "Run a governed coding task")
+    _add_mode_command(commands, "audit", AgentMode.AUDIT, "Run a governed read-only audit task")
+    _add_mode_command(
+        commands,
+        "investigate",
+        AgentMode.INVESTIGATION,
+        "Run a governed investigation task",
+    )
 
     policy = commands.add_parser("policy", help="Inspect active session policy references")
     policy_commands = policy.add_subparsers(dest="policy_command", required=True)
@@ -292,6 +314,21 @@ def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
+    config = load_provider_config(args.provider_config)
+    result = check_provider_health(
+        provider_id=args.provider,
+        provider_config=config,
+    )
+    return {
+        "action": "provider.check",
+        "provider_id": result.provider_id,
+        "provider_model": result.model_id,
+        "status": result.status,
+        "capabilities": asdict(result.capabilities),
+    }
+
+
 def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
     _validate_provider_selection(args.provider, args.model, require_pair=True)
     store = WorkspaceMemoryStore(args.database)
@@ -316,6 +353,72 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
             "permission": before.permission == updated.permission,
             "runtime_policy": before.runtime_policy == updated.runtime_policy,
         },
+    }
+
+
+def _code(args: argparse.Namespace) -> dict[str, Any]:
+    return _run_mode_command(args, AgentMode.CODING, action="code")
+
+
+def _audit(args: argparse.Namespace) -> dict[str, Any]:
+    return _run_mode_command(args, AgentMode.AUDIT, action="audit")
+
+
+def _investigate(args: argparse.Namespace) -> dict[str, Any]:
+    return _run_mode_command(args, AgentMode.INVESTIGATION, action="investigate")
+
+
+def _run_mode_command(
+    args: argparse.Namespace,
+    mode: AgentMode,
+    *,
+    action: str,
+) -> dict[str, Any]:
+    if args.max_results < 1:
+        raise ValueError("max_results must be a positive integer")
+    state = _require_session(WorkspaceMemoryStore(args.database), args.session_id)
+    if not state.provider_id or not state.provider_model:
+        raise ValueError("persisted session does not have a selected provider/model")
+
+    provider_config = load_provider_config(args.provider_config)
+    if provider_config.model.strip() != state.provider_model:
+        raise ValueError("provider config model does not match persisted session provider model")
+
+    runtime = _runtime_from_state(database=args.database, state=state)
+    controller, handle = build_provider_controller(
+        provider_id=state.provider_id,
+        provider_config=provider_config,
+    )
+    if handle.descriptor.provider_id != state.provider_id:
+        raise ValueError("provider adapter identity does not match persisted session provider")
+
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
+    request_id = args.request_id.strip() if args.request_id else f"request-{uuid4()}"
+    result = gateway.invoke(
+        AgentRequestEnvelope(
+            request_id=request_id,
+            session_id=state.session_id,
+            task_id=args.task_id,
+            project_workspace_id=state.project_workspace_id,
+            workspace_root=state.canonical_workspace_root,
+            mode=mode,
+            operation_id="reasoning.inspect",
+            arguments={
+                "problem": args.problem,
+                "max_results": args.max_results,
+            },
+        )
+    )
+    return {
+        "action": action,
+        "request_id": result.request_id,
+        "session_id": result.session_id,
+        "task_id": result.task_id,
+        "mode": result.mode.value,
+        "mode_decision": asdict(result.mode_decision),
+        "status": result.status.value,
+        "outcome": result.outcome,
+        "response": asdict(result.response),
     }
 
 
@@ -414,6 +517,29 @@ def _add_database_argument(parser: argparse.ArgumentParser) -> None:
         "--database",
         required=True,
         help="Path to the persistent LBE SQLite database",
+    )
+
+
+def _add_mode_command(
+    commands: argparse._SubParsersAction,
+    name: str,
+    mode: AgentMode,
+    help_text: str,
+) -> None:
+    command = commands.add_parser(name, help=help_text)
+    _add_database_argument(command)
+    command.add_argument("--session-id", required=True)
+    command.add_argument("--task-id", required=True)
+    command.add_argument("--provider-config", required=True)
+    command.add_argument("--problem", required=True)
+    command.add_argument("--request-id")
+    command.add_argument("--max-results", type=int, default=10)
+    command.set_defaults(
+        handler={
+            AgentMode.CODING: _code,
+            AgentMode.AUDIT: _audit,
+            AgentMode.INVESTIGATION: _investigate,
+        }[mode]
     )
 
 
