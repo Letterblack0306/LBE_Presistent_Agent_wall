@@ -119,6 +119,7 @@ class GovernedAgentGateway:
         if not isinstance(request, AgentRequestEnvelope):
             raise AgentIntegrationError("invalid_request", "request must be AgentRequestEnvelope")
         mode_decision = self.resolve_runtime_mode(request)
+        self._configure_reasoning_tools(mode_decision)
         if request.operation_id != self._REASONING_OPERATION:
             raise AgentIntegrationError(
                 "unsupported_operation",
@@ -236,6 +237,16 @@ class GovernedAgentGateway:
                 "R6B resolved mode contradicts persisted or request mode identity",
             )
         return decision
+
+    def _configure_reasoning_tools(self, mode_decision: ModeDecision) -> None:
+        """Expose only tools supported by the already-resolved runtime mode."""
+        configure = getattr(self._reasoning_controller, "configure_approved_tools", None)
+        if not callable(configure):
+            return
+        tools = ["workspace.read"]
+        if mode_decision.mode == "coding" and "modify" in mode_decision.capabilities:
+            tools.append("workspace.replace_text")
+        configure(tuple(tools))
 
     def tool_execution_context(self, request: AgentRequestEnvelope) -> ToolExecutionContext:
         """Supply the R6B decision to the existing R6E context contract."""
