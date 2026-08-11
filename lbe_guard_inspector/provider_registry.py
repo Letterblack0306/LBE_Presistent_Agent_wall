@@ -9,8 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
+from .coding_reasoning_provider import ToolAwareOpenAICompatibleReasoningBackend
 from .reasoning_contracts import ReasoningBackend
-from .reasoning_provider import OpenAICompatibleReasoningBackend, ProviderConfig
+from .reasoning_provider import ProviderConfig
 
 
 @dataclass(frozen=True)
@@ -99,7 +100,7 @@ def openai_compatible_factory(config: ProviderConfig) -> ProviderHandle:
                 context_limit=None,
             ),
         ),
-        backend=OpenAICompatibleReasoningBackend(config=config),
+        backend=ToolAwareOpenAICompatibleReasoningBackend(config=config),
     )
 
 
