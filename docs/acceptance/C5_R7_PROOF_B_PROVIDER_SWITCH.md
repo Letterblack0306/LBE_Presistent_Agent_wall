@@ -100,13 +100,13 @@ Do not reinterpret this timeout as permission/policy failure without new evidenc
 
 A lightweight model may be used to prove provider-replacement mechanics on a controlled fixture, but such a result must not be interpreted as proof that the same model is suitable for large real workspaces.
 
-## Cline-derived local-provider investigation
+## Cline-derived provider investigation
 
 A later proof attempt created:
 
 `G:\Developments\lbe-p1-002-proof\provider-local-b4-cline.json`
 
-The goal was to reuse a request shape known to have worked in Cline with a local model, but the available Cline session evidence did not provide an unambiguous successful governed-planning contract that could legitimately be reused as LBE proof.
+The goal was to reuse a request shape known to have worked in Cline, but the available inspected Cline session evidence did not provide an unambiguous successful governed-planning contract that could legitimately be reused as LBE proof.
 
 Files inspected:
 
@@ -116,20 +116,62 @@ Files inspected:
 Findings:
 
 - `1785460319869_yl0hf` is an LM Studio Cline session, but uses `text-embedding-nomic-embed-text-v1.5` in plan mode. It is not governed coding/tool-execution evidence.
-- `1785461332072_pt9mp` is a Cline Pass session using `deepseek/deepseek-v4-flash`, not the local LM Studio provider under test.
-- neither session provides a reusable successful local-provider B1 planning contract.
-- Gemma remains the only Cline-configured local candidate found that reached the LBE governed-tool boundary, but that run did not produce a valid exact replacement request, so it cannot satisfy B1.
+- `1785461332072_pt9mp` is a Cline Pass session using `deepseek/deepseek-v4-flash`, not the local LM Studio provider previously under test.
+- neither inspected session by itself provides reusable successful B1 planning evidence.
+- Gemma reached the LBE governed-tool boundary in a separate attempt, but did not produce a valid exact replacement request, so that attempt did not satisfy B1.
 
 Correct classification:
 
 ```text
-Cline config/session evidence: useful for candidate request-shape discovery only
-successful local governed-planning contract: NOT PROVEN
-B1 governed execution: NOT PROVEN
+Cline config/session evidence: useful for provider/model discovery
+successful governed B1 execution: NOT YET PROVEN
 product defect: NOT PROVEN by these sessions
 ```
 
-Do not copy a Cline request shape merely because a session exists. Reuse is allowed only after identifying a **specific successful session message** whose non-sensitive planning contract can be extracted and shown to correspond to actual successful local-model tool planning.
+Do not copy a request shape merely because a Cline session exists. If reusing a request/planning shape, it must come from a specific successful message whose non-sensitive contract is known to correspond to actual successful tool planning.
+
+## User-authorized Cline connection reuse
+
+Cline may be used as a **provider/model and credential source when the user explicitly grants permission**.
+
+The boundary is:
+
+```text
+user authorizes reuse of Cline-managed provider connection
+  -> Cline supplies/holds provider identity, model selection, and credential/session access
+  -> LBE consumes that authorized connection through a supported provider/auth adapter
+  -> LBE does not silently scrape, copy, persist, log, or expose the secret
+  -> LBE session/workspace/policy/permissions remain LBE-owned
+```
+
+This is different from silently extracting Cline credentials.
+
+Without explicit user permission:
+
+```text
+Cline credentials remain Cline-owned
+LBE must use its own configured connection
+```
+
+With explicit user permission, V1 may support a thin integration path where Cline's already-authenticated provider/model connection is reused or delegated to LBE, provided:
+
+- the credential is not copied into tracked source, logs, documentation, or proof fixtures;
+- LBE does not reveal the secret value;
+- the integration preserves the provider's authentication semantics;
+- revocation/logout on the provider/Cline side remains effective;
+- LBE records only non-secret connection metadata needed for session continuity;
+- provider/model changes still cannot alter LBE workspace authority, policy, evidence, validation, or completion semantics.
+
+Possible implementation forms for a later thin adapter include:
+
+- delegated authenticated provider connection;
+- provider-issued OAuth/session token exposed through a supported integration boundary;
+- user-approved credential reference/handle;
+- another non-secret reference that Cline/provider can resolve at runtime.
+
+The product does **not** need to bundle AI models or issue provider credentials. Authentication remains between the user and the selected provider; Cline can act as the already-configured access surface when the user chooses that path.
+
+For V1 B1, the key requirement remains provider/model replacement semantics, not credential ownership design. If a user-authorized Cline connection can be consumed through the installed LBE provider path without broad new architecture, it is acceptable B1 evidence.
 
 ## Proof B claim split
 
@@ -159,29 +201,38 @@ B1 must not be used to claim B2.
 
 The current provider configuration contract accepts any positive `timeout_seconds`; there is no product-defined maximum in `ProviderConfig`.
 
-A proof timeout may be increased to match observed local-model latency, provided the outer proof runner exceeds it and no LBE authority, evidence, validation, or completion semantics are weakened.
+A proof timeout may be increased to match observed provider/model latency, provided the outer proof runner exceeds it and no LBE authority, evidence, validation, or completion semantics are weakened.
 
-Do not treat `300` seconds as a universal C5 value. Select the timeout from the actual provider/model/hardware behavior being tested.
+Do not treat `300` seconds as a universal C5 value. Select the timeout from the actual provider/model/environment behavior being tested.
 
 ## Next execution scope
 
 Do not repeat already-proven Provider A execution or the provider-switch authority comparison unless the session/revision changed enough to invalidate those receipts.
 
-The next valid B1 attempt is:
+For V1, use the simplest available second provider/model connection that the user authorizes and that can participate in the installed LBE path.
+
+Valid B1 paths include:
 
 ```text
-identify one actually successful local-model planning session
-  -> extract only its non-sensitive request/planning contract
-  -> confirm that contract corresponds to successful tool planning, not embedding/plan-only/non-local execution
-  -> apply that exact contract shape to one switched-provider B1 run
-  -> require a valid governed tool request
+explicit LBE provider config
+  OR
+user-authorized Cline/provider connection adapter
+```
+
+Then run only:
+
+```text
+same persistent session
+  -> switch provider/model connection
+  -> confirm authority fields unchanged
+  -> one bounded workspace.replace_text request
   -> governed execution receipt
   -> completion evidence
   -> deterministic validation
   -> persisted terminal state
 ```
 
-If no such successful local planning session exists, do not infer or fabricate a contract from nearby Cline sessions. Use a provider/model known to satisfy the existing LBE structured planning contract instead.
+Do not block V1 on Cline compatibility completeness, large-workspace quality, benchmarking, performance tuning, or a universal credential abstraction.
 
 ## Completion predicate
 
