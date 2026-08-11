@@ -60,6 +60,16 @@ def test_installed_wheel_can_create_persistent_session(tmp_path: Path) -> None:
     )
     assert installed.returncode == 0, installed.stdout + installed.stderr
 
+    schema_probe = _run(
+        [
+            str(python_exe),
+            "-c",
+            "from importlib.resources import files; p=files('lbe_guard_inspector.memory').joinpath('memory_schema.sql'); assert p.is_file(); print(p.read_text(encoding='utf-8')[:20])",
+        ],
+        cwd=repo_root,
+    )
+    assert schema_probe.returncode == 0, schema_probe.stdout + schema_probe.stderr
+
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     database = tmp_path / "runtime.sqlite3"
