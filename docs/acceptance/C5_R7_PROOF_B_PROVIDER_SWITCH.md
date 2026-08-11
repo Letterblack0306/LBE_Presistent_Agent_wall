@@ -75,7 +75,7 @@ Observed:
 
 - readiness attempt timed out.
 
-No health or governed-execution claim is made for this model.
+This model is a heavier local model. The timeout is classified as **environment/performance inconclusive**, not as evidence of a provider-switch, authorization, or governance defect. No health or governed-execution claim is made for this model from that attempt.
 
 ### `second-state/smollm3-3b`
 
@@ -98,42 +98,90 @@ Proof B overall: PARTIALLY PROVEN
 
 Do not reinterpret this timeout as permission/policy failure without new evidence.
 
+A lightweight model may be used to prove provider-replacement mechanics on a controlled fixture, but such a result must not be interpreted as proof that the same model is suitable for large real workspaces.
+
+## Cline-derived local-provider investigation
+
+A later proof attempt created:
+
+`G:\Developments\lbe-p1-002-proof\provider-local-b4-cline.json`
+
+The goal was to reuse a request shape known to have worked in Cline with a local model, but the available Cline session evidence did not provide an unambiguous successful governed-planning contract that could legitimately be reused as LBE proof.
+
+Files inspected:
+
+- `tests\test differfence\1785460319869_yl0hf`
+- `tests\test differfence\1785461332072_pt9mp`
+
+Findings:
+
+- `1785460319869_yl0hf` is an LM Studio Cline session, but uses `text-embedding-nomic-embed-text-v1.5` in plan mode. It is not governed coding/tool-execution evidence.
+- `1785461332072_pt9mp` is a Cline Pass session using `deepseek/deepseek-v4-flash`, not the local LM Studio provider under test.
+- neither session provides a reusable successful local-provider B1 planning contract.
+- Gemma remains the only Cline-configured local candidate found that reached the LBE governed-tool boundary, but that run did not produce a valid exact replacement request, so it cannot satisfy B1.
+
+Correct classification:
+
+```text
+Cline config/session evidence: useful for candidate request-shape discovery only
+successful local governed-planning contract: NOT PROVEN
+B1 governed execution: NOT PROVEN
+product defect: NOT PROVEN by these sessions
+```
+
+Do not copy a Cline request shape merely because a session exists. Reuse is allowed only after identifying a **specific successful session message** whose non-sensitive planning contract can be extracted and shown to correspond to actual successful local-model tool planning.
+
+## Proof B claim split
+
+To avoid overstating what a small fixture/model proves, interpret Proof B in two layers:
+
+### B1 — provider replacement semantics
+
+Proves:
+
+```text
+same persistent session
+  -> provider/model switch
+  -> workspace/mode/permission/runtime policy unchanged
+  -> switched provider completes one governed operation
+  -> normal evidence/validation/completion semantics preserved
+```
+
+A small controlled fixture is acceptable for B1.
+
+### B2 — representative provider capability
+
+Separately evaluates whether a realistically capable provider/model can operate over a representative larger workspace through bounded LBE retrieval/context and still complete governed work.
+
+B1 must not be used to claim B2.
+
 ## Authorized next proof adjustment
 
 The current provider configuration contract accepts any positive `timeout_seconds`; there is no product-defined maximum in `ProviderConfig`.
 
-For the next **proof-only** Provider B attempt, use:
+A proof timeout may be increased to match observed local-model latency, provided the outer proof runner exceeds it and no LBE authority, evidence, validation, or completion semantics are weakened.
 
-```json
-{
-  "endpoint": "<same verified local OpenAI-compatible endpoint>",
-  "model": "second-state/smollm3-3b",
-  "timeout_seconds": 300
-}
-```
-
-Preserve any already-required `api_key` field exactly if the existing verified config uses one.
-
-This 300-second timeout is an acceptance-environment adjustment only. It must not alter workspace identity, permission, runtime policy, completion policy, evidence semantics, or validation policy.
-
-The outer proof runner/process timeout must be greater than the provider timeout so the provider can fail or complete through the LBE runtime rather than being killed externally.
+Do not treat `300` seconds as a universal C5 value. Select the timeout from the actual provider/model/hardware behavior being tested.
 
 ## Next execution scope
 
-Rerun only the missing B execution portion:
+Do not repeat already-proven Provider A execution or the provider-switch authority comparison unless the session/revision changed enough to invalidate those receipts.
+
+The next valid B1 attempt is:
 
 ```text
-existing switched session
-  -> provider check for second-state/smollm3-3b with timeout_seconds=300
-  -> continue/resume same session authority
-  -> one bounded governed task
-  -> governed tool receipt
+identify one actually successful local-model planning session
+  -> extract only its non-sensitive request/planning contract
+  -> confirm that contract corresponds to successful tool planning, not embedding/plan-only/non-local execution
+  -> apply that exact contract shape to one switched-provider B1 run
+  -> require a valid governed tool request
+  -> governed execution receipt
   -> completion evidence
   -> deterministic validation
   -> persisted terminal state
 ```
 
-Do not repeat the already-proven A execution or provider-switch authority comparison unless the session/revision has changed enough to invalidate those receipts.
+If no such successful local planning session exists, do not infer or fabricate a contract from nearby Cline sessions. Use a provider/model known to satisfy the existing LBE structured planning contract instead.
 
 ## Completion predicate
 
