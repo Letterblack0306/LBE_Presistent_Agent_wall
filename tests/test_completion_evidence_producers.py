@@ -69,7 +69,7 @@ def _executed_replace(runtime: SessionMemoryRuntimeBridge, root: Path) -> None:
         tool_name="workspace.replace_text",
         result={
             "operation_id": "reasoning.inspect:request-1:workspace.replace_text",
-            "status": "executed",
+            "status": "EXECUTED",
             "output": {
                 "path": "tracked.txt",
                 "before_sha256": hashlib.sha256(before).hexdigest(),

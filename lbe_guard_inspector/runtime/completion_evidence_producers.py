@@ -307,7 +307,7 @@ class CompletionEvidenceProducers:
             receipt_operation_id = result.get("operation_id")
             if (
                 value.get("success") is not True
-                or result.get("status") != "executed"
+                or result.get("status") != "EXECUTED"
                 or not isinstance(receipt_operation_id, str)
                 or not receipt_operation_id.startswith(f"{operation_id}:")
             ):
