@@ -6,6 +6,9 @@ operation-id idempotency. Tool implementations remain separate services.
 """
 from __future__ import annotations
 
+import hashlib
+import os
+import uuid
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -313,6 +316,105 @@ def build_workspace_read_handler(evidence_service: EvidenceService) -> ToolHandl
                 "path": path,
                 "evidence_count": len(evidence),
                 "missing_evidence": list(package.get("missing_evidence", ())),
+            },
+            evidence=evidence,
+        )
+
+    return handler
+
+
+def workspace_replace_text_spec() -> ToolSpec:
+    """One bounded non-destructive coding mutation capability."""
+    return ToolSpec(
+        tool_id="workspace.replace_text",
+        capability="modify",
+        required_arguments=("path", "old_text", "new_text"),
+        access_class=ToolAccessClass.WRITE,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.MEDIUM,
+        timeout_seconds=30.0,
+        retry_policy="none",
+        preconditions=(
+            "relative workspace path",
+            "existing regular UTF-8 file",
+            "old_text occurs exactly once",
+            "active coding write authority",
+        ),
+        expected_evidence=("before content hash", "after content hash", "task-bound source change"),
+        failure_modes=(
+            "invalid path",
+            "missing file",
+            "symlink target",
+            "ambiguous replacement",
+            "decode failure",
+            "authorization failure",
+        ),
+    )
+
+
+def build_workspace_replace_text_handler() -> ToolHandler:
+    """Replace one exact text occurrence inside the active workspace atomically."""
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        raw_path = request.arguments["path"]
+        old_text = request.arguments["old_text"]
+        new_text = request.arguments["new_text"]
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise ValueError("path must be a non-empty string")
+        if not isinstance(old_text, str) or not old_text:
+            raise ValueError("old_text must be a non-empty string")
+        if not isinstance(new_text, str):
+            raise ValueError("new_text must be a string")
+
+        relative = Path(raw_path.replace("\\", "/").strip())
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("path must stay within the active workspace")
+        root = request.context.workspace_root.resolve()
+        candidate = (root / relative).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("path must stay within the active workspace") from exc
+        if candidate.is_symlink():
+            raise ValueError("workspace.replace_text does not write through symlinks")
+        if not candidate.is_file():
+            raise FileNotFoundError(f"target file does not exist: {relative.as_posix()}")
+
+        before_bytes = candidate.read_bytes()
+        try:
+            before_text = before_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("target file must be UTF-8 text") from exc
+        occurrences = before_text.count(old_text)
+        if occurrences != 1:
+            raise ValueError(f"old_text must occur exactly once; observed {occurrences}")
+
+        after_text = before_text.replace(old_text, new_text, 1)
+        before_hash = hashlib.sha256(before_bytes).hexdigest()
+        after_bytes = after_text.encode("utf-8")
+        after_hash = hashlib.sha256(after_bytes).hexdigest()
+        temp = candidate.with_name(f".{candidate.name}.lbe-{uuid.uuid4().hex}.tmp")
+        try:
+            temp.write_bytes(after_bytes)
+            os.replace(temp, candidate)
+        finally:
+            if temp.exists():
+                temp.unlink()
+
+        path = relative.as_posix()
+        evidence = ({
+            "source_class": "current_workspace_mutation",
+            "path": path,
+            "before_sha256": before_hash,
+            "after_sha256": after_hash,
+            "replacement_count": 1,
+        },)
+        return ToolExecutionResult(
+            output={
+                "path": path,
+                "before_sha256": before_hash,
+                "after_sha256": after_hash,
+                "replacement_count": 1,
             },
             evidence=evidence,
         )
