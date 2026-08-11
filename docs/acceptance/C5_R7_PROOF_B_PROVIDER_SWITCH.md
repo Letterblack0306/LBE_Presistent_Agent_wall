@@ -130,11 +130,13 @@ product defect: NOT PROVEN by these sessions
 
 Do not copy a request shape merely because a Cline session exists. If reusing a request/planning shape, it must come from a specific successful message whose non-sensitive contract is known to correspond to actual successful tool planning.
 
-## User-authorized Cline connection reuse
+## User-authorized Cline connection reuse — deferred integration option
 
-Cline may be used as a **provider/model and credential source when the user explicitly grants permission**.
+Cline may eventually be used as a provider/model and credential source when the user explicitly grants permission, but **the current installed LBE runtime does not provide a supported Cline credential/session adapter**.
 
-The boundary is:
+Therefore this is **not a current B1 proof path** and must not be implemented merely to finish V1 Proof B.
+
+The future boundary, if implemented later, is:
 
 ```text
 user authorizes reuse of Cline-managed provider connection
@@ -144,34 +146,16 @@ user authorizes reuse of Cline-managed provider connection
   -> LBE session/workspace/policy/permissions remain LBE-owned
 ```
 
-This is different from silently extracting Cline credentials.
-
-Without explicit user permission:
+Without a supported adapter:
 
 ```text
 Cline credentials remain Cline-owned
-LBE must use its own configured connection
+LBE uses an explicit LBE-owned provider connection
 ```
 
-With explicit user permission, V1 may support a thin integration path where Cline's already-authenticated provider/model connection is reused or delegated to LBE, provided:
+The product does **not** need to bundle AI models or issue provider credentials. Authentication remains between the user and the selected provider. Cline integration is a possible later convenience surface, not a V1 acceptance dependency.
 
-- the credential is not copied into tracked source, logs, documentation, or proof fixtures;
-- LBE does not reveal the secret value;
-- the integration preserves the provider's authentication semantics;
-- revocation/logout on the provider/Cline side remains effective;
-- LBE records only non-secret connection metadata needed for session continuity;
-- provider/model changes still cannot alter LBE workspace authority, policy, evidence, validation, or completion semantics.
-
-Possible implementation forms for a later thin adapter include:
-
-- delegated authenticated provider connection;
-- provider-issued OAuth/session token exposed through a supported integration boundary;
-- user-approved credential reference/handle;
-- another non-secret reference that Cline/provider can resolve at runtime.
-
-The product does **not** need to bundle AI models or issue provider credentials. Authentication remains between the user and the selected provider; Cline can act as the already-configured access surface when the user chooses that path.
-
-For V1 B1, the key requirement remains provider/model replacement semantics, not credential ownership design. If a user-authorized Cline connection can be consumed through the installed LBE provider path without broad new architecture, it is acceptable B1 evidence.
+Do not add Cline credential/session integration during B1 unless it becomes an independently approved product slice.
 
 ## Proof B claim split
 
@@ -209,21 +193,16 @@ Do not treat `300` seconds as a universal C5 value. Select the timeout from the 
 
 Do not repeat already-proven Provider A execution or the provider-switch authority comparison unless the session/revision changed enough to invalidate those receipts.
 
-For V1, use the simplest available second provider/model connection that the user authorizes and that can participate in the installed LBE path.
+For current V1 B1, use the existing installed adapter and one explicit user-owned OpenAI-compatible Provider-B config, for example:
 
-Valid B1 paths include:
-
-```text
-explicit LBE provider config
-  OR
-user-authorized Cline/provider connection adapter
-```
+`G:\Developments\lbe-p1-002-proof\provider-b1.json`
 
 Then run only:
 
 ```text
 same persistent session
-  -> switch provider/model connection
+  -> load explicit Provider-B connection
+  -> switch provider/model
   -> confirm authority fields unchanged
   -> one bounded workspace.replace_text request
   -> governed execution receipt
@@ -232,7 +211,7 @@ same persistent session
   -> persisted terminal state
 ```
 
-Do not block V1 on Cline compatibility completeness, large-workspace quality, benchmarking, performance tuning, or a universal credential abstraction.
+Do not block V1 on Cline integration, Cline compatibility completeness, large-workspace quality, benchmarking, performance tuning, or a universal credential abstraction.
 
 ## Completion predicate
 
