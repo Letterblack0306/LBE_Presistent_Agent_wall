@@ -1,7 +1,7 @@
 # C5 / R7 Acceptance Record
 
 Updated: 2026-08-12
-Status: **ACTIVE ACCEPTANCE RECORD — C5/R7 overall NOT READY**
+Status: **ACTIVE ACCEPTANCE RECORD — all V1 proof families proven; final consolidation pending**
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 Current implementation branch: `feat/c5-governed-coding-execution`
 Latest proven Proof A head: `e9874dca1504aeef153de0e5e15cbcb33ee7a50f`
@@ -23,12 +23,13 @@ The required proof families are:
 | Family | Required installed-path proof | Current status |
 |---|---|---|
 | A. Coding session | governed edit -> trusted evidence -> validation -> persisted completion | **PROVEN** |
-| B. Provider switch | change provider/model while preserving workspace authority, policy, permissions, evidence semantics, and lifecycle | **BLOCKED — Provider-B quota** |
+| B. Provider switch | change provider/model while preserving workspace authority, policy, permissions, evidence semantics, and lifecycle | **PROVEN (B1); B2 capability testing deferred** |
 | C. Resume after workspace change | checkpoint -> external workspace change -> restart/resume -> stale invalidation/current evidence precedence | **PROVEN** |
 | D. Read-only audit | real controlled-workspace audit with zero mutation and deterministic evidence/result | **PROVEN** |
 | E. Escalation / denial | installed-path rejected request, provider-bypass resistance, explicit authority change, permitted retry | **PROVEN** |
 
-**C5/R7 overall is NOT READY until A-E each have installed-path receipts.**
+All A-E V1 proof families now have installed-path receipts. Final exact-revision
+consolidation remains required before declaring C5/R7 V1 READY.
 
 ---
 
@@ -555,10 +556,68 @@ before orchestration.
 
 ---
 
-## 13. Current next actions
+## 13. C5 Proof B — installed Provider-B operation
+
+Installed LBE used the existing `openai-compatible` adapter and the explicit,
+user-owned external Provider-B configuration. The provider configuration,
+runtime configuration, governance configuration, database, and controlled
+fixture all remained outside product source and tracked proof-project files.
 
 ```text
-B: externally blocked by Provider-B HTTP 429 credit_balance_exhausted; the
-   explicit config exists but cannot satisfy the required health contract.
-Overall C5/R7: NOT READY.
+workspace: G:\Developments\lbe-p1-002-proof\c5-provider-switch-project-v2
+runtime DB: G:\Developments\lbe-p1-002-proof\c5-provider-switch-runtime-v2\acceptance.sqlite3
+session: c5-provider-switch-session-v2
+task: c5-provider-b-task-v3
 ```
+
+The same persisted session was switched to Provider B:
+
+```text
+openai-compatible / nvidia/nemotron-nano-9b-v2:free
+```
+
+The installed selection response recorded `policy_unchanged = true` for active
+profile, evidence policy, permission, permission policy, and runtime policy;
+the workspace remained the same controlled project and the resolved mode
+remained `coding`.
+
+Installed proof:
+
+```text
+provider check -> READY (structured output)
+  -> same-session provider select
+  -> real provider returned one schema-valid workspace.replace_text request
+  -> R6C authorization ALLOW for modify
+  -> R6E workspace.replace_text EXECUTED once on README.md
+  -> receipt operation_id: reasoning.inspect:c5-provider-b-request-v3:workspace.replace_text
+  -> receipt before/after SHA-256 verified against current README.md
+  -> source_change PASS, focused_test PASS, git_status PASS
+  -> session validate READY
+  -> task persisted completed / VALIDATED_COMPLETION
+```
+
+The controlled fixture's registered `python -m pytest -q` validation returned
+`1 passed`; Git showed only the task-bound `README.md` change.
+
+Two earlier Provider-B attempts on the same clean fixture did not mutate it:
+the first omitted a guard and failed closed; the second completed read-only
+planning but omitted the tool request. Those were Provider-B planning behavior,
+not product authorization/evidence defects. A free model selected from the
+current OpenRouter catalog then completed the existing structured reasoning
+contract. One candidate was unavailable under account guardrail restrictions
+and another was temporarily rate limited; neither condition caused a product
+source change.
+
+**Verdict: C5 Proof Family B1 — PROVEN.**
+
+This proves provider replacement semantics only. Representative large-workspace
+provider capability (B2) remains deferred non-V1 hardening work.
+
+---
+
+## 14. Current next action
+
+Run final C5/R7 V1 exact-revision consolidation: focused acceptance suites,
+full repository suite, installed-wheel/CLI smoke, `git diff --check`, and this
+record's final reconciliation. No additional architecture or proof-family work
+is required unless that consolidation exposes a regression.

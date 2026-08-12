@@ -1,7 +1,7 @@
 # C5 / R7 Proof B — Provider Switch Acceptance Record
 
 Updated: 2026-08-12
-Status: **BLOCKED — Provider-B account quota prevents health/execution proof**
+Status: **PROVEN — B1 provider-replacement semantics; B2 capability testing deferred**
 Parent record: `docs/acceptance/C5_R7_ACCEPTANCE_RECORD.md`
 
 This file records the installed-path Provider Switch proof so future agents do not repeat already-proven steps or misclassify timeout behavior as an authority defect.
@@ -27,11 +27,11 @@ persistent installed session
 
 Disposable proof project:
 
-`G:\Developments\lbe-p1-002-proof\c5-provider-switch-project`
+`G:\Developments\lbe-p1-002-proof\c5-provider-switch-project-v2`
 
 Provider-B configs are kept outside tracked project source under:
 
-`G:\Developments\lbe-p1-002-proof\provider-local-b*.json`
+`G:\Developments\lbe-p1-002-proof\provider-b1.json`
 
 No product source or PR #53 runtime source was changed by this proof attempt.
 
@@ -227,11 +227,8 @@ Proof B becomes `PROVEN` only when all of the following exist in the same instal
 8. normal evidence/validation/completion semantics remain intact;
 9. terminal result is persisted.
 
-Until then:
-
-**C5/R7 Proof B = PARTIALLY PROVEN.**
-
-**C5/R7 overall = NOT READY.**
+The completion predicate was satisfied by the installed Provider-B receipt
+recorded below. This proves B1 only; B2 remains explicitly deferred.
 
 ---
 
@@ -267,7 +264,61 @@ Proof B: BLOCKED
 The controlled Provider-B fixture baseline was committed clean before a future
 retry so prior proof residue cannot be attributed to Provider B.
 
-Next valid action: replenish/replace the user-owned Provider-B connection, then
-restart Proof B from `provider check`; do not alter LBE authorization, provider
-adapters, credentials, or acceptance scope to bypass the failed health
-contract.
+This earlier account-quota result is retained as historical context only. It
+was superseded by the successful user-owned OpenRouter Provider-B connection
+below; no secret, credential, or provider configuration was committed.
+
+---
+
+## Final B1 installed receipt — 2026-08-12
+
+Controlled fixture and persisted session:
+
+```text
+workspace: G:\Developments\lbe-p1-002-proof\c5-provider-switch-project-v2
+runtime DB: G:\Developments\lbe-p1-002-proof\c5-provider-switch-runtime-v2\acceptance.sqlite3
+session: c5-provider-switch-session-v2
+task: c5-provider-b-task-v3
+```
+
+The existing installed adapter health check returned `READY` with structured
+output for Provider B `openai-compatible / nvidia/nemotron-nano-9b-v2:free`.
+The same session was then switched through `lbe provider select`; its response
+reported all tracked authority fields unchanged and retained the same workspace
+and coding mode.
+
+The real Provider-B planning response returned one schema-valid,
+workspace-relative `workspace.replace_text` request. Existing LBE owners then
+performed the rest of the path:
+
+```text
+real Provider-B proposal
+  -> R6C ALLOW modify
+  -> R6E EXECUTED one README.md replacement
+  -> receipt-bound source_change PASS
+  -> registered focused test PASS (1 passed)
+  -> git_status PASS
+  -> session validate READY
+  -> persisted completed / VALIDATED_COMPLETION
+```
+
+The persisted receipt records:
+
+```text
+operation_id: reasoning.inspect:c5-provider-b-request-v3:workspace.replace_text
+path: README.md
+replacement_count: 1
+before/after SHA-256: recorded and current after-hash verified
+```
+
+Git status contained only the governed fixture README mutation. No product
+source, provider adapter, authority, evidence, validation, or completion owner
+was changed to obtain this proof.
+
+**Verdict: C5/R7 Proof B1 = PROVEN.**
+
+Durable lesson: a provider that passes health may still omit required planning
+elements. That behavior must fail closed and be classified at the provider
+boundary; it does not authorize bypassing LBE's existing guard, R6C, R6E,
+evidence, or completion owners. A small controlled fixture proves replacement
+semantics, not representative provider capability (B2).
