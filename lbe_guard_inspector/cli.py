@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Sequence
@@ -178,7 +179,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         payload = args.handler(args)
-    except (ValueError, TypeError, FileNotFoundError, RuntimeError) as exc:
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as exc:
         _emit(
             {
                 "ok": False,

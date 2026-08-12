@@ -1,0 +1,22 @@
+{
+  "name": "@letterblack/lbe",
+  "version": "0.1.0",
+  "description": "Install, discover, and launch the managed Python LBE runtime",
+  "license": "UNLICENSED",
+  "private": false,
+  "bin": {
+    "lbe": "bin/lbe.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "pack:dry-run": "npm pack --dry-run --json"
+  }
+}
