@@ -10,6 +10,14 @@ The main post-V1 product pillar is now:
 
 Status: **AUTHORITATIVE PRODUCT PILLAR — ACTIVE PRIORITY**
 
+The immediate implementation gate under that pillar is:
+
+`docs/design/PROFESSIONAL_AGENT_RUNTIME_P0_P1_IMPLEMENTATION_GATE.md`
+
+Status: **AUTHORITATIVE IMPLEMENTATION GATE — ACTIVE**
+
+The P0/P1 gate exists specifically to prevent premature implementation of a generic `RuntimeEvent` / `EventRecorder` before provider-native event semantics, provider/model capability semantics, runtime capability semantics, and effective session capability projection are defined.
+
 This pillar starts now. It defines the forward implementation priority for provider-native events, capability negotiation, professional tools, persistent agent interaction, terminal/process execution, Git/worktrees, agent-control protocol, MCP, IDE integration, and the eventual professional CLI/TUI.
 
 The existing persistent runtime, C5/R7 acceptance, provider adapters, package release, npm bootstrap, and global project profiling remain accepted foundations. They must not be mistaken for the complete professional product.
@@ -17,15 +25,16 @@ The existing persistent runtime, C5/R7 acceptance, provider adapters, package re
 For current work, read in this order:
 
 1. `docs/design/PROFESSIONAL_AGENT_RUNTIME_PRODUCT_PILLAR.md` — primary post-V1 product direction and implementation priority.
-2. `docs/research/POST_V1_PROFESSIONAL_AGENT_CLI_PROVIDER_RUNTIME_RESEARCH.md` — provider/runtime/CLI research evidence underlying the pillar.
-3. `docs/design/LBE_AGENT_RUNTIME_CLI_TUI_AND_TOOL_ACCESS_SPEC.md` — agent interaction and governed tool-access design gate.
-4. `docs/design/LBE_AGENT_RUNTIME_USER_STEERING_EXTERNAL_CLIENT_AND_CONTROL_PROTOCOL_ADDENDUM.md` — active user steering, external-agent boundary, MCP vs control protocol, provenance.
-5. `README.md` — current CLI-first product identity and user-facing architecture.
-6. `docs/IMPLEMENTATION_PLAN.md` — established persistent-runtime architecture and implementation history; reconcile it with the professional-agent pillar for new post-V1 work.
-7. `docs/acceptance/C5_R7_ACCEPTANCE_RECORD.md` — accepted persistent-runtime V1 proof record.
-8. `docs/acceptance/POST_V1_RELEASE_PACKAGE_READINESS.md` — Python package/install readiness.
-9. `docs/acceptance/POST_V1_NPM_CONSUMER_DISTRIBUTION_READINESS.md` — npm bootstrap/public-consumer release evidence.
-10. current Git/source/runtime/provider/registry evidence.
+2. `docs/design/PROFESSIONAL_AGENT_RUNTIME_P0_P1_IMPLEMENTATION_GATE.md` — immediate implementation gate; P0 provider event normalization and P1 professional runtime capability contract must be reviewed before P2 or Session/Turn/Item event implementation.
+3. `docs/research/POST_V1_PROFESSIONAL_AGENT_CLI_PROVIDER_RUNTIME_RESEARCH.md` — provider/runtime/CLI research evidence underlying the pillar.
+4. `docs/design/LBE_AGENT_RUNTIME_CLI_TUI_AND_TOOL_ACCESS_SPEC.md` — agent interaction and governed tool-access design gate.
+5. `docs/design/LBE_AGENT_RUNTIME_USER_STEERING_EXTERNAL_CLIENT_AND_CONTROL_PROTOCOL_ADDENDUM.md` — active user steering, external-agent boundary, MCP vs control protocol, provenance.
+6. `README.md` — current CLI-first product identity and user-facing architecture.
+7. `docs/IMPLEMENTATION_PLAN.md` — established persistent-runtime architecture and implementation history; reconcile it with the professional-agent pillar for new post-V1 work.
+8. `docs/acceptance/C5_R7_ACCEPTANCE_RECORD.md` — accepted persistent-runtime V1 proof record.
+9. `docs/acceptance/POST_V1_RELEASE_PACKAGE_READINESS.md` — Python package/install readiness.
+10. `docs/acceptance/POST_V1_NPM_CONSUMER_DISTRIBUTION_READINESS.md` — npm bootstrap/public-consumer release evidence.
+11. current Git/source/runtime/provider/registry evidence.
 
 Current distribution routing remains:
 
@@ -79,10 +88,24 @@ P11 transcript projection
 P12 professional interactive TUI
 ```
 
+P0/P1 must explicitly distinguish:
+
+```text
+ProviderModelCapabilities
+RuntimeCapabilities
+EffectiveSessionCapabilities
+```
+
+and define how the effective provider-visible tool set is derived from provider/model capability, runtime/backend capability, active mode, permissions, workspace binding, and backend health/configuration.
+
+Do not implement a flat generic event taxonomy or a second `EventRecorder` persistence authority before those contracts are accepted. JSONL is a projection/export/transport over authoritative runtime state, not a competing session-history database.
+
+Do not claim live output merely because an event type exists. `command.stdout.delta`, `command.stderr.delta`, PTY/ConPTY, and background-process events require a backend that actually emits incremental process state.
+
 Later IDE/browser/external-agent acceptance work follows the pillar roadmap.
 
 Do not start CLI/TUI implementation from generic dashboard assumptions. The primary user-facing surface must be the reference-derived live agent runtime stream with mutable tool invocation cells, user steering, truthful capability gating, live process output, and replayable session events.
 
 When repository documentation disagrees with live Git/runtime/provider evidence, current evidence wins and the relevant current-status/design document must be reconciled. Historical acceptance receipts should not be rewritten merely to modernize terminology.
 
-When a proposed post-V1 feature conflicts with `PROFESSIONAL_AGENT_RUNTIME_PRODUCT_PILLAR.md`, reconcile the documentation before implementation. Do not silently create a competing roadmap.
+When a proposed post-V1 feature conflicts with `PROFESSIONAL_AGENT_RUNTIME_PRODUCT_PILLAR.md` or `PROFESSIONAL_AGENT_RUNTIME_P0_P1_IMPLEMENTATION_GATE.md`, reconcile the documentation before implementation. Do not silently create a competing roadmap.
