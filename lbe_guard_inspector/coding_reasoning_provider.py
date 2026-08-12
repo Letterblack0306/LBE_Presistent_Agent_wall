@@ -14,7 +14,6 @@ from typing import Any, Mapping
 from .reasoning_contracts import ReasoningPlan, ReasoningRequest
 from .reasoning_provider import (
     OpenAICompatibleReasoningBackend,
-    ProviderError,
     _PLANNING_JSON_SCHEMA,
     _PLANNING_OUTPUT_CONTRACT,
     _require_relative_evidence_paths,
@@ -105,10 +104,6 @@ class ToolAwareOpenAICompatibleReasoningBackend(OpenAICompatibleReasoningBackend
         try:
             plan = ToolAwareReasoningPlan.from_mapping(result)
             _require_relative_evidence_paths(plan)
-            approved = set(request.approved_tools)
-            for item in plan.tool_requests:
-                if item.tool_id not in approved:
-                    raise ValueError(f"tool request is not approved for this runtime: {item.tool_id}")
             return plan
         except (TypeError, ValueError) as exc:
             raise ProviderError("PROVIDER_SCHEMA_ERROR", f"invalid planning response: {exc}") from exc

@@ -92,13 +92,13 @@ def test_tool_aware_provider_accepts_one_approved_bounded_replace_request() -> N
     }
 
 
-def test_tool_aware_provider_rejects_unapproved_replace_request() -> None:
+def test_tool_aware_provider_preserves_unapproved_request_for_r6e() -> None:
     backend = ToolAwareOpenAICompatibleReasoningBackend(
         config=ProviderConfig(endpoint="http://provider.invalid/v1/chat/completions", model="test", timeout_seconds=1),
         transport=FakeTransport(_provider_plan()),
     )
-    with pytest.raises(ProviderError, match="not approved"):
-        backend.plan(_reasoning_request("workspace.read"))
+    plan = backend.plan(_reasoning_request("workspace.read"))
+    assert plan.tool_requests[0].tool_id == "workspace.replace_text"
 
 
 def test_coding_mode_exposes_modify_but_audit_does_not() -> None:
@@ -254,21 +254,26 @@ def test_gateway_executes_planned_replace_only_in_coding_mode(tmp_path: Path, mo
     assert runtime.load_task_status(task_id="task-1").last_outcome == "AWAITING_VALIDATION"
 
 
-def test_gateway_never_executes_planned_replace_in_audit_mode(tmp_path: Path) -> None:
+def test_gateway_escalates_planned_replace_in_audit_mode_without_mutation(tmp_path: Path) -> None:
     target = tmp_path / "README.md"
     target.write_text("C5_BEFORE\n", encoding="utf-8")
     runtime = _runtime(tmp_path, mode="audit", permission="read_only")
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=FakeController(_plan()))
-    gateway.invoke(
-        AgentRequestEnvelope(
-            request_id="request-audit",
-            session_id=runtime.session_id,
-            task_id="task-audit",
-            project_workspace_id=runtime.project_workspace_id,
-            workspace_root=tmp_path,
-            mode=AgentMode.AUDIT,
-            operation_id="reasoning.inspect",
-            arguments={"problem": "inspect only"},
+    with pytest.raises(agent_integration.AgentIntegrationError, match="not enabled"):
+        gateway.invoke(
+            AgentRequestEnvelope(
+                request_id="request-audit",
+                session_id=runtime.session_id,
+                task_id="task-audit",
+                project_workspace_id=runtime.project_workspace_id,
+                workspace_root=tmp_path,
+                mode=AgentMode.AUDIT,
+                operation_id="reasoning.inspect",
+                arguments={"problem": "inspect only"},
+            )
         )
-    )
     assert target.read_text(encoding="utf-8") == "C5_BEFORE\n"
+    task = runtime.load_task_status(task_id="task-audit")
+    assert task is not None
+    assert task.status.value == "blocked"
+    assert task.last_outcome == "TOOL_ESCALATED"

@@ -194,6 +194,8 @@ class GovernedAgentGateway:
                 reference_context=reference_context,
                 max_results=max_results,
             )
+            if response.outcome == "COMPLETED":
+                self._execute_planned_tools(request=request, response=response)
             state = self._runtime.load_task_status(task_id=request.task_id)
             if state is None:
                 raise AgentIntegrationError(
