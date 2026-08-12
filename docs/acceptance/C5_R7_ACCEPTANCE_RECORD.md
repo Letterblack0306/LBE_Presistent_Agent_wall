@@ -26,7 +26,7 @@ The required proof families are:
 | B. Provider switch | change provider/model while preserving workspace authority, policy, permissions, evidence semantics, and lifecycle | PARTIALLY PROVEN |
 | C. Resume after workspace change | checkpoint -> external workspace change -> restart/resume -> stale invalidation/current evidence precedence | **PROVEN** |
 | D. Read-only audit | real controlled-workspace audit with zero mutation and deterministic evidence/result | **PROVEN** |
-| E. Escalation / denial | installed-path rejected request, provider-bypass resistance, explicit authority change, permitted retry | PARTIALLY PROVEN |
+| E. Escalation / denial | installed-path rejected request, provider-bypass resistance, explicit authority change, permitted retry | **PROVEN** |
 
 **C5/R7 overall is NOT READY until A-E each have installed-path receipts.**
 
@@ -507,36 +507,51 @@ Never package machine-specific config simply to make an installed proof pass.
 
 ---
 
-## 12. C5 Proof E — current boundary and remaining proof
+## 12. C5 Proof E — installed escalation/denial
 
-The installed audit request `c5-escalation-request-v1` explicitly asked the
-provider for `workspace.replace_text` while its audit capability set excluded
-`modify`. The provider correctly returned no tool request; the README SHA-256
-was identical before and after, and the task completed as an audit result.
+The first installed request correctly produced no forbidden proposal. A later
+real-provider request did propose `workspace.replace_text`; it exposed one
+remaining handoff defect: `LBERequestController` rejected the known bounded
+tool as `UNKNOWN_TOOL` before existing R6E/R6C could decide authority.
 
-That proves audit-mode tool exposure and no mutation, but it does **not** yet
-provide the required installed `ESCALATED`/`DENIED` receipt for a provider that
-actually proposes an out-of-authority action.
+Source revision:
 
-Source correction at `88e87a0...` ensures a schema-valid unapproved provider
-proposal now reaches the existing R6E orchestrator instead of failing as an
-opaque provider-schema error. In audit mode, the registered bounded
-`workspace.replace_text` request is evaluated by existing R6C, returns
-`ESCALATED`, persists `TOOL_ESCALATED`/`BLOCKED`, and cannot invoke its handler.
-No generic tool or second authorization path was added.
+`e905da130801483070da0288f4c7780ceb204aef`
 
-Validation for this correction:
+The correction preserves rejection of unknown tool IDs, but allows a
+schema-valid request for an existing governed tool to reach the R6E tool
+registry. Tool visibility still remains audit read-only; R6C is now the first
+owner that classifies an attempted known write outside authority.
 
-- focused C/D/E owner tests: **80 passed**;
-- full repository suite: **629 passed**;
+Installed final proof:
+
+```text
+real provider proposal: workspace.replace_text README.md
+  -> audit mode decision omitted modify
+  -> R6E tool registry received the bounded request
+  -> R6C authorization returned ESCALATED
+  -> CLI returned Capability 'modify' is not enabled by audit mode policy
+  -> task c5-escalation-task-v4 persisted BLOCKED / TOOL_ESCALATED
+  -> README.md SHA-256 identical before and after
+  -> Git status remained clean
+```
+
+The handler was not invoked. No generic tool, approval framework, second
+authorization resolver, or audit write exposure was added.
+
+Validation for the final correction:
+
+- focused acceptance/owner tests: **105 passed**;
+- full repository suite: **630 passed**;
 - installed-wheel smoke: **1 passed**;
 - `git diff --check`: passed.
 
-**Verdict: C5 Proof Family E — PARTIALLY PROVEN.**
+**Verdict: C5 Proof Family E — PROVEN.**
 
-The remaining receipt must come from an actual installed provider response that
-proposes the bounded write while operating under audit authority. Do not use a
-fake provider or infer this receipt from unit tests.
+Durable lesson: provider-visible tool lists are guidance, but a known governed
+tool proposed by an untrusted provider must reach the existing authorization
+boundary for an attributable denial receipt. Unknown tools still fail closed
+before orchestration.
 
 ---
 
@@ -544,7 +559,5 @@ fake provider or infer this receipt from unit tests.
 
 ```text
 B: externally blocked until user-owned provider-b1.json exists.
-E: obtain one real installed provider proposal for the bounded audit-mode write;
-   require R6E ESCALATED receipt, BLOCKED persisted task, and zero mutation.
 Overall C5/R7: NOT READY.
 ```
