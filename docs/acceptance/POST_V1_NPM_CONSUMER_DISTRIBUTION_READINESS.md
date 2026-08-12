@@ -3,6 +3,7 @@
 Updated: 2026-08-12
 Status: **LOCAL CONSUMER WORKFLOW READY; PUBLICATION NOT AUTHORIZED**
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
+Implementation revision: `01fac7e9ada73991cb7a2e204544d00b2d5368bf`
 
 This record covers the npm bootstrap distribution track after accepted C5/R7
 V1. It does not replace the Python LBE runtime, reopen C5/R7, or publish an
@@ -98,13 +99,37 @@ The upgrade fixture was temporary and was not added to this repository. No
 automatic database migration or state deletion occurs during npm install,
 reinstall, or Python-runtime replacement.
 
+## Final package and validation evidence
+
+The final local artifacts were built outside the repository:
+
+```text
+@letterblack/lbe 0.1.0 tarball SHA-256:
+cbde290afbfe2606f3e6ac4005497770f384483496ae22c2c18eb07f26e6b9d7
+
+lbe-guard-inspector 0.2.0 wheel SHA-256:
+86aca0bd37f9ee94fe96036c025de4d0c85c77ac96421899266db4ce071fe3fc
+```
+
+The isolated consumer reinstalled those final artifacts, reported a compatible
+runtime, listed the installed `openai-compatible` adapter, and read the
+existing persistent session. Validation on the implementation revision passed:
+
+```text
+python -m pytest -q tests/test_cli.py     19 passed
+npm test (from npm/)                       8 passed
+python -m pytest -q                        632 passed
+npm pack --dry-run --json                  8-file allowlist passed
+git diff --check origin/main...HEAD        passed
+```
+
 ## Release decision
 
 The local npm consumer distribution workflow is **READY** for an explicitly
-authorized controlled distribution action once the final validations below are
-recorded. It is **BLOCKED** for public publication because a license decision
-has not been supplied. No npm publication, tag, release, credential lookup, or
-credential persistence occurred in this track.
+authorized controlled distribution action. It is **BLOCKED** for public
+publication because a license decision has not been supplied. No npm
+publication, tag, release, credential lookup, or credential persistence
+occurred in this track.
 
 The known GitHub Actions startup/billing condition remains an external
 verification limitation; it is not evidence that the npm package or Python
