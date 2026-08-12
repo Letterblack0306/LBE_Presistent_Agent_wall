@@ -505,6 +505,11 @@ A license decision is a separate legal/product decision, not a technical npm
 publication prerequisite. Do not block a public npm publish solely because the
 package remains `UNLICENSED` or the repository has no license file.
 
+For direct scoped-public publication, npm must also accept either account 2FA
+or a granular access token with bypass-2FA publishing permission. A token that
+can authenticate but cannot publish is an external registry credential
+limitation, not a package defect.
+
 ### Publication boundary
 
 Public publication remains a separate explicit action:
