@@ -60,6 +60,15 @@ def test_installed_wheel_can_create_persistent_session(tmp_path: Path) -> None:
     )
     assert installed.returncode == 0, installed.stdout + installed.stderr
 
+    for executable in (
+        lbe_exe,
+        venv_dir / ("Scripts/lbe-guard-inspector.exe" if os.name == "nt" else "bin/lbe-guard-inspector"),
+        venv_dir / ("Scripts/lbe-guard-inspector-evidence.exe" if os.name == "nt" else "bin/lbe-guard-inspector-evidence"),
+        venv_dir / ("Scripts/lbe-guard-audit.exe" if os.name == "nt" else "bin/lbe-guard-audit"),
+    ):
+        help_result = _run([str(executable), "--help"], cwd=repo_root)
+        assert help_result.returncode == 0, help_result.stdout + help_result.stderr
+
     schema_probe = _run(
         [
             str(python_exe),
@@ -69,6 +78,18 @@ def test_installed_wheel_can_create_persistent_session(tmp_path: Path) -> None:
         cwd=repo_root,
     )
     assert schema_probe.returncode == 0, schema_probe.stdout + schema_probe.stderr
+
+    provider_config_probe = _run(
+        [
+            str(python_exe),
+            "-c",
+            "from lbe_guard_inspector.reasoning_config import load_provider_config; "
+            "config = load_provider_config(r'" + str(repo_root / "reasoning-provider.example.json") + "'); "
+            "assert config.api_key is None; print(config.model)",
+        ],
+        cwd=repo_root,
+    )
+    assert provider_config_probe.returncode == 0, provider_config_probe.stdout + provider_config_probe.stderr
 
     workspace = tmp_path / "workspace"
     workspace.mkdir()
