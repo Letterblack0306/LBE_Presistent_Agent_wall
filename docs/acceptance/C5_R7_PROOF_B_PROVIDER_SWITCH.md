@@ -1,7 +1,7 @@
 # C5 / R7 Proof B — Provider Switch Acceptance Record
 
 Updated: 2026-08-12
-Status: **PARTIALLY PROVEN — execution after switch still missing**
+Status: **BLOCKED — Provider-B account quota prevents health/execution proof**
 Parent record: `docs/acceptance/C5_R7_ACCEPTANCE_RECORD.md`
 
 This file records the installed-path Provider Switch proof so future agents do not repeat already-proven steps or misclassify timeout behavior as an authority defect.
@@ -232,3 +232,42 @@ Until then:
 **C5/R7 Proof B = PARTIALLY PROVEN.**
 
 **C5/R7 overall = NOT READY.**
+
+---
+
+## Provider-B explicit-config attempt — 2026-08-12
+
+The user supplied the required external configuration:
+
+`G:\Developments\lbe-p1-002-proof\provider-b1.json`
+
+Its required non-secret connection fields were structurally complete. Before
+changing the persisted session, installed LBE ran the required provider health
+check through the existing `openai-compatible` adapter.
+
+Observed result:
+
+```text
+HTTP 429
+code: credit_balance_exhausted
+message: no credits remaining
+```
+
+No provider switch, governed operation, workspace mutation, completion claim,
+or product-source change was made after this failed health check.
+
+Classification:
+
+```text
+owner: user-owned Provider-B account/billing state
+LBE product defect: not indicated
+Proof B: BLOCKED
+```
+
+The controlled Provider-B fixture baseline was committed clean before a future
+retry so prior proof residue cannot be attributed to Provider B.
+
+Next valid action: replenish/replace the user-owned Provider-B connection, then
+restart Proof B from `provider check`; do not alter LBE authorization, provider
+adapters, credentials, or acceptance scope to bypass the failed health
+contract.

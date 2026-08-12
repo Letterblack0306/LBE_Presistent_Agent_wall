@@ -23,7 +23,7 @@ The required proof families are:
 | Family | Required installed-path proof | Current status |
 |---|---|---|
 | A. Coding session | governed edit -> trusted evidence -> validation -> persisted completion | **PROVEN** |
-| B. Provider switch | change provider/model while preserving workspace authority, policy, permissions, evidence semantics, and lifecycle | PARTIALLY PROVEN |
+| B. Provider switch | change provider/model while preserving workspace authority, policy, permissions, evidence semantics, and lifecycle | **BLOCKED — Provider-B quota** |
 | C. Resume after workspace change | checkpoint -> external workspace change -> restart/resume -> stale invalidation/current evidence precedence | **PROVEN** |
 | D. Read-only audit | real controlled-workspace audit with zero mutation and deterministic evidence/result | **PROVEN** |
 | E. Escalation / denial | installed-path rejected request, provider-bypass resistance, explicit authority change, permitted retry | **PROVEN** |
@@ -558,6 +558,7 @@ before orchestration.
 ## 13. Current next actions
 
 ```text
-B: externally blocked until user-owned provider-b1.json exists.
+B: externally blocked by Provider-B HTTP 429 credit_balance_exhausted; the
+   explicit config exists but cannot satisfy the required health contract.
 Overall C5/R7: NOT READY.
 ```
