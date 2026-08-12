@@ -1,275 +1,220 @@
-# LBE Guard Inspector
+# LBE Persistent Agent Runtime
 
-This package provides deterministic, evidence-bound workspace inspection. It
-does not modify the audited workspace or generate repairs.
+LBE is a persistent, provider-neutral local agent runtime with a CLI-first control surface.
 
-## Release contract
+The current product is no longer only the historical Guard Inspector vertical slice. The accepted V1 runtime now owns persistent sessions, workspace identity, provider selection, governed tools, evidence, validation, resume/revalidation, and completion semantics.
 
-- Python: 3.11 or later.
-- Network surface: local-only by default (`127.0.0.1`).
-- Stable inspection endpoints: `POST /guard-inspector/callback` and
-  `POST /guard-inspector/module-registry`.
-- Stable commands: `lbe-guard-inspector` for the fixed inspection endpoints,
-  `lbe-guard-inspector-evidence` for the evidence API, and
-  `lbe-guard-audit` for the deterministic project-scoped audit controller.
-- Runtime configuration is explicit. Set
-  `LBE_GUARD_INSPECTOR_CONFIG_PATH`,
-  `LBE_GUARD_INSPECTOR_GOVERNANCE_PATH`, and
-  `LBE_GUARD_INSPECTOR_STATE_DIR` for an installed package; absent variables
-  preserve the repository-local defaults.
-
-The package includes:
-
-- five JSON Schema contracts;
-- runtime JSON Schema validation;
-- a read-only SQLite retrieval adapter;
-- `POST /evidence-package`;
-- `POST /guard-result` — evidence-bound Guard Inspector evaluation layer;
-- archive/build/backup exclusion;
-- exact path, hash, snippet, line range, score, authority, and verification metadata;
-- evidence-policy enforcement that maps a deterministic rule result plus the
-  current evidence package to a `guard_result` verdict
-  (`PASS` / `FAIL` / `INSUFFICIENT_EVIDENCE` / `NOT_APPLICABLE`);
-- `POST /guard-run` — the full vertical slice: select a registered guard,
-  execute it against the workspace, run validation, and produce the verdict
-  from the original problem request;
-- tests proving schema enforcement, exclusion behavior, verdict mapping, and
-  the full guard vertical slice (65 passed as of current HEAD).
-
-## Files
+The public installation/bootstrap surface is:
 
 ```text
-schemas/
-  task_record.schema.json
-  evidence_package.schema.json
-  guard_request.schema.json
-  guard_result.schema.json
-  rule_proposal.schema.json
-
-lbe_guard_inspector/
-  contracts.py
-  config.py
-  evidence_service.py
-  guard_inspector.py
-  guard_runner.py
-  server.py
-
-tests/
-  test_contracts.py
-  test_evidence_service.py
-  test_guard_inspector.py
-  test_guard_runner.py
+npm / npx
+  -> @letterblack/lbe
+  -> thin Node installer / launcher
+  -> managed Python LBE runtime
+  -> `lbe` CLI
 ```
 
-## Install
+The Node/npm layer does **not** implement a second LBE runtime. It only discovers, installs, launches, upgrades, and diagnoses the managed Python runtime.
 
-```powershell
-Set-Location "<repo-path>"
-python -m pip install .
-Copy-Item .\config.example.json .\config.json
+## Current architecture
+
+```text
+User / external agent
+        |
+        v
+`lbe` CLI
+        |
+        v
+Persistent LBE runtime
+        |
+        +-- session + workspace identity
+        +-- provider/model selection
+        +-- mode + permissions + policy
+        +-- governed tool orchestration
+        +-- evidence + deterministic validation
+        +-- checkpoint / resume / revalidation
+        `-- validated completion persistence
+        |
+        v
+replaceable reasoning provider
+        |
+        v
+controlled workspace operations
 ```
 
-Edit `config.json` and set `database_path`.
+Core ownership rule:
 
-The adapter automatically discovers a table containing path and content columns. For deterministic production use, configure the exact table and column names.
+```text
+Provider reasons.
+LBE runtime orchestrates.
+LBE governance authorizes.
+Governed tools execute.
+Workspace evidence supplies current facts.
+Validation proves.
+Persistent session state belongs to LBE.
+```
 
-For an installed package, keep runtime configuration outside `site-packages`:
+## Public npm package
+
+The public bootstrap package is:
+
+```text
+@letterblack/lbe
+```
+
+Install the launcher globally:
 
 ```powershell
-$env:LBE_GUARD_INSPECTOR_CONFIG_PATH = "C:\\GuardInspector\\config.json"
-$env:LBE_GUARD_INSPECTOR_GOVERNANCE_PATH = "C:\\GuardInspector\\governance.json"
-$env:LBE_GUARD_INSPECTOR_STATE_DIR = "C:\\GuardInspector\\state"
+npm install --global @letterblack/lbe
+```
+
+Then inspect the local runtime state:
+
+```powershell
+lbe --diagnose
+```
+
+The current npm package is intentionally a thin bootstrap layer and does not bundle a Python runtime, provider account, model, API key, or workspace state.
+
+To install an approved Python LBE wheel into the managed runtime:
+
+```powershell
+lbe --install --wheel C:\path\to\lbe_guard_inspector-0.2.0-py3-none-any.whl
+```
+
+Then use the normal CLI:
+
+```powershell
+lbe --help
+lbe provider list
+lbe provider check ...
+lbe session create ...
+lbe session status ...
+lbe audit ...
+lbe investigate ...
+lbe code ...
+```
+
+Use `lbe --help` and command-level help as the executable source of truth for exact arguments.
+
+## Runtime and state boundary
+
+The npm launcher and Python runtime keep installation, configuration, and persistent state separate.
+
+Conceptually:
+
+```text
+LBE_HOME/
+  runtime/   managed versioned Python environments
+  config/    user-owned runtime/provider configuration
+  state/     persistent SQLite/session state
+```
+
+`LBE_HOME` may be set to choose a controlled user-scoped location.
+
+Provider credentials remain external user-owned configuration. They must not be embedded in npm package contents, Python package source, runtime databases, acceptance records, or Git history.
+
+## Provider model
+
+LBE does not provide or bundle AI models/accounts.
+
+The user selects a supported provider/model connection. The provider performs reasoning; LBE remains authoritative for workspace scope, permissions, governed execution, evidence, validation, and persistent task/session state.
+
+The accepted V1 provider boundary includes the `openai-compatible` adapter and has proven provider/model switching without transferring LBE-owned authority to the provider.
+
+## Operating modes
+
+The runtime exposes thin CLI mode commands over the same persistent runtime services:
+
+- `lbe code` — governed coding workflow;
+- `lbe audit` — read-only audit workflow;
+- `lbe investigate` — investigation workflow.
+
+These commands do not implement separate policy, provider, evidence, or completion systems. They route into the existing governed runtime.
+
+## Persistent sessions
+
+The CLI supports persistent session lifecycle operations including creation, status, checkpoint/resume/continue, and validation paths implemented by the runtime.
+
+Resume is evidence-aware: persisted memory is not treated as live workspace truth. Current Git/workspace state is re-inspected and stale source-backed facts are invalidated before continued execution.
+
+## Accepted V1 status
+
+C5/R7 V1 is architecture-complete for the accepted milestone.
+
+Installed-path proofs are recorded for:
+
+- governed coding execution;
+- provider/model switching while preserving LBE authority;
+- resume after external workspace change with stale-state invalidation;
+- read-only audit with zero workspace mutation;
+- escalation/denial of operations outside active authority.
+
+Canonical evidence:
+
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/acceptance/C5_R7_ACCEPTANCE_RECORD.md`
+- `docs/acceptance/POST_V1_RELEASE_PACKAGE_READINESS.md`
+- `docs/acceptance/POST_V1_NPM_CONSUMER_DISTRIBUTION_READINESS.md`
+
+## Legacy Guard Inspector surfaces
+
+The original deterministic Guard Inspector and audit surfaces remain installed compatibility/read-only capabilities:
+
+```text
 lbe-guard-inspector
+lbe-guard-inspector-evidence
+lbe-guard-audit
 ```
 
-Run a project-scoped audit with an explicit current workspace root:
+They are no longer the complete product identity or primary user control surface. The primary persistent-agent control surface is now the `lbe` CLI.
 
-```powershell
-lbe-guard-audit audit --workspace-root "C:\\Projects\\target-project"
+Historical HTTP evidence/guard endpoints and their implementation remain part of the repository where still required by existing runtime behavior, but new product guidance should not describe LBE as only a read-only Guard Inspector service.
+
+## Python package
+
+The managed Python runtime package currently builds as:
+
+```text
+lbe-guard-inspector 0.2.0
 ```
 
-## Test
+with Python `>=3.11` and the console entry point:
+
+```text
+lbe = lbe_guard_inspector.cli:main
+```
+
+The historical Python distribution name does not change runtime ownership: `lbe` is the primary CLI and persistent LBE runtime surface.
+
+## Development validation
+
+Run the repository suite from the source workspace:
 
 ```powershell
 python -m pytest -q
 ```
 
-Latest run: **65 passed** (0.32 s).
-
-## Run
+Run npm bootstrap tests from `npm/`:
 
 ```powershell
-python -m lbe_guard_inspector.server --config .\config.json --port 8766
+npm test
+npm pack --dry-run --json
 ```
 
-## Health
+For release/consumer claims, unit tests alone are insufficient. Use the source-independent validation ladder recorded in the acceptance documents: package build -> isolated install -> npm tarball audit -> clean consumer install -> managed runtime -> CLI smoke -> persistent session/workspace proof.
 
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8766/health"
-```
+## Non-goals / invariants
 
-## Create evidence package
+Do not introduce:
 
-```powershell
-$body = @{
-    problem = "Provided callback is not a function"
-    workspace_id = "cep-project"
-    mode = "inspect"
-    max_results = 10
-} | ConvertTo-Json
+- a second Node session/runtime implementation;
+- a Node provider authority;
+- a second permission/policy resolver;
+- a second governed tool registry;
+- a second evidence/completion system;
+- unrestricted generic shell bypasses;
+- provider credentials inside package/runtime state;
+- memory as a replacement for current workspace/Git evidence.
 
-Invoke-RestMethod `
-    -Method Post `
-    -Uri "http://127.0.0.1:8766/evidence-package" `
-    -ContentType "application/json" `
-    -Body $body
-```
-
-## Evaluate a guard result
-
-`POST /guard-result` takes the outcome of an existing registered deterministic
-rule (`rule_result`) plus the current `evidence_package` and returns a
-`guard_result` contract. The mapping is **not** a blind rename — an evidence
-policy gates every promotion to a workspace compliance verdict.
-
-```text
-existing registered deterministic rule (rule_result)
-        ↓
-current evidence package
-        ↓
-evidence-policy enforcement
-        ↓
-guard_result contract
-        ↓
-PASS / FAIL / INSUFFICIENT_EVIDENCE / NOT_APPLICABLE
-```
-
-Mapping rules enforced by `lbe_guard_inspector.guard_inspector.GuardInspector`:
-
-- `passed → PASS` only when current workspace evidence refs support it, there
-  are no contradictions, and validation refs are present;
-- `failed → FAIL` only when current workspace evidence refs support it;
-- `blocked → INSUFFICIENT_EVIDENCE`;
-- `not_applicable → NOT_APPLICABLE`;
-- indexed-only rule results (e.g. `generic.index_present`) can never become
-  `PASS` or `FAIL` — they cannot claim a workspace compliance verdict;
-- any rule result lacking current workspace evidence refs is downgraded to
-  `INSUFFICIENT_EVIDENCE`;
-- contradictions between indexed and workspace evidence prevent an
-  unsupported `PASS`.
-
-```powershell
-$body = @{
-    rule_result = @{
-        rule_id = "cep.manifest_exists"
-        status  = "passed"
-        message = "CEP manifest.xml is present."
-        evidence = @{ path = "CEP_Project/CSXS/manifest.xml" }
-    }
-    evidence_package = @{
-        package_id         = "ep-1"
-        task_id            = "task-1"
-        query              = "Provided callback is not a function"
-        workspace_id       = "cep-project"
-        indexed_reference_evidence   = @()
-        current_workspace_evidence = @(
-            @{ ref = "workspace:cep-project:src/panel.js"; source_type = "workspace"; authority = 2; verified = $true; classification = "current_workspace" }
-        )
-        validation_evidence = @(
-            @{ ref = "validation:manifest-schema:1"; source_type = "validation"; authority = 5; verified = $true; classification = "validation" }
-        )
-        contradictions = @()
-        missing_evidence = @()
-        generated_at   = "2026-07-25T00:00:00+00:00"
-    }
-} | ConvertTo-Json -Depth 10
-
-Invoke-RestMethod `
-    -Method Post `
-    -Uri "http://127.0.0.1:8766/guard-result" `
-    -ContentType "application/json" `
-    -Body $body
-```
-
-## Run the full vertical slice
-
-`POST /guard-run` implements the Phase 2 vertical slice from the original
-problem request, reusing the existing deterministic rule-execution
-infrastructure (`audit_controller` + `rules/`):
-
-```text
-user problem
-        ↓
-search  (agent.search_workspace)
-        ↓
-evidence package  (EvidenceService)
-        ↓
-guard selection  (audit_controller.resolve_rule)
-        ↓
-guard execution against the workspace  (audit_controller.run_rule)
-        ↓
-validation  (independent inspect_file corroboration)
-        ↓
-LBE decision context  (GuardInspector.evaluate)
-        ↓
-verdict  (PASS / FAIL / INSUFFICIENT_EVIDENCE / NOT_APPLICABLE)
-```
-
-Unlike `POST /guard-result` (which accepts a supplied `rule_result`), this
-endpoint *selects* a registered guard by `pack_id` + `rule_id`, *executes* it
-against the workspace, *runs validation*, and *produces the verdict* from the
-original problem. The response carries the full decision context: `task`,
-`evidence_package` (with injected `validation_evidence`), `rule_result`, and
-`guard_result`.
-
-```powershell
-$body = @{
-    problem       = "Provided callback is not a function"
-    workspace_id  = "cep-project"
-    workspace_root = "G:\Developments\CEP_Project"
-    pack_id       = "cep"
-    rule_id       = "cep.manifest_exists"
-    extensions    = @(".xml")
-    max_results   = 10
-} | ConvertTo-Json -Depth 6
-
-Invoke-RestMethod `
-    -Method Post `
-    -Uri "http://127.0.0.1:8766/guard-run" `
-    -ContentType "application/json" `
-    -Body $body
-```
-
-## Phase boundary
-
-This package does not:
-
-- run a reasoning model;
-- modify a workspace;
-- create permanent rules;
-- promote memory.
-
-### Handoff status
-
-Older deterministic rule execution infrastructure already exists in
-`audit_controller.py` and `rules/`. The Drive source confirms the contradiction
-files were modified recently, while the existing rules predate the new
-evidence-package layer.
-
-The new evidence-bound Guard Inspector evaluation layer is now integrated into
-a full read-only vertical slice:
-
-- `lbe_guard_inspector/guard_inspector.py` maps a registered rule's
-  `RuleResult` plus the current evidence package to a `guard_result` verdict
-  under evidence-policy enforcement;
-- `lbe_guard_inspector/guard_runner.py` selects and executes a registered guard
-  (`audit_controller.resolve_rule` / `run_rule`), builds the current evidence
-  package, runs validation, and produces the verdict from the original problem
-  request — exposed at `POST /guard-run`.
-
-It proves typed contracts, read-only indexed evidence packaging,
-evidence-bound verdict mapping, and the full guard vertical slice. The known
-"search re-reads source files every time" gap (see `BASELINE_VALIDATION.md`)
-still makes live searches over large network roots slow; slice tests therefore
-inject fakes, and live `/guard-run` validation uses an empty extension scope to
-exercise the real stack without re-reading 80k+ files.
+The npm layer distributes LBE. The Python LBE runtime remains the single execution/governance authority.
