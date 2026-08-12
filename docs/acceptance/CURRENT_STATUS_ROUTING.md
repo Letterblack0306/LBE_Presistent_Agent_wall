@@ -1,13 +1,28 @@
 # Current Status Routing
 
-`docs/CURRENT_STATUS.md` is a historical July-era snapshot and must not be used by itself for current C5/R7 decisions.
+`docs/CURRENT_STATUS.md` is a historical July-era snapshot and must not be used by itself for current product, CLI, C5/R7, package, or npm-distribution decisions.
 
-For current persistent-agent acceptance work, read in this order:
+For current work, read in this order:
 
-1. `docs/IMPLEMENTATION_PLAN.md`
-2. `docs/acceptance/C5_R7_ACCEPTANCE_RECORD.md`
-3. current Git/source/runtime evidence
+1. `README.md` — current CLI-first product identity and user-facing architecture.
+2. `docs/IMPLEMENTATION_PLAN.md` — canonical runtime architecture and implementation sequence.
+3. `docs/acceptance/C5_R7_ACCEPTANCE_RECORD.md` — accepted persistent-runtime V1 proof record.
+4. `docs/acceptance/POST_V1_RELEASE_PACKAGE_READINESS.md` — Python package/install readiness.
+5. `docs/acceptance/POST_V1_NPM_CONSUMER_DISTRIBUTION_READINESS.md` — npm bootstrap/public-consumer release evidence.
+6. current Git/source/runtime/registry evidence.
 
-The acceptance record contains the installed-path proof history, failed attempts, corrections, anti-repeat rules, and current A-E proof matrix.
+Current product routing is:
 
-When repository docs disagree with live Git/runtime evidence, live evidence wins and the acceptance record must be updated.
+```text
+npm / npx
+  -> @letterblack/lbe
+  -> thin Node bootstrap / launcher
+  -> managed Python LBE runtime
+  -> `lbe` CLI
+```
+
+The historical Guard Inspector service/read-only commands remain compatibility and implementation surfaces, but they are no longer the complete product identity or the primary user control surface.
+
+Do not route new product work through old `lbe-core`/Core-package assumptions unless a specific historical component is actually in scope. The current persistent-agent control surface is the `lbe` CLI, while Python LBE remains the sole runtime/governance authority.
+
+When repository documentation disagrees with live Git/runtime/registry evidence, current evidence wins and the relevant current-status/acceptance document must be reconciled. Historical acceptance receipts should not be rewritten merely to modernize terminology.
