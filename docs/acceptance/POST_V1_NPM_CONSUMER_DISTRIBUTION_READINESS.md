@@ -134,13 +134,12 @@ npm publication, tag, release, credential lookup, or credential persistence
 occurred in this track. Explicit user authorization remains required before a
 public npm publication.
 
-After explicit authorization, npm authenticated with the user-owned ignored
-workspace token but rejected direct publication of `@letterblack/lbe@0.1.0`
-with `E403`: account 2FA or a granular bypass-2FA publishing token is required.
-The version was verified absent from the public registry after the rejection,
-so public-install verification is correctly unavailable. This is an external
-registry credential capability blocker, not a package failure; no token value,
-tag, or public package was created.
+After explicit authorization and resolution of npm's account-side publishing
+requirement, direct publication of `@letterblack/lbe@0.1.0` succeeded. The
+public registry resolves version `0.1.0` as `latest`, and a fresh unauthenticated
+consumer installed the public package successfully. Its installed launcher
+reported `PYTHON_SUPPORTED` and `LBE_RUNTIME_NOT_INSTALLED`, the expected
+pre-bootstrap state. No token value, credential file, or tag was created.
 
 The known GitHub Actions startup/billing condition remains an external
 verification limitation; it is not evidence that the npm package or Python

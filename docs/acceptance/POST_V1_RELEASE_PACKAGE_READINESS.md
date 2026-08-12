@@ -1,7 +1,7 @@
 # Post-V1 Release / Package Readiness
 
 Updated: 2026-08-12
-Status: **PACKAGE WORKFLOW READY; DIRECT REGISTRY PUBLISH BLOCKED BY 2FA**
+Status: **PACKAGE WORKFLOW READY; @letterblack/lbe 0.1.0 PUBLISHED**
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 Baseline accepted runtime: `471fb2c3f7606f146e534431383408e66b107757`
 Release-readiness implementation revision: `7f32fb1167f4bc4ce583aed3d165cc78f8f2c702`
@@ -148,20 +148,25 @@ No package was published, no tag was created, and no provider credential was
 read, copied, or persisted by this track. A public npm publication still
 requires explicit user authorization.
 
-### Direct npm publication attempt
+### Direct npm publication
 
-After explicit user authorization, direct publication of `@letterblack/lbe`
-version `0.1.0` was attempted with the user-owned, ignored workspace token.
-The package tarball audit passed and npm authenticated successfully, but the
-registry rejected publication with `E403`: direct publishing requires account
-2FA or a granular access token with bypass-2FA publishing permission. The
-version was verified absent from the public registry afterward; no public
-install receipt exists because no package was published. No token value,
-credential file, tag, or release artifact was created by the attempt.
+After explicit user authorization, npm accepted the audited direct publication
+of `@letterblack/lbe@0.1.0` with public access. Registry metadata subsequently
+resolved with `latest = 0.1.0` and this tarball URL:
 
-This is an external npm account/token capability blocker. Resolve it by
-enabling the required account 2FA flow or providing an appropriately permitted
-granular token, then explicitly authorize a retry.
+```text
+https://registry.npmjs.org/@letterblack/lbe/-/lbe-0.1.0.tgz
+```
+
+A fresh consumer directory completed `npm install --ignore-scripts
+@letterblack/lbe@0.1.0`, then ran the installed `lbe --diagnose` command. The
+launcher reported `PYTHON_SUPPORTED` and `LBE_RUNTIME_NOT_INSTALLED`, the
+expected state before the consumer supplies an approved Python LBE wheel.
+
+No token value, credential file, tag, or non-package release artifact was
+created. The brief initial public-registry 404 after npm returned its accepted
+publish receipt was propagation delay; public metadata and installation now
+provide the required independent confirmation.
 
 ## Deferred post-V1 work
 
