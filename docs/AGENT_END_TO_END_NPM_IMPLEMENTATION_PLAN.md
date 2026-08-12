@@ -589,9 +589,13 @@ Before public publish, verify:
 - npm authentication/2FA/token readiness;
 - package metadata;
 - README/install instructions;
-- license decision;
+- final package license metadata, if the owner has chosen to provide it;
 - final tarball audit;
 - exact version/tag decision.
+
+A license decision is a separate legal/product decision, not a technical npm
+publication prerequisite. Do not block a public npm publish solely because the
+package remains `UNLICENSED` or the repository has no license file.
 
 Only after explicit user authorization may an agent execute a public release command such as:
 

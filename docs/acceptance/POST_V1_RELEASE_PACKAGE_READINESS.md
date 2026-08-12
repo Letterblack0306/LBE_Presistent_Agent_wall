@@ -1,7 +1,7 @@
 # Post-V1 Release / Package Readiness
 
 Updated: 2026-08-12
-Status: **PACKAGE WORKFLOW READY; PUBLIC RELEASE ACTION BLOCKED**
+Status: **PACKAGE WORKFLOW READY; PUBLIC RELEASE AWAITS EXPLICIT AUTHORIZATION**
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 Baseline accepted runtime: `471fb2c3f7606f146e534431383408e66b107757`
 Release-readiness implementation revision: `7f32fb1167f4bc4ce583aed3d165cc78f8f2c702`
@@ -135,16 +135,18 @@ state and was not requalified as a package-upgrade migration in this track.
 ## Release decision
 
 The clean build/install/package workflow is **READY** for an explicitly
-authorized controlled distribution action. It is **BLOCKED** for a public
-release action because:
+authorized controlled distribution action. A license decision is not a
+technical npm publication prerequisite; the current `UNLICENSED` metadata and
+absence of a repository license file do not prevent a public npm publication.
 
-1. the repository has no `LICENSE`/`LICENSE.md`/`COPYING` file, so a license
-   decision cannot be invented during package readiness; and
-2. the current environment could not authenticate to GitHub Actions, so the
-   declared cross-platform CI matrix has not been freshly verified here.
+The current environment could not authenticate to GitHub Actions, so the
+declared cross-platform CI matrix has not been freshly verified here. This is
+an external verification limitation, not a local package failure or a reason
+to alter the workflow before account availability is restored.
 
 No package was published, no tag was created, and no provider credential was
-read, copied, or persisted by this track.
+read, copied, or persisted by this track. A public npm publication still
+requires explicit user authorization.
 
 ## Deferred post-V1 work
 

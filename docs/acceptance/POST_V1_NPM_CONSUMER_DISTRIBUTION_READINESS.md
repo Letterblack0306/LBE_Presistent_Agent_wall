@@ -127,10 +127,12 @@ git diff --check origin/main...HEAD        passed
 ## Release decision
 
 The local npm consumer distribution workflow is **READY** for an explicitly
-authorized controlled distribution action. It is **BLOCKED** for public
-publication because a license decision has not been supplied. No npm
-publication, tag, release, credential lookup, or credential persistence
-occurred in this track.
+authorized controlled distribution action. A license decision is not a
+technical npm publication prerequisite; the current `UNLICENSED` metadata and
+absence of a repository license file do not block public npm publication. No
+npm publication, tag, release, credential lookup, or credential persistence
+occurred in this track. Explicit user authorization remains required before a
+public npm publication.
 
 The known GitHub Actions startup/billing condition remains an external
 verification limitation; it is not evidence that the npm package or Python

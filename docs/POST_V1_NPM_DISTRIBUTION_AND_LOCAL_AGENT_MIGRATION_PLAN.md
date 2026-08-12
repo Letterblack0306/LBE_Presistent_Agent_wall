@@ -494,13 +494,16 @@ Only after local npm consumer simulation passes:
 - verify package metadata;
 - verify package tarball contents;
 - verify public README/install instructions;
-- resolve license decision before formal public release;
 - verify npm authentication/2FA/token path;
 - confirm no secrets in package/history intended for publication;
 - document exact tested Node/npm/Python support;
 - record final consumer smoke evidence.
 
 Do not publish automatically merely because these checks pass.
+
+A license decision is a separate legal/product decision, not a technical npm
+publication prerequisite. Do not block a public npm publish solely because the
+package remains `UNLICENSED` or the repository has no license file.
 
 ### Publication boundary
 
