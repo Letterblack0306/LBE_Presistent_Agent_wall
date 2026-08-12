@@ -259,7 +259,7 @@ def test_provider_list_reads_registered_adapters_without_building_provider(capsy
     assert payload == {
         "action": "provider.list",
         "ok": True,
-        "providers": ["openai-compatible"],
+        "providers": ["anthropic", "gemini", "openai", "openai-compatible"],
     }
 
 

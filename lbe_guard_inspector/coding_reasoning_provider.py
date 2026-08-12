@@ -14,6 +14,7 @@ from typing import Any, Mapping
 from .reasoning_contracts import ReasoningPlan, ReasoningRequest
 from .reasoning_provider import (
     OpenAICompatibleReasoningBackend,
+    ProviderError,
     _PLANNING_JSON_SCHEMA,
     _PLANNING_OUTPUT_CONTRACT,
     _require_relative_evidence_paths,

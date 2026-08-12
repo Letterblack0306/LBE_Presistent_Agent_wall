@@ -79,7 +79,7 @@ The current npm package is intentionally a thin bootstrap layer and does not bun
 To install an approved Python LBE wheel into the managed runtime:
 
 ```powershell
-lbe --install --wheel C:\path\to\lbe_guard_inspector-0.2.0-py3-none-any.whl
+lbe --install --wheel C:\path\to\lbe_guard_inspector-0.2.1-py3-none-any.whl
 ```
 
 Then use the normal CLI:
@@ -120,7 +120,12 @@ LBE does not provide or bundle AI models/accounts.
 
 The user selects a supported provider/model connection. The provider performs reasoning; LBE remains authoritative for workspace scope, permissions, governed execution, evidence, validation, and persistent task/session state.
 
-The accepted V1 provider boundary includes the `openai-compatible` adapter and has proven provider/model switching without transferring LBE-owned authority to the provider.
+The installed runtime includes first-party `openai`, `anthropic`, and `gemini`
+adapters plus `openai-compatible` for compatible endpoints. All adapters use the
+same persistent LBE session, governance, tools, evidence, validation, and
+completion owners; changing an adapter never transfers those authorities to a
+provider. See [provider configuration](docs/PROVIDER_CONFIGURATION.md) for
+user-owned connection files.
 
 ## Operating modes
 
