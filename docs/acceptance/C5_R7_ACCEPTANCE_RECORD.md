@@ -24,8 +24,8 @@ The required proof families are:
 |---|---|---|
 | A. Coding session | governed edit -> trusted evidence -> validation -> persisted completion | **PROVEN** |
 | B. Provider switch | change provider/model while preserving workspace authority, policy, permissions, evidence semantics, and lifecycle | PARTIALLY PROVEN |
-| C. Resume after workspace change | checkpoint -> external workspace change -> restart/resume -> stale invalidation/current evidence precedence | PARTIALLY PROVEN |
-| D. Read-only audit | real controlled-workspace audit with zero mutation and deterministic evidence/result | PARTIALLY PROVEN |
+| C. Resume after workspace change | checkpoint -> external workspace change -> restart/resume -> stale invalidation/current evidence precedence | **PROVEN** |
+| D. Read-only audit | real controlled-workspace audit with zero mutation and deterministic evidence/result | **PROVEN** |
 | E. Escalation / denial | installed-path rejected request, provider-bypass resistance, explicit authority change, permitted retry | PARTIALLY PROVEN |
 
 **C5/R7 overall is NOT READY until A-E each have installed-path receipts.**
@@ -428,3 +428,123 @@ After every meaningful C5/R7 proof attempt:
 - do not preserve transient noise that does not change future decisions.
 
 This record must be updated before declaring another C5 proof family complete.
+
+---
+
+## 10. C5 Proof C — installed checkpoint/resume after external change
+
+Source revision adding the missing installed checkpoint adapter:
+
+`88e87a0a8c301059f109fc5e2a34f2739c559438`
+
+Controlled fixture:
+
+```text
+workspace: G:\Developments\lbe-p1-002-proof\c5-resume-project-v1
+runtime DB: G:\Developments\lbe-p1-002-proof\c5-resume-runtime-v1\acceptance.sqlite3
+session: c5-resume-session-v1
+task: c5-resume-running-v1
+```
+
+The missing installed-path seam was a CLI adapter, not another R4 owner. The
+new `lbe session checkpoint` command delegates to the existing
+`SessionMemoryRuntimeBridge`: it records only named workspace-relative file
+hashes, persists an existing compaction payload and active constraints, and
+returns the persisted checkpoint identity.
+
+Installed proof:
+
+```text
+normal installed audit request started task c5-resume-running-v1
+  -> proof-only CLI process interrupted after task persisted RUNNING
+  -> installed lbe session checkpoint recorded README.md fact + checkpoint
+  -> README.md changed and committed externally
+  -> installed lbe session continue rehydrated same session/task/workspace
+  -> checkpoint head check = MISMATCH
+  -> checkpoint reactivation_allowed = false
+  -> prior verified_facts = []
+  -> task remained RUNNING with no stale completion claim
+```
+
+The resumed packet carried the preserved active constraint and required live
+Git/source revalidation. Current workspace Git head was authoritative over the
+checkpoint. The external change left the controlled workspace clean after its
+commit.
+
+**Verdict: C5 Proof Family C — PROVEN.**
+
+Durable lesson: R4’s storage/revalidation implementation is not enough for an
+installed acceptance claim unless the control surface can create the same
+file-backed checkpoint through the authoritative runtime bridge.
+
+---
+
+## 11. C5 Proof D — installed read-only audit
+
+The same controlled fixture ran the installed audit path using explicit
+external runtime config/governance files. These files remain outside the tracked
+proof project and are not wheel package data.
+
+```text
+installed lbe audit
+  -> persisted session c5-resume-session-v1
+  -> mode=audit, runtime_policy=audit, permission=read_only
+  -> mode capabilities excluded modify
+  -> provider returned workspace evidence request and deterministic result
+  -> task c5-resume-task-v1b persisted COMPLETED
+  -> README.md SHA-256 and Git status were unchanged by the audit
+```
+
+The first attempt without explicit runtime config failed closed because the
+wheel intentionally excludes machine-specific `config.json`; that was a
+fixture configuration error, not a packaging defect. Supplying the existing
+environment-configured external owner produced the installed read-only proof.
+
+**Verdict: C5 Proof Family D — PROVEN.**
+
+Durable lesson: runtime configuration is a user-controlled external resource.
+Never package machine-specific config simply to make an installed proof pass.
+
+---
+
+## 12. C5 Proof E — current boundary and remaining proof
+
+The installed audit request `c5-escalation-request-v1` explicitly asked the
+provider for `workspace.replace_text` while its audit capability set excluded
+`modify`. The provider correctly returned no tool request; the README SHA-256
+was identical before and after, and the task completed as an audit result.
+
+That proves audit-mode tool exposure and no mutation, but it does **not** yet
+provide the required installed `ESCALATED`/`DENIED` receipt for a provider that
+actually proposes an out-of-authority action.
+
+Source correction at `88e87a0...` ensures a schema-valid unapproved provider
+proposal now reaches the existing R6E orchestrator instead of failing as an
+opaque provider-schema error. In audit mode, the registered bounded
+`workspace.replace_text` request is evaluated by existing R6C, returns
+`ESCALATED`, persists `TOOL_ESCALATED`/`BLOCKED`, and cannot invoke its handler.
+No generic tool or second authorization path was added.
+
+Validation for this correction:
+
+- focused C/D/E owner tests: **80 passed**;
+- full repository suite: **629 passed**;
+- installed-wheel smoke: **1 passed**;
+- `git diff --check`: passed.
+
+**Verdict: C5 Proof Family E — PARTIALLY PROVEN.**
+
+The remaining receipt must come from an actual installed provider response that
+proposes the bounded write while operating under audit authority. Do not use a
+fake provider or infer this receipt from unit tests.
+
+---
+
+## 13. Current next actions
+
+```text
+B: externally blocked until user-owned provider-b1.json exists.
+E: obtain one real installed provider proposal for the bounded audit-mode write;
+   require R6E ESCALATED receipt, BLOCKED persisted task, and zero mutation.
+Overall C5/R7: NOT READY.
+```
