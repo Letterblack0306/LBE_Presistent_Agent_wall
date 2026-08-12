@@ -1,7 +1,7 @@
 # C5 / R7 Acceptance Record
 
 Updated: 2026-08-12
-Status: **ACTIVE ACCEPTANCE RECORD — all V1 proof families proven; final consolidation pending**
+Status: **C5/R7 V1 READY — installed-path acceptance complete**
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 Current implementation branch: `feat/c5-governed-coding-execution`
 Latest proven Proof A head: `e9874dca1504aeef153de0e5e15cbcb33ee7a50f`
@@ -28,8 +28,8 @@ The required proof families are:
 | D. Read-only audit | real controlled-workspace audit with zero mutation and deterministic evidence/result | **PROVEN** |
 | E. Escalation / denial | installed-path rejected request, provider-bypass resistance, explicit authority change, permitted retry | **PROVEN** |
 
-All A-E V1 proof families now have installed-path receipts. Final exact-revision
-consolidation remains required before declaring C5/R7 V1 READY.
+All A-E V1 proof families have installed-path receipts and final consolidation
+has passed on the acceptance branch.
 
 ---
 
@@ -615,9 +615,33 @@ provider capability (B2) remains deferred non-V1 hardening work.
 
 ---
 
-## 14. Current next action
+## 14. Final C5/R7 V1 consolidation
 
-Run final C5/R7 V1 exact-revision consolidation: focused acceptance suites,
-full repository suite, installed-wheel/CLI smoke, `git diff --check`, and this
-record's final reconciliation. No additional architecture or proof-family work
-is required unless that consolidation exposes a regression.
+Final acceptance validation completed after all five installed-path receipts
+were present:
+
+- focused C5/authority/CLI acceptance coverage: **132 passed**;
+- full repository suite: **630 passed**;
+- exact-worktree installed-wheel and installed CLI smoke: **1 passed**;
+- `git diff --check origin/main...HEAD`: passed.
+
+The installed-wheel smoke builds the wheel from the acceptance worktree,
+installs it into an isolated virtual environment, verifies packaged
+`memory_schema.sql`, invokes the installed `lbe` executable, creates a
+persistent session, and verifies the SQLite database is non-empty.
+
+Final V1 matrix:
+
+| Family | Status |
+|---|---|
+| A. Coding session | **PROVEN** |
+| B. Provider/model switch (B1) | **PROVEN** |
+| C. Resume after workspace change | **PROVEN** |
+| D. Read-only audit | **PROVEN** |
+| E. Escalation / denial | **PROVEN** |
+| C5/R7 V1 | **READY** |
+
+Deferred non-V1 work remains B2 representative/large-workspace provider
+capability, performance and model-quality evaluation, provider integrations
+such as Cline, broader tools, UI/TUI work, and production hardening. None of
+these are evidence gaps in the V1 persistent-runtime acceptance predicate.
