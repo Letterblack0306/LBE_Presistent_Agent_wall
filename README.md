@@ -181,7 +181,7 @@ Historical HTTP evidence/guard endpoints and their implementation remain part of
 The managed Python runtime package currently builds as:
 
 ```text
-lbe-guard-inspector 0.2.0
+lbe-guard-inspector 0.2.1
 ```
 
 with Python `>=3.11` and the console entry point:

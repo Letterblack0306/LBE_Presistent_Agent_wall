@@ -34,7 +34,7 @@ The npm package does not bundle a Python runtime, model, provider account, API k
 The current bootstrap accepts an approved local LBE wheel:
 
 ```powershell
-lbe --install --wheel C:\artifacts\lbe_guard_inspector-0.2.0-py3-none-any.whl
+lbe --install --wheel C:\artifacts\lbe_guard_inspector-0.2.1-py3-none-any.whl
 ```
 
 After the managed runtime is installed, the launcher transparently forwards the normal Python CLI:

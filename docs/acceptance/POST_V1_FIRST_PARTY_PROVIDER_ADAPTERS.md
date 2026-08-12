@@ -66,9 +66,15 @@ wheel archive contained no runtime database, provider/configuration JSON,
 `.env`, `.truth`, or test files. Wheel SHA-256:
 
 ```text
-89CB5D886A89AECC0925FB1F1C1D6B2D2025238AD87CAD4C63E4A4EBAB3751CA
+7193D21CD7769B0DD6D79D658F467DE68C62FC79E96CDF8A95A2EF4EA46BA5C5
 ```
 
 `git diff --check` passed. The existing `@letterblack/lbe` npm wrapper does
 not need a version change because it already discovers and launches compatible
 `0.2.x` Python runtime wheels; it does not own provider logic.
+
+The existing npm bootstrap was also exercised against that exact wheel in a
+fresh isolated `LBE_HOME`. `lbe --install --wheel` completed, `lbe --diagnose`
+reported `LBE_RUNTIME_COMPATIBLE` with Python package `0.2.1`, `lbe provider
+list` returned all four provider IDs, and an installed `lbe session create`
+created persistent SQLite state.
