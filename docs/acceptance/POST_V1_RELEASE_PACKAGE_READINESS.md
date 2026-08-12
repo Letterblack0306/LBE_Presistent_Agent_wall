@@ -82,12 +82,12 @@ The clean build produced:
 
 ```text
 wheel: lbe_guard_inspector-0.2.0-py3-none-any.whl
-wheel SHA-256: a758d3b3378f75057c7120ffca8aff1a12cd9196dd5ef1a11993cae7cdbfbbf1
+wheel SHA-256: fe8fb3b8fe1c46f05e39dea06f488799a8482798a6f1cea2bf6a6e2742983fc9
 wheel file count: 88
 
 sdist: lbe_guard_inspector-0.2.0.tar.gz
-sdist SHA-256: 5c856f5ad32168e6bae85498a795c9549af9e8b579fbdbc8c2d570c5785b5594
-sdist file count: 105
+sdist SHA-256: ae0677225d26899770e633346ce93e2d8360599628a2eb7e7b9d447b77762112
+sdist file count: 94
 ```
 
 Both archives contain the required
