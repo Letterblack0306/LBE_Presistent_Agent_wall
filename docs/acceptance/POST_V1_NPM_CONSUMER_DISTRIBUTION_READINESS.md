@@ -113,7 +113,8 @@ lbe-guard-inspector 0.2.0 wheel SHA-256:
 
 The isolated consumer reinstalled those final artifacts, reported a compatible
 runtime, listed the installed `openai-compatible` adapter, and read the
-existing persistent session. Validation on the implementation revision passed:
+existing persistent session. Validation on revision
+`c207a0a87e373252ebc1df015ed35f2d66e9dc22` passed:
 
 ```text
 python -m pytest -q tests/test_cli.py     19 passed
