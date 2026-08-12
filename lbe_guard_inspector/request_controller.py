@@ -297,7 +297,7 @@ class LBERequestController:
                 raise _ControllerFailure("UNKNOWN_TOOL", f"Reasoning plan requested unknown tool: {evidence.tool_id}")
             _bounded_path(root, evidence.path)
         for tool_request in getattr(plan, "tool_requests", ()):
-            if tool_request.tool_id not in self._approved_tools:
+            if tool_request.tool_id not in _KNOWN_TOOLS:
                 raise _ControllerFailure("UNKNOWN_TOOL", f"Reasoning plan requested unknown tool: {tool_request.tool_id}")
             _bounded_path(root, tool_request.path)
         if plan.candidate_guard_ids and not plan.evidence_requests:
