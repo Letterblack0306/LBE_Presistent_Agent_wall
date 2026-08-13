@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .memory import TaskState
+from .memory.operational_history import SessionOperationalHistory
 from .professional_history_runtime import (
     PersistedProfessionalTurnResult,
     execute_persisted_governed_professional_turn,
@@ -19,7 +20,6 @@ from .professional_session_provider import ProfessionalSessionProvider
 from .runtime.completion_gate import CompletionDecision, TaskCompletionContract
 from .runtime.completion_runtime import CodingCompletionRuntime
 from .runtime.tool_orchestration import GovernedToolOrchestrator, ToolExecutionContext
-from .memory.operational_history import SessionOperationalHistory
 
 
 class ProfessionalCompletionRuntimeError(RuntimeError):
@@ -86,7 +86,7 @@ def execute_completion_gated_persisted_professional_turn(
             persisted_turn=persisted,
             completion_contract=contract,
             completion_decision=None,
-            task_state=completion_runtime._runtime.load_task_status(task_id=task_id),
+            task_state=None,
         )
 
     terminal_type = runtime_result.final_turn.terminal_event.event_type
@@ -95,7 +95,7 @@ def execute_completion_gated_persisted_professional_turn(
             persisted_turn=persisted,
             completion_contract=contract,
             completion_decision=None,
-            task_state=completion_runtime._runtime.load_task_status(task_id=task_id),
+            task_state=None,
         )
 
     evidence = completion_runtime.load_evidence(task_id=task_id)
