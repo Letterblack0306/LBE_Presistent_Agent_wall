@@ -34,7 +34,7 @@ def _repo(tmp_path: Path) -> Path:
     _git(root, "init")
     _git(root, "config", "user.email", "test@example.com")
     _git(root, "config", "user.name", "LBE Test")
-    (root / "README.md").write_text("alpha\nbeta\ngamma\n", encoding="utf-8")
+    (root / "README.md").write_bytes(b"alpha\nbeta\ngamma\n")
     _git(root, "add", "README.md")
     _git(root, "commit", "-m", "initial")
     return root
