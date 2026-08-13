@@ -17,7 +17,12 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 
-from .professional_terminal_backend import TerminalCommandPolicy
+from .professional_terminal_backend import (
+    TerminalCommandPolicy,
+    TerminalCommandPolicyCatalog,
+    terminal_exec_spec,
+)
+from .tool_orchestration import ToolExecutionResult, ToolRegistry, ToolRequest
 
 
 class CommandEventType(StrEnum):
@@ -83,6 +88,93 @@ class _StreamChunk:
 @dataclass(frozen=True)
 class _StreamClosed:
     stream: str
+
+
+def register_live_terminal_exec_backend(
+    *,
+    registry: ToolRegistry,
+    catalog: TerminalCommandPolicyCatalog,
+) -> object:
+    """Register a live-event implementation of the existing ``terminal.exec`` spec.
+
+    Authorization, command IDs and fixed argv still belong to the P5 tool/policy
+    owners. The only new behavior is truthful P6 process observation.
+    """
+    if not isinstance(registry, ToolRegistry):
+        raise TypeError("registry must be ToolRegistry")
+    if not isinstance(catalog, TerminalCommandPolicyCatalog):
+        raise TypeError("catalog must be TerminalCommandPolicyCatalog")
+    spec = terminal_exec_spec(network_behavior=_catalog_network_behavior(catalog))
+    registry.register(spec, build_live_terminal_exec_handler(catalog))
+    return spec
+
+
+def build_live_terminal_exec_handler(catalog: TerminalCommandPolicyCatalog):
+    if not isinstance(catalog, TerminalCommandPolicyCatalog):
+        raise TypeError("catalog must be TerminalCommandPolicyCatalog")
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        command_id = request.arguments["command_id"]
+        if not isinstance(command_id, str) or not command_id.strip():
+            raise ValueError("command_id must be a non-empty string")
+        policy = catalog.get(command_id)
+        if policy is None:
+            raise ValueError("terminal command is not registered by host policy")
+
+        stdout_parts: list[str] = []
+        stderr_parts: list[str] = []
+        terminal_event: CommandEvent | None = None
+        observer = request.context.runtime_event_observer
+
+        for runtime_event in stream_registered_command(
+            operation_id=request.operation_id,
+            policy=policy,
+            workspace_root=request.context.workspace_root,
+        ):
+            if runtime_event.event_type is CommandEventType.STDOUT_DELTA:
+                stdout_parts.append(runtime_event.text or "")
+            elif runtime_event.event_type is CommandEventType.STDERR_DELTA:
+                stderr_parts.append(runtime_event.text or "")
+            if runtime_event.event_type in {
+                CommandEventType.COMPLETED,
+                CommandEventType.FAILED,
+                CommandEventType.CANCELLED,
+            }:
+                terminal_event = runtime_event
+            if observer is not None:
+                observer(runtime_event)
+
+        if terminal_event is None:
+            raise RuntimeError("live terminal command ended without a terminal event")
+        if terminal_event.event_type is CommandEventType.CANCELLED:
+            raise RuntimeError("terminal command was cancelled")
+        if terminal_event.event_type is CommandEventType.FAILED and terminal_event.metadata.get("reason") == "timeout":
+            raise RuntimeError(f"terminal command timed out: {policy.command_id}")
+        if terminal_event.event_type is CommandEventType.FAILED and terminal_event.metadata.get("phase") == "launch":
+            raise RuntimeError(f"terminal command failed to launch: {policy.command_id}")
+
+        exit_code = int(terminal_event.exit_code if terminal_event.exit_code is not None else -1)
+        root = Path(request.context.workspace_root).resolve()
+        output = {
+            "command_id": policy.command_id,
+            "argv": list(policy.argv),
+            "cwd": str(root),
+            "exit_code": exit_code,
+            "stdout": "".join(stdout_parts),
+            "stderr": "".join(stderr_parts),
+        }
+        return ToolExecutionResult(
+            output=output,
+            evidence=({
+                "source_class": "terminal_exec_receipt",
+                "command_id": policy.command_id,
+                "exit_code": exit_code,
+                "cwd": str(root),
+                "live_events_observed": True,
+            },),
+        )
+
+    return handler
 
 
 def stream_registered_command(
@@ -235,6 +327,17 @@ def stream_registered_command(
         yield event(CommandEventType.COMPLETED, exit_code=exit_code, metadata={"pid": process.pid})
     else:
         yield event(CommandEventType.FAILED, exit_code=exit_code, metadata={"pid": process.pid, "reason": "nonzero_exit"})
+
+
+def _catalog_network_behavior(catalog: TerminalCommandPolicyCatalog):
+    from .tool_orchestration import ToolNetworkBehavior
+
+    behaviors = {policy.network_behavior for policy in catalog._by_id.values()}
+    if ToolNetworkBehavior.REQUIRED in behaviors:
+        return ToolNetworkBehavior.REQUIRED
+    if ToolNetworkBehavior.OPTIONAL in behaviors:
+        return ToolNetworkBehavior.OPTIONAL
+    return ToolNetworkBehavior.NONE
 
 
 def _terminate_process(process: subprocess.Popen[bytes]) -> None:
