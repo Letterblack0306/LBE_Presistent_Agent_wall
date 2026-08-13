@@ -7,7 +7,7 @@ executed here. Governed execution is supplied by the continuation runtime.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 from .professional_provider_events import (
     ModelEventType,
@@ -34,6 +34,8 @@ _TERMINAL_EVENTS = frozenset(
     }
 )
 
+ModelEventObserver = Callable[[NormalizedModelEvent], None]
+
 
 @dataclass(frozen=True)
 class ProfessionalTurnResult:
@@ -51,19 +53,38 @@ def stream_professional_turn(
     *,
     session_provider: ProfessionalSessionProvider,
     request: ProviderTurnRequest,
+    event_observer: ModelEventObserver | None = None,
 ) -> Iterable[NormalizedModelEvent]:
-    """Stream one normalized provider turn with session/ordering validation."""
+    """Stream one normalized provider turn with session/ordering validation.
+
+    ``event_observer`` is called only after each event has passed the P0/session
+    validation performed here. The observer receives normalized model events
+    only and cannot authorize or execute tools.
+    """
     _validate_session_request(session_provider, request)
-    return _validated_stream(session_provider, request, session_provider.adapter.stream_turn(request))
+    _validate_observer(event_observer)
+    return _validated_stream(
+        session_provider,
+        request,
+        session_provider.adapter.stream_turn(request),
+        event_observer=event_observer,
+    )
 
 
 def execute_professional_turn(
     *,
     session_provider: ProfessionalSessionProvider,
     request: ProviderTurnRequest,
+    event_observer: ModelEventObserver | None = None,
 ) -> ProfessionalTurnResult:
     """Materialize one validated provider turn without tool execution."""
-    return _materialize(stream_professional_turn(session_provider=session_provider, request=request))
+    return _materialize(
+        stream_professional_turn(
+            session_provider=session_provider,
+            request=request,
+            event_observer=event_observer,
+        )
+    )
 
 
 def execute_professional_continuation(
@@ -71,6 +92,7 @@ def execute_professional_continuation(
     session_provider: ProfessionalSessionProvider,
     request: ProviderTurnRequest,
     result: ProviderToolResultContinuation,
+    event_observer: ModelEventObserver | None = None,
 ) -> ProfessionalTurnResult:
     """Return one already-executed governed tool result to the provider.
 
@@ -79,10 +101,18 @@ def execute_professional_continuation(
     LBE's governed tool runtime.
     """
     _validate_session_request(session_provider, request)
+    _validate_observer(event_observer)
     if not isinstance(result, ProviderToolResultContinuation):
         raise TypeError("result must be ProviderToolResultContinuation")
     stream = session_provider.adapter.continue_with_tool_result(request, result)
-    return _materialize(_validated_stream(session_provider, request, stream))
+    return _materialize(
+        _validated_stream(
+            session_provider,
+            request,
+            stream,
+            event_observer=event_observer,
+        )
+    )
 
 
 def _materialize(events: Iterable[NormalizedModelEvent]) -> ProfessionalTurnResult:
@@ -96,6 +126,8 @@ def _validated_stream(
     session_provider: ProfessionalSessionProvider,
     request: ProviderTurnRequest,
     source: Iterable[NormalizedModelEvent],
+    *,
+    event_observer: ModelEventObserver | None = None,
 ) -> Iterator[NormalizedModelEvent]:
     started = False
     terminal_seen = False
@@ -121,12 +153,19 @@ def _validated_stream(
 
         if event.event_type in _TERMINAL_EVENTS:
             terminal_seen = True
+        if event_observer is not None:
+            event_observer(event)
         yield event
 
     if not started:
         raise ProfessionalTurnRuntimeError("professional provider stream was empty")
     if not terminal_seen:
         raise ProfessionalTurnRuntimeError("professional provider stream ended without a terminal model event")
+
+
+def _validate_observer(observer: ModelEventObserver | None) -> None:
+    if observer is not None and not callable(observer):
+        raise TypeError("event_observer must be callable")
 
 
 def _validate_session_request(
