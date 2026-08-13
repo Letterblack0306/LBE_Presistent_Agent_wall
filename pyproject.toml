@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lbe-guard-inspector"
-version = "2.0.0"
+version = "2.0.1"
 description = "Persistent provider-neutral governed agent runtime for local workspaces"
 readme = "README.md"
 requires-python = ">=3.11"
