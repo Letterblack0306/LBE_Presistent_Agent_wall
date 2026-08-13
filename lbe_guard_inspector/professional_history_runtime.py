@@ -24,7 +24,7 @@ from .professional_continuation_runtime import (
 )
 from .professional_provider_events import ModelEventType, NormalizedModelEvent, ProviderTurnRequest
 from .professional_session_provider import ProfessionalSessionProvider
-from .runtime.professional_command_events import CommandEvent
+from .runtime.professional_command_events import CommandEvent, CommandEventType
 from .runtime.tool_orchestration import (
     GovernedToolOrchestrator,
     ToolExecutionContext,
@@ -64,6 +64,7 @@ class ProfessionalTurnHistoryRecorder:
         self._model_item_id: str | None = None
         self._tool_items: dict[str, str] = {}
         self._operation_items: dict[str, tuple[str, NormalizedModelEvent]] = {}
+        self._cancelled_operations: set[str] = set()
 
     @property
     def turn_id(self) -> str:
@@ -135,17 +136,22 @@ class ProfessionalTurnHistoryRecorder:
         ))
 
     def observe_runtime_event(self, event: object) -> None:
-        """Persist already-produced P6 runtime events on their active tool item."""
+        """Persist already-produced P6 runtime events on their active tool item.
+
+        Command-specific events remain available for rich clients. Where a real
+        command observation has an exact generic tool analogue, also persist the
+        generic P6 projection. Synchronous tools do not fabricate deltas/progress.
+        """
         if not isinstance(event, CommandEvent):
             raise TypeError("unsupported runtime event type")
         correlation = self._operation_items.get(event.operation_id)
         if correlation is None:
             raise OperationalHistoryError("command event observed without matching governed tool operation")
         item_id, proposal = correlation
-        self.history.append_event(OperationalEvent(
-            session_id=self.turn.session_id,
-            turn_id=self.turn_id,
+        self._append_tool_runtime_event(
             item_id=item_id,
+            proposal=proposal,
+            operation_id=event.operation_id,
             event_type=event.event_type.value,
             payload={
                 "command_id": event.command_id,
@@ -155,13 +161,59 @@ class ProfessionalTurnHistoryRecorder:
                 "exit_code": event.exit_code,
                 "metadata": dict(event.metadata),
             },
+        )
+
+        if event.event_type in {CommandEventType.STDOUT_DELTA, CommandEventType.STDERR_DELTA}:
+            self._append_tool_runtime_event(
+                item_id=item_id,
+                proposal=proposal,
+                operation_id=event.operation_id,
+                event_type="tool.output.delta",
+                payload={
+                    "stream": "stdout" if event.event_type is CommandEventType.STDOUT_DELTA else "stderr",
+                    "text": event.text,
+                    "source_event": event.event_type.value,
+                    "command_sequence": event.sequence,
+                },
+            )
+        elif event.event_type is CommandEventType.PROGRESS:
+            self._append_tool_runtime_event(
+                item_id=item_id,
+                proposal=proposal,
+                operation_id=event.operation_id,
+                event_type="tool.progress",
+                payload={
+                    "elapsed_seconds": event.elapsed_seconds,
+                    "metadata": dict(event.metadata),
+                    "source_event": event.event_type.value,
+                    "command_sequence": event.sequence,
+                },
+            )
+        elif event.event_type is CommandEventType.CANCELLED:
+            self._cancelled_operations.add(event.operation_id)
+
+    def _append_tool_runtime_event(
+        self,
+        *,
+        item_id: str,
+        proposal: NormalizedModelEvent,
+        operation_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+    ) -> None:
+        self.history.append_event(OperationalEvent(
+            session_id=self.turn.session_id,
+            turn_id=self.turn_id,
+            item_id=item_id,
+            event_type=event_type,
+            payload=payload,
             provider_id=proposal.provider_id,
             model_id=proposal.model_id,
             provider_request_id=proposal.provider_request_id,
             provider_item_id=proposal.provider_item_id,
             provider_tool_call_id=proposal.provider_tool_call_id,
             lbe_call_id=proposal.lbe_call_id,
-            runtime_operation_id=event.operation_id,
+            runtime_operation_id=operation_id,
         ))
 
     def observe_tool_receipt(self, proposal: NormalizedModelEvent, receipt: ToolReceipt) -> None:
@@ -173,7 +225,12 @@ class ProfessionalTurnHistoryRecorder:
         operation = self._operation_items.pop(receipt.operation_id, None)
         if operation is None or operation[0] != item_id:
             raise OperationalHistoryError("tool receipt runtime operation does not match active tool item")
-        event_type, item_status = _tool_terminal(receipt.status)
+        cancelled = receipt.operation_id in self._cancelled_operations
+        self._cancelled_operations.discard(receipt.operation_id)
+        if cancelled:
+            event_type, item_status = "tool.cancelled", ItemStatus.CANCELLED
+        else:
+            event_type, item_status = _tool_terminal(receipt.status)
         self.history.append_event(OperationalEvent(
             session_id=self.turn.session_id,
             turn_id=self.turn_id,
@@ -186,6 +243,7 @@ class ProfessionalTurnHistoryRecorder:
                 "evidence": [dict(item) for item in receipt.evidence],
                 "error_code": receipt.error_code,
                 "error_message": receipt.error_message,
+                "cancelled_by_runtime_event": cancelled,
             },
             provider_id=proposal.provider_id,
             model_id=proposal.model_id,
@@ -199,7 +257,7 @@ class ProfessionalTurnHistoryRecorder:
         self.history.finalize_item(item_id=item_id, status=item_status)
 
     def finalize(self, result: ProfessionalGovernedTurnResult) -> OperationalTurn:
-        if self._model_item_id is not None or self._tool_items or self._operation_items:
+        if self._model_item_id is not None or self._tool_items or self._operation_items or self._cancelled_operations:
             raise OperationalHistoryError("cannot finalize professional turn with in-flight observed items")
         status = _runtime_turn_status(result)
         self.turn = self.history.finalize_turn(turn_id=self.turn_id, status=status)
