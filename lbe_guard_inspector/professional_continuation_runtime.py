@@ -1,7 +1,7 @@
 """Governed provider continuation loop.
 
-This is the first boundary that connects a professional model tool proposal to
-LBE's existing governed tool orchestrator. The provider never receives the
+This is the boundary that connects a professional model tool proposal to LBE's
+existing governed tool orchestrator. The provider never receives the
 orchestrator, workspace context, authorization resolver, or handler registry.
 Only a receipt-backed ProviderToolResultContinuation crosses back to provider
 transport after LBE has produced the tool result.
@@ -39,6 +39,14 @@ class ProfessionalContinuationRuntimeError(RuntimeError):
     """Raised when provider/tool correlation cannot be proven safely."""
 
 
+class ProfessionalUnsupportedCapabilityError(ProfessionalContinuationRuntimeError):
+    """Raised before provider execution when a projected capability has no backend."""
+
+    def __init__(self, capability_id: str, message: str) -> None:
+        self.capability_id = str(capability_id).strip()
+        super().__init__(message)
+
+
 class ProfessionalLoopStopReason(StrEnum):
     """Why the governed provider loop stopped at its current boundary.
 
@@ -51,10 +59,15 @@ class ProfessionalLoopStopReason(StrEnum):
     TERMINAL_COMPLETION = "terminal_completion"
     PROVIDER_CONTINUATION_REQUIRED = "provider_continuation_required"
     APPROVAL_ESCALATION_REQUIRED = "approval_escalation_required"
+    UNSUPPORTED_CAPABILITY = "unsupported_capability"
+    CREDENTIAL_MANUAL_BLOCKER = "credential_manual_blocker"
     TERMINAL_INCOMPLETE = "terminal_incomplete"
     TERMINAL_REFUSAL = "terminal_refusal"
     CANCELLED = "cancelled"
     ERROR = "error"
+
+
+_MANUAL_BLOCKER_CODES = frozenset({"CREDENTIAL_REQUIRED", "MANUAL_ACTION_REQUIRED"})
 
 
 OperationIdFactory = Callable[[], str]
@@ -68,16 +81,24 @@ class ProfessionalGovernedTurnResult:
     tool_receipts: tuple[ToolReceipt, ...]
     final_turn: ProfessionalTurnResult
     blocked_receipt: ToolReceipt | None = None
+    unsupported_capability: str | None = None
 
     @property
     def stop_reason(self) -> ProfessionalLoopStopReason:
+        if self.unsupported_capability is not None:
+            return ProfessionalLoopStopReason.UNSUPPORTED_CAPABILITY
         if self.blocked_receipt is not None:
             if self.blocked_receipt.status is not ToolReceiptStatus.ESCALATED:
                 raise ProfessionalContinuationRuntimeError(
                     "blocked professional turn must carry an escalated receipt"
                 )
+            if _is_manual_blocker_code(self.blocked_receipt.error_code):
+                return ProfessionalLoopStopReason.CREDENTIAL_MANUAL_BLOCKER
             return ProfessionalLoopStopReason.APPROVAL_ESCALATION_REQUIRED
-        terminal = self.final_turn.terminal_event.event_type
+        terminal_event = self.final_turn.terminal_event
+        terminal = terminal_event.event_type
+        if terminal is ModelEventType.ERROR and _is_manual_blocker_code(terminal_event.error_code):
+            return ProfessionalLoopStopReason.CREDENTIAL_MANUAL_BLOCKER
         mapping = {
             ModelEventType.TURN_COMPLETED: ProfessionalLoopStopReason.TERMINAL_COMPLETION,
             ModelEventType.TURN_REQUIRES_CONTINUATION: ProfessionalLoopStopReason.PROVIDER_CONTINUATION_REQUIRED,
@@ -110,7 +131,7 @@ def execute_governed_professional_turn(
     tool_started_observer: ToolStartedObserver | None = None,
     tool_receipt_observer: ToolReceiptObserver | None = None,
 ) -> ProfessionalGovernedTurnResult:
-    """Run provider → governed tool → provider continuation until a stop boundary.
+    """Run provider -> governed tool -> provider continuation until a stop boundary.
 
     The provider request is first checked against the live runtime registry so
     only actually-backed tools may be projected to the model. A provider-emitted
@@ -118,13 +139,17 @@ def execute_governed_professional_turn(
     can reach R6C authorization.
 
     ESCALATED receipts stop the loop and remain outward blockers. EXECUTED,
-    DENIED, and FAILED receipts are returned to the provider as truthful tool
-    results/errors so the model may continue without being granted authority.
+    DENIED, and ordinary FAILED receipts are returned to the provider as truthful
+    tool results/errors so the model may continue without being granted authority.
 
     ``model.turn.requires_continuation`` is intentionally returned as a distinct
     stop reason. The current adapter contract proves client-tool continuation,
     but does not yet prove one universal provider/server continuation primitive;
     P7 therefore must not fabricate one from tool-result semantics.
+
+    Unsupported provider tool proposals stop before authorization/execution and
+    do not manufacture a ToolReceipt. Explicit provider credential/manual errors
+    remain distinct stop reasons rather than being reported as generic failure.
 
     Observer hooks expose already-normalized model events and governed tool
     lifecycle evidence without transferring authorization or execution authority.
@@ -147,7 +172,7 @@ def execute_governed_professional_turn(
         if observer is not None and not callable(observer):
             raise TypeError(f"{name} must be callable")
 
-    projected_tools = _validate_provider_tool_projection(request=request, orchestrator=orchestrator)
+    projected_tools = validate_provider_tool_projection(request=request, orchestrator=orchestrator)
 
     make_operation_id = operation_id_factory or (lambda: f"runtime-op-{uuid.uuid4().hex}")
     if not callable(make_operation_id):
@@ -168,8 +193,11 @@ def execute_governed_professional_turn(
 
         proposal = _find_terminal_tool_proposal(turn)
         if proposal.tool_name not in projected_tools:
-            raise ProfessionalContinuationRuntimeError(
-                f"provider requested tool outside effective request projection: {proposal.tool_name}"
+            return ProfessionalGovernedTurnResult(
+                exchanges=tuple(exchanges),
+                tool_receipts=tuple(receipts),
+                final_turn=turn,
+                unsupported_capability=proposal.tool_name,
             )
         operation_id = make_operation_id()
         if not isinstance(operation_id, str) or not operation_id.strip():
@@ -223,7 +251,7 @@ def execute_governed_professional_turn(
     )
 
 
-def _validate_provider_tool_projection(
+def validate_provider_tool_projection(
     *,
     request: ProviderTurnRequest,
     orchestrator: GovernedToolOrchestrator,
@@ -240,8 +268,9 @@ def _validate_provider_tool_projection(
         if name in names:
             raise ProfessionalContinuationRuntimeError(f"duplicate provider tool projection: {name}")
         if orchestrator.registry.get(name) is None:
-            raise ProfessionalContinuationRuntimeError(
-                f"provider tool projection has no registered runtime backend: {name}"
+            raise ProfessionalUnsupportedCapabilityError(
+                name,
+                f"provider tool projection has no registered runtime backend: {name}",
             )
         names.append(name)
     return frozenset(names)
@@ -277,3 +306,7 @@ def _provider_tool_output(receipt: ToolReceipt) -> object:
         "error_code": receipt.error_code,
         "error_message": receipt.error_message,
     }
+
+
+def _is_manual_blocker_code(value: object) -> bool:
+    return isinstance(value, str) and value.strip().upper() in _MANUAL_BLOCKER_CODES
