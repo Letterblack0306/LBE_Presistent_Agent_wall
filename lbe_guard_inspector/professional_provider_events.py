@@ -117,7 +117,7 @@ class NormalizedModelEvent:
                 raise ValueError("model.usage.updated requires usage mapping")
             for key, value in self.usage.items():
                 _require_text(key, "usage key")
-                if not isinstance(value, int) or value < 0:
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                     raise ValueError("usage values must be non-negative integers")
 
         if self.event_type is ModelEventType.ERROR:
@@ -128,24 +128,50 @@ class NormalizedModelEvent:
 
 
 @dataclass(frozen=True)
+class ProviderToolDefinition:
+    """Provider-visible schema for one already-authorized runtime capability.
+
+    This is descriptive projection only. Possessing a schema does not grant the
+    model or transport backend permission to execute the named capability.
+    """
+
+    name: str
+    description: str
+    input_schema: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        _require_text(self.name, "tool definition name")
+        _require_text(self.description, "tool definition description")
+        if not isinstance(self.input_schema, Mapping):
+            raise TypeError("tool definition input_schema must be a mapping")
+
+
+@dataclass(frozen=True)
 class ProviderTurnRequest:
     """Provider-facing professional turn input without workspace authority."""
 
     provider_id: str
     model_id: str
     protocol_family: ProviderProtocolFamily
+    system_prompt: str
     messages: tuple[Mapping[str, Any], ...]
+    tool_definitions: tuple[ProviderToolDefinition, ...] = ()
     provider_options: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _require_text(self.provider_id, "provider_id")
         _require_text(self.model_id, "model_id")
+        _require_text(self.system_prompt, "system_prompt")
         if not isinstance(self.protocol_family, ProviderProtocolFamily):
             raise TypeError("protocol_family must be ProviderProtocolFamily")
         if not isinstance(self.messages, tuple) or not self.messages:
             raise ValueError("messages must be a non-empty tuple")
         if not all(isinstance(item, Mapping) for item in self.messages):
             raise TypeError("messages must contain mappings")
+        if not isinstance(self.tool_definitions, tuple) or not all(
+            isinstance(item, ProviderToolDefinition) for item in self.tool_definitions
+        ):
+            raise TypeError("tool_definitions must be a tuple of ProviderToolDefinition")
         if not isinstance(self.provider_options, Mapping):
             raise TypeError("provider_options must be a mapping")
 
