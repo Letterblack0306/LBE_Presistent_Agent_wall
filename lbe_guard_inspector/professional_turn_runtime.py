@@ -1,17 +1,20 @@
 """Professional turn event entrypoint for the P3 provider path.
 
-This layer binds a composed persistent-session provider to one provider turn and
-validates the normalized P0 event stream. It does not authorize or execute model
-tool proposals. ``model.turn.requires_tool`` remains an outward terminal for
-this P3 entrypoint; governed tool execution belongs to the later continuation
-loop through LBE runtime/tool_orchestration.py.
+This layer binds a composed persistent-session provider to provider turns and
+validates the normalized P0 event stream. Tool proposals are not authorized or
+executed here. Governed execution is supplied by the continuation runtime.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
-from .professional_provider_events import ModelEventType, NormalizedModelEvent, ProviderTurnRequest
+from .professional_provider_events import (
+    ModelEventType,
+    NormalizedModelEvent,
+    ProviderToolResultContinuation,
+    ProviderTurnRequest,
+)
 from .professional_session_provider import ProfessionalSessionProvider
 
 
@@ -34,7 +37,7 @@ _TERMINAL_EVENTS = frozenset(
 
 @dataclass(frozen=True)
 class ProfessionalTurnResult:
-    """Materialized result for clients that need one bounded P3 provider turn."""
+    """Materialized result for one bounded professional provider exchange."""
 
     events: tuple[NormalizedModelEvent, ...]
     terminal_event: NormalizedModelEvent
@@ -49,14 +52,9 @@ def stream_professional_turn(
     session_provider: ProfessionalSessionProvider,
     request: ProviderTurnRequest,
 ) -> Iterable[NormalizedModelEvent]:
-    """Stream one normalized provider turn with session/ordering validation.
-
-    The function is intentionally authority-free. It forwards normalized model
-    events only and stops at the provider terminal contract. Tool proposals are
-    never dispatched here.
-    """
+    """Stream one normalized provider turn with session/ordering validation."""
     _validate_session_request(session_provider, request)
-    return _validated_stream(session_provider, request)
+    return _validated_stream(session_provider, request, session_provider.adapter.stream_turn(request))
 
 
 def execute_professional_turn(
@@ -64,21 +62,45 @@ def execute_professional_turn(
     session_provider: ProfessionalSessionProvider,
     request: ProviderTurnRequest,
 ) -> ProfessionalTurnResult:
-    """Materialize one validated P3 turn without performing tool execution."""
-    events = tuple(stream_professional_turn(session_provider=session_provider, request=request))
-    if not events or events[-1].event_type not in _TERMINAL_EVENTS:
+    """Materialize one validated provider turn without tool execution."""
+    return _materialize(stream_professional_turn(session_provider=session_provider, request=request))
+
+
+def execute_professional_continuation(
+    *,
+    session_provider: ProfessionalSessionProvider,
+    request: ProviderTurnRequest,
+    result: ProviderToolResultContinuation,
+) -> ProfessionalTurnResult:
+    """Return one already-executed governed tool result to the provider.
+
+    This function performs provider I/O only. The supplied continuation must
+    already contain runtime operation and tool receipt identities produced by
+    LBE's governed tool runtime.
+    """
+    _validate_session_request(session_provider, request)
+    if not isinstance(result, ProviderToolResultContinuation):
+        raise TypeError("result must be ProviderToolResultContinuation")
+    stream = session_provider.adapter.continue_with_tool_result(request, result)
+    return _materialize(_validated_stream(session_provider, request, stream))
+
+
+def _materialize(events: Iterable[NormalizedModelEvent]) -> ProfessionalTurnResult:
+    materialized = tuple(events)
+    if not materialized or materialized[-1].event_type not in _TERMINAL_EVENTS:
         raise ProfessionalTurnRuntimeError("professional turn did not end with a terminal model event")
-    return ProfessionalTurnResult(events=events, terminal_event=events[-1])
+    return ProfessionalTurnResult(events=materialized, terminal_event=materialized[-1])
 
 
 def _validated_stream(
     session_provider: ProfessionalSessionProvider,
     request: ProviderTurnRequest,
+    source: Iterable[NormalizedModelEvent],
 ) -> Iterator[NormalizedModelEvent]:
     started = False
     terminal_seen = False
 
-    for index, event in enumerate(session_provider.adapter.stream_turn(request)):
+    for index, event in enumerate(source):
         if not isinstance(event, NormalizedModelEvent):
             raise ProfessionalTurnRuntimeError("professional provider emitted a non-NormalizedModelEvent")
         if terminal_seen:
