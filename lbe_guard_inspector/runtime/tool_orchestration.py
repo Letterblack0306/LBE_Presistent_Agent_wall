@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol
@@ -129,10 +129,17 @@ class ToolReceipt:
     tool_id: str
     status: ToolReceiptStatus
     authorization: AuthorizationDecision | None
+    receipt_id: str = field(default_factory=lambda: f"tool-receipt-{uuid.uuid4().hex}")
     output: Mapping[str, Any] | None = None
     evidence: tuple[Mapping[str, Any], ...] = ()
     error_code: str | None = None
     error_message: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.receipt_id, str) or not self.receipt_id.strip():
+            raise ValueError("receipt_id must be a non-empty string")
+        if self.receipt_id == self.operation_id:
+            raise ValueError("receipt_id must remain distinct from operation_id")
 
 
 class ToolHandler(Protocol):
