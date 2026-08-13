@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 from .cline_llms_compat import normalize_cline_stream_chunk
+from .cline_sidecar_readiness import ClineSidecarReadiness, probe_cline_sidecar_readiness
 from .professional_provider_events import (
     ModelEventType,
     NormalizedModelEvent,
@@ -71,6 +72,13 @@ class ClineSidecarProviderAdapter(ProfessionalProviderAdapter):
     @property
     def pending_tool_call(self) -> PendingProviderToolCall | None:
         return self._pending_tool_call
+
+    def readiness(self) -> ClineSidecarReadiness:
+        """Return host transport readiness without making provider/model claims."""
+        return probe_cline_sidecar_readiness(
+            node_executable=self._node_executable,
+            bridge_path=self._bridge_path,
+        )
 
     def stream_turn(self, request: ProviderTurnRequest) -> Iterable[NormalizedModelEvent]:
         self._require_request_matches_config(request)
@@ -250,10 +258,11 @@ class ClineSidecarProviderAdapter(ProfessionalProviderAdapter):
             raise ClineSidecarProcessError("Cline bridge ended without a terminal provider event")
 
     def _run_bridge_process(self, payload: Mapping[str, Any]) -> Iterable[Mapping[str, Any]]:
-        bridge_path = self._bridge_path.resolve()
-        if not bridge_path.is_file():
-            raise ClineSidecarProcessError(f"Cline bridge entrypoint not found: {bridge_path}")
+        readiness = self.readiness()
+        if not readiness.ready:
+            raise ClineSidecarProcessError(f"Cline sidecar is not ready: {readiness.reason}")
 
+        bridge_path = self._bridge_path.resolve()
         process = subprocess.Popen(
             [self._node_executable, str(bridge_path)],
             cwd=str(bridge_path.parent),
