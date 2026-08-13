@@ -10,6 +10,7 @@ import pytest
 from lbe_guard_inspector.agent_integration import AgentMode
 from lbe_guard_inspector.cli import main
 from lbe_guard_inspector.memory import TaskStatus
+from lbe_guard_inspector.provider_capabilities import discover_provider_model_capabilities
 from lbe_guard_inspector.provider_health import ProviderHealthResult
 from lbe_guard_inspector.provider_registry import ProviderCapabilities
 from lbe_guard_inspector.reasoning_contracts import LBEResponse
@@ -144,6 +145,11 @@ def test_provider_check_delegates_to_provider_health_owner(tmp_path: Path, capsy
             model_id="model-a",
             status="READY",
             capabilities=ProviderCapabilities(structured_output=True),
+            professional_capabilities=discover_provider_model_capabilities(
+                provider_id="openai-compatible",
+                model_id="model-a",
+                endpoint="http://provider/v1/chat/completions",
+            ),
         )
 
     monkeypatch.setattr(
