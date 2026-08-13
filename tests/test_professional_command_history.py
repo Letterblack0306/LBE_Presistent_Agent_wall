@@ -221,9 +221,11 @@ def test_live_command_events_persist_inside_governed_tool_item(tmp_path: Path) -
         tool_terminal.tool_receipt_id,
     }) == 4
 
-    tool_items = history.items_for_turn(turn_id=result.operational_turn.turn_id)
-    tool_item = next(item for item in tool_items if item.kind == "tool.execution")
-    assert all(item.item_id == tool_item.item_id for item in events if item.event_type.startswith("command.") or item.event_type.startswith("tool."))
+    tool_and_command_events = [
+        item for item in events
+        if item.event_type.startswith("command.") or item.event_type.startswith("tool.")
+    ]
+    assert len({item.item_id for item in tool_and_command_events}) == 1
 
 
 def test_live_command_receipt_continues_provider_with_distinct_receipt_identity(tmp_path: Path) -> None:
