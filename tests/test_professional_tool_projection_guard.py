@@ -10,6 +10,7 @@ from lbe_guard_inspector.cline_sidecar_readiness import (
 )
 from lbe_guard_inspector.professional_continuation_runtime import (
     ProfessionalContinuationRuntimeError,
+    ProfessionalLoopStopReason,
     execute_governed_professional_turn,
 )
 from lbe_guard_inspector.professional_provider_events import (
@@ -160,17 +161,19 @@ def test_projection_preflight_rejects_provider_visible_tool_without_runtime_back
     assert adapter.stream_calls == 0
 
 
-def test_provider_proposal_outside_request_projection_fails_before_tool_execution(tmp_path: Path) -> None:
+def test_provider_proposal_outside_request_projection_stops_before_tool_execution(tmp_path: Path) -> None:
     adapter = _Adapter(tool_name="workspace.read")
     calls = []
-    with pytest.raises(ProfessionalContinuationRuntimeError, match="outside effective request projection"):
-        execute_governed_professional_turn(
-            session_provider=_provider(adapter),
-            request=_request(),
-            orchestrator=_orchestrator(lambda request: calls.append(request) or ToolExecutionResult(output={})),
-            tool_context=_context(tmp_path),
-            operation_id_factory=lambda: "runtime-op-should-not-run",
-        )
+    result = execute_governed_professional_turn(
+        session_provider=_provider(adapter),
+        request=_request(),
+        orchestrator=_orchestrator(lambda request: calls.append(request) or ToolExecutionResult(output={})),
+        tool_context=_context(tmp_path),
+        operation_id_factory=lambda: "runtime-op-should-not-run",
+    )
+    assert result.stop_reason is ProfessionalLoopStopReason.UNSUPPORTED_CAPABILITY
+    assert result.completed_without_blocker is False
+    assert result.tool_receipts == ()
     assert adapter.stream_calls == 1
     assert calls == []
     assert adapter.continuations == []
