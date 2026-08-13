@@ -1,0 +1,55 @@
+name: publish-python-runtime
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-python-runtime:
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify exact public runtime version
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          assert data["project"]["name"] == "lbe-guard-inspector"
+          assert data["project"]["version"] == "2.0.1"
+          print("PYPI_RUNTIME_VERSION=2.0.1")
+          PY
+
+      - name: Install build/test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[test]
+
+      - name: Run full Python suite
+        run: python -m pytest -q
+
+      - name: Build exact Python artifacts
+        run: python -m build
+
+      - name: Verify release artifacts
+        run: |
+          test -f dist/lbe_guard_inspector-2.0.1-py3-none-any.whl
+          test -f dist/lbe_guard_inspector-2.0.1.tar.gz
+          python -m pip install --force-reinstall dist/lbe_guard_inspector-2.0.1-py3-none-any.whl
+          python - <<'PY'
+          from importlib.metadata import version
+          assert version("lbe-guard-inspector") == "2.0.1"
+          print("PYPI_RUNTIME_ARTIFACT_VERIFY=PASS")
+          PY
+
+      - name: Publish Python runtime to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
