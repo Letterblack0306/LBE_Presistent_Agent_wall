@@ -6,6 +6,7 @@ from lbe_guard_inspector.professional_provider_events import (
     ModelEventType,
     NormalizedModelEvent,
     ProfessionalProviderAdapter,
+    ProviderToolDefinition,
     ProviderToolResultContinuation,
     ProviderTurnRequest,
 )
@@ -106,14 +107,27 @@ def test_tool_result_continuation_requires_existing_runtime_evidence_identity() 
         )
 
 
-def test_provider_turn_request_contains_no_workspace_or_authorization_fields() -> None:
+def test_provider_turn_request_projects_tool_schema_without_authority() -> None:
+    tool = ProviderToolDefinition(
+        name="workspace.read",
+        description="Read one workspace-relative file.",
+        input_schema={
+            "type": "object",
+            "properties": {"path": {"type": "string"}},
+            "required": ["path"],
+            "additionalProperties": False,
+        },
+    )
     request = ProviderTurnRequest(
         provider_id="anthropic",
         model_id="claude-model",
         protocol_family=ProviderProtocolFamily.ANTHROPIC_MESSAGES,
+        system_prompt="Use only the projected governed tools when needed.",
         messages=({"role": "user", "content": "inspect this"},),
+        tool_definitions=(tool,),
     )
 
+    assert request.tool_definitions == (tool,)
     assert not hasattr(request, "workspace_root")
     assert not hasattr(request, "permission")
     assert not hasattr(request, "authorization")
