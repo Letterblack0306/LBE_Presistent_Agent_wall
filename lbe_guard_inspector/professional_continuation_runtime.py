@@ -69,6 +69,11 @@ def execute_governed_professional_turn(
 ) -> ProfessionalGovernedTurnResult:
     """Run provider → governed tool → provider continuation until terminal.
 
+    The provider request is first checked against the live runtime registry so
+    only actually-backed tools may be projected to the model. A provider-emitted
+    proposal must also name one of those explicit request projections before it
+    can reach R6C authorization.
+
     ESCALATED receipts stop the loop and remain outward blockers. EXECUTED,
     DENIED, and FAILED receipts are returned to the provider as truthful tool
     results/errors so the model may continue without being granted authority.
@@ -94,6 +99,8 @@ def execute_governed_professional_turn(
         if observer is not None and not callable(observer):
             raise TypeError(f"{name} must be callable")
 
+    projected_tools = _validate_provider_tool_projection(request=request, orchestrator=orchestrator)
+
     make_operation_id = operation_id_factory or (lambda: f"runtime-op-{uuid.uuid4().hex}")
     if not callable(make_operation_id):
         raise TypeError("operation_id_factory must be callable")
@@ -112,6 +119,10 @@ def execute_governed_professional_turn(
             raise ProfessionalContinuationRuntimeError("professional tool continuation exceeded max_tool_hops")
 
         proposal = _find_terminal_tool_proposal(turn)
+        if proposal.tool_name not in projected_tools:
+            raise ProfessionalContinuationRuntimeError(
+                f"provider requested tool outside effective request projection: {proposal.tool_name}"
+            )
         operation_id = make_operation_id()
         if not isinstance(operation_id, str) or not operation_id.strip():
             raise ProfessionalContinuationRuntimeError("operation_id_factory returned an empty operation id")
@@ -162,6 +173,30 @@ def execute_governed_professional_turn(
         tool_receipts=tuple(receipts),
         final_turn=turn,
     )
+
+
+def _validate_provider_tool_projection(
+    *,
+    request: ProviderTurnRequest,
+    orchestrator: GovernedToolOrchestrator,
+) -> frozenset[str]:
+    """Prove every provider-visible tool has a live registered runtime backend.
+
+    This is a projection/availability check only. It does not decide whether the
+    current mode/permission/workspace context authorizes an invocation; R6C keeps
+    that authority when a projected proposal is actually requested.
+    """
+    names: list[str] = []
+    for definition in request.tool_definitions:
+        name = definition.name.strip()
+        if name in names:
+            raise ProfessionalContinuationRuntimeError(f"duplicate provider tool projection: {name}")
+        if orchestrator.registry.get(name) is None:
+            raise ProfessionalContinuationRuntimeError(
+                f"provider tool projection has no registered runtime backend: {name}"
+            )
+        names.append(name)
+    return frozenset(names)
 
 
 def _find_terminal_tool_proposal(turn: ProfessionalTurnResult) -> NormalizedModelEvent:
