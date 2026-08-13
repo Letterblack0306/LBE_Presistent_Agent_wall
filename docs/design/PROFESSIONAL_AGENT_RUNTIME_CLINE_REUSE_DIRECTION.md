@@ -19,32 +19,9 @@ Where this addendum conflicts with an older assumption that LBE must independent
 
 ---
 
-## 1. Direction
+## 1. Non-negotiable ownership boundary
 
-Before implementing parallel provider-native streaming/tool-call plumbing from scratch, LBE must evaluate selective reuse of the current Cline SDK lower layers.
-
-Preferred evaluation order:
-
-```text
-@cline/llms
-    -> provider transport / streaming reuse
-
-@cline/agents
-    -> optional agent-loop / continuation reuse
-       only if LBE remains the tool/governance authority
-
-@cline/shared
-    -> selective type/event/helper reuse where useful
-
-@cline/core / @cline/sdk
-    -> do not adopt wholesale as LBE runtime authority
-```
-
-The objective is to reuse mature provider and agent-engine mechanics while preserving LBE's existing deterministic governance architecture.
-
----
-
-## 2. Ownership boundary remains unchanged
+Cline is reusable infrastructure beneath LBE. It is not a competing runtime authority.
 
 ### LBE remains authoritative for
 
@@ -91,11 +68,70 @@ context/token management
 usage events
 ```
 
-A Cline package must not gain workspace mutation authority merely because it can execute tools in its standalone configuration.
+A Cline package must never gain workspace mutation authority merely because it can execute tools in its standalone configuration.
+
+All later sections inherit this boundary and do not redefine it.
 
 ---
 
-## 3. Target architecture
+## 2. Graduated Cline reuse strategy
+
+Before implementing parallel provider-native streaming/tool-call plumbing from scratch, LBE must evaluate selective reuse of the current Cline SDK lower layers.
+
+Required evaluation order:
+
+```text
+1. evaluate @cline/llms first
+   -> provider transport
+   -> provider-native streaming
+   -> provider request/response mechanics
+
+2. evaluate @cline/agents only if
+   -> LBE still intercepts every tool proposal before mutation
+   -> LBE remains the sole tool/governance authority
+   -> LBE-produced tool results can drive provider continuation
+
+3. use @cline/shared selectively
+   -> types/helpers/events only where they do not leak Cline-owned public semantics
+
+4. avoid @cline/core / full @cline/sdk as runtime authority
+   -> unless a future explicit isolation/migration proof replaces an LBE owner
+```
+
+The objective is to reuse mature provider and continuation mechanics while preserving LBE's deterministic governance architecture.
+
+---
+
+## 3. Required adapter boundary
+
+The integration boundary must remain explicit and replaceable.
+
+```text
+Cline provider event
+        |
+        v
+LBE P0 normalization
+        |
+        v
+ProviderModelCapabilities / capability projection
+        |
+        v
+R6C deterministic authorization
+        |
+        v
+existing GovernedToolOrchestrator
+        |
+        v
+tool receipt + evidence + runtime events
+        |
+        v
+provider continuation serialization
+        |
+        v
+next Cline/provider stream
+```
+
+Equivalent product-facing architecture:
 
 ```text
                         LBE TUI / IDE / client
@@ -120,15 +156,15 @@ A Cline package must not gain workspace mutation authority merely because it can
                     provider-native APIs
 ```
 
-The Cline adapter is replaceable infrastructure, not a new authority layer.
+No Cline-native event object becomes the durable LBE public event contract. The adapter is replaceable infrastructure, not a new authority layer.
 
 ---
 
-## 4. P3 implementation direction
+## 4. Cline reuse checkpoints for P3 and P7
 
-Canonical P3 remains **Provider-Native Streaming + Tool-Call Adapters**, but the implementation strategy changes.
+Canonical P3 remains **Provider-Native Streaming + Tool-Call Adapters**. Canonical P7 remains **Governed Provider Continuation Loop**. Cline reuse is an implementation strategy inside those phases, not a change to the dependency graph.
 
-### P3A — Cline lower-layer compatibility proof
+### P3 checkpoint — `@cline/llms`
 
 Before building provider adapters independently:
 
@@ -137,7 +173,8 @@ Before building provider adapters independently:
 3. Map real Cline provider events to the frozen LBE P0 normalized event vocabulary.
 4. Verify OpenAI, Anthropic, Gemini, and OpenAI-compatible paths do not require fabricated semantics.
 5. Verify provider-native IDs, usage, cancellation, incomplete/error states, and continuation metadata can be retained.
-6. Verify the accepted bounded Python 0.2.1 reasoning path remains untouched.
+6. Verify event fidelity for partial and terminal tool-call state.
+7. Verify the accepted bounded Python 0.2.1 reasoning path remains untouched.
 
 Expected result:
 
@@ -147,21 +184,13 @@ Cline native/provider event
         -> normalized model.* event
 ```
 
-No Cline-native event object becomes the durable LBE public event contract.
-
-### P3B — provider transport reuse decision
-
 If `@cline/llms` satisfies P0/P2 truth requirements cleanly, prefer using it rather than maintaining redundant first-party streaming transports.
 
 If it cannot preserve a required provider semantic or imposes unsuitable runtime/dependency constraints, implement the affected provider path natively behind the same LBE adapter contract.
 
 This decision may be per provider; one provider need not force the same backend choice for all providers.
 
----
-
-## 5. P7 implementation direction
-
-Canonical P7 remains **Governed Provider Continuation Loop**.
+### P7 checkpoint — `@cline/agents`
 
 Evaluate `@cline/agents` only if the tool boundary can be intercepted before mutation.
 
@@ -188,11 +217,28 @@ provider
 
 That path bypasses LBE's execution authority and cannot be used for strict governance claims.
 
+### Shared acceptance gates
+
+P3/P7 Cline reuse is acceptable only if compatibility proof demonstrates:
+
+```text
+event fidelity
+provider-native and LBE identity preservation
+cancellation propagation
+truthful terminal attribution
+tool-call identity preservation
+continuation serialization
+host-provided governed tool execution
+no direct filesystem/shell/Git/browser mutation outside LBE
+bounded-path regression compatibility
+backend replacement behind the adapter
+```
+
 If `@cline/agents` cannot use host-provided governed tool execution cleanly, LBE will reuse only `@cline/llms` and own P7 itself.
 
 ---
 
-## 6. Why not adopt ClineCore wholesale
+## 5. Why not adopt ClineCore wholesale
 
 Current Cline SDK documentation describes `ClineCore` as owning or providing:
 
@@ -226,7 +272,7 @@ No such migration is currently planned.
 
 ---
 
-## 7. P4/P6/P8 lessons from Cline, without authority transfer
+## 6. P4/P6/P8 lessons from Cline, without authority transfer
 
 Cline remains useful implementation evidence beyond P3/P7.
 
@@ -255,7 +301,7 @@ The exact LBE state machine remains governed by the LBE control protocol and per
 
 ---
 
-## 8. CLI/TUI direction does not change
+## 7. CLI/TUI direction does not change
 
 Reusing Cline underneath does not make the visible product a Cline CLI.
 
@@ -293,7 +339,7 @@ The TUI must consume normalized LBE events, not Cline UI messages or provider-na
 
 ---
 
-## 9. Dependency and licensing requirements
+## 8. Dependency and licensing requirements
 
 The current `cline/cline` repository is Apache License 2.0.
 
@@ -309,6 +355,29 @@ If Cline packages become production dependencies:
 
 ---
 
+## 9. Migration and fallback rule
+
+Reuse must never weaken an accepted LBE contract.
+
+If a pinned Cline package cannot preserve an LBE requirement without patching around, bypassing, or duplicating the authority boundary, LBE must fall back to the next lower reusable layer or to a native adapter for that capability.
+
+```text
+@cline/agents incompatible with governed tool authority
+        -> retain @cline/llms only
+        -> LBE owns continuation loop
+
+@cline/llms incompatible with required provider truth
+        -> native provider adapter behind the same LBE contract
+
+Cline update breaks a proven compatibility gate
+        -> hold the pinned version or switch backend
+        -> never weaken the LBE contract to accommodate the dependency
+```
+
+Forking or vendoring substantial Cline subsystems is not the default remedy. Any such move requires a separate architecture decision with provenance, maintenance cost, and authority-boundary proof.
+
+---
+
 ## 10. Revised forward execution sequence
 
 The canonical P0-P16 dependency order remains valid. The immediate forward path becomes:
@@ -317,13 +386,11 @@ The canonical P0-P16 dependency order remains valid. The immediate forward path 
 P2 current capability negotiation
         -> finish acceptance/regression proof
 
-P3A Cline lower-layer compatibility proof
+P3 Cline lower-layer compatibility proof
         -> @cline/llms event/provider mapping
+        -> event fidelity + cancellation + identity proof
         -> authority-boundary proof
-
-P3B choose per-provider backend
-        -> reuse @cline/llms where clean
-        -> native adapter only where required
+        -> choose per-provider backend
 
 P4 persistent Session / Turn / Item under existing LBE owner
 
@@ -331,7 +398,8 @@ P5 governed professional capabilities under existing dispatcher
 
 P6 live runtime execution events
 
-P7 evaluate @cline/agents continuation reuse
+P7 continuation compatibility proof
+        -> evaluate @cline/agents
         -> reuse only if LBE tool execution stays authoritative
         -> otherwise LBE owns continuation loop
 
@@ -342,12 +410,13 @@ This is not permission to skip P0/P1/P2/P4 contracts. It is a direction to avoid
 
 ---
 
-## 11. Acceptance gate for adopting Cline lower layers
+## 11. Final adoption gate
 
-Cline reuse is accepted only when tests/evidence prove all of the following:
+Cline lower-layer reuse is accepted only when tests/evidence prove all of the following:
 
 - LBE P0 normalized semantics can represent the relevant Cline/provider stream without fabrication;
 - selected model capability truth still comes from LBE P2 evidence, not Cline brand assumptions;
+- provider-native and LBE tool-call identities remain distinguishable and correlated;
 - tool calls are intercepted before any workspace/external mutation;
 - all mutations still pass existing LBE authorization and tool orchestration;
 - provider continuation can consume LBE-produced tool results;
@@ -357,8 +426,8 @@ Cline reuse is accepted only when tests/evidence prove all of the following:
 - bounded 0.2.1 provider path remains regression-safe until explicitly retired by migration proof;
 - LBE TUI/control clients remain independent of Cline-native UI/event serialization.
 
-If any condition fails, fall back to a lower Cline layer or a native LBE implementation for that responsibility.
+If any condition fails, apply the migration/fallback rule rather than weakening the contract.
 
 ## Final rule
 
-**Reuse Cline where it is mature infrastructure; do not import Cline as a competing runtime authority. LBE owns governance, workspace/session truth, tools, evidence, validation, completion, and product-facing events. Cline lower layers may supply provider and agent mechanics only through an explicit replaceable adapter boundary.**
+**Evaluate `@cline/llms` first. Evaluate `@cline/agents` only if LBE retains tool execution authority. Avoid `@cline/core`/full SDK runtime ownership unless a future isolation proof explicitly replaces an LBE owner. Reuse Cline where it is mature infrastructure; LBE remains authoritative for governance, workspace/session truth, tools, evidence, validation, completion, and product-facing events.**
