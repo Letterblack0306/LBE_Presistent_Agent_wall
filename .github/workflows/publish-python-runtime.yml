@@ -2,6 +2,9 @@ name: publish-python-runtime
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - "release/python-runtime-v2.0.1"
 
 permissions:
   contents: read
