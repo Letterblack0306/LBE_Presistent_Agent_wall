@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lbe-guard-inspector"
-version = "0.2.1"
-description = "Deterministic local workspace inspection with evidence-bound guard verdicts"
+version = "2.0.0"
+description = "Persistent provider-neutral governed agent runtime for local workspaces"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
