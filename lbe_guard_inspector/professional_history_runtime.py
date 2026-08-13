@@ -20,6 +20,8 @@ from .memory.operational_history import (
 )
 from .professional_continuation_runtime import (
     ProfessionalGovernedTurnResult,
+    ProfessionalLoopStopReason,
+    ProfessionalUnsupportedCapabilityError,
     execute_governed_professional_turn,
 )
 from .professional_provider_events import ModelEventType, NormalizedModelEvent, ProviderTurnRequest
@@ -44,6 +46,7 @@ _MODEL_TERMINALS = frozenset(
         ModelEventType.ERROR,
     }
 )
+_MANUAL_BLOCKER_CODES = frozenset({"CREDENTIAL_REQUIRED", "MANUAL_ACTION_REQUIRED"})
 
 
 @dataclass(frozen=True)
@@ -256,9 +259,32 @@ class ProfessionalTurnHistoryRecorder:
         ))
         self.history.finalize_item(item_id=item_id, status=item_status)
 
+    def finalize_preflight_unsupported(self, error: ProfessionalUnsupportedCapabilityError) -> OperationalTurn:
+        """Close a turn opened by the history wrapper when projection preflight fails."""
+        if self._model_item_id is not None or self._tool_items or self._operation_items or self._cancelled_operations:
+            raise OperationalHistoryError("cannot finalize unsupported preflight with in-flight observed items")
+        self.history.append_event(OperationalEvent(
+            session_id=self.turn.session_id,
+            turn_id=self.turn_id,
+            event_type="runtime.unsupported_capability",
+            payload={"capability_id": error.capability_id, "reason": str(error), "phase": "provider_projection_preflight"},
+        ))
+        self.turn = self.history.finalize_turn(turn_id=self.turn_id, status=TurnStatus.INCOMPLETE)
+        return self.turn
+
     def finalize(self, result: ProfessionalGovernedTurnResult) -> OperationalTurn:
         if self._model_item_id is not None or self._tool_items or self._operation_items or self._cancelled_operations:
             raise OperationalHistoryError("cannot finalize professional turn with in-flight observed items")
+        if result.stop_reason is ProfessionalLoopStopReason.UNSUPPORTED_CAPABILITY:
+            self.history.append_event(OperationalEvent(
+                session_id=self.turn.session_id,
+                turn_id=self.turn_id,
+                event_type="runtime.unsupported_capability",
+                payload={
+                    "capability_id": result.unsupported_capability,
+                    "phase": "provider_tool_proposal",
+                },
+            ))
         status = _runtime_turn_status(result)
         self.turn = self.history.finalize_turn(turn_id=self.turn_id, status=status)
         return self.turn
@@ -283,17 +309,21 @@ def execute_persisted_governed_professional_turn(
         tool_context,
         runtime_event_observer=recorder.observe_runtime_event,
     )
-    result = execute_governed_professional_turn(
-        session_provider=session_provider,
-        request=request,
-        orchestrator=orchestrator,
-        tool_context=observed_tool_context,
-        max_tool_hops=max_tool_hops,
-        operation_id_factory=operation_id_factory,
-        model_event_observer=recorder.observe_model_event,
-        tool_started_observer=recorder.observe_tool_started,
-        tool_receipt_observer=recorder.observe_tool_receipt,
-    )
+    try:
+        result = execute_governed_professional_turn(
+            session_provider=session_provider,
+            request=request,
+            orchestrator=orchestrator,
+            tool_context=observed_tool_context,
+            max_tool_hops=max_tool_hops,
+            operation_id_factory=operation_id_factory,
+            model_event_observer=recorder.observe_model_event,
+            tool_started_observer=recorder.observe_tool_started,
+            tool_receipt_observer=recorder.observe_tool_receipt,
+        )
+    except ProfessionalUnsupportedCapabilityError as error:
+        recorder.finalize_preflight_unsupported(error)
+        raise
     operational_turn = recorder.finalize(result)
     replayed = replay_turn_status(history=history, turn_id=operational_turn.turn_id)
     if replayed is not operational_turn.status:
@@ -313,15 +343,19 @@ def replay_turn_status(*, history: SessionOperationalHistory, turn_id: str) -> T
     if not events:
         raise OperationalHistoryError("cannot replay turn status without events")
     for event in reversed(events):
+        if event.event_type == "runtime.unsupported_capability":
+            return TurnStatus.INCOMPLETE
         if event.event_type == "tool.escalated":
             return TurnStatus.ESCALATED
+        if event.event_type == ModelEventType.ERROR.value:
+            error_code = event.payload.get("error_code") if isinstance(event.payload, dict) else None
+            return TurnStatus.INCOMPLETE if _is_manual_blocker_code(error_code) else TurnStatus.FAILED
         mapping = {
             ModelEventType.TURN_COMPLETED.value: TurnStatus.COMPLETED,
             ModelEventType.TURN_REQUIRES_CONTINUATION.value: TurnStatus.INCOMPLETE,
             ModelEventType.TURN_INCOMPLETE.value: TurnStatus.INCOMPLETE,
             ModelEventType.TURN_REFUSED.value: TurnStatus.REFUSED,
             ModelEventType.CANCELLED.value: TurnStatus.CANCELLED,
-            ModelEventType.ERROR.value: TurnStatus.FAILED,
         }
         if event.event_type in mapping:
             return mapping[event.event_type]
@@ -351,26 +385,23 @@ def _tool_terminal(status: ToolReceiptStatus) -> tuple[str, ItemStatus]:
 
 
 def _runtime_turn_status(result: ProfessionalGovernedTurnResult) -> TurnStatus:
-    if result.blocked_receipt is not None:
-        if result.blocked_receipt.status is not ToolReceiptStatus.ESCALATED:
-            raise OperationalHistoryError("blocked professional turn must carry an escalated receipt")
-        return TurnStatus.ESCALATED
-    terminal = result.final_turn.terminal_event.event_type
     mapping = {
-        ModelEventType.TURN_COMPLETED: TurnStatus.COMPLETED,
-        ModelEventType.TURN_REQUIRES_CONTINUATION: TurnStatus.INCOMPLETE,
-        ModelEventType.TURN_INCOMPLETE: TurnStatus.INCOMPLETE,
-        ModelEventType.TURN_REFUSED: TurnStatus.REFUSED,
-        ModelEventType.CANCELLED: TurnStatus.CANCELLED,
-        ModelEventType.ERROR: TurnStatus.FAILED,
+        ProfessionalLoopStopReason.TERMINAL_COMPLETION: TurnStatus.COMPLETED,
+        ProfessionalLoopStopReason.PROVIDER_CONTINUATION_REQUIRED: TurnStatus.INCOMPLETE,
+        ProfessionalLoopStopReason.APPROVAL_ESCALATION_REQUIRED: TurnStatus.ESCALATED,
+        ProfessionalLoopStopReason.UNSUPPORTED_CAPABILITY: TurnStatus.INCOMPLETE,
+        ProfessionalLoopStopReason.CREDENTIAL_MANUAL_BLOCKER: TurnStatus.INCOMPLETE,
+        ProfessionalLoopStopReason.TERMINAL_INCOMPLETE: TurnStatus.INCOMPLETE,
+        ProfessionalLoopStopReason.TERMINAL_REFUSAL: TurnStatus.REFUSED,
+        ProfessionalLoopStopReason.CANCELLED: TurnStatus.CANCELLED,
+        ProfessionalLoopStopReason.ERROR: TurnStatus.FAILED,
     }
-    try:
-        return mapping[terminal]
-    except KeyError as exc:
-        raise OperationalHistoryError(
-            f"professional runtime ended without a finalizable turn outcome: {terminal.value}"
-        ) from exc
+    return mapping[result.stop_reason]
 
 
 def _optional_text(value: object) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _is_manual_blocker_code(value: object) -> bool:
+    return isinstance(value, str) and value.strip().upper() in _MANUAL_BLOCKER_CODES
