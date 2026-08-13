@@ -7,7 +7,7 @@ already owns session/workspace state.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .memory.operational_history import (
@@ -24,6 +24,7 @@ from .professional_continuation_runtime import (
 )
 from .professional_provider_events import ModelEventType, NormalizedModelEvent, ProviderTurnRequest
 from .professional_session_provider import ProfessionalSessionProvider
+from .runtime.professional_command_events import CommandEvent
 from .runtime.tool_orchestration import (
     GovernedToolOrchestrator,
     ToolExecutionContext,
@@ -62,6 +63,7 @@ class ProfessionalTurnHistoryRecorder:
         self.turn = history.start_turn(session_id=session_id)
         self._model_item_id: str | None = None
         self._tool_items: dict[str, str] = {}
+        self._operation_items: dict[str, tuple[str, NormalizedModelEvent]] = {}
 
     @property
     def turn_id(self) -> str:
@@ -109,8 +111,11 @@ class ProfessionalTurnHistoryRecorder:
             raise OperationalHistoryError("tool proposal lacks lbe_call_id")
         if proposal.lbe_call_id in self._tool_items:
             raise OperationalHistoryError("duplicate tool start for lbe_call_id")
+        if operation_id in self._operation_items:
+            raise OperationalHistoryError("duplicate tool start for runtime operation id")
         item = self.history.start_item(turn_id=self.turn_id, kind="tool.execution")
         self._tool_items[proposal.lbe_call_id] = item.item_id
+        self._operation_items[operation_id] = (item.item_id, proposal)
         self.history.append_event(OperationalEvent(
             session_id=self.turn.session_id,
             turn_id=self.turn_id,
@@ -129,12 +134,45 @@ class ProfessionalTurnHistoryRecorder:
             runtime_operation_id=operation_id,
         ))
 
+    def observe_runtime_event(self, event: object) -> None:
+        """Persist already-produced P6 runtime events on their active tool item."""
+        if not isinstance(event, CommandEvent):
+            raise TypeError("unsupported runtime event type")
+        correlation = self._operation_items.get(event.operation_id)
+        if correlation is None:
+            raise OperationalHistoryError("command event observed without matching governed tool operation")
+        item_id, proposal = correlation
+        self.history.append_event(OperationalEvent(
+            session_id=self.turn.session_id,
+            turn_id=self.turn_id,
+            item_id=item_id,
+            event_type=event.event_type.value,
+            payload={
+                "command_id": event.command_id,
+                "sequence": event.sequence,
+                "elapsed_seconds": event.elapsed_seconds,
+                "text": event.text,
+                "exit_code": event.exit_code,
+                "metadata": dict(event.metadata),
+            },
+            provider_id=proposal.provider_id,
+            model_id=proposal.model_id,
+            provider_request_id=proposal.provider_request_id,
+            provider_item_id=proposal.provider_item_id,
+            provider_tool_call_id=proposal.provider_tool_call_id,
+            lbe_call_id=proposal.lbe_call_id,
+            runtime_operation_id=event.operation_id,
+        ))
+
     def observe_tool_receipt(self, proposal: NormalizedModelEvent, receipt: ToolReceipt) -> None:
         if not proposal.lbe_call_id:
             raise OperationalHistoryError("tool proposal lacks lbe_call_id")
         item_id = self._tool_items.pop(proposal.lbe_call_id, None)
         if item_id is None:
             raise OperationalHistoryError("tool receipt observed without matching tool start")
+        operation = self._operation_items.pop(receipt.operation_id, None)
+        if operation is None or operation[0] != item_id:
+            raise OperationalHistoryError("tool receipt runtime operation does not match active tool item")
         event_type, item_status = _tool_terminal(receipt.status)
         self.history.append_event(OperationalEvent(
             session_id=self.turn.session_id,
@@ -161,7 +199,7 @@ class ProfessionalTurnHistoryRecorder:
         self.history.finalize_item(item_id=item_id, status=item_status)
 
     def finalize(self, result: ProfessionalGovernedTurnResult) -> OperationalTurn:
-        if self._model_item_id is not None or self._tool_items:
+        if self._model_item_id is not None or self._tool_items or self._operation_items:
             raise OperationalHistoryError("cannot finalize professional turn with in-flight observed items")
         status = _runtime_turn_status(result)
         self.turn = self.history.finalize_turn(turn_id=self.turn_id, status=status)
@@ -183,11 +221,15 @@ def execute_persisted_governed_professional_turn(
         history=history,
         session_id=session_provider.session_id,
     )
+    observed_tool_context = replace(
+        tool_context,
+        runtime_event_observer=recorder.observe_runtime_event,
+    )
     result = execute_governed_professional_turn(
         session_provider=session_provider,
         request=request,
         orchestrator=orchestrator,
-        tool_context=tool_context,
+        tool_context=observed_tool_context,
         max_tool_hops=max_tool_hops,
         operation_id_factory=operation_id_factory,
         model_event_observer=recorder.observe_model_event,
