@@ -8,9 +8,8 @@ provider/model capability evidence satisfy the requested contract.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Mapping
+from typing import Callable
 
-from .cline_sidecar_adapter import ClineSidecarProviderAdapter
 from .cline_sidecar_readiness import ClineSidecarReadiness, ClineSidecarReadinessStatus
 from .provider_capabilities import CapabilityClaim, CapabilitySupport, ProviderModelCapabilities
 from .professional_provider_events import ProfessionalProviderAdapter
@@ -92,12 +91,9 @@ def resolve_cline_professional_transport(
         )
 
     adapter = adapter_factory()
-    if not isinstance(adapter, ProfessionalProviderAdapter):
-        # Protocol runtime checks are unavailable unless marked runtime_checkable;
-        # validate the required provider-I/O surface directly without granting authority.
-        for name in ("stream_turn", "continue_with_tool_result", "cancel"):
-            if not callable(getattr(adapter, name, None)):
-                raise TypeError("adapter_factory returned an invalid ProfessionalProviderAdapter")
+    for name in ("stream_turn", "continue_with_tool_result", "cancel"):
+        if not callable(getattr(adapter, name, None)):
+            raise TypeError("adapter_factory returned an invalid ProfessionalProviderAdapter")
 
     return ProfessionalProviderResolution(
         backend_id="cline-llms-sidecar",
