@@ -1,7 +1,7 @@
 # LBE V2 Release Readiness
 
 Updated: 2026-08-13
-Status: **RELEASE READY — PUBLICATION NOT YET CLAIMED**
+Status: **PUBLIC NPM RELEASE PUBLISHED AND PUBLIC LAUNCHER INSTALL VERIFIED**
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 Verified candidate commit: `5d94bd51fcd6b9f6265f4b618d78fb34ae46e843`
 Release pair:
@@ -99,23 +99,49 @@ package.json
 
 No Python runtime implementation is embedded in the npm tarball.
 
-## Required publication sequence
+## Public npm publication proof
 
-The source/package candidate is release-ready. Publication remains a separate intentional action.
+`@letterblack/lbe@2.0.0` was published to the public npm registry on 2026-08-13T07:38:28.509Z.
 
-Recommended release sequence:
+Registry/publication proof:
 
-1. merge the verified candidate to the release branch/main without changing release files;
-2. tag the exact release commit as `v2.0.0`;
-3. build the Python wheel/sdist from that exact tagged commit;
-4. produce the npm tarball from `npm/`;
-5. install the exact V2 npm tarball and exact V2 Python wheel in a clean consumer location and run the managed-runtime smoke proof;
-6. verify no credentials, `.env`, state database, proof workspace, or development-only artifact appears in either artifact;
-7. publish `@letterblack/lbe@2.0.0` intentionally with public access;
-8. verify the npm registry resolves `2.0.0` and a clean unauthenticated consumer can install it;
-9. record the registry publication receipt separately.
+```text
+package: @letterblack/lbe
+version: 2.0.0
+shasum: 5a2056b974839dc0c169dbb1f84973fcbc73568d
+registry versions: 0.1.0, 2.0.0
+latest: 2.0.0
+LBE_V2_PUBLIC_REGISTRY_VERIFY=PASS
+```
 
-The Python wheel is an approved managed-runtime artifact. PyPI publication is not required by the current npm bootstrap contract unless a later release explicitly chooses public Python-registry distribution.
+The published shasum matches the audited V2 npm tarball produced during the release run.
+
+## Clean public launcher install proof
+
+A fresh public install of `@letterblack/lbe@2.0.0` completed successfully from npm. The installed `lbe` launcher then executed `lbe --diagnose` successfully without source-checkout dependency.
+
+Observed launcher diagnosis:
+
+```text
+python.state = PYTHON_SUPPORTED
+selected Python = 3.14.6
+runtime.state = LBE_RUNTIME_NOT_INSTALLED
+```
+
+This is the correct pre-bootstrap state: the public npm launcher is installed and functional, while the managed Python V2 runtime has not yet been installed into `LBE_HOME/runtime`.
+
+The diagnosis also confirms that runtime, config, and persistent state remain separated under the user-scoped `LBE_HOME` layout rather than being bundled into the npm package.
+
+## Remaining managed-runtime smoke proof
+
+The remaining distribution proof is to install the exact `lbe_guard_inspector-2.0.0-py3-none-any.whl` through the public V2 launcher and verify:
+
+1. `lbe --diagnose` reports the managed Python runtime as compatible;
+2. `lbe --help` works through the public launcher;
+3. the exact installed Python package version is `2.0.0`;
+4. persistent state remains outside the versioned runtime directory and survives runtime replacement/reinstall.
+
+This remaining smoke proof does not reopen npm publication. The public npm release itself is complete.
 
 ## GitHub release-candidate workflow
 
@@ -142,7 +168,8 @@ V2.0 is a new major release. Fixes and extensions after this release belong in s
 ```text
 V2_RELEASE_READY = true
 V2_RELEASE_VERIFIER = PASS
-V2_NPM_PUBLISHED = false
+V2_NPM_PUBLISHED = true
+V2_NPM_LATEST = 2.0.0
+V2_PUBLIC_LAUNCHER_INSTALL = PASS
+V2_MANAGED_RUNTIME_SMOKE = pending
 ```
-
-Do not report V2 as published until an npm registry receipt for `@letterblack/lbe@2.0.0` and clean public-install verification exist.
