@@ -2,7 +2,7 @@
 
 const childProcess = require("node:child_process");
 const { readRuntime } = require("./runtime-discovery");
-const { installRuntime } = require("./runtime-install");
+const { installPublicRuntime, installRuntime } = require("./runtime-install");
 const { discoverPython } = require("./python-discovery");
 
 function emit(value) {
@@ -20,7 +20,7 @@ function forward(executable, args) {
   child.on("exit", (code, signal) => { process.exitCode = signal ? 1 : (code ?? 1); });
 }
 
-function runLauncher(args, { env = process.env, platform = process.platform } = {}) {
+async function runLauncher(args, { env = process.env, platform = process.platform, fetchImpl = globalThis.fetch } = {}) {
   if (args[0] === "--diagnose") {
     emit({ python: discoverPython({ platform }), runtime: readRuntime({ env, platform }) });
     return;
@@ -28,9 +28,15 @@ function runLauncher(args, { env = process.env, platform = process.platform } = 
   if (args[0] === "--install") {
     const wheelIndex = args.indexOf("--wheel");
     const wheelPath = wheelIndex >= 0 ? args[wheelIndex + 1] : undefined;
+    if (wheelIndex >= 0 && !wheelPath) {
+      fail("--wheel requires a path. For normal public installation use: lbe --install");
+      return;
+    }
     try {
-      const runtime = installRuntime({ wheelPath, env, platform });
-      emit({ action: "install", ok: true, runtime: runtime.metadata });
+      const runtime = wheelPath
+        ? installRuntime({ wheelPath, env, platform, source: "local-wheel" })
+        : await installPublicRuntime({ env, platform, fetchImpl });
+      emit({ action: "install", ok: true, source: wheelPath ? "local-wheel" : "public-registry", runtime: runtime.metadata });
     } catch (error) {
       fail(error.message);
     }
@@ -38,7 +44,7 @@ function runLauncher(args, { env = process.env, platform = process.platform } = 
   }
   const runtime = readRuntime({ env, platform });
   if (runtime.state !== "LBE_RUNTIME_COMPATIBLE") {
-    fail(`${runtime.state}. Install a local approved Python runtime with: lbe --install --wheel <path-to-lbe_guard_inspector.whl>`);
+    fail(`${runtime.state}. Install the managed runtime with: lbe --install`);
     return;
   }
   forward(runtime.executable, args);
