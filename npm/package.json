@@ -1,6 +1,6 @@
 {
   "name": "@letterblack/lbe",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Install, discover, and launch the managed Python LBE persistent agent runtime",
   "license": "UNLICENSED",
   "private": false,
