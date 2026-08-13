@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { managedPaths } = require("./paths");
 
-const SUPPORTED_PYTHON_PACKAGE_SERIES = "0.2.";
+const SUPPORTED_PYTHON_PACKAGE_SERIES = "2.0.";
 
 function pythonExecutable(runtimePath, platform = process.platform) {
   return platform === "win32"
