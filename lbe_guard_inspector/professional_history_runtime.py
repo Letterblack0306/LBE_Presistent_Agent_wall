@@ -317,6 +317,7 @@ def replay_turn_status(*, history: SessionOperationalHistory, turn_id: str) -> T
             return TurnStatus.ESCALATED
         mapping = {
             ModelEventType.TURN_COMPLETED.value: TurnStatus.COMPLETED,
+            ModelEventType.TURN_REQUIRES_CONTINUATION.value: TurnStatus.INCOMPLETE,
             ModelEventType.TURN_INCOMPLETE.value: TurnStatus.INCOMPLETE,
             ModelEventType.TURN_REFUSED.value: TurnStatus.REFUSED,
             ModelEventType.CANCELLED.value: TurnStatus.CANCELLED,
@@ -357,6 +358,7 @@ def _runtime_turn_status(result: ProfessionalGovernedTurnResult) -> TurnStatus:
     terminal = result.final_turn.terminal_event.event_type
     mapping = {
         ModelEventType.TURN_COMPLETED: TurnStatus.COMPLETED,
+        ModelEventType.TURN_REQUIRES_CONTINUATION: TurnStatus.INCOMPLETE,
         ModelEventType.TURN_INCOMPLETE: TurnStatus.INCOMPLETE,
         ModelEventType.TURN_REFUSED: TurnStatus.REFUSED,
         ModelEventType.CANCELLED: TurnStatus.CANCELLED,
