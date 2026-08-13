@@ -1,8 +1,9 @@
 # LBE V2 Release Readiness
 
 Updated: 2026-08-13
-Status: **RELEASE CANDIDATE — PUBLICATION NOT YET CLAIMED**
+Status: **RELEASE READY — PUBLICATION NOT YET CLAIMED**
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
+Verified candidate commit: `5d94bd51fcd6b9f6265f4b618d78fb34ae46e843`
 Release pair:
 
 ```text
@@ -54,27 +55,67 @@ npm / npx
 
 The coordinated major version is deliberate. npm V2 accepts only managed Python `2.0.x` runtime metadata. Older managed Python `0.2.x` runtimes are reported as incompatible until the V2 wheel is installed; persistent user state remains outside the versioned runtime directory and must not be deleted by the upgrade.
 
-## Required pre-publication gates
+## Release-verifier result
 
-Publication is authorized only after the exact candidate commit proves all of the following:
+The exact candidate commit completed the release verifier successfully on 2026-08-13.
 
-1. `pyproject.toml` reports `lbe-guard-inspector` version `2.0.0`.
-2. `npm/package.json` reports `@letterblack/lbe` version `2.0.0`.
-3. npm launcher compatibility series is exactly `2.0.`.
-4. Full Python test suite passes.
-5. `python -m build` produces:
-   - `dist/lbe_guard_inspector-2.0.0-py3-none-any.whl`
-   - `dist/lbe_guard_inspector-2.0.0.tar.gz`
-6. `npm test` passes from `npm/`.
-7. `npm pack --dry-run --json` contains only the established eight-file launcher allowlist.
-8. A real npm tarball `letterblack-lbe-2.0.0.tgz` can be produced.
-9. `git diff --check` is clean.
-10. Clean managed-runtime smoke installs the exact V2 wheel through the V2 npm launcher and proves:
-    - `lbe --diagnose` recognizes the installed runtime as compatible;
-    - `lbe --help` works;
-    - persistent session state remains outside runtime installation and survives upgrade/reinstall.
-11. No provider credential, npm token, `.env`, runtime database, proof workspace, or development-only artifact is present in either public distribution artifact.
-12. Registry publication is performed intentionally only after the above gates pass.
+Observed proof:
+
+```text
+PYTHON_PACKAGE_VERSION=2.0.0
+NPM_PACKAGE_VERSION=2.0.0
+PYTHON_COMPAT_SERIES=2.0.x
+816 passed
+Successfully built lbe_guard_inspector-2.0.0.tar.gz and lbe_guard_inspector-2.0.0-py3-none-any.whl
+WHEEL_EXISTS=True
+SDIST_EXISTS=True
+npm test: 8 passed, 0 failed
+NPM_TARBALL_ALLOWLIST=PASS
+PY_VERSION_EXIT=0
+NPM_VERSION_EXIT=0
+FULL_EXIT=0
+PY_BUILD_EXIT=0
+ARTIFACT_EXIT=0
+NPM_TEST_EXIT=0
+NPM_PACK_DRY_EXIT=0
+NPM_ALLOWLIST_EXIT=0
+NPM_PACK_EXIT=0
+DIFF_EXIT=0
+LBE_V2_RELEASE_READY_VERIFY=PASS
+```
+
+The npm allowlist remains the established eight-file bootstrap surface:
+
+```text
+README.md
+bin/lbe.js
+lib/launcher.js
+lib/paths.js
+lib/python-discovery.js
+lib/runtime-discovery.js
+lib/runtime-install.js
+package.json
+```
+
+No Python runtime implementation is embedded in the npm tarball.
+
+## Required publication sequence
+
+The source/package candidate is release-ready. Publication remains a separate intentional action.
+
+Recommended release sequence:
+
+1. merge the verified candidate to the release branch/main without changing release files;
+2. tag the exact release commit as `v2.0.0`;
+3. build the Python wheel/sdist from that exact tagged commit;
+4. produce the npm tarball from `npm/`;
+5. install the exact V2 npm tarball and exact V2 Python wheel in a clean consumer location and run the managed-runtime smoke proof;
+6. verify no credentials, `.env`, state database, proof workspace, or development-only artifact appears in either artifact;
+7. publish `@letterblack/lbe@2.0.0` intentionally with public access;
+8. verify the npm registry resolves `2.0.0` and a clean unauthenticated consumer can install it;
+9. record the registry publication receipt separately.
+
+The Python wheel is an approved managed-runtime artifact. PyPI publication is not required by the current npm bootstrap contract unless a later release explicitly chooses public Python-registry distribution.
 
 ## GitHub release-candidate workflow
 
@@ -98,11 +139,10 @@ V2.0 is a new major release. Fixes and extensions after this release belong in s
 
 ## Publication state
 
-Until the exact V2 candidate passes the release verifier and an npm registry receipt exists:
-
 ```text
-V2_RELEASE_READY = pending verification
+V2_RELEASE_READY = true
+V2_RELEASE_VERIFIER = PASS
 V2_NPM_PUBLISHED = false
 ```
 
-Do not report V2 as published solely because the GitHub branch is release-prepared.
+Do not report V2 as published until an npm registry receipt for `@letterblack/lbe@2.0.0` and clean public-install verification exist.
