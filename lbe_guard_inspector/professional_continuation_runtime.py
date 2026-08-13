@@ -20,6 +20,7 @@ from .professional_provider_events import (
 )
 from .professional_session_provider import ProfessionalSessionProvider
 from .professional_turn_runtime import (
+    ModelEventObserver,
     ProfessionalTurnResult,
     execute_professional_continuation,
     execute_professional_turn,
@@ -38,6 +39,8 @@ class ProfessionalContinuationRuntimeError(RuntimeError):
 
 
 OperationIdFactory = Callable[[], str]
+ToolStartedObserver = Callable[[NormalizedModelEvent, str], None]
+ToolReceiptObserver = Callable[[NormalizedModelEvent, ToolReceipt], None]
 
 
 @dataclass(frozen=True)
@@ -60,12 +63,18 @@ def execute_governed_professional_turn(
     tool_context: ToolExecutionContext,
     max_tool_hops: int = 8,
     operation_id_factory: OperationIdFactory | None = None,
+    model_event_observer: ModelEventObserver | None = None,
+    tool_started_observer: ToolStartedObserver | None = None,
+    tool_receipt_observer: ToolReceiptObserver | None = None,
 ) -> ProfessionalGovernedTurnResult:
     """Run provider → governed tool → provider continuation until terminal.
 
     ESCALATED receipts stop the loop and remain outward blockers. EXECUTED,
     DENIED, and FAILED receipts are returned to the provider as truthful tool
     results/errors so the model may continue without being granted authority.
+
+    Observer hooks expose already-normalized model events and governed tool
+    lifecycle evidence without transferring authorization or execution authority.
     """
     if not isinstance(session_provider, ProfessionalSessionProvider):
         raise TypeError("session_provider must be ProfessionalSessionProvider")
@@ -77,12 +86,23 @@ def execute_governed_professional_turn(
         raise TypeError("tool_context must be ToolExecutionContext")
     if not isinstance(max_tool_hops, int) or isinstance(max_tool_hops, bool) or max_tool_hops < 1:
         raise ValueError("max_tool_hops must be a positive integer")
+    for name, observer in (
+        ("model_event_observer", model_event_observer),
+        ("tool_started_observer", tool_started_observer),
+        ("tool_receipt_observer", tool_receipt_observer),
+    ):
+        if observer is not None and not callable(observer):
+            raise TypeError(f"{name} must be callable")
 
     make_operation_id = operation_id_factory or (lambda: f"runtime-op-{uuid.uuid4().hex}")
     if not callable(make_operation_id):
         raise TypeError("operation_id_factory must be callable")
 
-    turn = execute_professional_turn(session_provider=session_provider, request=request)
+    turn = execute_professional_turn(
+        session_provider=session_provider,
+        request=request,
+        event_observer=model_event_observer,
+    )
     exchanges = [turn]
     receipts: list[ToolReceipt] = []
     hops = 0
@@ -99,6 +119,8 @@ def execute_governed_professional_turn(
         if operation_id == proposal.lbe_call_id:
             raise ProfessionalContinuationRuntimeError("runtime operation identity must remain distinct from lbe_call_id")
 
+        if tool_started_observer is not None:
+            tool_started_observer(proposal, operation_id)
         receipt = orchestrator.invoke(ToolRequest(
             operation_id=operation_id,
             tool_id=proposal.tool_name or "",
@@ -106,6 +128,8 @@ def execute_governed_professional_turn(
             context=tool_context,
         ))
         receipts.append(receipt)
+        if tool_receipt_observer is not None:
+            tool_receipt_observer(proposal, receipt)
 
         if receipt.status is ToolReceiptStatus.ESCALATED:
             return ProfessionalGovernedTurnResult(
@@ -128,6 +152,7 @@ def execute_governed_professional_turn(
             session_provider=session_provider,
             request=request,
             result=continuation,
+            event_observer=model_event_observer,
         )
         exchanges.append(turn)
         hops += 1
