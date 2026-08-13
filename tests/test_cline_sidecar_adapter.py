@@ -8,6 +8,7 @@ from lbe_guard_inspector.cline_sidecar_adapter import (
 )
 from lbe_guard_inspector.professional_provider_events import (
     ModelEventType,
+    ProviderToolDefinition,
     ProviderToolResultContinuation,
     ProviderTurnRequest,
 )
@@ -19,18 +20,19 @@ def _request(*, messages=None) -> ProviderTurnRequest:
         provider_id="openai-compatible",
         model_id="model-a",
         protocol_family=ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+        system_prompt="You are a bounded provider transport test.",
         messages=tuple(messages or ({"role": "user", "content": "inspect README"},)),
-        tools=(
-            {
-                "name": "workspace.read",
-                "description": "Read one workspace-relative file",
-                "inputSchema": {
+        tool_definitions=(
+            ProviderToolDefinition(
+                name="workspace.read",
+                description="Read one workspace-relative file",
+                input_schema={
                     "type": "object",
                     "properties": {"path": {"type": "string"}},
                     "required": ["path"],
                     "additionalProperties": False,
                 },
-            },
+            ),
         ),
     )
 
@@ -43,7 +45,6 @@ def _adapter(runner, *, ids=None) -> ClineSidecarProviderAdapter:
             "modelId": "model-a",
             "baseUrl": "http://127.0.0.1:1234/v1",
         },
-        system_prompt="You are a bounded provider transport test.",
         bridge_runner=runner,
         call_id_factory=lambda: next(values),
     )
@@ -52,7 +53,9 @@ def _adapter(runner, *, ids=None) -> ClineSidecarProviderAdapter:
 def test_text_turn_emits_started_delta_and_completed() -> None:
     def runner(payload):
         assert payload["provider_config"]["providerId"] == "openai-compatible"
+        assert payload["system_prompt"] == "You are a bounded provider transport test."
         assert payload["tools"][0]["name"] == "workspace.read"
+        assert payload["tools"][0]["inputSchema"]["required"] == ["path"]
         assert "workspace_root" not in payload
         yield {"kind": "chunk", "chunk": {"type": "text", "text": "hello", "id": "resp-1"}}
         yield {"kind": "chunk", "chunk": {"type": "done", "success": True, "id": "resp-1"}}
@@ -239,6 +242,7 @@ def test_provider_config_and_request_identity_must_match() -> None:
         provider_id="anthropic",
         model_id="model-a",
         protocol_family=ProviderProtocolFamily.ANTHROPIC_MESSAGES,
+        system_prompt="You are a bounded provider transport test.",
         messages=({"role": "user", "content": "hello"},),
     )
     with pytest.raises(ClineSidecarProcessError, match="provider_id"):
