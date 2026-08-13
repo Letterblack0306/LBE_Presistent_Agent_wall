@@ -5,12 +5,14 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const childProcess = require("node:child_process");
-const { readRuntime } = require("../lib/runtime-discovery");
+const { readRuntime, SUPPORTED_PYTHON_PACKAGE_SERIES } = require("../lib/runtime-discovery");
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
 
-test("package exposes only the lbe bootstrap executable", () => {
+test("package exposes the V2 lbe bootstrap contract", () => {
   assert.equal(packageJson.name, "@letterblack/lbe");
+  assert.equal(packageJson.version, "2.0.0");
+  assert.equal(SUPPORTED_PYTHON_PACKAGE_SERIES, "2.0.");
   assert.deepEqual(packageJson.bin, { lbe: "bin/lbe.js" });
   assert.equal(fs.existsSync(path.join(__dirname, "..", packageJson.bin.lbe)), true);
 });
