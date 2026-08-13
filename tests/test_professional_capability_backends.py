@@ -151,7 +151,7 @@ def test_git_log_show_branch_remote_and_worktree_are_bounded_reads(tmp_path: Pat
     assert "commit" in outputs["git.show"]
     assert _git(root, "branch", "--show-current") in outputs["git.branch"]
     assert "origin" in outputs["git.remote"]
-    assert str(root) in outputs["git.worktree.list"]
+    assert root.as_posix() in outputs["git.worktree.list"].replace("\\", "/")
 
 
 def test_git_argument_contracts_fail_closed(tmp_path: Path) -> None:
