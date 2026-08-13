@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
-from .cline_llms_compat import ClineCompatibilityError, normalize_cline_stream_chunk
+from .cline_llms_compat import normalize_cline_stream_chunk
 from .professional_provider_events import (
     ModelEventType,
     NormalizedModelEvent,
@@ -47,7 +47,6 @@ class ClineSidecarProviderAdapter(ProfessionalProviderAdapter):
         self,
         *,
         provider_config: Mapping[str, Any],
-        system_prompt: str,
         node_executable: str = "node",
         bridge_path: str | Path | None = None,
         bridge_runner: BridgeRunner | None = None,
@@ -56,13 +55,10 @@ class ClineSidecarProviderAdapter(ProfessionalProviderAdapter):
     ) -> None:
         if not isinstance(provider_config, Mapping):
             raise TypeError("provider_config must be a mapping")
-        if not isinstance(system_prompt, str) or not system_prompt.strip():
-            raise ValueError("system_prompt must be a non-empty string")
         if not isinstance(node_executable, str) or not node_executable.strip():
             raise ValueError("node_executable must be a non-empty string")
 
         self._provider_config = dict(provider_config)
-        self._system_prompt = system_prompt.strip()
         self._node_executable = node_executable.strip()
         self._bridge_path = Path(bridge_path) if bridge_path is not None else _default_bridge_path()
         self._bridge_runner = bridge_runner or self._run_bridge_process
@@ -149,9 +145,16 @@ class ClineSidecarProviderAdapter(ProfessionalProviderAdapter):
 
         payload = {
             "provider_config": dict(self._provider_config),
-            "system_prompt": self._system_prompt,
+            "system_prompt": request.system_prompt,
             "messages": [dict(item) for item in messages],
-            "tools": [dict(item) for item in request.tools],
+            "tools": [
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "inputSchema": dict(tool.input_schema),
+                }
+                for tool in request.tool_definitions
+            ],
         }
         saw_tool_call = False
         terminal_seen = False
