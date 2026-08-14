@@ -32,7 +32,8 @@ class ChangeRegistrationCheck:
 class _GateConfig:
     canonical_branch: str
     require_intent_for_all_mutations: bool
-    require_branch_and_worktree_outside_canonical: bool
+    require_branch_outside_canonical: bool
+    require_worktree_for_linked_worktree: bool
     intent_file: str
 
 
@@ -45,6 +46,10 @@ class _GitWorkspace:
     @property
     def is_detached(self) -> bool:
         return self.branch == "HEAD"
+
+    @property
+    def is_linked_worktree(self) -> bool:
+        return not _same_path(self.repo_root, self.primary_worktree)
 
 
 class ChangeRegistrationError(RuntimeError):
@@ -96,12 +101,19 @@ def check_change_registration(
             worktree_path=str(git.repo_root),
         )
 
-    canonical = (
-        git.branch == config.canonical_branch
-        and _same_path(git.repo_root, git.primary_worktree)
-    )
+    canonical = git.branch == config.canonical_branch and not git.is_linked_worktree
 
-    intent_path = _safe_relative_file(root, config.intent_file)
+    try:
+        intent_path = _safe_relative_file(root, config.intent_file)
+    except ChangeRegistrationError as exc:
+        return ChangeRegistrationCheck(
+            allowed=False,
+            code="CHANGE_GATE_CONFIG_INVALID",
+            rationale=str(exc),
+            branch=git.branch,
+            worktree_path=str(git.repo_root),
+        )
+
     if config.require_intent_for_all_mutations and not intent_path.is_file():
         return ChangeRegistrationCheck(
             allowed=False,
@@ -186,34 +198,44 @@ def check_change_registration(
                 worktree_path=str(git.repo_root),
             )
 
-    if not canonical and config.require_branch_and_worktree_outside_canonical:
-        if registered_branch is None:
-            return ChangeRegistrationCheck(
-                allowed=False,
-                code="CHANGE_INTENT_BRANCH_REQUIRED",
-                rationale=(
-                    "Current workspace is not the canonical main workspace; "
-                    "the active intent must register the exact branch before mutation."
-                ),
-                change_id=change_id,
-                branch=git.branch,
-                worktree_path=str(git.repo_root),
-            )
-        if registered_worktree is None:
-            return ChangeRegistrationCheck(
-                allowed=False,
-                code="CHANGE_INTENT_WORKTREE_REQUIRED",
-                rationale=(
-                    "Current workspace is not the canonical main workspace; "
-                    "the active intent must register the exact worktreePath before mutation."
-                ),
-                change_id=change_id,
-                branch=git.branch,
-                worktree_path=str(git.repo_root),
-            )
+    if not canonical and config.require_branch_outside_canonical and registered_branch is None:
+        return ChangeRegistrationCheck(
+            allowed=False,
+            code="CHANGE_INTENT_BRANCH_REQUIRED",
+            rationale=(
+                "Current branch is not the canonical main branch; "
+                "the active intent must register the exact branch before mutation."
+            ),
+            change_id=change_id,
+            branch=git.branch,
+            worktree_path=str(git.repo_root),
+        )
+
+    if git.is_linked_worktree and config.require_worktree_for_linked_worktree and registered_worktree is None:
+        return ChangeRegistrationCheck(
+            allowed=False,
+            code="CHANGE_INTENT_WORKTREE_REQUIRED",
+            rationale=(
+                "Current workspace is a linked Git worktree; "
+                "the active intent must register the exact worktreePath before mutation."
+            ),
+            change_id=change_id,
+            branch=git.branch,
+            worktree_path=str(git.repo_root),
+        )
 
     if requested_path is not None:
-        scope_error = _validate_requested_path(intent, requested_path)
+        try:
+            scope_error = _validate_requested_path(intent, requested_path)
+        except ChangeRegistrationError as exc:
+            return ChangeRegistrationCheck(
+                allowed=False,
+                code="CHANGE_INTENT_SCOPE_INVALID",
+                rationale=str(exc),
+                change_id=change_id,
+                branch=git.branch,
+                worktree_path=str(git.repo_root),
+            )
         if scope_error is not None:
             return ChangeRegistrationCheck(
                 allowed=False,
@@ -227,7 +249,7 @@ def check_change_registration(
     return ChangeRegistrationCheck(
         allowed=True,
         code="CHANGE_INTENT_ACTIVE",
-        rationale="Active change intent matches the current workspace/branch/worktree registration.",
+        rationale="Active change intent matches the current repository/branch/worktree context.",
         change_id=change_id,
         branch=git.branch,
         worktree_path=str(git.repo_root),
@@ -238,32 +260,28 @@ def _load_gate_config(root: Path) -> tuple[_GateConfig, str | None] | None:
     path = root / ".ai" / "change-gate.json"
     if not path.is_file():
         return None
+    default = _GateConfig("main", True, True, True, ".ai/intent.json")
     try:
         raw = _load_json_object(path)
     except ChangeRegistrationError as exc:
-        return (
-            _GateConfig("main", True, True, ".ai/intent.json"),
-            str(exc),
-        )
+        return default, str(exc)
 
     enabled = raw.get("enabled")
     if enabled is False:
         return None
     if enabled is not True:
-        return (
-            _GateConfig("main", True, True, ".ai/intent.json"),
-            "change-gate.json must set enabled to true or false",
-        )
+        return default, "change-gate.json must set enabled to true or false"
 
     canonical = raw.get("canonicalBranch", "main")
     intent_file = raw.get("intentFile", ".ai/intent.json")
     require_all = raw.get("requireIntentForAllMutations", True)
-    require_alt = raw.get("requireBranchAndWorktreeRegistrationOutsideCanonical", True)
+    require_branch = raw.get("requireBranchRegistrationOutsideCanonical", True)
+    require_worktree = raw.get("requireWorktreeRegistrationForLinkedWorktree", True)
     if not isinstance(canonical, str) or not canonical.strip():
         error = "canonicalBranch must be a non-empty string"
     elif not isinstance(intent_file, str) or not intent_file.strip():
         error = "intentFile must be a non-empty relative path"
-    elif not isinstance(require_all, bool) or not isinstance(require_alt, bool):
+    elif any(not isinstance(value, bool) for value in (require_all, require_branch, require_worktree)):
         error = "change-gate boolean options must be true/false"
     else:
         error = None
@@ -271,7 +289,8 @@ def _load_gate_config(root: Path) -> tuple[_GateConfig, str | None] | None:
         _GateConfig(
             canonical_branch=str(canonical).strip(),
             require_intent_for_all_mutations=bool(require_all),
-            require_branch_and_worktree_outside_canonical=bool(require_alt),
+            require_branch_outside_canonical=bool(require_branch),
+            require_worktree_for_linked_worktree=bool(require_worktree),
             intent_file=str(intent_file).strip(),
         ),
         error,
@@ -288,11 +307,7 @@ def _inspect_git_workspace(root: Path) -> _GitWorkspace:
     branch = _run_git(root, "rev-parse", "--abbrev-ref", "HEAD")
     worktrees = _run_git(root, "worktree", "list", "--porcelain")
     primary = _parse_primary_worktree(worktrees)
-    return _GitWorkspace(
-        repo_root=repo_root,
-        branch=branch.strip(),
-        primary_worktree=primary,
-    )
+    return _GitWorkspace(repo_root=repo_root, branch=branch.strip(), primary_worktree=primary)
 
 
 def _run_git(root: Path, *args: str) -> str:
@@ -343,10 +358,7 @@ def _validate_intent_structure(intent: Mapping[str, Any]) -> str | None:
     return None
 
 
-def _validate_requested_path(
-    intent: Mapping[str, Any],
-    requested_path: str,
-) -> tuple[str, str] | None:
+def _validate_requested_path(intent: Mapping[str, Any], requested_path: str) -> tuple[str, str] | None:
     normalized = _normalize_relative_path(requested_path)
     exclusions = tuple(str(item).strip() for item in intent.get("explicitExclusions", ()) or ())
     if any(_path_matches(normalized, pattern) for pattern in exclusions):
@@ -373,11 +385,9 @@ def _normalize_relative_path(value: str) -> str:
 
 
 def _path_matches(path: str, pattern: str) -> bool:
+    pattern = pattern.replace("\\", "/")
     if os.name == "nt":
-        path = path.casefold()
-        pattern = pattern.replace("\\", "/").casefold()
-    else:
-        pattern = pattern.replace("\\", "/")
+        return fnmatch.fnmatchcase(path.casefold(), pattern.casefold())
     return fnmatch.fnmatchcase(path, pattern)
 
 
