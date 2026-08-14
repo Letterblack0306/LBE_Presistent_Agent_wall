@@ -1,5 +1,4 @@
 include README.md
-include LICENSE
 recursive-include lbe_guard_inspector *.py
 recursive-include rules *.py
 recursive-include schemas *.json

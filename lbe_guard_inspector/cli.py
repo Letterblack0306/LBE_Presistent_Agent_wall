@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Sequence
@@ -68,6 +69,31 @@ def build_parser() -> argparse.ArgumentParser:
     continue_parser.add_argument("--provider")
     continue_parser.add_argument("--model")
     continue_parser.set_defaults(handler=_session_continue)
+
+    checkpoint = session_commands.add_parser(
+        "checkpoint", help="Record current file facts and persist a session checkpoint"
+    )
+    _add_database_argument(checkpoint)
+    checkpoint.add_argument("--session-id", required=True)
+    checkpoint.add_argument("--task-id", required=True)
+    checkpoint.add_argument(
+        "--track-file",
+        action="append",
+        required=True,
+        help="Workspace-relative file to record as a current SHA-256 fact; repeat as needed",
+    )
+    checkpoint.add_argument(
+        "--compaction",
+        required=True,
+        help="Path to the existing compaction JSON payload",
+    )
+    checkpoint.add_argument(
+        "--constraint",
+        action="append",
+        default=[],
+        help="Active constraint to preserve with the checkpoint; repeat as needed",
+    )
+    checkpoint.set_defaults(handler=_session_checkpoint)
 
     status = session_commands.add_parser("status", help="Read persisted session status")
     _add_database_argument(status)
@@ -153,7 +179,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         payload = args.handler(args)
-    except (ValueError, TypeError, FileNotFoundError, RuntimeError) as exc:
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as exc:
         _emit(
             {
                 "ok": False,
@@ -207,6 +233,35 @@ def _session_continue(args: argparse.Namespace) -> dict[str, Any]:
         "action": "session.continue",
         "session": runtime.session_state.as_dict(),
         "context": packet,
+    }
+
+
+def _session_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    task = store.load_session_task(
+        session_id=state.session_id,
+        task_id=args.task_id,
+        project_workspace_id=state.project_workspace_id,
+    )
+    if task is None:
+        raise FileNotFoundError("persistent session task not found")
+    runtime = _runtime_from_state(database=args.database, state=state)
+    memory_ids = [
+        runtime.adapter.record_file_hash(relative_path=path, task_id=args.task_id)
+        for path in args.track_file
+    ]
+    checkpoint_id = runtime.checkpoint(
+        compaction=args.compaction,
+        active_constraints=args.constraint,
+    )
+    return {
+        "action": "session.checkpoint",
+        "session_id": runtime.session_id,
+        "task_id": args.task_id,
+        "checkpoint_id": checkpoint_id,
+        "tracked_file_memory_ids": memory_ids,
+        "active_constraints": list(args.constraint),
     }
 
 

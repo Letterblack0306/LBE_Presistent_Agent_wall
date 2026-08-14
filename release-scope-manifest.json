@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "version": "2.0.2",
+  "sourceOfTruth": [
+    "docs/CURRENT_STATUS.md",
+    "docs/IMPLEMENTATION_PLAN.md"
+  ],
+  "note": "Initial-stage release (2.0.2): the C5/R7 acceptance proofs were initially started and tested with good output but not finalized as durable receipts before the plan changed to the upgrade. Per maintainer (2026-08-14) these proofs are DEFERRED for this initial release. Deferred items do not block publication now, but each MUST be re-recorded as PASS with installed-path receipts before any formal 'release-ready' claim. Distribution + deferred-list transparency remain enforced.",
+  "items": [
+    {
+      "name": "Governed coding session",
+      "classification": "DEFERRED",
+      "formalRequired": true,
+      "reference": "Deferred for initial-stage release; must be PASS before formal release. docs/CURRENT_STATUS.md :: C5/R7 required proof"
+    },
+    {
+      "name": "Provider switch",
+      "classification": "DEFERRED",
+      "formalRequired": true,
+      "reference": "Deferred for initial-stage release; must be PASS before formal release. docs/CURRENT_STATUS.md :: C5/R7 required proof"
+    },
+    {
+      "name": "Resume after external workspace change",
+      "classification": "DEFERRED",
+      "formalRequired": true,
+      "reference": "Deferred for initial-stage release; must be PASS before formal release. docs/CURRENT_STATUS.md :: C5/R7 required proof"
+    },
+    {
+      "name": "Read-only audit",
+      "classification": "DEFERRED",
+      "formalRequired": true,
+      "reference": "Deferred for initial-stage release; must be PASS before formal release. docs/CURRENT_STATUS.md :: C5/R7 required proof"
+    },
+    {
+      "name": "Escalation or denial",
+      "classification": "DEFERRED",
+      "formalRequired": true,
+      "reference": "Deferred for initial-stage release; must be PASS before formal release. docs/CURRENT_STATUS.md :: C5/R7 required proof"
+    },
+    {
+      "name": "Reproducible acceptance evidence",
+      "classification": "DEFERRED",
+      "formalRequired": true,
+      "reference": "Deferred for initial-stage release; must be a defined runbook + durable receipts (PASS) before formal release. docs/CURRENT_STATUS.md :: C5/R7 required proof"
+    },
+    {
+      "name": "Professional interactive TUI",
+      "classification": "DEFERRED",
+      "reference": "docs/IMPLEMENTATION_PLAN.md :: P12 (post-V1; TUI spec: 'Do not build the TUI yet')"
+    },
+    {
+      "name": "Provider-native streaming / tool-call adapters",
+      "classification": "DEFERRED",
+      "reference": "docs/IMPLEMENTATION_PLAN.md :: P3"
+    },
+    {
+      "name": "MCP external-agent surface",
+      "classification": "DEFERRED",
+      "reference": "docs/IMPLEMENTATION_PLAN.md :: P10"
+    },
+    {
+      "name": "IDE bridge / richer clients",
+      "classification": "DEFERRED",
+      "reference": "docs/IMPLEMENTATION_PLAN.md :: P13"
+    },
+    {
+      "name": "Browser capability integration",
+      "classification": "DEFERRED",
+      "reference": "docs/IMPLEMENTATION_PLAN.md :: P14"
+    }
+  ]
+}
