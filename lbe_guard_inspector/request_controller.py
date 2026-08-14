@@ -135,6 +135,10 @@ class LBERequestController:
         plan = _coerce_plan(self._backend.plan(reasoning_request))
         plan = replace(plan, explanation_focus=self._policy.normalize_explanation_focus(plan))
         self._validate_plan(plan, identity.target_project_root, approved_guards)
+        if not plan.candidate_guard_ids and getattr(plan, "tool_requests", ()):
+            return self._response(
+                request, identity, profile, plan, None, None, "COMPLETED", None,
+            )
         if not plan.candidate_guard_ids:
             return self._response(
                 request, identity, profile, plan, None, None, "INSUFFICIENT_EVIDENCE",
