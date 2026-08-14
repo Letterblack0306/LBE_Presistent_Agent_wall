@@ -9,7 +9,7 @@ const { discoverPython } = require("./python-discovery");
 const { pythonExecutable, lbeExecutable, readRuntime } = require("./runtime-discovery");
 
 const PUBLIC_PYTHON_PACKAGE = "lbe-guard-inspector";
-const PUBLIC_PYTHON_PACKAGE_VERSION = "2.0.1";
+const PUBLIC_PYTHON_PACKAGE_VERSION = "2.0.2";
 const PUBLIC_PYPI_METADATA_URL = `https://pypi.org/pypi/${PUBLIC_PYTHON_PACKAGE}/${PUBLIC_PYTHON_PACKAGE_VERSION}/json`;
 const APPROVED_WHEEL_HOSTS = new Set(["files.pythonhosted.org"]);
 

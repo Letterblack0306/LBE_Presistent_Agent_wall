@@ -28,11 +28,11 @@ lbe-guard-inspector 2.0.0
 
 V2.0 froze the verified professional runtime through P7 plus the verified P8 typed control-protocol contract and initialization/read-only session/event handlers.
 
-The 2.0.1 correction keeps the same runtime ownership boundary but fixes the public end-user installation path:
+The 2.0.2 correction keeps the same runtime ownership boundary but fixes the public end-user installation path:
 
 ```text
-@letterblack/lbe 2.0.1
-lbe-guard-inspector 2.0.1
+@letterblack/lbe 2.0.2
+lbe-guard-inspector 2.0.2
 ```
 
 A normal public user must not need the private repository or a manually copied wheel.
@@ -42,7 +42,7 @@ A normal public user must not need the private repository or a manually copied w
 Install the public launcher:
 
 ```powershell
-npm install --global @letterblack/lbe@2.0.1
+npm install --global @letterblack/lbe@2.0.2
 ```
 
 Install the managed runtime:
@@ -51,7 +51,7 @@ Install the managed runtime:
 lbe --install
 ```
 
-The launcher acquires the exact configured `lbe-guard-inspector==2.0.1` universal wheel from the public Python registry, validates package identity/version, validates the approved HTTPS artifact host, verifies SHA-256, creates the managed environment, installs the runtime, verifies the installed version and `lbe` executable, and confirms runtime compatibility.
+The launcher acquires the exact configured `lbe-guard-inspector==2.0.2` universal wheel from the public Python registry, validates package identity/version, validates the approved HTTPS artifact host, verifies SHA-256, creates the managed environment, installs the runtime, verifies the installed version and `lbe` executable, and confirms runtime compatibility.
 
 Then verify/use LBE:
 
@@ -74,7 +74,7 @@ Use `lbe --help` and command-level help as the executable source of truth for ex
 A local wheel remains supported only as an explicit offline/developer path:
 
 ```powershell
-lbe --install --wheel "C:\path\to\lbe_guard_inspector-2.0.1-py3-none-any.whl"
+lbe --install --wheel "C:\path\to\lbe_guard_inspector-2.0.2-py3-none-any.whl"
 ```
 
 This is not the normal public-user workflow.
@@ -122,7 +122,7 @@ Persistent session state belongs to LBE.
 
 The public npm package remains bootstrap/distribution infrastructure. It does not implement provider/session/governance/tool/evidence/completion behavior and does not embed user credentials, runtime databases, proof workspaces, or persistent state.
 
-For the corrected 2.0.1 public flow, the matching Python runtime must be available from a public registry that requires no authentication to the private source repository. The npm launcher pins the exact Python version and fails closed if that public artifact is missing or fails integrity checks.
+For the corrected 2.0.2 public flow, the matching Python runtime must be available from a public registry that requires no authentication to the private source repository. The npm launcher pins the exact Python version and fails closed if that public artifact is missing or fails integrity checks.
 
 Canonical public-distribution contract:
 
@@ -176,7 +176,7 @@ Resume is evidence-aware: persisted memory is not treated as live workspace trut
 
 `@letterblack/lbe@2.0.0` is the first published V2 major release and remains historical evidence.
 
-`2.0.1` is a patch correction to the public installation experience. It does not claim the later P8 mutation controls, live subscriptions, stdio transport, MCP/interactive clients, browser capability, or additional professional capability backends as completed.
+`2.0.2` is a patch correction to the public installation experience. It does not claim the later P8 mutation controls, live subscriptions, stdio transport, MCP/interactive clients, browser capability, or additional professional capability backends as completed.
 
 Canonical evidence includes:
 
@@ -202,10 +202,10 @@ They are no longer the complete product identity or primary user control surface
 
 ## Python package
 
-The 2.0.1 managed Python runtime package builds as:
+The 2.0.2 managed Python runtime package builds as:
 
 ```text
-lbe-guard-inspector 2.0.1
+lbe-guard-inspector 2.0.2
 ```
 
 with Python `>=3.11` and console entry point:
@@ -237,9 +237,9 @@ npm test
 npm pack --dry-run --json
 ```
 
-The `v2-release-candidate` workflow builds/tests the coordinated 2.0.1 artifacts. The `publish-python-runtime` workflow is the explicit public Python-registry publication path and requires the repository's `pypi` environment/trusted-publisher configuration.
+The `v2-release-candidate` workflow builds/tests the coordinated 2.0.2 artifacts. The `publish-python-runtime` workflow is the explicit public Python-registry publication path and requires the repository's `pypi` environment/trusted-publisher configuration.
 
-For 2.0.1, npm publication is downstream of Python publication and clean public installation proof:
+For 2.0.2, npm publication is downstream of Python publication and clean public installation proof:
 
 ```text
 exact source revision

@@ -1,4 +1,4 @@
-# LBE V2.0.1 Public Installer Readiness
+# LBE V2.0.2 Public Installer Readiness
 
 Updated: 2026-08-13
 Status: **IMPLEMENTED — VERIFICATION AND PUBLIC PYTHON ARTIFACT PENDING**
@@ -6,8 +6,8 @@ Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 Correction pair:
 
 ```text
-@letterblack/lbe@2.0.1
-lbe-guard-inspector==2.0.1
+@letterblack/lbe@2.0.2
+lbe-guard-inspector==2.0.2
 ```
 
 ## Why this patch exists
@@ -16,12 +16,12 @@ lbe-guard-inspector==2.0.1
 
 That requirement conflicts with the documented public-bootstrap product intent. A normal public user must not need access to the private source repository, a development-machine artifact, or knowledge of Python wheel paths.
 
-V2.0.1 corrects the distribution path without moving runtime authority into Node.
+V2.0.2 corrects the distribution path without moving runtime authority into Node.
 
 ## Correct public flow
 
 ```text
-npm install --global @letterblack/lbe@2.0.1
+npm install --global @letterblack/lbe@2.0.2
 lbe --install
 lbe --diagnose
 lbe --help
@@ -33,7 +33,7 @@ lbe --help
 
 The npm launcher now:
 
-1. pins the public Python runtime exactly to `lbe-guard-inspector==2.0.1`;
+1. pins the public Python runtime exactly to `lbe-guard-inspector==2.0.2`;
 2. requests exact-version metadata from PyPI over HTTPS;
 3. requires exactly one universal `py3-none-any.whl` artifact;
 4. requires a valid SHA-256 digest in registry metadata;
@@ -42,7 +42,7 @@ The npm launcher now:
 7. calculates the downloaded SHA-256 and rejects mismatch;
 8. creates/updates the managed Python environment;
 9. installs the verified wheel;
-10. verifies installed package version `2.0.1`;
+10. verifies installed package version `2.0.2`;
 11. verifies packaged memory schema and the installed `lbe` executable;
 12. verifies resulting runtime compatibility;
 13. records non-secret installation-source metadata;
@@ -52,7 +52,7 @@ The public npm tarball remains launcher-only; Python runtime authority remains e
 
 ## Public Python distribution requirement
 
-The private GitHub repository is not a valid anonymous artifact source. Therefore `lbe-guard-inspector==2.0.1` must be published to the public Python Package Index before `@letterblack/lbe@2.0.1` may be marked release-ready.
+The private GitHub repository is not a valid anonymous artifact source. Therefore `lbe-guard-inspector==2.0.2` must be published to the public Python Package Index before `@letterblack/lbe@2.0.2` may be marked release-ready.
 
 GitHub workflow:
 
@@ -69,13 +69,13 @@ Required external setup before the first run:
 
 ## Required verification gates
 
-The exact 2.0.1 candidate must prove:
+The exact 2.0.2 candidate must prove:
 
 ### Source/package consistency
 
-- `pyproject.toml` package version is `2.0.1`;
-- `npm/package.json` version is `2.0.1`;
-- npm public runtime pin is exactly `2.0.1`;
+- `pyproject.toml` package version is `2.0.2`;
+- `npm/package.json` version is `2.0.2`;
+- npm public runtime pin is exactly `2.0.2`;
 - supported runtime series remains `2.0.x`.
 
 ### Unit/build proof
@@ -90,7 +90,7 @@ The exact 2.0.1 candidate must prove:
 
 After Python publication:
 
-- public registry resolves `lbe-guard-inspector==2.0.1` anonymously;
+- public registry resolves `lbe-guard-inspector==2.0.2` anonymously;
 - metadata identity/version match exactly;
 - exactly one universal wheel is available;
 - registry SHA-256 is present;
@@ -101,7 +101,7 @@ After Python publication:
 On a machine without source checkout/runtime artifacts:
 
 ```text
-npm install --global @letterblack/lbe@2.0.1
+npm install --global @letterblack/lbe@2.0.2
 lbe --diagnose
   -> Python supported
   -> runtime not installed (before bootstrap)
@@ -113,7 +113,7 @@ lbe --install
 
 lbe --diagnose
   -> LBE_RUNTIME_COMPATIBLE
-  -> pythonPackageVersion = 2.0.1
+  -> pythonPackageVersion = 2.0.2
   -> installSource = pypi
 
 lbe --help
@@ -124,14 +124,14 @@ The test must also prove `LBE_HOME/config` and `LBE_HOME/state` are not deleted 
 
 ### Release ordering
 
-Do not publish npm 2.0.1 before the matching Python artifact and clean public `lbe --install` proof exist.
+Do not publish npm 2.0.2 before the matching Python artifact and clean public `lbe --install` proof exist.
 
 ```text
-Python 2.0.1 verified
--> Python 2.0.1 publicly published
+Python 2.0.2 verified
+-> Python 2.0.2 publicly published
 -> public Python metadata/download verified
 -> clean npm-tarball + public-runtime install verified
--> npm 2.0.1 published
+-> npm 2.0.2 published
 -> clean unauthenticated npm install verified
 ```
 
@@ -141,7 +141,7 @@ Do not rewrite the V2.0 publication record.
 
 ```text
 @letterblack/lbe@2.0.0 = published historical V2 release
-@letterblack/lbe@2.0.1 = public-installer correction, not yet published
+@letterblack/lbe@2.0.2 = public-installer correction, not yet published
 ```
 
 ## Current state

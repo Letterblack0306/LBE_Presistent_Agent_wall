@@ -20,7 +20,7 @@ Python LBE runtime
 Install the launcher from npm:
 
 ```powershell
-npm install --global @letterblack/lbe@2.0.1
+npm install --global @letterblack/lbe@2.0.2
 ```
 
 Then install the managed Python runtime:
@@ -29,7 +29,7 @@ Then install the managed Python runtime:
 lbe --install
 ```
 
-The public installer acquires the exact configured `lbe-guard-inspector==2.0.1` wheel from PyPI, verifies the registry identity/version, requires the universal `py3-none-any` wheel, verifies its SHA-256 digest, creates the managed Python environment, installs it, and verifies the resulting `lbe` runtime.
+The public installer acquires the exact configured `lbe-guard-inspector==2.0.2` wheel from PyPI, verifies the registry identity/version, requires the universal `py3-none-any` wheel, verifies its SHA-256 digest, creates the managed Python environment, installs it, and verifies the resulting `lbe` runtime.
 
 Then verify and use LBE:
 
@@ -53,7 +53,7 @@ A normal public user does not need the private source repository or a locally bu
 For an offline environment or controlled development/release proof, an explicit local wheel remains supported:
 
 ```powershell
-lbe --install --wheel "C:\artifacts\lbe_guard_inspector-2.0.1-py3-none-any.whl"
+lbe --install --wheel "C:\artifacts\lbe_guard_inspector-2.0.2-py3-none-any.whl"
 ```
 
 This is an override, not the normal public installation path.
@@ -62,7 +62,7 @@ This is an override, not the normal public installation path.
 
 The npm tarball does not embed Python runtime implementation code, provider credentials, runtime databases, proof workspaces, or user state. Its job is to acquire and launch the approved Python runtime.
 
-The default public runtime source must be publicly accessible without private GitHub authentication. For 2.0.1 the configured source is PyPI project `lbe-guard-inspector`, exact version `2.0.1`.
+The default public runtime source must be publicly accessible without private GitHub authentication. For 2.0.2 the configured source is PyPI project `lbe-guard-inspector`, exact version `2.0.2`.
 
 If that exact public Python artifact is unavailable or fails integrity checks, `lbe --install` fails closed rather than falling back to a source checkout, private GitHub asset, unpinned version, or arbitrary external URL.
 
@@ -97,12 +97,12 @@ Uninstalling/reinstalling the npm launcher or replacing the managed Python runti
 
 `@letterblack/lbe@2.0.0` is the published V2.0 release and remains historical release evidence.
 
-`2.0.1` is the public-installer correction: the normal install path changes from manual wheel supply to automatic acquisition of the exact approved public Python runtime. Runtime authority remains unchanged.
+`2.0.2` is the public-installer correction: the normal install path changes from manual wheel supply to automatic acquisition of the exact approved public Python runtime. Runtime authority remains unchanged.
 
-The 2.0.1 npm launcher must not be published as ready until the matching `lbe-guard-inspector==2.0.1` artifact is publicly available and a clean machine proves:
+The 2.0.2 npm launcher must not be published as ready until the matching `lbe-guard-inspector==2.0.2` artifact is publicly available and a clean machine proves:
 
 ```text
-npm install --global @letterblack/lbe@2.0.1
+npm install --global @letterblack/lbe@2.0.2
 lbe --install
 lbe --diagnose
 lbe --help
