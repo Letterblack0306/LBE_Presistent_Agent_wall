@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "canonicalBranch": "main",
+  "requireIntentForAllMutations": true,
+  "requireBranchAndWorktreeRegistrationOutsideCanonical": true,
+  "intentFile": ".ai/intent.json",
+  "changesDirectory": ".ai/changes"
+}
