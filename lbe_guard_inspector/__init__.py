@@ -8,6 +8,7 @@ __all__ = [
     "invocation_adapter",
     "memory",
     "module_registry",
+    "provider_capabilities",
     "runtime_integration_profile",
     "rule_gatekeeper",
     "reasoning_config",

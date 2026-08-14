@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -266,8 +267,17 @@ def _startup_handler(
     return make_handler(controller)
 
 
-def main() -> None:
-    config = load_json(CONFIG_PATH)
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Run the local read-only LBE guard-inspection server"
+    )
+    parser.parse_args(argv)
+    try:
+        config = load_json(CONFIG_PATH)
+    except (FileNotFoundError, RuntimeError) as exc:
+        parser.error(
+            f"{exc}. Set LBE_GUARD_INSPECTOR_CONFIG_PATH to an external runtime config file."
+        )
     host = str(config.get("server_host", "127.0.0.1"))
     if host not in {"127.0.0.1", "localhost"}:
         raise GovernanceError("Server host must remain local-only")
