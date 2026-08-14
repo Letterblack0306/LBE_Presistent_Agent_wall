@@ -21,6 +21,7 @@ from .authorization_resolver import (
     AuthorizationVerdict,
     resolve_authorization,
 )
+from .change_registration import check_change_registration
 from .mode_controller import ModeDecision
 
 
@@ -174,7 +175,7 @@ class ToolRegistry:
 
 
 class GovernedToolOrchestrator:
-    """Run registered tools only after R6C authorization succeeds."""
+    """Run registered tools only after change registration and R6C authorization succeed."""
 
     def __init__(
         self,
@@ -220,6 +221,28 @@ class GovernedToolOrchestrator:
             ))
 
         context = request.context
+        if registered.spec.access_class is ToolAccessClass.WRITE:
+            path_value = request.arguments.get("path")
+            requested_path = path_value if isinstance(path_value, str) else None
+            registration = check_change_registration(
+                context.workspace_root,
+                requested_path=requested_path,
+            )
+            if not registration.allowed:
+                return self._remember(ToolReceipt(
+                    operation_id=request.operation_id,
+                    tool_id=request.tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=None,
+                    error_code=registration.code,
+                    error_message=registration.rationale,
+                    output={
+                        "change_id": registration.change_id,
+                        "branch": registration.branch,
+                        "worktree_path": registration.worktree_path,
+                    },
+                ))
+
         authorization = self._authorization_resolver(AuthorizationRequest(
             mode_decision=context.mode_decision,
             capability=registered.spec.capability,
@@ -352,6 +375,7 @@ def workspace_replace_text_spec() -> ToolSpec:
             "relative workspace path",
             "existing regular UTF-8 file",
             "old_text occurs exactly once",
+            "active change registration when repository gate is enabled",
             "active coding write authority",
         ),
         expected_evidence=("before content hash", "after content hash", "task-bound source change"),
@@ -361,6 +385,7 @@ def workspace_replace_text_spec() -> ToolSpec:
             "symlink target",
             "ambiguous replacement",
             "decode failure",
+            "change registration failure",
             "authorization failure",
         ),
     )
