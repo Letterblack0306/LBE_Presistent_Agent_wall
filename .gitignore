@@ -26,6 +26,7 @@ htmlcov/
 config.json
 config.dev-roots.json
 config.phase1-database-backup.json
+.ai/intent.json
 
 # === Backup / Scratch Files ===
 *.bak
