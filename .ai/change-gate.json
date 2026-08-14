@@ -3,7 +3,8 @@
   "enabled": true,
   "canonicalBranch": "main",
   "requireIntentForAllMutations": true,
-  "requireBranchAndWorktreeRegistrationOutsideCanonical": true,
+  "requireBranchRegistrationOutsideCanonical": true,
+  "requireWorktreeRegistrationForLinkedWorktree": true,
   "intentFile": ".ai/intent.json",
   "changesDirectory": ".ai/changes"
 }
