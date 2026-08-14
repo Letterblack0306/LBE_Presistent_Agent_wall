@@ -12,8 +12,8 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "packa
 
 test("package exposes the V2 public bootstrap contract", () => {
   assert.equal(packageJson.name, "@letterblack/lbe");
-  assert.equal(packageJson.version, "2.0.1");
-  assert.equal(PUBLIC_PYTHON_PACKAGE_VERSION, "2.0.1");
+  assert.equal(packageJson.version, "2.0.2");
+  assert.equal(PUBLIC_PYTHON_PACKAGE_VERSION, "2.0.2");
   assert.equal(SUPPORTED_PYTHON_PACKAGE_SERIES, "2.0.");
   assert.deepEqual(packageJson.bin, { lbe: "bin/lbe.js" });
   assert.equal(fs.existsSync(path.join(__dirname, "..", packageJson.bin.lbe)), true);

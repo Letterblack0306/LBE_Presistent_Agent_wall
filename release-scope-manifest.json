@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "version": "2.0.1",
+  "version": "2.0.2",
   "sourceOfTruth": [
     "docs/CURRENT_STATUS.md",
     "docs/IMPLEMENTATION_PLAN.md"
   ],
-  "note": "Initial-stage release (2.0.1): the C5/R7 acceptance proofs were initially started and tested with good output but not finalized as durable receipts before the plan changed to the upgrade. Per maintainer (2026-08-14) these proofs are DEFERRED for this initial release. Deferred items do not block publication now, but each MUST be re-recorded as PASS with installed-path receipts before any formal 'release-ready' claim. Distribution + deferred-list transparency remain enforced.",
+  "note": "Initial-stage release (2.0.2): the C5/R7 acceptance proofs were initially started and tested with good output but not finalized as durable receipts before the plan changed to the upgrade. Per maintainer (2026-08-14) these proofs are DEFERRED for this initial release. Deferred items do not block publication now, but each MUST be re-recorded as PASS with installed-path receipts before any formal 'release-ready' claim. Distribution + deferred-list transparency remain enforced.",
   "items": [
     {
       "name": "Governed coding session",

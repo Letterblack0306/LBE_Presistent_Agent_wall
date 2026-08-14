@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "release/python-runtime-v2.0.1"
+      - "release/python-runtime-v2.0.2"
 
 permissions:
   contents: read
@@ -28,8 +28,8 @@ jobs:
           from pathlib import Path
           data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
           assert data["project"]["name"] == "lbe-guard-inspector"
-          assert data["project"]["version"] == "2.0.1"
-          print("PYPI_RUNTIME_VERSION=2.0.1")
+          assert data["project"]["version"] == "2.0.2"
+          print("PYPI_RUNTIME_VERSION=2.0.2")
           PY
 
       - name: Install build/test dependencies
@@ -45,12 +45,12 @@ jobs:
 
       - name: Verify release artifacts
         run: |
-          test -f dist/lbe_guard_inspector-2.0.1-py3-none-any.whl
-          test -f dist/lbe_guard_inspector-2.0.1.tar.gz
-          python -m pip install --force-reinstall dist/lbe_guard_inspector-2.0.1-py3-none-any.whl
+          test -f dist/lbe_guard_inspector-2.0.2-py3-none-any.whl
+          test -f dist/lbe_guard_inspector-2.0.2.tar.gz
+          python -m pip install --force-reinstall dist/lbe_guard_inspector-2.0.2-py3-none-any.whl
           python - <<'PY'
           from importlib.metadata import version
-          assert version("lbe-guard-inspector") == "2.0.1"
+          assert version("lbe-guard-inspector") == "2.0.2"
           print("PYPI_RUNTIME_ARTIFACT_VERIFY=PASS")
           PY
 

@@ -32,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .[test]
 
-      - name: Verify V2.0.1 package versions
+      - name: Verify V2.0.2 package versions
         run: |
           python - <<'PY'
           import json
@@ -41,12 +41,12 @@ jobs:
           py = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
           npm = json.loads(Path("npm/package.json").read_text(encoding="utf-8"))
           assert py["project"]["name"] == "lbe-guard-inspector"
-          assert py["project"]["version"] == "2.0.1"
+          assert py["project"]["version"] == "2.0.2"
           assert npm["name"] == "@letterblack/lbe"
-          assert npm["version"] == "2.0.1"
+          assert npm["version"] == "2.0.2"
           print("V2_0_1_VERSION_PAIR=PASS")
           PY
-          node -e "const r=require('./npm/lib/runtime-install'); if(r.PUBLIC_PYTHON_PACKAGE_VERSION!=='2.0.1') process.exit(1); console.log('PUBLIC_RUNTIME_PIN=PASS')"
+          node -e "const r=require('./npm/lib/runtime-install'); if(r.PUBLIC_PYTHON_PACKAGE_VERSION!=='2.0.2') process.exit(1); console.log('PUBLIC_RUNTIME_PIN=PASS')"
 
       - name: Run Python suite
         run: python -m pytest -q
@@ -57,18 +57,18 @@ jobs:
       - name: Verify Python wheel and sdist names
         shell: bash
         run: |
-          test -f dist/lbe_guard_inspector-2.0.1-py3-none-any.whl
-          test -f dist/lbe_guard_inspector-2.0.1.tar.gz
+          test -f dist/lbe_guard_inspector-2.0.2-py3-none-any.whl
+          test -f dist/lbe_guard_inspector-2.0.2.tar.gz
           echo "PYTHON_V2_0_1_ARTIFACTS=PASS"
 
       - name: Run npm bootstrap tests
         working-directory: npm
         run: npm test
 
-      - name: Audit npm V2.0.1 tarball
+      - name: Audit npm V2.0.2 tarball
         working-directory: npm
         run: |
-          node -e "const p=require('./package.json'); if(p.name!=='@letterblack/lbe'||p.version!=='2.0.1') process.exit(1)"
+          node -e "const p=require('./package.json'); if(p.name!=='@letterblack/lbe'||p.version!=='2.0.2') process.exit(1)"
           npm pack --dry-run --json > npm-pack.json
           node - <<'NODE'
           const fs = require('node:fs');
@@ -93,16 +93,16 @@ jobs:
           rm npm-pack.json
           npm pack --json
 
-      - name: Upload Python V2.0.1 artifacts
+      - name: Upload Python V2.0.2 artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lbe-python-v2.0.1
+          name: lbe-python-v2.0.2
           path: |
-            dist/lbe_guard_inspector-2.0.1-py3-none-any.whl
-            dist/lbe_guard_inspector-2.0.1.tar.gz
+            dist/lbe_guard_inspector-2.0.2-py3-none-any.whl
+            dist/lbe_guard_inspector-2.0.2.tar.gz
 
-      - name: Upload npm V2.0.1 tarball
+      - name: Upload npm V2.0.2 tarball
         uses: actions/upload-artifact@v4
         with:
-          name: lbe-npm-v2.0.1
-          path: npm/letterblack-lbe-2.0.1.tgz
+          name: lbe-npm-v2.0.2
+          path: npm/letterblack-lbe-2.0.2.tgz
