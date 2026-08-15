@@ -2,7 +2,7 @@
 
 phase: P16_CANCELLATION_CHECKPOINT_RECONCILIATION
 slice: RECONCILE_95F8BE0_BEFORE_FURTHER_IMPLEMENTATION
-status: PASS
+status: OPEN
 
 base_sha: 705a4e274dca0126156a6a825be95f526dd42989
 implementation_sha: 95f8be0eb98f57ad050ae662ae1add0d5f9de8ab
@@ -54,8 +54,8 @@ validation_evidence:
     command: test_real_http_transport_rejects_cancellation_when_not_supported
     result: PASS - real UrllibJsonTransport correctly rejects cancellation, turn completes normally
   full_suite:
-    command: pytest tests/test_background_provider_turn_runtime.py tests/test_provider_turn_runtime.py tests/test_persistent_turn_control.py tests/test_invocation_adapter.py -v
-    result: 18 passed
+    command: NOT RUN - the previously recorded command ran only 4 focused files and is NOT the full repository suite
+    result: UNVERIFIED - full repository suite (77 test files) not proven on current lineage
   git_diff_check:
     result: PASS
 
@@ -81,19 +81,28 @@ project_user_ready: UNVERIFIED
 release_ready: UNVERIFIED
 next_phase_locked: true
 
-## PASS rules satisfied
+## Reconciliation status
 
-- every requirement of this slice is directly proven
-- evidence level matches the claim
-- required regression passes on the exact implementation SHA
-- `git diff --check` passes
-- no blocking document conflict exists
-- no unapproved architecture owner was introduced
-- checkpoint lists broader project limitations honestly
+This checkpoint is OPEN — reconciliation is incomplete and the next implementation phase remains locked.
 
-## Remaining limitation
+- cancellation implementation (commit `95f8be0`): **PASS at INTEGRATION** (focused 18 + integration 42 tests PASS; real urllib transport rejects unsupported live cancellation; supported mock transport propagates cancellation; late provider projection suppressed after accepted cancellation).
+- full repository suite on the current lineage: **UNVERIFIED** (the previously recorded "full_suite" command ran only 4 focused files, not the full 77-file suite).
+- project user-ready: **UNVERIFIED**
+- release-ready: **UNVERIFIED**
+- next_phase_locked: **true**
 
-The full repository suite (77 test files) was not fully verified due to some tests involving external resources causing timeouts. The focused validation (18 core tests + 42 integration tests) proves the cancellation implementation is correct and non-breaking.
+Blocking statuses that must be cleared before this slice may become PASS:
+
+```text
+FAIL
+UNVERIFIED
+DOCUMENT_CONFLICT
+MISSING_EVIDENCE
+BLOCKED_WORKSPACE_AUTHORITY
+BLOCKED_PARALLEL_ARCHITECTURE
+```
+
+The cancellation implementation itself is considered correct and non-breaking at INTEGRATION based on the recorded focused validation. The missing required evidence is the full repository regression; it must be run on the current lineage and its timeouts/failures classified and recorded before the slice may be classified PASS.
 
 ## Truthful capability boundary
 
