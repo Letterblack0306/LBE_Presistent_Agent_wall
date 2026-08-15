@@ -58,6 +58,27 @@ The only accepted R6C mapping is `ALLOW -> available`, `DENY -> unavailable`,
 and `ESCALATE -> gated`. Unknown provider support hides provider projection; it
 does not erase a direct LBE runtime capability or create authority.
 
+## Completed P1 checkpoint
+
+```text
+phase: P1_PROFESSIONAL_CAPABILITY_CONTRACT
+slice: FROZEN_TYPED_CAPABILITY_SEPARATION
+base_sha: 09f719901e5459c6d70c2cc2a74552946ce56a4c
+implementation_sha: fca8a2b746461ace80c41223c7610f509f234c45
+requirements: separate typed provider technical support, runtime availability, and provider projection; preserve unknown; preserve R6C authority ownership
+existing_owner: ProviderRegistry legacy metadata; R6C resolve_authorization(); existing governed execution and session owners
+reuse_decision: isolated professional capability contract; no rewrite of legacy ProviderCapabilities and no new provider/tool authority
+required_evidence_level: UNIT
+validation_evidence: py_compile PASS; focused contract/registry/R6C tests PASS (34); full repository suite PASS (626); implementation gate PASS; git diff --check PASS
+unverified: endpoint/model discovery; live provider support; provider selection; persisted projection; governed approval continuation; user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
+P1 is complete at its required `UNIT` evidence level. This does not prove any
+provider endpoint, feature advertisement, live tool-call projection, or user
+flow. The next phase remains locked until a new exact P2 slice is registered.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
