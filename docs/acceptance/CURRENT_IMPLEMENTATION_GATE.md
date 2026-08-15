@@ -24,6 +24,23 @@ packaging or launcher system.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P12 checkpoint
+
+```text
+phase: P12_INSTALLED_TUI_PATH
+slice: OPTIONAL_DEPENDENCY_AND_CLI_SMOKE
+base_sha: 3964639c80337ffb1c689e6f4b5f9a35686f4916
+implementation_sha: 3964639c80337ffb1c689e6f4b5f9a35686f4916
+requirements: fresh wheel build; isolated wheel installation with tui extra; installed lbe tui CLI help
+existing_owner: setuptools packaging and existing lbe console-script declaration
+reuse_decision: existing packaging path only; no separate launcher or distribution
+required_evidence_level: INSTALLED
+validation_evidence: built lbe_guard_inspector-0.2.0-py3-none-any.whl; fresh isolated venv install with [tui] PASS; installed lbe tui --help PASS; no source-path invocation used
+unverified: live interactive TUI session; provider turn execution; provider interrupt propagation; approval continuation; provider switch through control; end-to-end user-flow and release acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P11 checkpoint
 
 ```text
