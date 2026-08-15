@@ -39,6 +39,28 @@ Live prerequisite satisfied on 2026-08-15: `http://127.0.0.1:1234/v1/models`
 was reachable, and the existing bounded provider health check completed with
 `openai-compatible` / `smollm3-3b`. This proves one structured response only.
 
+## Completed P3 checkpoint
+
+```text
+phase: P3_NATIVE_PROVIDER_EVENT_ADAPTER
+slice: OPENAI_COMPATIBLE_NON_STREAMING_EVENT_FIDELITY
+base_sha: 6e6f12a1077d82fdc3ad66e1d536ca48d072e280
+implementation_sha: 3de2f94d86dc8dfd5d14b518ad7f1afeb5d612ef
+requirements: native non-streaming OpenAI-compatible normalization; provider request identity; completed text/usage/terminal truth; no fabricated deltas or tool identity
+existing_owner: P0 normalized events; existing urllib provider transport; P1/P2 capability truth; existing session/R6C/tool owners
+reuse_decision: native adapter only; no Cline package, provider SDK, persistence, or authority owner added
+required_evidence_level: UNIT plus LIVE_RUNTIME
+validation_evidence: focused adapter/P0/P2 tests PASS (8); full repository suite PASS (639); implementation gate PASS; live smollm3-3b endpoint returned provider request ID, completed text, and usage
+unverified: streamed events; governed durable tool-call identity; tool execution/approval/continuation; persistence; TUI and user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
+The live provider emitted unsolicited tool calls after its text response. With
+no governed durable call identity yet available, the adapter emitted the
+truthful `LBE_CALL_ID_REQUIRED` error rather than fabricating identity or
+executing a tool. This is a valid P3 boundary result, not tool continuation.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
