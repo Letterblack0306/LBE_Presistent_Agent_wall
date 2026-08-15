@@ -29,6 +29,23 @@ second session controller, provider executor, or approval authority.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P10 checkpoint
+
+```text
+phase: P10_PERSISTED_TURN_CONTROL
+slice: START_STEER_INTERRUPT_CANCEL_INTENT
+base_sha: 7ce9ded9aee6f22a3b75c4be1ea266ba3e5d2a89
+implementation_sha: 0442690c02f033cbb760e15d4eb4187c941c2acc
+requirements: typed start/steer/interrupt/cancel requests; persisted authoritative control events; active-turn rejection; cancellation finalization; no provider/tool/approval authority
+existing_owner: P4 SessionOperationalHistory, P8 control vocabulary, SessionMemoryRuntimeBridge session persistence
+reuse_decision: one dispatcher extending persisted history; no second session controller, provider executor, or approval owner
+required_evidence_level: INTEGRATION
+validation_evidence: focused turn-control/history/protocol tests PASS (5); full repository suite PASS (650); implementation gate PASS; git diff --check PASS
+unverified: propagation of interrupt/cancel to a live provider/process; approval response; provider selection via control protocol; Textual interaction and installed/user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P9 checkpoint
 
 ```text
