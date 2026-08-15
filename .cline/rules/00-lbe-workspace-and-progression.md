@@ -11,10 +11,13 @@ Before planning or changing anything, read in this order:
 1. `.agent/PROJECT_CONTEXT.md`
 2. `.lbe/governance/workspace-lock.json`
 3. `.lbe/governance/implementation-gates.json`
-4. `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md`
+4. the exact `active_plan` path declared by `.lbe/governance/implementation-gates.json`
 5. `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md`
-6. the active architecture/design document named by the gate
+6. architecture/design documents referenced by the active plan
 7. relevant current source/tests/runtime evidence
+8. `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md` only as historical checkpoint ledger when it is not the active plan
+
+Never substitute a similarly named document for the machine-declared `active_plan`.
 
 If any required file is missing, malformed, contradictory, or stale relative to live Git evidence, stop implementation and report `DOCUMENT_CONFLICT` or `MISSING_EVIDENCE`.
 
