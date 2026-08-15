@@ -1,12 +1,12 @@
 # Current Implementation Gate
 
-Status: **OPEN — NEXT PHASE LOCKED**
+Status: **PASS — NEXT PHASE LOCKED PENDING EXPLICIT ACTIVATION**
 
 Current phase: `GOVERNANCE_LOCK_BASELINE`
 
 Current slice: `MAIN_ONLY_AND_CHECKPOINT_ENFORCEMENT`
 
-This record establishes the first checkpoint under the new progression-lock model.
+This record is the completed first checkpoint under the new progression-lock model.
 
 ## Base
 
@@ -40,20 +40,48 @@ Repository-side evidence included by this change:
 - `scripts/enable-workspace-lock.ps1`;
 - `docs/governance/WORKSPACE_AND_IMPLEMENTATION_PROGRESSION_LOCK.md`.
 
-Local installed-path proof is still required after pull:
+The local installer was run from the canonical primary worktree:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/enable-workspace-lock.ps1
 ```
 
-Then prove that a non-main/secondary-worktree push is rejected before this baseline is classified fully `PASS`.
+The hook path resolves to the canonical primary `.githooks` directory even
+when evaluated from an older secondary worktree. The real primary-main commit
+and `origin/main` push passed their hooks. Direct execution of the resolved
+secondary-worktree pre-commit and pre-push hooks rejected the non-main branch.
+
+GitHub remote enforcement is active as repository ruleset
+`20882121` (`LBE main-only remote ref lock`): all refs except existing `main`
+are subject to creation and update restrictions with no bypass actor. A direct
+GitHub API attempt to create `refs/heads/__lbe_workspace_lock_probe__` was
+rejected with HTTP 422; a read-back returned HTTP 404, proving no probe ref was
+created.
+
+## Completed checkpoint
+
+```text
+phase: GOVERNANCE_LOCK_BASELINE
+slice: MAIN_ONLY_AND_CHECKPOINT_ENFORCEMENT
+base_sha: 2ae2fd09676e9647410a0e6805e37fa312faec63
+implementation_sha: 3abafd9277e3de9cb3cb27a2da950699c47e441f
+requirements: primary main only; origin/main only; local hooks; remote non-main ref lock
+existing_owner: Git worktree/ref enforcement plus GitHub repository rulesets
+reuse_decision: reuse Git hooks and GitHub branch rulesets; no parallel enforcement owner
+required_evidence_level: INSTALLED_LOCAL_GIT_GUARD plus remote API enforcement
+validation_evidence: installer PASS; primary pre-commit PASS; primary pre-push PASS; secondary hook rejection; GitHub API HTTP 422/404 probe
+unverified: none for this baseline
+document_conflicts: none
+status: PASS
+```
 
 ## Current classification
 
 - repository implementation: `PASS`
-- local hook installation: `UNVERIFIED`
-- non-main push rejection on user's local clone: `UNVERIFIED`
-- remote GitHub ruleset preventing API/credential bypass: `UNVERIFIED`
-- next phase: `LOCKED`
+- local hook installation: `PASS`
+- non-main/secondary-worktree local rejection: `PASS`
+- remote GitHub ruleset preventing non-main API ref creation/update: `PASS`
+- next phase: `LOCKED PENDING EXPLICIT ACTIVATION`
 
-This record must not be upgraded to full `PASS` until the missing installed/local and remote evidence is captured.
+No next phase is active until its exact plan/slice, existing-owner audit, reuse
+decision, and evidence level are recorded in the governance state.
