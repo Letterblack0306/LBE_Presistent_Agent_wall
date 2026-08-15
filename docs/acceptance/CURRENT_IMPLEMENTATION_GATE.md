@@ -35,7 +35,7 @@ boundary. The canonical branch has no existing live process-event owner.
 ```text
 phase: P6_GOVERNED_PROCESS_EVENTS
 slice: FIXED_POLICY_COMMAND_LIFECYCLE
-base_sha: 6cd7f5e51d4a4b93ef4d996ff534ccaac7d5a56a
+base_sha: 6cd7f5e2059c3f373cc4dbde054e61b5853dab19
 implementation_sha: 1b8593b6f360f5e2326e3f06c1760db0596c36d9
 requirements: fixed-policy shell-free process observation; real stdout/stderr; terminal outcome; cancellation terminates launched process
 existing_owner: ValidationCommandPolicyCatalog and CompletionEvidenceProducers
