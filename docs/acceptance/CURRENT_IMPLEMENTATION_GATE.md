@@ -2,27 +2,29 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P9_REPLAYABLE_TRANSCRIPT_PROJECTION`
+Current phase: `P10_PERSISTED_TURN_CONTROL`
 
-Current slice: `AUTHORITATIVE_EVENT_REPLAY_ONLY`
+Current slice: `START_STEER_INTERRUPT_CANCEL_INTENT`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P9 slice contract
+## Active P10 slice contract
 
-Existing owners inspected: P4 authoritative ordered history and P5 governed
-receipt projection. The existing secondary-worktree transcript is reference
-evidence only and is not an authority owner.
+Existing owners inspected: P4 authoritative ordered history, P8 typed control
+vocabulary, and `SessionMemoryRuntimeBridge` session persistence. Existing
+provider invocation/cancellation and governed approval owners remain unchanged.
 
-The active work is one deterministic, read-only projection of persisted
-operational events in session sequence. It must not create, reorder, amend, or
-infer events; execute tools; mutate session state; grant permission; or bypass
-approval.
+The active work accepts typed start, steering, interruption, and cancellation
+intent for an existing session and records only authoritative control events.
+It must not synthesize provider activity, claim a provider/process has stopped,
+execute tools, mutate permission, or bypass approval. Interruption remains a
+recorded request until a live invocation owner accepts it.
 
-Required evidence level: `INTEGRATION` for persisted ordering and replay after
-database reopen. Presentation remains a projection, never storage authority.
-Reuse decision: extend P4 history with a session-scoped reader and add one
-projection; no second transcript store, session controller, or event producer.
+Required evidence level: `INTEGRATION` for persisted request ordering, active
+turn rejection, and cancellation finalization. The later live-runtime proof
+must demonstrate propagation to an actual provider/process.
+Reuse decision: extend P4 history through one typed control dispatcher; no
+second session controller, provider executor, or approval authority.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.

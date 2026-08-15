@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P9_REPLAYABLE_TRANSCRIPT_PROJECTION",
-  "active_slice": "AUTHORITATIVE_EVENT_REPLAY_ONLY",
+  "active_phase": "P10_PERSISTED_TURN_CONTROL",
+  "active_slice": "START_STEER_INTERRUPT_CANCEL_INTENT",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
