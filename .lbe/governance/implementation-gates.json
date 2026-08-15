@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P3_NATIVE_PROVIDER_EVENT_ADAPTER",
-  "active_slice": "OPENAI_COMPATIBLE_NON_STREAMING_EVENT_FIDELITY",
+  "active_phase": "P4_AUTHORITATIVE_OPERATIONAL_HISTORY",
+  "active_slice": "SESSION_TURN_ITEM_ORDERED_PERSISTENCE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

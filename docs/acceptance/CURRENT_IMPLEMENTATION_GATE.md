@@ -2,13 +2,42 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P3_NATIVE_PROVIDER_EVENT_ADAPTER`
+Current phase: `P4_AUTHORITATIVE_OPERATIONAL_HISTORY`
 
-Current slice: `OPENAI_COMPATIBLE_NON_STREAMING_EVENT_FIDELITY`
+Current slice: `SESSION_TURN_ITEM_ORDERED_PERSISTENCE`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P3 slice contract
+## Active P4 slice contract
+
+Existing owners inspected:
+
+- canonical `main` has session/workspace state through `WorkspaceMemoryStore`,
+  but no session/turn/item operational-history owner;
+- P0 normalized provider observations and P3 native adapter remain event
+  producers only;
+- governed tool receipts and R6C authorization remain existing execution and
+  authority owners.
+
+The active work is one SQLite-backed authoritative history owner for ordered
+sessions, turns, items, and observed runtime events. It must preserve distinct
+provider, LBE-call, runtime-operation, and tool-receipt identities. It must not
+be a second provider transport, session controller, authorization resolver, or
+tool executor. JSONL/transcript output remains a later projection, not storage
+authority.
+
+Required evidence level: `INTEGRATION` for ordered persistence, reopening,
+identity correlation, and replay from persisted events. No live provider or
+tool execution claim is implied by persistence tests.
+
+Reuse decision: extend the existing SQLite workspace-state store through one
+operational-history module. The canonical branch has no equivalent owner to
+reuse; the secondary worktree remains read-only reference evidence only.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P3 slice contract
 
 Existing owners inspected:
 
