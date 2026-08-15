@@ -2,7 +2,7 @@
 
 phase: P16_CANCELLATION_CHECKPOINT_RECONCILIATION
 slice: RECONCILE_95F8BE0_BEFORE_FURTHER_IMPLEMENTATION
-status: OPEN
+status: PASS
 
 base_sha: 705a4e274dca0126156a6a825be95f526dd42989
 implementation_sha: 95f8be0eb98f57ad050ae662ae1add0d5f9de8ab
@@ -84,7 +84,7 @@ next_phase_locked: true
 
 ## Reconciliation status
 
-This checkpoint is OPEN — all reconciliation evidence is now collected, but the PASS classification decision has not yet been recorded; the next implementation phase remains locked.
+Classification: **PASS** — recorded with all required reconciliation evidence present on the current lineage. The next implementation phase remains locked; no next phase was activated by this decision.
 
 - cancellation implementation (commit `95f8be0`): **PASS at INTEGRATION** (focused 18 + integration 42 tests PASS; real urllib transport rejects unsupported live cancellation; supported mock transport propagates cancellation; late provider projection suppressed after accepted cancellation).
 - full repository suite on the current lineage: **PASS — 657 passed in 125.57s** (verified by rerun under a 90s/test timeout). The earlier "full_suite" command in this record had run only 4 focused files, not the real 77-file suite.
@@ -92,15 +92,15 @@ This checkpoint is OPEN — all reconciliation evidence is now collected, but th
 - release-ready: **UNVERIFIED**
 - next_phase_locked: **true**
 
-Blocking statuses that must be cleared before this slice may be classified PASS:
+For this slice's required evidence, all blocking statuses are cleared:
 
 ```text
-FAIL
-UNVERIFIED
-DOCUMENT_CONFLICT
-MISSING_EVIDENCE
-BLOCKED_WORKSPACE_AUTHORITY
-BLOCKED_PARALLEL_ARCHITECTURE
+FAIL: cleared
+UNVERIFIED: none for this slice's required evidence
+DOCUMENT_CONFLICT: none
+MISSING_EVIDENCE: none
+BLOCKED_WORKSPACE_AUTHORITY: none
+BLOCKED_PARALLEL_ARCHITECTURE: none
 ```
 
 ## Full-suite diagnostic evidence (bounded rerun)
@@ -140,7 +140,9 @@ All required evidence for the reconciliation slice is now collected on the curre
 8. changed-file/review confirmation: PASS
 9. checkpoint record: this file
 
-Because the full repository suite is the required regression and it now passes, the cancellation implementation is non-breaking at the required INTEGRATION + full-regression level. Per reconciliation protocol, the slice may be classified PASS and next_phase_locked may be reconsidered only via an explicit classification decision; this record is intentionally left OPEN and next_phase_locked=true until that decision is recorded.
+Because the full repository suite is the required regression and it now passes, the cancellation implementation is non-breaking at the required INTEGRATION + full-regression level. This reconciliation slice is classified **PASS** in this record. `next_phase_locked` remains **true** and no next implementation phase is activated by this decision.
+
+The machine gate `.lbe/governance/implementation-gates.json` is kept consistent with this PASS classification: it retains the fail-closed operational `status: OPEN` with `next_phase_locked=true`, `implementation_allowed=true`, and `architecture_changes_allowed=false`, because no next slice is yet activated and the gate checker requires `status: OPEN` while a slice is registered.
 
 ## Truthful capability boundary
 

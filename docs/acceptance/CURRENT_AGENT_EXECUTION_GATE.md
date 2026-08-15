@@ -1,6 +1,6 @@
 # Current Agent Execution Gate
 
-Status: **OPEN — NEXT IMPLEMENTATION PHASE LOCKED**
+Status: **RECONCILIATION PASS — NEXT IMPLEMENTATION PHASE LOCKED**
 
 ## Active phase
 
@@ -101,19 +101,19 @@ At gate creation:
 
 ```text
 canonical delivery of 95f8be0: PASS
-focused related tests: REPORTED 18 PASS
+focused related tests: PASS (subsumed in the full suite)
 workspace-lock push: PASS
-full repository suite on 95f8be0 lineage: UNVERIFIED
-checkpoint reconciliation: UNVERIFIED
-project user-ready: NO
-release-ready: NO
+full repository suite on 95f8be0 lineage: PASS (657 passed in 125.57s, 77 files)
+checkpoint reconciliation: PASS (recorded in P16_CANCELLATION_CHECKPOINT.md)
+project user-ready: UNVERIFIED
+release-ready: UNVERIFIED
 ```
 
 ## Exit condition
 
 This slice becomes PASS only when all required evidence above is recorded against the exact current implementation lineage.
 
-After PASS, **do not implement the next feature automatically**. Create/activate a new bounded phase in both:
+This slice's reconciliation PASS has been recorded in `docs/acceptance/P16_CANCELLATION_CHECKPOINT.md` (status PASS). After PASS, **do not implement the next feature automatically**. Create/activate a new bounded phase in both:
 
 - `.lbe/governance/implementation-gates.json`
 - the next active execution/acceptance gate document
