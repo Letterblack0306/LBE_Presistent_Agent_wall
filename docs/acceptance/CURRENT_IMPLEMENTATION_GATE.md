@@ -34,7 +34,7 @@ introduce a second tool executor, provider authority, or receipt store.
 ```text
 phase: P7_RECEIPT_BACKED_PROVIDER_CONTINUATION
 slice: DURABLE_RECEIPT_IDENTITY_AND_STOP_BOUNDARY
-base_sha: b6fa1dc0d0b92ab3df760ec0b9e69a5957ae7164
+base_sha: b6fa1dc58a28dc1ba9b974b9f7c5742f0c322af2
 implementation_sha: ab79b31dab71488accea09618f574ef42f38addd
 requirements: durable receipt ID; correlated receipt-backed provider continuation; escalated receipt stop boundary; no continuation execution authority
 existing_owner: ToolReceipt/GovernedToolOrchestrator and P5 operational history
