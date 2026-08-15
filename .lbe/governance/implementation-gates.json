@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/CURRENT_AGENT_EXECUTION_GATE.md",
-  "active_phase": "P16_CANCELLATION_CHECKPOINT_RECONCILIATION",
-  "active_slice": "RECONCILE_95F8BE0_BEFORE_FURTHER_IMPLEMENTATION",
+  "active_plan": "docs/acceptance/CLINE_CORE_REUSE_BOUNDARY_AUDIT_GATE.md",
+  "active_phase": "CLINE_CORE_REUSE_BOUNDARY_AUDIT",
+  "active_slice": "CLASSIFY_CLINE_PROFESSIONAL_RUNTIME_REUSE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
@@ -41,15 +41,17 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Reconcile and prove cancellation commit 95f8be0 before any new implementation phase.",
-    "implementation_changes": "blocked unless validation proves a defect and a separate repair slice is activated first",
+    "purpose": "Read-only Cline reuse-boundary audit for the professional runtime. Classify current Cline capabilities before any new LBE professional-runtime subsystem is implemented.",
+    "implementation_changes": "product/runtime implementation source changes are prohibited in this slice; governance/research/acceptance documentation only",
     "allowed_actions": [
-      "inspect current source/tests/git state",
-      "run focused validation",
-      "run full regression suite",
-      "run live/integration proof already required by the slice",
-      "update checkpoint/status documentation",
-      "correct governance documentation without expanding architecture"
+      "inspect current LBE source/tests/git state",
+      "inspect current Cline source and official documentation",
+      "use BirdEye for local workspace evidence and governed local command execution",
+      "use GitHub for canonical remote repository, commit, patch, and source truth",
+      "record exact Cline revision, source paths, symbols, and observed behavior",
+      "classify each audited subsystem as REUSE, ADAPT, REJECT, or UNVERIFIED",
+      "update only the audit matrix, checkpoint, gate, and agent/rule documentation",
+      "run governance validation and git diff --check"
     ]
   }
 }
