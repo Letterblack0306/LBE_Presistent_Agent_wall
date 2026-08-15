@@ -2,26 +2,25 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P15_CONTROLLED_PROVIDER_TURN`
+Current phase: `P16_BACKGROUND_PROVIDER_EXECUTION`
 
-Current slice: `TYPED_START_TO_NON_STREAMING_PROVIDER_PROJECTION`
+Current slice: `NON_BLOCKING_TURN_LIFECYCLE_AND_CONTROL_HANDOFF`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P15 slice contract
+## Active P16 slice contract
 
-Existing owners inspected: P10 typed persisted turn dispatcher, P3 provider
-adapter, and P14 provider-to-history projection. The Textual client remains a
-transport-only caller of typed controls.
+Existing owners inspected: P10 typed controls, P15 controlled provider turn,
+P4 persisted turn state, and the existing thread/cancellation primitives.
 
-The active work connects a typed start request to one configured non-streaming
-provider call through the control owner, then persists its normalized events.
-It must not stream, execute provider-requested tools, create LBE tool identity,
-continue after tools, bypass approval, or make the UI a provider/runtime owner.
+The active work moves configured non-streaming provider calls off the Textual
+event loop into one runtime-owned background lifecycle. It must expose truthful
+queued/running/completed state and persist control handoff events. It must not
+claim that a blocked HTTP call is cancelled until the transport supports it.
 
-Required evidence level: `INTEGRATION` plus configured local-provider UI flow.
-Reuse decision: P10 control owner invokes P3/P14 only; no second transport,
-event store, tool executor, or UI controller.
+Required evidence level: `INTEGRATION` plus a live UI responsiveness proof.
+Reuse decision: extend P15 runtime with one background lifecycle; no second
+provider transport, event store, tool executor, or UI controller.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
