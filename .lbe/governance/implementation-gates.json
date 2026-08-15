@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P6_GOVERNED_PROCESS_EVENTS",
-  "active_slice": "FIXED_POLICY_COMMAND_LIFECYCLE",
+  "active_phase": "P7_RECEIPT_BACKED_PROVIDER_CONTINUATION",
+  "active_slice": "DURABLE_RECEIPT_IDENTITY_AND_STOP_BOUNDARY",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

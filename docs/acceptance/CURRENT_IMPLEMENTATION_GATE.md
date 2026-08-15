@@ -2,13 +2,37 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P6_GOVERNED_PROCESS_EVENTS`
+Current phase: `P7_RECEIPT_BACKED_PROVIDER_CONTINUATION`
 
-Current slice: `FIXED_POLICY_COMMAND_LIFECYCLE`
+Current slice: `DURABLE_RECEIPT_IDENTITY_AND_STOP_BOUNDARY`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P6 slice contract
+## Active P7 slice contract
+
+Existing owners inspected:
+
+- provider proposals: P0/P3 normalized events;
+- governed invocation and result: `GovernedToolOrchestrator` and `ToolReceipt`;
+- persistence/event projection: P4/P5 operational history;
+- existing `ToolReceipt` has an operation ID but no durable receipt ID.
+
+The active work establishes durable receipt identity and a continuation stop
+boundary. A provider can receive a continuation result only after LBE has
+produced a governed receipt. Escalation/approval stops the loop; neither the
+provider nor the continuation layer can execute a tool or bypass R6C.
+
+Required evidence level: `INTEGRATION` for identity correlation and approved
+receipt continuation. Live provider continuation requires separate runtime
+proof and remains unverified.
+
+Reuse decision: extend existing `ToolReceipt` and orchestrator outputs; do not
+introduce a second tool executor, provider authority, or receipt store.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P6 slice contract
 
 Existing owners inspected:
 
