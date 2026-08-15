@@ -2,13 +2,38 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P5_GOVERNED_TOOL_EVENT_PROJECTION`
+Current phase: `P6_GOVERNED_PROCESS_EVENTS`
 
-Current slice: `RECEIPT_TO_ORDERED_HISTORY_PROJECTION`
+Current slice: `FIXED_POLICY_COMMAND_LIFECYCLE`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P5 slice contract
+## Active P6 slice contract
+
+Existing owners inspected:
+
+- fixed registered validation-command policy and execution:
+  `ValidationCommandPolicyCatalog` and `CompletionEvidenceProducers`;
+- governed tool dispatch/receipts: `GovernedToolOrchestrator`;
+- ordered history: P4/P5 `SessionOperationalHistory`.
+
+The active work is a process-observation layer for commands already selected by
+fixed LBE policy. It may produce started/stdout/stderr/progress/completed/
+failed/cancelled observations only from a real process. It must not accept
+provider-controlled argv, use a shell, become a general command executor, or
+claim live output for synchronous execution.
+
+Required evidence level: `INTEGRATION` plus a local real-process test.
+Cancellation must stop a real launched process; a static handler result is not
+process-stream proof.
+
+Reuse decision: reuse the fixed validation command catalog and governed command
+boundary. The canonical branch has no existing live process-event owner.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P5 slice contract
 
 Existing owners inspected:
 

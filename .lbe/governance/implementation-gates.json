@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P5_GOVERNED_TOOL_EVENT_PROJECTION",
-  "active_slice": "RECEIPT_TO_ORDERED_HISTORY_PROJECTION",
+  "active_phase": "P6_GOVERNED_PROCESS_EVENTS",
+  "active_slice": "FIXED_POLICY_COMMAND_LIFECYCLE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
