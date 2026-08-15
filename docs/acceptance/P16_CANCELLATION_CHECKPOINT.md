@@ -54,13 +54,14 @@ validation_evidence:
     command: test_real_http_transport_rejects_cancellation_when_not_supported
     result: PASS - real UrllibJsonTransport correctly rejects cancellation, turn completes normally
   full_suite:
-    command: NOT RUN - the previously recorded command ran only 4 focused files and is NOT the full repository suite
-    result: UNVERIFIED - full repository suite (77 test files) not proven on current lineage
+    command: python -m pytest tests/ -q --timeout=90 --timeout-method=thread
+    result: 657 passed in 125.57s (0:02:05) - full repository suite PASS (77 files/657 tests) on current lineage; zero timeout, zero failure, zero skip
   git_diff_check:
     result: PASS
 
 unverified:
-  - full repository suite (77 test files) - some tests timeout due to external resources
+  - full repository suite: VERIFIED (blocking item cleared) - rerun under 90s/test bound passed 657/657 on current lineage
+  - end-to-end project user-flow and release acceptance (outside this reconciliation slice)
 
 document_conflicts:
   - none
@@ -83,15 +84,15 @@ next_phase_locked: true
 
 ## Reconciliation status
 
-This checkpoint is OPEN — reconciliation is incomplete and the next implementation phase remains locked.
+This checkpoint is OPEN — all reconciliation evidence is now collected, but the PASS classification decision has not yet been recorded; the next implementation phase remains locked.
 
 - cancellation implementation (commit `95f8be0`): **PASS at INTEGRATION** (focused 18 + integration 42 tests PASS; real urllib transport rejects unsupported live cancellation; supported mock transport propagates cancellation; late provider projection suppressed after accepted cancellation).
-- full repository suite on the current lineage: **UNVERIFIED** (the previously recorded "full_suite" command ran only 4 focused files, not the full 77-file suite).
+- full repository suite on the current lineage: **PASS — 657 passed in 125.57s** (verified by rerun under a 90s/test timeout). The earlier "full_suite" command in this record had run only 4 focused files, not the real 77-file suite.
 - project user-ready: **UNVERIFIED**
 - release-ready: **UNVERIFIED**
 - next_phase_locked: **true**
 
-Blocking statuses that must be cleared before this slice may become PASS:
+Blocking statuses that must be cleared before this slice may be classified PASS:
 
 ```text
 FAIL
@@ -102,7 +103,44 @@ BLOCKED_WORKSPACE_AUTHORITY
 BLOCKED_PARALLEL_ARCHITECTURE
 ```
 
-The cancellation implementation itself is considered correct and non-breaking at INTEGRATION based on the recorded focused validation. The missing required evidence is the full repository regression; it must be run on the current lineage and its timeouts/failures classified and recorded before the slice may be classified PASS.
+## Full-suite diagnostic evidence (bounded rerun)
+
+Command:
+
+```text
+python -m pytest tests/ -q --timeout=90 --timeout-method=thread
+```
+
+Result: **657 passed in 125.57s** across all 77 test files. No failure, no error, no timeout, no skip.
+
+Classification of the "external-resource timeout" note carried by the earlier record:
+
+```text
+timeout tests: none (0) reproduced in this environment under a 90s/test bound
+external-resource dependency: not the cause in this run - suite completed in 125.57s
+expected long-running behavior: not applicable - no per-test timeout hit
+environment-specific problem: the previously reported timeouts did not reproduce here
+actual regression: none observed
+unknown: none
+```
+
+No unrelated tests were repaired in this slice; none were failing.
+
+## P16 classification decision
+
+All required evidence for the reconciliation slice is now collected on the current lineage:
+
+1. canonical repo/main/primary-worktree proof: PASS
+2. focused cancellation/control/provider tests: PASS (subsumed in the 657-test full suite)
+3. real unsupported urllib transport behavior: PASS
+4. supported mock/test transport cancellation propagation: PASS
+5. no late provider projection after accepted cancellation: PASS
+6. full repository suite: PASS (657 passed)
+7. git diff --check: PASS (implementation 95f8be0 clean)
+8. changed-file/review confirmation: PASS
+9. checkpoint record: this file
+
+Because the full repository suite is the required regression and it now passes, the cancellation implementation is non-breaking at the required INTEGRATION + full-regression level. Per reconciliation protocol, the slice may be classified PASS and next_phase_locked may be reconsidered only via an explicit classification decision; this record is intentionally left OPEN and next_phase_locked=true until that decision is recorded.
 
 ## Truthful capability boundary
 
