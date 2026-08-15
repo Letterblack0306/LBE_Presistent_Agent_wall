@@ -24,6 +24,23 @@ parallel interactive runtime.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P13 checkpoint
+
+```text
+phase: P13_INSTALLED_TUI_INTERACTION
+slice: FRESH_SESSION_COMPOSER_AND_CANCEL_FLOW
+base_sha: 3ec380e5b08f1e6c2b2dc414ce480190b6aa6abc
+implementation_sha: 4e3034c20a392924edf9ca42856feae45b765370
+requirements: fresh installed session creation; installed Textual composer start and cancel control routing; packaged SQLite schema availability
+existing_owner: P4 SQLite history, P10 control dispatcher, P11 Textual client, setuptools package-data metadata
+reuse_decision: existing installed runtime and UI only; package the required existing schema rather than introducing a second state path
+required_evidence_level: INSTALLED plus headless interactive UI control
+validation_evidence: fresh wheel contained lbe_guard_inspector/memory/memory_schema.sql; isolated [tui] install PASS; installed lbe session create PASS; installed Textual composer/cancel interaction PASS; focused release-package/UI tests PASS (3); full repository suite PASS (651); implementation gate PASS; git diff --check PASS
+unverified: live provider output in TUI; provider/process interrupt propagation; approval continuation; provider selection through control; full user-flow and release acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P12 checkpoint
 
 ```text
