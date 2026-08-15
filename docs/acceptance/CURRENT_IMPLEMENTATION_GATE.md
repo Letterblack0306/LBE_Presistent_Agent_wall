@@ -27,6 +27,23 @@ store, or tool executor.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P14 checkpoint
+
+```text
+phase: P14_PROVIDER_EVENT_HISTORY_PROJECTION
+slice: NON_STREAMING_ADAPTER_TO_PERSISTED_TURN
+base_sha: f7fadbeb8c789c2b2b2d4722136d10f8151336a9
+implementation_sha: a0c1a49eb3cba597729ca320c33682dca3107a99
+requirements: ordered normalized provider-event persistence; truthful terminal turn mapping; preserve provider identity/text/usage; allow provider usage after terminal error; no tool execution or continuation
+existing_owner: P3 OpenAI-compatible adapter, P0 event contract, P4 SessionOperationalHistory, P5 sole receipt projection
+reuse_decision: one P3-to-P4 projection only; no transport, event store, receipt, tool executor, or continuation owner
+required_evidence_level: INTEGRATION plus LIVE_RUNTIME
+validation_evidence: focused provider projection/adapter tests PASS (6); live smollm3-3b projection persisted model.turn.started, model.message.completed, model.error, and model.usage.updated then finalized failed; full repository suite PASS (653); implementation gate PASS; git diff --check PASS
+unverified: governed provider tool identity/approval/continuation; provider/process interrupt propagation; direct TUI-to-provider execution; typed provider selection through control; full user-flow and release acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P13 checkpoint
 
 ```text
