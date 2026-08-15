@@ -6,10 +6,11 @@ operation-id idempotency. Tool implementations remain separate services.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol
+import uuid
 
 from ..evidence_service import EvidenceService
 from .authorization_resolver import (
@@ -130,6 +131,7 @@ class ToolReceipt:
     evidence: tuple[Mapping[str, Any], ...] = ()
     error_code: str | None = None
     error_message: str | None = None
+    receipt_id: str = field(default_factory=lambda: f"receipt-{uuid.uuid4().hex}")
 
 
 class ToolHandler(Protocol):

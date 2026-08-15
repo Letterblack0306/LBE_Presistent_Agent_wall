@@ -19,4 +19,4 @@ def test_receipt_projection_preserves_real_operation_without_executing_tool(tmp_
     store=WorkspaceMemoryStore(tmp_path/'state.sqlite3'); store.save_session_state(SessionState(session_id='s1',project_workspace_id='w1',canonical_workspace_root=tmp_path,mode='coding'))
     history=SessionOperationalHistory(store=store); turn=history.start_turn(session_id='s1')
     event=history.project_tool_receipt(session_id='s1',turn_id=turn.turn_id,item_id=None,receipt=ToolReceipt(operation_id='op1',tool_id='workspace.read',status=ToolReceiptStatus.ESCALATED,authorization=None,error_code='ESCALATED'),provider_tool_call_id='provider1',lbe_call_id='lbe1')
-    assert event.event_type=='tool.escalated' and event.runtime_operation_id=='op1' and event.lbe_call_id=='lbe1'
+    assert event.event_type=='tool.escalated' and event.runtime_operation_id=='op1' and event.lbe_call_id=='lbe1' and event.tool_receipt_id==event.payload['receipt_id']
