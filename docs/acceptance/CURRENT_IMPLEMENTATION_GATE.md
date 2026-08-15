@@ -30,6 +30,23 @@ process-stream proof.
 Reuse decision: reuse the fixed validation command catalog and governed command
 boundary. The canonical branch has no existing live process-event owner.
 
+## Completed P6 checkpoint
+
+```text
+phase: P6_GOVERNED_PROCESS_EVENTS
+slice: FIXED_POLICY_COMMAND_LIFECYCLE
+base_sha: 6cd7f5e51d4a4b93ef4d996ff534ccaac7d5a56a
+implementation_sha: 1b8593b6f360f5e2326e3f06c1760db0596c36d9
+requirements: fixed-policy shell-free process observation; real stdout/stderr; terminal outcome; cancellation terminates launched process
+existing_owner: ValidationCommandPolicyCatalog and CompletionEvidenceProducers
+reuse_decision: isolated process observer only; no general shell or provider-controlled argv
+required_evidence_level: INTEGRATION plus local real process
+validation_evidence: P6 real-process tests PASS (2); full repository suite PASS (643); implementation gate PASS; git diff --check PASS
+unverified: process observer to operational-history wiring; provider continuation; controls; replay/TUI/user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
