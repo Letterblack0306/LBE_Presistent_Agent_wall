@@ -39,6 +39,27 @@ The deterministic endpoint map is limited to `/responses`, `/v1/messages` or
 `unknown`. This identifies protocol syntax only. It is not a streaming, tool,
 reasoning, context-window, or health claim.
 
+## Completed P2 checkpoint
+
+```text
+phase: P2_PROVIDER_MODEL_CAPABILITY_DISCOVERY
+slice: CONSERVATIVE_CONFIGURED_ENDPOINT_DISCOVERY
+base_sha: 855e7ce027c0975a90a3bdf0e089998421acc7a5
+implementation_sha: 062e716e0cd2246bd3cfdcf037190efb4783482a
+requirements: endpoint-syntax protocol classification; explicit typed evidence only; unknown-by-default feature support; no provider I/O or authority
+existing_owner: P0 ProviderProtocolFamily; P1 CapabilityClaim/ProviderModelCapabilities; legacy ProviderRegistry; R6C resolve_authorization()
+reuse_decision: isolated deterministic discovery using P0/P1 contracts; no provider SDK, transport, registry rewrite, or authority owner added
+required_evidence_level: UNIT
+validation_evidence: py_compile PASS; focused discovery/P0/P1/registry tests PASS (28); full repository suite PASS (635); implementation gate PASS; git diff --check PASS
+unverified: provider endpoint reachability; authenticated provider/model metadata; live streaming; provider selection; persisted projection; governed continuation; user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
+P2 is complete at its required `UNIT` evidence level. It does not prove that a
+configured endpoint is reachable or that any provider/model feature is live.
+The next phase remains locked until a new exact P3 slice is registered.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
