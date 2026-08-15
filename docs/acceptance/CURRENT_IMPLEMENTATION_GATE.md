@@ -2,13 +2,38 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P4_AUTHORITATIVE_OPERATIONAL_HISTORY`
+Current phase: `P5_GOVERNED_TOOL_EVENT_PROJECTION`
 
-Current slice: `SESSION_TURN_ITEM_ORDERED_PERSISTENCE`
+Current slice: `RECEIPT_TO_ORDERED_HISTORY_PROJECTION`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P4 slice contract
+## Active P5 slice contract
+
+Existing owners inspected:
+
+- governed dispatch/authorization/receipts: `GovernedToolOrchestrator` and
+  `ToolReceipt`;
+- authoritative ordered persistence: `SessionOperationalHistory`;
+- provider events remain proposals only and never execute tools directly.
+
+The active work projects already-produced governed receipts into ordered history
+as `tool.completed`, `tool.denied`, `tool.escalated`, or `tool.failed`. It must
+preserve receipt, operation, provider, and LBE-call identifiers when supplied.
+It must not invoke a tool, bypass approval, change authorization, or synthesize
+output/progress.
+
+Required evidence level: `INTEGRATION` for real orchestrator receipt outcomes
+persisted in the same SQLite event order. Process streaming remains outside
+this slice until a real streaming backend exists.
+
+Reuse decision: reuse `GovernedToolOrchestrator` receipts and P4 history; no
+parallel tool dispatcher or receipt store is permitted.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P4 slice contract
 
 Existing owners inspected:
 
