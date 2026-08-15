@@ -29,6 +29,23 @@ runtime, transcript storage, or provider controller.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P11 checkpoint
+
+```text
+phase: P11_TEXTUAL_TUI_CLIENT
+slice: PERSISTED_TRANSCRIPT_AND_TYPED_COMPOSER
+base_sha: 0ea375d2e8969db15d31a9f74fd62cec33b72239
+implementation_sha: c17ba102a53863acf6da27370136fc602195e1b7
+requirements: Textual optional dependency and CLI command; truthful session header; ordered persisted transcript; composer routes start or steer; priority interrupt/cancel keys route typed controls; no UI-owned authority
+existing_owner: P4/P9 history and replay; P8 vocabulary; P10 persistent turn dispatcher; CLI session persistence
+reuse_decision: one optional Textual projection over existing runtime owners; no UI runtime, transcript store, tool executor, or provider controller
+required_evidence_level: INTEGRATION
+validation_evidence: focused Textual/control/transcript/CLI tests PASS (21); full repository suite PASS (651); implementation gate PASS; git diff --check PASS
+unverified: installed TUI invocation; live provider turn and interrupt propagation; approval continuation; typed provider selection; full user-flow and release acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P10 checkpoint
 
 ```text
