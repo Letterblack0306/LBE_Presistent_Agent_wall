@@ -145,6 +145,11 @@ def build_parser() -> argparse.ArgumentParser:
     permissions_show.add_argument("--session-id", required=True)
     permissions_show.set_defaults(handler=_permissions_show)
 
+    tui = commands.add_parser("tui", help="Open the persisted Textual session projection")
+    _add_database_argument(tui)
+    tui.add_argument("--session-id", required=True)
+    tui.set_defaults(handler=_tui)
+
     return parser
 
 
@@ -354,6 +359,21 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
             "runtime_policy": before.runtime_policy == updated.runtime_policy,
         },
     }
+
+
+def _tui(args: argparse.Namespace) -> dict[str, Any]:
+    from .memory.operational_history import SessionOperationalHistory
+    from .persistent_turn_control import PersistentTurnControl
+    from .textual_tui import run_textual_tui
+
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    run_textual_tui(
+        history=SessionOperationalHistory(store=store),
+        session_id=state.session_id,
+        control=PersistentTurnControl(history=SessionOperationalHistory(store=store)),
+    )
+    return {"action": "tui", "session_id": state.session_id}
 
 
 def _code(args: argparse.Namespace) -> dict[str, Any]:

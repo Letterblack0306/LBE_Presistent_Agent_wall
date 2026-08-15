@@ -16,6 +16,9 @@ dependencies = [
 test = [
   "pytest==8.3.5"
 ]
+tui = [
+  "textual==8.2.8"
+]
 
 [project.scripts]
 lbe = "lbe_guard_inspector.cli:main"
