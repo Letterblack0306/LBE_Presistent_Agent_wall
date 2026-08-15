@@ -27,6 +27,23 @@ projection; no second transcript store, session controller, or event producer.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P9 checkpoint
+
+```text
+phase: P9_REPLAYABLE_TRANSCRIPT_PROJECTION
+slice: AUTHORITATIVE_EVENT_REPLAY_ONLY
+base_sha: 243645294a3d1e5da6de1bb0e32168ee52f936e8
+implementation_sha: 90c781daa9cf538a192561a346da8d721a17b4b5
+requirements: deterministic session-scoped persisted-event replay; preserved sequence and event identity; no fabricated transcript activity; reopen from the same SQLite database
+existing_owner: P4 SessionOperationalHistory and P5 governed receipt projection
+reuse_decision: extend the existing history reader and add one read-only transcript projection; no transcript store, event producer, or session controller
+required_evidence_level: INTEGRATION
+validation_evidence: focused transcript/history tests PASS (3); full repository suite PASS (649); implementation gate PASS; git diff --check PASS
+unverified: runtime control handlers; live steering/interruption/cancel/approval/provider switch; TUI interaction and installed/user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P8 checkpoint
 
 ```text
