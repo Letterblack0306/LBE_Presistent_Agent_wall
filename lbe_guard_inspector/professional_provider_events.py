@@ -11,16 +11,20 @@ from typing import Any, Mapping
 
 
 class ProviderProtocolFamily(StrEnum):
-    OPENAI_COMPATIBLE_CHAT = "openai_compatible_chat"
     OPENAI_RESPONSES = "openai_responses"
     ANTHROPIC_MESSAGES = "anthropic_messages"
+    GEMINI_INTERACTIONS = "gemini_interactions"
     GEMINI_GENERATE_CONTENT = "gemini_generate_content"
+    OPENAI_COMPATIBLE_CHAT = "openai_compatible_chat"
+    UNKNOWN = "unknown"
 
 
 class ModelEventType(StrEnum):
     TURN_STARTED = "model.turn.started"
     MESSAGE_DELTA = "model.message.delta"
     MESSAGE_COMPLETED = "model.message.completed"
+    REASONING_SUMMARY_DELTA = "model.reasoning_summary.delta"
+    REASONING_SUMMARY_COMPLETED = "model.reasoning_summary.completed"
     TOOL_CALL_STARTED = "model.tool_call.started"
     TOOL_CALL_ARGUMENTS_DELTA = "model.tool_call.arguments.delta"
     TOOL_CALL_COMPLETED = "model.tool_call.completed"
@@ -36,6 +40,7 @@ class ModelEventType(StrEnum):
 
 _DELTA_EVENTS = frozenset({
     ModelEventType.MESSAGE_DELTA,
+    ModelEventType.REASONING_SUMMARY_DELTA,
     ModelEventType.TOOL_CALL_ARGUMENTS_DELTA,
 })
 _TOOL_EVENTS = frozenset({

@@ -29,6 +29,63 @@ The contract must preserve distinct provider request/item/tool-call identities
 and LBE call identity; runtime-operation and tool-receipt identities remain
 absent until governed execution.
 
+Frozen P0 vocabulary:
+
+```text
+model.turn.started
+model.message.delta
+model.message.completed
+model.reasoning_summary.delta
+model.reasoning_summary.completed
+model.tool_call.started
+model.tool_call.arguments.delta
+model.tool_call.completed
+model.usage.updated
+model.turn.requires_tool
+model.turn.requires_continuation
+model.turn.completed
+model.turn.incomplete
+model.turn.refused
+model.cancelled
+model.error
+```
+
+The initial protocol families are `openai_responses`, `anthropic_messages`,
+`gemini_interactions`, `gemini_generate_content`, `openai_compatible_chat`,
+and `unknown`. `unknown` means the protocol family has not been proven; it
+does not infer provider or model capability. Reasoning-summary events remain
+distinct from message events, and `requires_tool` remains distinct from
+`requires_continuation`. This P0 contract creates no provider transport,
+capability projection, persistence, authorization, or tool execution owner.
+
+## Frozen P0 semantic mapping
+
+- OpenAI Responses maps function-call output-item lifecycle to tool-call start
+  and completion, and maps function-call argument deltas only when emitted.
+  Reasoning-summary text deltas/completion map to the distinct reasoning-summary
+  events; reasoning item/part lifecycle stays provider metadata rather than
+  fabricated user-facing text. Incomplete, refusal, and provider failure remain
+  distinct terminal semantics.
+- Gemini Interactions maps its interaction and typed step lifecycle without an
+  invented wrapper. Function-call steps may produce tool-call start, argument
+  delta, completion, and `requires_tool` semantics.
+- Gemini GenerateContent remains separate. A complete `functionCall` maps to
+  start then completion; it must not generate an arguments-delta event that the
+  provider did not emit. Thought signatures and other continuation state remain
+  provider metadata, never ordinary reasoning text.
+- Anthropic `tool_use` maps to LBE client-tool work and `requires_tool`;
+  `pause_turn` maps to the distinct `requires_continuation` semantic. Client
+  `tool_result` content is continuation input after governed execution, never a
+  provider-emitted `model.*` event.
+- Provider-native, client-interrupt, transport-error, and runtime-policy
+  terminal attribution must remain distinguishable in typed metadata. The P0
+  contract does not claim every provider exposes every terminal state.
+
+Tool results, runtime-operation IDs, tool receipts, session events, process
+events, control events, persistence, and transcript projections remain outside
+P0. P0 does not manufacture streaming, visible reasoning, partial arguments,
+parallel calls, or server-side state when a provider did not emit/prove them.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
