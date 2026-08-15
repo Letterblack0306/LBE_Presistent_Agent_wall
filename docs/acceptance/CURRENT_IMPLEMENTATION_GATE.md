@@ -24,6 +24,23 @@ Reuse decision: one control protocol contract; no second session controller.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P8 checkpoint
+
+```text
+phase: P8_TYPED_CONTROL_PROTOCOL
+slice: STEERING_INTERRUPT_CANCEL_APPROVAL_VOCABULARY
+base_sha: 43d4856ed9b65df59d2f9fd18657a5dd961c2197
+implementation_sha: e5de6707a0a0357ecaeb34c6f1d61bb90ac71160
+requirements: typed versioned requests; explicit accepted/rejected outcomes; steering, interruption, cancellation, provider selection, approval, evidence, and validation vocabulary; invalid-state rejection
+existing_owner: P4 session history; P5 receipts; P7 continuation; existing session and R6C/tool authority
+reuse_decision: one protocol vocabulary only; no second session controller, tool executor, or persistence owner
+required_evidence_level: UNIT
+validation_evidence: focused control-protocol tests PASS (2); full repository suite PASS (648); implementation gate PASS; git diff --check PASS
+unverified: runtime control handlers; persisted control outcomes; live steering/interruption/cancel/approval/provider-switch flows; replay/TUI/user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P7 slice contract
 
 Existing owners inspected:
