@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P0_PROVIDER_EVENT_NORMALIZATION",
-  "active_slice": "FROZEN_NORMALIZED_EVENT_CONTRACT",
+  "active_phase": "P1_PROFESSIONAL_CAPABILITY_CONTRACT",
+  "active_slice": "FROZEN_TYPED_CAPABILITY_SEPARATION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

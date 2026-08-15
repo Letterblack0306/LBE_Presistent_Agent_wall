@@ -2,13 +2,46 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P0_PROVIDER_EVENT_NORMALIZATION`
+Current phase: `P1_PROFESSIONAL_CAPABILITY_CONTRACT`
 
-Current slice: `FROZEN_NORMALIZED_EVENT_CONTRACT`
+Current slice: `FROZEN_TYPED_CAPABILITY_SEPARATION`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P0 slice contract
+## Active P1 slice contract
+
+Existing owners inspected:
+
+- legacy bounded provider metadata: `ProviderCapabilities` and
+  `ProviderDescriptor` through `ProviderRegistry`;
+- bounded provider transport: `OpenAICompatibleReasoningBackend` through
+  `ProviderRegistry`;
+- session/workspace authority: `SessionMemoryRuntimeBridge` and
+  `WorkspaceMemoryStore`;
+- governed execution and authorization: `GovernedAgentGateway`,
+  `ToolExecutionContext`, `GovernedToolOrchestrator`, and R6C
+  `resolve_authorization()`.
+
+The active work is the frozen typed professional capability contract required
+before P2 capability discovery and provider projection. It must separate
+provider/model technical support, LBE runtime availability, and effective
+session capability projection. It must not alter the existing bounded provider
+registry, add provider I/O, grant tool authority, execute tools, or infer
+unknown capability support.
+
+Required evidence level: `UNIT` for deterministic state separation,
+unknown-by-default behavior, and invalid-state rejection. R6C remains the
+authority owner: later projection may describe a capability but cannot grant it.
+
+Reuse decision: reuse the existing provider registry and R6C authority as
+unchanged owners. Add one isolated typed professional contract only; do not
+replace or widen the legacy boolean `ProviderCapabilities` metadata before an
+accepted migration slice exists.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P0 slice contract
 
 Existing owners inspected:
 
