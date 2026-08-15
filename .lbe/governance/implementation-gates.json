@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P2_PROVIDER_MODEL_CAPABILITY_DISCOVERY",
-  "active_slice": "CONSERVATIVE_CONFIGURED_ENDPOINT_DISCOVERY",
+  "active_phase": "P3_NATIVE_PROVIDER_EVENT_ADAPTER",
+  "active_slice": "OPENAI_COMPATIBLE_NON_STREAMING_EVENT_FIDELITY",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

@@ -2,13 +2,47 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P2_PROVIDER_MODEL_CAPABILITY_DISCOVERY`
+Current phase: `P3_NATIVE_PROVIDER_EVENT_ADAPTER`
 
-Current slice: `CONSERVATIVE_CONFIGURED_ENDPOINT_DISCOVERY`
+Current slice: `OPENAI_COMPATIBLE_NON_STREAMING_EVENT_FIDELITY`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P2 slice contract
+## Active P3 slice contract
+
+Existing owners inspected:
+
+- P0 normalized model-event contract: `NormalizedModelEvent`;
+- P1/P2 capability truth: `CapabilityClaim`, `ProviderModelCapabilities`, and
+  deterministic endpoint discovery;
+- bounded OpenAI-compatible HTTP transport: `UrllibJsonTransport` and
+  `OpenAICompatibleReasoningBackend`;
+- session, authorization, and governed tool-execution owners remain unchanged.
+
+The active work is a native OpenAI-compatible adapter that produces truthful
+non-streaming normalized events from an actual provider response. It must reuse
+the existing HTTP boundary where possible and preserve provider identifiers.
+It must not claim deltas, reasoning summaries, tool arguments, parallel calls,
+or continuation semantics unless the provider actually returns them. It must
+not replace existing bounded reasoning, persist events, select providers, or
+execute tools.
+
+Required evidence level: `UNIT` plus `LIVE_RUNTIME` for one non-streaming
+provider response. Streaming is explicitly outside this slice unless live
+provider evidence proves it.
+
+Reuse decision: P3 uses a native adapter. The evaluated `@cline/llms@0.0.73`
+pin remains ineligible because its dependency/license gate failed. Existing
+transport and authority owners stay unchanged.
+
+Live prerequisite satisfied on 2026-08-15: `http://127.0.0.1:1234/v1/models`
+was reachable, and the existing bounded provider health check completed with
+`openai-compatible` / `smollm3-3b`. This proves one structured response only.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P2 slice contract
 
 Existing owners inspected:
 
