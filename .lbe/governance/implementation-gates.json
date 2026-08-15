@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P3_PROVIDER_TRANSPORT_REUSE",
-  "active_slice": "CLINE_LLMS_COMPATIBILITY_DECISION",
+  "active_phase": "P0_PROVIDER_EVENT_NORMALIZATION",
+  "active_slice": "FROZEN_NORMALIZED_EVENT_CONTRACT",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

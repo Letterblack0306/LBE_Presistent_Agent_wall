@@ -2,13 +2,13 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P3_PROVIDER_TRANSPORT_REUSE`
+Current phase: `P0_PROVIDER_EVENT_NORMALIZATION`
 
-Current slice: `CLINE_LLMS_COMPATIBILITY_DECISION`
+Current slice: `FROZEN_NORMALIZED_EVENT_CONTRACT`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P3 slice contract
+## Active P0 slice contract
 
 Existing owners inspected:
 
@@ -19,20 +19,20 @@ Existing owners inspected:
 - governed execution: `GovernedAgentGateway`, `ToolExecutionContext`, and
   `GovernedToolOrchestrator`.
 
-The active work is an evaluation only. It must pin and inspect
-`@cline/llms`, map its stream semantics to LBE's existing provider boundary,
-and decide `REUSE`, `PARTIAL REUSE`, or `NATIVE` with evidence. It must not add
-a Cline session, persistence, authorization, or tool-execution owner.
+The active work is the frozen normalized provider-event contract required before
+P1 capability projection, P2 negotiation, P3 provider streaming, persistence,
+or continuation implementation. It must not add a provider transport, Cline
+session, persistence, authorization, or tool-execution owner.
 
-Required evidence level: `INSTALLED` for exact package/runtime identity and
-`INTEGRATION` for event/identity/continuation mapping. Any production adoption
-also requires a passing dependency/license review; cancellation and
-pre-mutation tool interception remain higher-level gates.
+Required evidence level: `UNIT` for event identity and invalid-state rejection.
+The contract must preserve distinct provider request/item/tool-call identities
+and LBE call identity; runtime-operation and tool-receipt identities remain
+absent until governed execution.
 
-Explicit user authorization is recorded for this evaluation. Architecture
+Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
-## P3 decision evidence
+## Deferred P3 decision evidence
 
 Exact evaluated dependency: `@cline/llms@0.0.73` in an isolated temporary
 installation. The installed package identity matched the pin and exposed
@@ -48,9 +48,10 @@ but this exact package must not become the production P3/P7 dependency while
 the dependency/license gate fails. Existing LBE provider and governed-execution
 owners remain unchanged.
 
-The evaluation slice itself has completed its required `INSTALLED` evidence.
-No provider transport implementation is active until a new exact slice is
-registered with an existing-owner audit and required runtime evidence.
+The Cline evaluation remains evidence for the later P3 decision. No provider
+transport implementation is active until P0, P1, and P2 are accepted and a
+new exact P3 slice is registered with an existing-owner audit and required
+runtime evidence.
 
 ## Completed governance-lock baseline
 
