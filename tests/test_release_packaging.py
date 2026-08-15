@@ -44,6 +44,7 @@ def test_wheel_contains_only_runtime_modules_and_contracts(
         "audit_controller.py",
         "server.py",
         "lbe_guard_inspector/callback_vertical_slice.py",
+        "lbe_guard_inspector/memory/memory_schema.sql",
         "lbe_guard_inspector/module_registry_vertical_slice.py",
         "rules/cep_callback.py",
         "rules/module_registry.py",
