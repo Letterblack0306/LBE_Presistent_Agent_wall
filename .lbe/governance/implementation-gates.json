@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P1_PROFESSIONAL_CAPABILITY_CONTRACT",
-  "active_slice": "FROZEN_TYPED_CAPABILITY_SEPARATION",
+  "active_phase": "P2_PROVIDER_MODEL_CAPABILITY_DISCOVERY",
+  "active_slice": "CONSERVATIVE_CONFIGURED_ENDPOINT_DISCOVERY",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

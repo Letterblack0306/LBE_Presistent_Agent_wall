@@ -2,13 +2,41 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P1_PROFESSIONAL_CAPABILITY_CONTRACT`
+Current phase: `P2_PROVIDER_MODEL_CAPABILITY_DISCOVERY`
 
-Current slice: `FROZEN_TYPED_CAPABILITY_SEPARATION`
+Current slice: `CONSERVATIVE_CONFIGURED_ENDPOINT_DISCOVERY`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P1 slice contract
+## Active P2 slice contract
+
+Existing owners inspected:
+
+- P0 protocol-family vocabulary: `ProviderProtocolFamily`;
+- P1 typed technical-claim owner: `CapabilityClaim` and
+  `ProviderModelCapabilities`;
+- legacy bounded provider metadata: `ProviderCapabilities` and
+  `ProviderDescriptor` through `ProviderRegistry`;
+- R6C authority: `resolve_authorization()` and governed execution owners.
+
+The active work is deterministic discovery for one configured provider,
+endpoint, and selected model. Endpoint syntax may prove a protocol family;
+all professional feature claims remain `unknown` until explicit typed evidence
+is supplied. This slice must not perform provider I/O, read secrets, modify the
+legacy registry, select a provider, project tools, grant authority, or execute
+tools.
+
+Required evidence level: `UNIT` for endpoint classification, explicit-evidence
+validation, and unknown-by-default behavior. Live endpoint/model evidence is
+outside this slice and remains required before any live-provider claim.
+
+Reuse decision: reuse P0 protocol vocabulary and P1 typed claims. Keep legacy
+provider metadata unchanged; do not add a parallel transport or provider SDK.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P1 slice contract
 
 Existing owners inspected:
 
