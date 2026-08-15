@@ -13,8 +13,10 @@ Read:
 - `.agent/PROJECT_CONTEXT.md`
 - `.lbe/governance/workspace-lock.json`
 - `.lbe/governance/implementation-gates.json`
-- `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md`
+- the exact `active_plan` declared by `.lbe/governance/implementation-gates.json`
 - `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md`
+
+Do not substitute an older/similarly named acceptance file for the machine-declared `active_plan`.
 
 Resolve:
 
@@ -26,6 +28,7 @@ architecture_changes_allowed
 next_phase_locked
 required_evidence_level
 blocking_statuses
+allowed_scope
 ```
 
 If the request is outside the active slice, stop and report `BLOCKED_OUTSIDE_ACTIVE_SLICE`.
@@ -98,7 +101,7 @@ NATIVE_FALLBACK
 NEW_ARCHITECTURE_REQUIRED
 ```
 
-`NEW_ARCHITECTURE_REQUIRED` is blocked unless `architecture_changes_allowed=true` AND explicit user authorization is recorded in the active gate.
+`NEW_ARCHITECTURE_REQUIRED` is blocked unless `architecture_changes_allowed=true`, the active plan names the authorized change, and explicit user authorization is recorded.
 
 ## Step 6 — Define the bounded slice
 
