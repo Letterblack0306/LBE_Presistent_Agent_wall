@@ -1,6 +1,6 @@
 # Cline Core Reuse Boundary Audit Gate
 
-Status: **OPEN — AUDIT ONLY — NEXT IMPLEMENTATION PHASE LOCKED**
+Status: **AUDIT PASS — NEXT IMPLEMENTATION PHASE LOCKED**
 
 ## Active phase
 
@@ -132,5 +132,23 @@ PASS requires:
 8. `python scripts/check-implementation-gate.py` PASS;
 9. `git diff --check` PASS;
 10. checkpoint completed.
+
+## PASS evidence
+
+The source audit is classified **PASS** in `docs/acceptance/CLINE_CORE_REUSE_BOUNDARY_AUDIT_CHECKPOINT.md`.
+
+Recorded local validation on the exact source-audit lineage:
+
+```text
+HEAD == origin/main == f8c82b01faf602364a614e820675e489078d9e1c
+machine gate: PASS
+git diff --check: PASS
+worktree: clean
+changes since audit activation: audit checkpoint + reuse matrix only
+```
+
+The first genuinely missing dependency is the **LBE-to-Cline AgentRuntime governance adapter**, classified `ADAPT`, with future implementation evidence level `INTEGRATION`.
+
+The machine gate `.lbe/governance/implementation-gates.json` intentionally remains operationally `OPEN` with `next_phase_locked=true`. This preserves fail-closed behavior while the completed slice remains registered.
 
 After PASS, stop. Do not activate or implement the next slice automatically.
