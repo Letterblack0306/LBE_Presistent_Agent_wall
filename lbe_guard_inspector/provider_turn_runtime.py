@@ -14,12 +14,34 @@ class NonStreamingProviderTurnRuntime:
         self.history = history
         self.adapter = adapter
         self.provider_id = provider_id
+        self._cancel_lock = threading.Lock()
+        self._cancelled_turns: set[str] = set()
+
+    @property
+    def supports_cancellation(self) -> bool:
+        transport = getattr(getattr(self.adapter, "_transport", None), "supports_cancellation", False)
+        return bool(transport)
+
+    def cancel(self, *, turn_id: str) -> None:
+        with self._cancel_lock:
+            self._cancelled_turns.add(turn_id)
+        transport = getattr(getattr(self.adapter, "_transport", None), "cancel", None)
+        if transport is not None:
+            transport()
+
+    def was_cancelled(self, *, turn_id: str) -> bool:
+        with self._cancel_lock:
+            return turn_id in self._cancelled_turns
 
     def run(self, *, turn_id: str, text: str) -> None:
         try:
             events = self.adapter.complete(messages=({"role": "user", "content": text},), provider_id=self.provider_id)
+            if self.was_cancelled(turn_id=turn_id):
+                return
             project_provider_events(history=self.history, turn_id=turn_id, events=events)
         except Exception as exc:
+            if self.was_cancelled(turn_id=turn_id):
+                return
             project_provider_events(history=self.history, turn_id=turn_id, events=(NormalizedModelEvent(
                 ModelEventType.ERROR, self.provider_id, self.adapter._config.model, ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
                 error_code="RUNTIME_PROVIDER_PROJECTION_ERROR", metadata={"error_type": type(exc).__name__},
@@ -37,6 +59,14 @@ class BackgroundProviderTurnRuntime:
         self.foreground = foreground
         self._lock = threading.RLock()
         self._threads: dict[str, threading.Thread] = {}
+
+    @property
+    def supports_cancellation(self) -> bool:
+        return getattr(self.foreground, "supports_cancellation", False)
+
+    def cancel(self, *, turn_id: str) -> None:
+        if self.is_running(turn_id=turn_id):
+            self.foreground.cancel(turn_id=turn_id)
 
     def start(self, *, turn_id: str, text: str) -> None:
         with self._lock:

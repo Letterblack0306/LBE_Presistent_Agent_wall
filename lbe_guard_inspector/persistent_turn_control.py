@@ -6,7 +6,10 @@ from .memory.operational_history import OperationalEvent, SessionOperationalHist
 
 
 class ProviderTurnRuntime:
+    supports_cancellation: bool
+
     def start(self, *, turn_id: str, text: str) -> None: ...
+    def cancel(self, *, turn_id: str) -> None: ...
 
 
 class PersistentTurnControl:
@@ -37,6 +40,11 @@ class PersistentTurnControl:
             self.history.append_event(OperationalEvent(session_id=session_id, turn_id=turn_id, event_type="turn.interrupt.requested", payload={}))
             return ControlOutcome(request.request_id, True, "requested")
         if self.provider_runtime is not None and getattr(self.provider_runtime, "is_running", lambda **_: False)(turn_id=turn_id):
+            if getattr(self.provider_runtime, "supports_cancellation", False):
+                self.provider_runtime.cancel(turn_id=turn_id)
+                self.history.append_event(OperationalEvent(session_id=session_id, turn_id=turn_id, event_type="turn.cancelled", payload={}))
+                self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.CANCELLED)
+                return ControlOutcome(request.request_id, True, "cancelled")
             return ControlOutcome(request.request_id, False, "rejected", "live provider cancellation is not available for this transport")
         self.history.append_event(OperationalEvent(session_id=session_id, turn_id=turn_id, event_type="turn.cancelled", payload={}))
         self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.CANCELLED)
