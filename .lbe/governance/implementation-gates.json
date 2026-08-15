@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/CLINE_CORE_REUSE_BOUNDARY_AUDIT_GATE.md",
-  "active_phase": "CLINE_CORE_REUSE_BOUNDARY_AUDIT",
-  "active_slice": "CLASSIFY_CLINE_PROFESSIONAL_RUNTIME_REUSE",
+  "active_plan": "docs/acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_GATE.md",
+  "active_phase": "LBE_CLINE_AGENTRUNTIME_GOVERNANCE_ADAPTER",
+  "active_slice": "PROVE_INTEROP_AND_PREEXECUTION_AUTHORITY_BOUNDARY",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
@@ -41,17 +41,20 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Read-only Cline reuse-boundary audit for the professional runtime. Classify current Cline capabilities before any new LBE professional-runtime subsystem is implemented.",
-    "implementation_changes": "product/runtime implementation source changes are prohibited in this slice; governance/research/acceptance documentation only",
+    "purpose": "Prove the exact cross-language/runtime interop and pre-execution governance boundary required to reuse Cline AgentRuntime mechanics from the Python LBE runtime without creating a parallel authority.",
+    "implementation_changes": "production adapter/runtime implementation is prohibited in this slice; boundary proof, source inspection, non-mutating runtime/package probes, and acceptance/research documentation only",
     "allowed_actions": [
-      "inspect current LBE source/tests/git state",
-      "inspect current Cline source and official documentation",
-      "use BirdEye for local workspace evidence and governed local command execution",
+      "inspect current LBE source/tests/package metadata and exact Git state",
+      "inspect cline/cline source at audited revision 8bbdde2a5c1f972864fe1b954f639c21fac61a40",
+      "use BirdEye for local workspace evidence and governed non-mutating local commands",
       "use GitHub for canonical remote repository, commit, patch, and source truth",
-      "record exact Cline revision, source paths, symbols, and observed behavior",
-      "classify each audited subsystem as REUSE, ADAPT, REJECT, or UNVERIFIED",
-      "update only the audit matrix, checkpoint, gate, and agent/rule documentation",
-      "run governance validation and git diff --check"
+      "determine whether a production-safe Python-to-Cline AgentRuntime boundary already exists or requires new architecture",
+      "prove or reject pre-execution routing through existing R6C resolve_authorization and GovernedToolOrchestrator",
+      "record exact Cline tool-call to LBE operation_id and ToolReceipt identity mapping requirements",
+      "record how native Cline filesystem/editor/shell/process paths would be disabled or made unreachable",
+      "record Node/npm/package/runtime and dependency/license/security prerequisites for any candidate reuse path",
+      "update only the active boundary gate/checkpoint and directly related research/governance documentation",
+      "run implementation-gate validation and git diff --check"
     ]
   }
 }
