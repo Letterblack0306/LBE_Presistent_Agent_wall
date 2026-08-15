@@ -34,8 +34,13 @@ existing_owner:
   - Cline continuation/tool mechanics under evaluation -> cline/cline sdk/packages/agents/src/agent-runtime.ts
 
 reuse_decision:
-  decision: UNVERIFIED
-  evidence: source audit completed in docs/research/CLINE_CORE_REUSE_BOUNDARY_MATRIX.md; cross-language integration mechanism not yet proven
+  decision: NEW_ARCHITECTURE_REQUIRED
+  evidence:
+    - canonical main is a Python 3.11+ setuptools package with no root package.json or declared Cline/Node runtime dependency
+    - audited Cline AgentRuntime is TypeScript/Node code under @cline/agents
+    - repository source search found no existing in-process Python<->Node bridge, stdio/RPC bridge, or canonical Cline runtime host on main
+    - historical PR #53 explicitly kept @letterblack/lbe as a thin npm bootstrap while the authoritative runtime remained Python and kept npm free of runtime/governance/session/provider authority; that PR was closed unmerged
+  conclusion: direct in-process reuse is not available in the current canonical runtime. Consuming Cline AgentRuntime would require an explicit cross-runtime host/process/RPC/embedding boundary, which is a new architecture surface under the active gate.
 
 architecture_change:
   introduced: no
@@ -50,30 +55,34 @@ files_changed:
 required_evidence_level: INTEGRATION
 
 validation_evidence:
-  focused:
-    command: PENDING
-    result: PENDING
+  source_boundary:
+    result: PASS
+    evidence: canonical pyproject.toml is Python-only; exact Cline revision is TypeScript/Node; no existing canonical interop owner was found
+  authority_boundary:
+    result: PASS
+    evidence: resolve_authorization and GovernedToolOrchestrator remain existing deterministic authority/execution owners and cannot be replaced by Cline
+  historical_distribution_boundary:
+    result: PASS
+    evidence: closed unmerged PR #53 documents npm as thin bootstrap only and Python as authoritative runtime; it does not provide a canonical Cline AgentRuntime host
   integration:
-    command: PENDING BOUNDARY/INTEROP PROOF
-    result: PENDING
+    command: NOT RUN
+    result: BLOCKED BY ARCHITECTURE DECISION — no existing implementation-ready interop mechanism exists to test without first authorizing a new cross-runtime architecture surface
   live_runtime:
-    command_or_flow: NOT REQUIRED FOR ACTIVATION; local runtime/package facts required before classification
-    result: PENDING
+    command_or_flow: NOT RUN
+    result: NOT APPLICABLE BEFORE ARCHITECTURE AUTHORIZATION
   full_suite:
-    command: NOT REQUIRED FOR DOCUMENT-ONLY ACTIVATION; required by later implementation slice
+    command: NOT REQUIRED FOR DOCUMENT-ONLY CLASSIFICATION
     result: NOT RUN
   git_diff_check:
     result: PENDING LOCAL POST-PULL VALIDATION
 
 unverified:
-  - exact production-safe Python/TypeScript interop mechanism
-  - whether direct Cline AgentRuntime reuse can avoid a new architecture surface
-  - package/runtime prerequisites on the canonical installed product path
-  - fresh dependency/license/security adoption result for any npm package candidate
-  - exact event/control mapping required for production implementation
+  - which specific new architecture, if any, should be authorized: governed Node subprocess/stdio host, long-lived sidecar/RPC host, embedding runtime, or reject Cline production reuse entirely
+  - fresh dependency/license/security adoption result for the exact Cline packages chosen by any future authorized design
+  - local Node/npm availability is environment evidence only and does not change the architecture classification
 
 document_conflicts:
-  - none known at activation; machine-declared active_plan is authoritative for this slice
+  - none known; current source and historical PR #53 are consistent that Python is authoritative and npm is not runtime authority
 
 workspace_proof:
   repository: Letterblack0306/LBE_Presistent_Agent_wall
@@ -84,18 +93,30 @@ workspace_proof:
 push_proof:
   source_ref: refs/heads/main
   destination_ref: refs/heads/main
-  pushed_sha: PENDING ACTIVATION COMMIT
-  hook_result: GitHub-side activation requires local post-pull gate/workspace validation before boundary work proceeds
+  pushed_sha: PENDING THIS CLASSIFICATION COMMIT
+  hook_result: GitHub-side documentation classification requires local post-pull gate/workspace validation
 
 project_user_ready: UNVERIFIED
 release_ready: UNVERIFIED
 next_phase_locked: true
 
-## Classification law
+## Classification
 
-- `PASS` only if one implementation-ready interop boundary is proven without a parallel authority.
-- `REJECT_DIRECT_REUSE` if current packaging/authority constraints make safe direct reuse infeasible.
-- `NEW_ARCHITECTURE_REQUIRED` if a sidecar/daemon/RPC/new runtime surface is necessary; stop for explicit user architecture authorization.
-- `UNVERIFIED` while evidence is incomplete.
+```text
+NEW_ARCHITECTURE_REQUIRED
+```
 
-After classification, stop. No production adapter implementation is authorized by this checkpoint.
+This is not a defect and does not invalidate the completed Cline reuse audit. The audit correctly proved Cline mechanics are reusable in principle. This checkpoint proves the current canonical Python runtime has no existing implementation-ready boundary through which those TypeScript mechanics can be consumed.
+
+The next action is therefore an architecture decision, not adapter implementation.
+
+Allowed decision candidates for a separately authorized design slice:
+
+1. `GOVERNED_NODE_SUBPROCESS_STDIO` — Python remains authoritative; one bounded Node worker hosts Cline AgentRuntime and communicates through a strict typed protocol. LBE owns session IDs, authorization, tool execution, evidence, completion and process lifecycle.
+2. `LONG_LIVED_NODE_SIDECAR_RPC` — broader persistent Node runtime host. Higher operational/authority risk and requires stronger lifecycle/authentication/recovery design.
+3. `EMBEDDED_JS_RUNTIME` — embed a JS runtime/library into Python. Adds a substantial native/dependency surface and must prove Cline compatibility.
+4. `REJECT_CLINE_PRODUCTION_REUSE` — keep Cline as source/reference only and continue native Python implementation.
+
+No candidate is selected by this checkpoint. Selecting one changes architecture and requires explicit user authorization plus a new machine-gated design slice.
+
+After this classification, stop. No production adapter implementation is authorized.
