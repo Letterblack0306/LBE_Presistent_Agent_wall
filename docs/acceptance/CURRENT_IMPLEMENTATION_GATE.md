@@ -29,6 +29,23 @@ proof and remains unverified.
 Reuse decision: extend existing `ToolReceipt` and orchestrator outputs; do not
 introduce a second tool executor, provider authority, or receipt store.
 
+## Completed P7 checkpoint
+
+```text
+phase: P7_RECEIPT_BACKED_PROVIDER_CONTINUATION
+slice: DURABLE_RECEIPT_IDENTITY_AND_STOP_BOUNDARY
+base_sha: b6fa1dc0d0b92ab3df760ec0b9e69a5957ae7164
+implementation_sha: ab79b31dab71488accea09618f574ef42f38addd
+requirements: durable receipt ID; correlated receipt-backed provider continuation; escalated receipt stop boundary; no continuation execution authority
+existing_owner: ToolReceipt/GovernedToolOrchestrator and P5 operational history
+reuse_decision: extend existing receipt identity and add a provider-only continuation boundary
+required_evidence_level: INTEGRATION
+validation_evidence: focused continuation tests PASS (3); full repository suite PASS (646); implementation gate PASS; git diff --check PASS
+unverified: live provider continuation; approval response/resume; controls; replay/TUI/user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
