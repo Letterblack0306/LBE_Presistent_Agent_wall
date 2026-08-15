@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P14_PROVIDER_EVENT_HISTORY_PROJECTION",
-  "active_slice": "NON_STREAMING_ADAPTER_TO_PERSISTED_TURN",
+  "active_phase": "P15_CONTROLLED_PROVIDER_TURN",
+  "active_slice": "TYPED_START_TO_NON_STREAMING_PROVIDER_PROJECTION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

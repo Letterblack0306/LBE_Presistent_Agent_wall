@@ -2,27 +2,26 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P14_PROVIDER_EVENT_HISTORY_PROJECTION`
+Current phase: `P15_CONTROLLED_PROVIDER_TURN`
 
-Current slice: `NON_STREAMING_ADAPTER_TO_PERSISTED_TURN`
+Current slice: `TYPED_START_TO_NON_STREAMING_PROVIDER_PROJECTION`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P14 slice contract
+## Active P15 slice contract
 
-Existing owners inspected: P3 OpenAI-compatible event adapter, P0 normalized
-event semantics, and P4 authoritative turn history. P5 remains the sole
-governed tool-receipt projection owner.
+Existing owners inspected: P10 typed persisted turn dispatcher, P3 provider
+adapter, and P14 provider-to-history projection. The Textual client remains a
+transport-only caller of typed controls.
 
-The active work projects actual normalized non-streaming provider events into
-one existing persisted turn and finalizes only truthful terminal turn states.
-It must not create tool receipts, execute provider-requested tools, grant LBE
-call identities, continue after tools, or make the UI a provider owner.
+The active work connects a typed start request to one configured non-streaming
+provider call through the control owner, then persists its normalized events.
+It must not stream, execute provider-requested tools, create LBE tool identity,
+continue after tools, bypass approval, or make the UI a provider/runtime owner.
 
-Required evidence level: `INTEGRATION` plus one configured local-provider
-response. Tool-call output remains a terminal governed-identity boundary.
-Reuse decision: P3 adapter and P4 history only; no second transport, event
-store, or tool executor.
+Required evidence level: `INTEGRATION` plus configured local-provider UI flow.
+Reuse decision: P10 control owner invokes P3/P14 only; no second transport,
+event store, tool executor, or UI controller.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
