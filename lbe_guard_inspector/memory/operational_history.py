@@ -72,6 +72,12 @@ class SessionOperationalHistory:
             if c.execute("UPDATE operational_items SET status=?, finalized_at=? WHERE item_id=? AND status='running'",(status.value,now,item_id)).rowcount != 1: raise ValueError("item is missing or already finalized")
             row=c.execute("SELECT * FROM operational_items WHERE item_id=?",(item_id,)).fetchone()
         return OperationalItem(row["item_id"],row["turn_id"],row["kind"],ItemStatus(row["status"]),row["created_at"],row["finalized_at"])
+    def get_turn(self, *, turn_id: str) -> OperationalTurn | None:
+        with self.store._connect() as c: row=c.execute("SELECT * FROM operational_turns WHERE turn_id=?",(turn_id,)).fetchone()
+        return None if row is None else OperationalTurn(row["turn_id"],row["session_id"],TurnStatus(row["status"]),row["created_at"],row["finalized_at"])
+    def latest_running_turn(self, *, session_id: str) -> OperationalTurn | None:
+        with self.store._connect() as c: row=c.execute("SELECT * FROM operational_turns WHERE session_id=? AND status='running' ORDER BY created_at DESC LIMIT 1",(session_id,)).fetchone()
+        return None if row is None else OperationalTurn(row["turn_id"],row["session_id"],TurnStatus(row["status"]),row["created_at"],row["finalized_at"])
     def replay_turn_status(self, *, turn_id: str) -> TurnStatus:
         events=self.events_for_turn(turn_id=turn_id)
         mapping={"model.turn.completed":TurnStatus.COMPLETED,"model.turn.incomplete":TurnStatus.INCOMPLETE,"model.turn.refused":TurnStatus.REFUSED,"model.cancelled":TurnStatus.CANCELLED,"model.error":TurnStatus.FAILED,"tool.escalated":TurnStatus.ESCALATED}
