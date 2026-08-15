@@ -2,29 +2,29 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P10_PERSISTED_TURN_CONTROL`
+Current phase: `P11_TEXTUAL_TUI_CLIENT`
 
-Current slice: `START_STEER_INTERRUPT_CANCEL_INTENT`
+Current slice: `PERSISTED_TRANSCRIPT_AND_TYPED_COMPOSER`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P10 slice contract
+## Active P11 slice contract
 
-Existing owners inspected: P4 authoritative ordered history, P8 typed control
-vocabulary, and `SessionMemoryRuntimeBridge` session persistence. Existing
-provider invocation/cancellation and governed approval owners remain unchanged.
+Existing owners inspected: P4/P9 persisted history/transcript, P8 typed
+vocabulary, P10 persisted turn dispatcher, and the existing CLI session
+creation/resume surface. Textual is an optional presentation dependency only.
 
-The active work accepts typed start, steering, interruption, and cancellation
-intent for an existing session and records only authoritative control events.
-It must not synthesize provider activity, claim a provider/process has stopped,
-execute tools, mutate permission, or bypass approval. Interruption remains a
-recorded request until a live invocation owner accepts it.
+The active work is an interactive terminal projection: session truth header,
+ordered transcript, persistent composer, and interrupt/cancel keys. Every
+mutation routes through P10 typed control; the client must not write SQLite,
+execute tools, alter authority, fabricate live output, or claim a requested
+interrupt reached a provider/process.
 
-Required evidence level: `INTEGRATION` for persisted request ordering, active
-turn rejection, and cancellation finalization. The later live-runtime proof
-must demonstrate propagation to an actual provider/process.
-Reuse decision: extend P4 history through one typed control dispatcher; no
-second session controller, provider executor, or approval authority.
+Required evidence level: `INTEGRATION` for headless Textual input/key routing
+against persisted runtime owners. Installed and live-provider user-flow proof
+remain separate required evidence.
+Reuse decision: one optional Textual client over existing P9/P10 APIs; no UI
+runtime, transcript storage, or provider controller.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
