@@ -25,6 +25,23 @@ provider transport, event store, tool executor, or UI controller.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P16 checkpoint
+
+```text
+phase: P16_BACKGROUND_PROVIDER_EXECUTION
+slice: NON_BLOCKING_TURN_LIFECYCLE_AND_CONTROL_HANDOFF
+base_sha: 4ed23bacf27d0cf56129ec49366ff0cd25c817aa
+implementation_sha: 8f8e97fcdd1b46d3c90509b23994f8d2d97ffc3b
+requirements: provider call off Textual event loop; persisted queued/running lifecycle; responsive steering control; reject unsupported live cancellation rather than fabricate it
+existing_owner: P10 controls, P15 provider runtime, P4 history, existing threading primitives
+reuse_decision: one background wrapper around P15; no new provider transport, event store, tool executor, or UI runtime
+required_evidence_level: INTEGRATION
+validation_evidence: background runtime/control responsiveness test PASS; full repository suite PASS (655); implementation gate PASS; git diff --check PASS
+unverified: HTTP/provider cancellation transport support; delivery of queued steering to a provider; approval continuation; provider selection through typed control; streaming and full user-flow/release acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P15 checkpoint
 
 ```text
