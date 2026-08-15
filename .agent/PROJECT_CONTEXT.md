@@ -32,10 +32,13 @@ Read every time before significant implementation:
 1. `.agent/PROJECT_CONTEXT.md`
 2. `.lbe/governance/workspace-lock.json`
 3. `.lbe/governance/implementation-gates.json`
-4. `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md`
+4. the exact `active_plan` path declared by `.lbe/governance/implementation-gates.json`
 5. `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md`
-6. active architecture/design docs referenced by those files
+6. architecture/design docs referenced by the active plan
 7. current source, tests, Git state, and runtime evidence
+8. older acceptance/plan records only as historical evidence unless the active gate explicitly names them
+
+Never substitute a similarly named document for the machine-declared `active_plan`.
 
 Authority for current facts:
 
@@ -43,7 +46,7 @@ Authority for current facts:
 current validation
 > current workspace/Git/runtime evidence
 > active machine gate
-> active acceptance checkpoint
+> machine-declared active plan/checkpoint
 > canonical design/plan
 > verified historical records
 > reference knowledge
@@ -54,7 +57,7 @@ If these disagree, do not silently choose. Record `DOCUMENT_CONFLICT` and reconc
 
 ## Current baseline at creation of this context
 
-The context package is being added after canonical `main` reached:
+The context package was created after canonical `main` reached:
 
 ```text
 95f8be0eb98f57ad050ae662ae1add0d5f9de8ab
@@ -71,7 +74,7 @@ That commit established a truthful cancellation capability boundary:
 
 Focused validation was reported as 18 passing tests plus `git diff --check`.
 
-**This does not yet authorize another implementation phase.** The first active task after pulling this context is checkpoint reconciliation: run/record the required full regression and update the acceptance gate for the cancellation change before advancing.
+**This does not authorize another implementation phase.** The active machine gate now points to `docs/acceptance/CURRENT_AGENT_EXECUTION_GATE.md`, whose first required action is checkpoint reconciliation: run/record the required full regression and update the acceptance state for the cancellation change before advancing.
 
 Always verify the current live HEAD because this baseline becomes historical as soon as newer commits land.
 
