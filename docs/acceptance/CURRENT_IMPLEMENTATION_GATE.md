@@ -34,6 +34,26 @@ Reuse decision: extend the existing SQLite workspace-state store through one
 operational-history module. The canonical branch has no equivalent owner to
 reuse; the secondary worktree remains read-only reference evidence only.
 
+## Completed P4 checkpoint
+
+```text
+phase: P4_AUTHORITATIVE_OPERATIONAL_HISTORY
+slice: SESSION_TURN_ITEM_ORDERED_PERSISTENCE
+base_sha: 68f9c52c709b72080f8198d99b3c60db62efcef6
+implementation_sha: 3274bfe8896082cde3b4129b5ee62a6c90bb860e
+requirements: one SQLite session/turn/item/event history; monotonic session and turn ordering; reopen from same database; provider identity preservation
+existing_owner: WorkspaceMemoryStore owns SQLite connection/schema and session_state; P0/P3 remain producers only
+reuse_decision: extend the existing database; no second persistence store or JSONL authority
+required_evidence_level: INTEGRATION
+validation_evidence: focused operational-history test PASS (1); full repository suite PASS (640); implementation gate PASS; git diff --check PASS
+unverified: model/tool runtime integration; item finalization; event replay status; process/control event projection; installed-wheel and user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
+The ignored runtime source was explicitly added in commit `3274bfe`; it is
+tracked and delivered, not merely present in the local worktree.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
