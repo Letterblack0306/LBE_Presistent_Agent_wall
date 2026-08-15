@@ -1,14 +1,21 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P16_BACKGROUND_PROVIDER_EXECUTION",
-  "active_slice": "NON_BLOCKING_TURN_LIFECYCLE_AND_CONTROL_HANDOFF",
+  "active_plan": "docs/acceptance/CURRENT_AGENT_EXECUTION_GATE.md",
+  "active_phase": "P16_CANCELLATION_CHECKPOINT_RECONCILIATION",
+  "active_slice": "RECONCILE_95F8BE0_BEFORE_FURTHER_IMPLEMENTATION",
   "status": "OPEN",
   "implementation_allowed": true,
-  "architecture_changes_allowed": true,
+  "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
-  "blocking_statuses": ["FAIL", "UNVERIFIED", "DOCUMENT_CONFLICT", "MISSING_EVIDENCE"],
+  "blocking_statuses": [
+    "FAIL",
+    "UNVERIFIED",
+    "DOCUMENT_CONFLICT",
+    "MISSING_EVIDENCE",
+    "BLOCKED_WORKSPACE_AUTHORITY",
+    "BLOCKED_PARALLEL_ARCHITECTURE"
+  ],
   "required_checkpoint_fields": [
     "phase",
     "slice",
@@ -32,5 +39,17 @@
     "architecture_change_requires_user_authorization": true,
     "checkpoint_required_before_advance": true,
     "fail_closed": true
+  },
+  "allowed_scope": {
+    "purpose": "Reconcile and prove cancellation commit 95f8be0 before any new implementation phase.",
+    "implementation_changes": "blocked unless validation proves a defect and a separate repair slice is activated first",
+    "allowed_actions": [
+      "inspect current source/tests/git state",
+      "run focused validation",
+      "run full regression suite",
+      "run live/integration proof already required by the slice",
+      "update checkpoint/status documentation",
+      "correct governance documentation without expanding architecture"
+    ]
   }
 }
