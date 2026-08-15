@@ -1,7 +1,9 @@
 """Runtime-owned non-streaming provider turn over existing adapter and history."""
 from __future__ import annotations
 
-from .memory.operational_history import SessionOperationalHistory
+import threading
+
+from .memory.operational_history import OperationalEvent, SessionOperationalHistory
 from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
 from .professional_provider_events import ModelEventType, NormalizedModelEvent, ProviderProtocolFamily
 from .provider_event_history import project_provider_events
@@ -22,3 +24,43 @@ class NonStreamingProviderTurnRuntime:
                 ModelEventType.ERROR, self.provider_id, self.adapter._config.model, ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
                 error_code="RUNTIME_PROVIDER_PROJECTION_ERROR", metadata={"error_type": type(exc).__name__},
             ),))
+
+    def start(self, *, turn_id: str, text: str) -> None:
+        self.run(turn_id=turn_id, text=text)
+
+
+class BackgroundProviderTurnRuntime:
+    """One non-blocking lifecycle around the existing non-streaming runtime."""
+
+    def __init__(self, *, history: SessionOperationalHistory, foreground: NonStreamingProviderTurnRuntime) -> None:
+        self.history = history
+        self.foreground = foreground
+        self._lock = threading.RLock()
+        self._threads: dict[str, threading.Thread] = {}
+
+    def start(self, *, turn_id: str, text: str) -> None:
+        with self._lock:
+            if self.is_running(turn_id=turn_id):
+                raise ValueError("provider turn is already running")
+            turn = self.history.get_turn(turn_id=turn_id)
+            if turn is None:
+                raise ValueError("turn not found")
+            self.history.append_event(OperationalEvent(session_id=turn.session_id, turn_id=turn_id, event_type="runtime.provider.queued", payload={}))
+            thread = threading.Thread(target=self._run, kwargs={"turn_id": turn_id, "text": text}, daemon=True)
+            self._threads[turn_id] = thread
+            thread.start()
+
+    def is_running(self, *, turn_id: str) -> bool:
+        with self._lock:
+            thread = self._threads.get(turn_id)
+            return thread is not None and thread.is_alive()
+
+    def _run(self, *, turn_id: str, text: str) -> None:
+        try:
+            turn = self.history.get_turn(turn_id=turn_id)
+            if turn is not None:
+                self.history.append_event(OperationalEvent(session_id=turn.session_id, turn_id=turn_id, event_type="runtime.provider.running", payload={}))
+                self.foreground.run(turn_id=turn_id, text=text)
+        finally:
+            with self._lock:
+                self._threads.pop(turn_id, None)

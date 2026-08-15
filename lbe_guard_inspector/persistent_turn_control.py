@@ -6,7 +6,7 @@ from .memory.operational_history import OperationalEvent, SessionOperationalHist
 
 
 class ProviderTurnRuntime:
-    def run(self, *, turn_id: str, text: str) -> None: ...
+    def start(self, *, turn_id: str, text: str) -> None: ...
 
 
 class PersistentTurnControl:
@@ -36,6 +36,8 @@ class PersistentTurnControl:
         if request.method is ControlMethod.TURN_INTERRUPT:
             self.history.append_event(OperationalEvent(session_id=session_id, turn_id=turn_id, event_type="turn.interrupt.requested", payload={}))
             return ControlOutcome(request.request_id, True, "requested")
+        if self.provider_runtime is not None and getattr(self.provider_runtime, "is_running", lambda **_: False)(turn_id=turn_id):
+            return ControlOutcome(request.request_id, False, "rejected", "live provider cancellation is not available for this transport")
         self.history.append_event(OperationalEvent(session_id=session_id, turn_id=turn_id, event_type="turn.cancelled", payload={}))
         self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.CANCELLED)
         return ControlOutcome(request.request_id, True, "cancelled")
@@ -46,7 +48,7 @@ class PersistentTurnControl:
         turn = self.history.start_turn(session_id=session_id)
         self.history.append_event(OperationalEvent(session_id=session_id, turn_id=turn.turn_id, event_type="user.message", payload={"text": _text(request, "text")}))
         if self.provider_runtime is not None:
-            self.provider_runtime.run(turn_id=turn.turn_id, text=_text(request, "text"))
+            self.provider_runtime.start(turn_id=turn.turn_id, text=_text(request, "text"))
         return ControlOutcome(request.request_id, True, "started")
 
 

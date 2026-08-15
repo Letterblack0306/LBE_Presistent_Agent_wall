@@ -366,7 +366,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .memory.operational_history import SessionOperationalHistory
     from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
     from .persistent_turn_control import PersistentTurnControl
-    from .provider_turn_runtime import NonStreamingProviderTurnRuntime
+    from .provider_turn_runtime import BackgroundProviderTurnRuntime, NonStreamingProviderTurnRuntime
     from .reasoning_config import load_provider_config
     from .textual_tui import run_textual_tui
 
@@ -380,7 +380,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
         config = load_provider_config(args.provider_config)
         if config.model != state.provider_model:
             raise ValueError("provider config model must match persisted session model")
-        provider_runtime = NonStreamingProviderTurnRuntime(history=history, adapter=OpenAICompatibleEventAdapter(config=config), provider_id=state.provider_id)
+        provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=NonStreamingProviderTurnRuntime(history=history, adapter=OpenAICompatibleEventAdapter(config=config), provider_id=state.provider_id))
     run_textual_tui(
         history=history,
         session_id=state.session_id,
