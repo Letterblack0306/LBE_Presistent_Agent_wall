@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "active_plan": "docs/IMPLEMENTATION_PLAN.md",
+  "active_phase": "GOVERNANCE_LOCK_BASELINE",
+  "active_slice": "MAIN_ONLY_AND_CHECKPOINT_ENFORCEMENT",
+  "status": "OPEN",
+  "implementation_allowed": true,
+  "architecture_changes_allowed": false,
+  "next_phase_locked": true,
+  "required_status_for_advance": "PASS",
+  "blocking_statuses": ["FAIL", "UNVERIFIED", "DOCUMENT_CONFLICT", "MISSING_EVIDENCE"],
+  "required_checkpoint_fields": [
+    "phase",
+    "slice",
+    "base_sha",
+    "implementation_sha",
+    "requirements",
+    "existing_owner",
+    "reuse_decision",
+    "required_evidence_level",
+    "validation_evidence",
+    "unverified",
+    "document_conflicts",
+    "status"
+  ],
+  "rules": {
+    "one_active_slice": true,
+    "no_next_phase_without_pass": true,
+    "no_parallel_architecture": true,
+    "existing_owner_audit_required": true,
+    "reuse_evaluation_required": true,
+    "architecture_change_requires_user_authorization": true,
+    "checkpoint_required_before_advance": true,
+    "fail_closed": true
+  }
+}
