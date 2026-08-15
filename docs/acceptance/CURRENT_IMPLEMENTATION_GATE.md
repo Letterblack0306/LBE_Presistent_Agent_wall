@@ -32,6 +32,26 @@ pre-mutation tool interception remain higher-level gates.
 Explicit user authorization is recorded for this evaluation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## P3 decision evidence
+
+Exact evaluated dependency: `@cline/llms@0.0.73` in an isolated temporary
+installation. The installed package identity matched the pin and exposed
+`./dist/index.js`; its package metadata did not declare a license value.
+
+Dependency audit result: `FAIL` for production adoption at this pin. The
+resolved tree reports one high and one moderate vulnerability, including the
+transitive `undici` dependency. No package lockfile or sidecar dependency was
+added to canonical LBE.
+
+Decision: `NATIVE`. The Cline lower layer remains useful comparison evidence,
+but this exact package must not become the production P3/P7 dependency while
+the dependency/license gate fails. Existing LBE provider and governed-execution
+owners remain unchanged.
+
+The evaluation slice itself has completed its required `INSTALLED` evidence.
+No provider transport implementation is active until a new exact slice is
+registered with an existing-owner audit and required runtime evidence.
+
 ## Completed governance-lock baseline
 
 - canonical repository: `Letterblack0306/LBE_Presistent_Agent_wall`
