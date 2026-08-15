@@ -2,13 +2,29 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P7_RECEIPT_BACKED_PROVIDER_CONTINUATION`
+Current phase: `P8_TYPED_CONTROL_PROTOCOL`
 
-Current slice: `DURABLE_RECEIPT_IDENTITY_AND_STOP_BOUNDARY`
+Current slice: `STEERING_INTERRUPT_CANCEL_APPROVAL_VOCABULARY`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P7 slice contract
+## Active P8 slice contract
+
+Existing owners inspected: P4 ordered history, P5 receipt projection, P7
+receipt-backed continuation, existing session state, and R6C/tool authority.
+
+The active work defines typed control requests/outcomes for steering,
+interruption, cancellation, provider selection, and approval response. It must
+not execute tools, mutate session state directly, grant permission, or bypass
+approval. Runtime handlers and persistence remain later integration work.
+
+Required evidence level: `UNIT` for vocabulary and invalid-state rejection.
+Reuse decision: one control protocol contract; no second session controller.
+
+Explicit user authorization is recorded for this implementation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed P7 slice contract
 
 Existing owners inspected:
 

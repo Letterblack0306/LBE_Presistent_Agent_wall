@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P7_RECEIPT_BACKED_PROVIDER_CONTINUATION",
-  "active_slice": "DURABLE_RECEIPT_IDENTITY_AND_STOP_BOUNDARY",
+  "active_phase": "P8_TYPED_CONTROL_PROTOCOL",
+  "active_slice": "STEERING_INTERRUPT_CANCEL_APPROVAL_VOCABULARY",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
