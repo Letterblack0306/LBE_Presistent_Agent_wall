@@ -35,7 +35,7 @@ parallel tool dispatcher or receipt store is permitted.
 ```text
 phase: P5_GOVERNED_TOOL_EVENT_PROJECTION
 slice: RECEIPT_TO_ORDERED_HISTORY_PROJECTION
-base_sha: deced77c5c4e1d3edf2b7d6b460e2fe03a01b348
+base_sha: deced778188ece3153c79edbf347b91c05c826f2
 implementation_sha: 110db48e01b25eb39b03a29318fb883e1c725ceb
 requirements: project existing governed receipt outcomes into ordered SQLite history without tool invocation or authority changes
 existing_owner: GovernedToolOrchestrator/ToolReceipt and SessionOperationalHistory
