@@ -2,24 +2,24 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P12_INSTALLED_TUI_PATH`
+Current phase: `P13_INSTALLED_TUI_INTERACTION`
 
-Current slice: `OPTIONAL_DEPENDENCY_AND_CLI_SMOKE`
+Current slice: `FRESH_SESSION_COMPOSER_AND_CANCEL_FLOW`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P12 slice contract
+## Active P13 slice contract
 
-Existing owners inspected: P11 Textual module and `lbe` console-script
-declaration. Packaging remains owned by setuptools and existing release tests.
+Existing owners inspected: P11 Textual client, P10 typed persisted controls,
+P4 SQLite session history, and P12 installed-wheel path.
 
-The active work proves the optional `tui` extra and `lbe tui --help` command
-from a freshly built installed wheel. It must not substitute source-path import
-for installed-package evidence or claim an interactive/live-provider flow.
+The active work proves a fresh installed session renders and routes a composer
+start followed by cancellation through the installed UI. It must not substitute
+source imports, fabricate provider output, or claim provider cancellation.
 
-Required evidence level: `INSTALLED` for fresh wheel installation and CLI help.
-Reuse decision: use existing build metadata and console script; no second
-packaging or launcher system.
+Required evidence level: `INSTALLED` plus headless interactive UI control.
+Reuse decision: existing P11 Textual client and P10 control owner only; no
+parallel interactive runtime.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
