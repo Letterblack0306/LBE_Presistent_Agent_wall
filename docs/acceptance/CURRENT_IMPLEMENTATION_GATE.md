@@ -2,24 +2,27 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P13_INSTALLED_TUI_INTERACTION`
+Current phase: `P14_PROVIDER_EVENT_HISTORY_PROJECTION`
 
-Current slice: `FRESH_SESSION_COMPOSER_AND_CANCEL_FLOW`
+Current slice: `NON_STREAMING_ADAPTER_TO_PERSISTED_TURN`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P13 slice contract
+## Active P14 slice contract
 
-Existing owners inspected: P11 Textual client, P10 typed persisted controls,
-P4 SQLite session history, and P12 installed-wheel path.
+Existing owners inspected: P3 OpenAI-compatible event adapter, P0 normalized
+event semantics, and P4 authoritative turn history. P5 remains the sole
+governed tool-receipt projection owner.
 
-The active work proves a fresh installed session renders and routes a composer
-start followed by cancellation through the installed UI. It must not substitute
-source imports, fabricate provider output, or claim provider cancellation.
+The active work projects actual normalized non-streaming provider events into
+one existing persisted turn and finalizes only truthful terminal turn states.
+It must not create tool receipts, execute provider-requested tools, grant LBE
+call identities, continue after tools, or make the UI a provider owner.
 
-Required evidence level: `INSTALLED` plus headless interactive UI control.
-Reuse decision: existing P11 Textual client and P10 control owner only; no
-parallel interactive runtime.
+Required evidence level: `INTEGRATION` plus one configured local-provider
+response. Tool-call output remains a terminal governed-identity boundary.
+Reuse decision: P3 adapter and P4 history only; no second transport, event
+store, or tool executor.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.

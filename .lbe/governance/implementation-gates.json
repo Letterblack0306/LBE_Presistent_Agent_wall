@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P13_INSTALLED_TUI_INTERACTION",
-  "active_slice": "FRESH_SESSION_COMPOSER_AND_CANCEL_FLOW",
+  "active_phase": "P14_PROVIDER_EVENT_HISTORY_PROJECTION",
+  "active_slice": "NON_STREAMING_ADAPTER_TO_PERSISTED_TURN",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
