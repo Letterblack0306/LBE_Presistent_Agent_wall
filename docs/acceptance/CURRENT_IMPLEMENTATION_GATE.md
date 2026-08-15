@@ -2,29 +2,24 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P11_TEXTUAL_TUI_CLIENT`
+Current phase: `P12_INSTALLED_TUI_PATH`
 
-Current slice: `PERSISTED_TRANSCRIPT_AND_TYPED_COMPOSER`
+Current slice: `OPTIONAL_DEPENDENCY_AND_CLI_SMOKE`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P11 slice contract
+## Active P12 slice contract
 
-Existing owners inspected: P4/P9 persisted history/transcript, P8 typed
-vocabulary, P10 persisted turn dispatcher, and the existing CLI session
-creation/resume surface. Textual is an optional presentation dependency only.
+Existing owners inspected: P11 Textual module and `lbe` console-script
+declaration. Packaging remains owned by setuptools and existing release tests.
 
-The active work is an interactive terminal projection: session truth header,
-ordered transcript, persistent composer, and interrupt/cancel keys. Every
-mutation routes through P10 typed control; the client must not write SQLite,
-execute tools, alter authority, fabricate live output, or claim a requested
-interrupt reached a provider/process.
+The active work proves the optional `tui` extra and `lbe tui --help` command
+from a freshly built installed wheel. It must not substitute source-path import
+for installed-package evidence or claim an interactive/live-provider flow.
 
-Required evidence level: `INTEGRATION` for headless Textual input/key routing
-against persisted runtime owners. Installed and live-provider user-flow proof
-remain separate required evidence.
-Reuse decision: one optional Textual client over existing P9/P10 APIs; no UI
-runtime, transcript storage, or provider controller.
+Required evidence level: `INSTALLED` for fresh wheel installation and CLI help.
+Reuse decision: use existing build metadata and console script; no second
+packaging or launcher system.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.

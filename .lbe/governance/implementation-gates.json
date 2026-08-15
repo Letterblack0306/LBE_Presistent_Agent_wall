@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P11_TEXTUAL_TUI_CLIENT",
-  "active_slice": "PERSISTED_TRANSCRIPT_AND_TYPED_COMPOSER",
+  "active_phase": "P12_INSTALLED_TUI_PATH",
+  "active_slice": "OPTIONAL_DEPENDENCY_AND_CLI_SMOKE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
