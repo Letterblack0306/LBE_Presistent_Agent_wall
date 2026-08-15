@@ -1,5 +1,5 @@
 from lbe_guard_inspector.memory.models import SessionState
-from lbe_guard_inspector.memory.operational_history import OperationalEvent, SessionOperationalHistory, TurnStatus
+from lbe_guard_inspector.memory.operational_history import ItemStatus, OperationalEvent, SessionOperationalHistory, TurnStatus
 from lbe_guard_inspector.memory.store import WorkspaceMemoryStore
 
 def test_ordered_events_reopen_and_preserve_identity(tmp_path):
@@ -11,3 +11,5 @@ def test_ordered_events_reopen_and_preserve_identity(tmp_path):
     assert (first.session_sequence,second.session_sequence)==(1,2)
     assert [e.provider_request_id for e in SessionOperationalHistory(store=WorkspaceMemoryStore(tmp_path/'state.sqlite3')).events_for_turn(turn_id=turn.turn_id)]==['request-1','request-1']
     assert history.finalize_turn(turn_id=turn.turn_id,status=TurnStatus.COMPLETED).status is TurnStatus.COMPLETED
+    assert history.finalize_item(item_id=item.item_id,status=ItemStatus.COMPLETED).status is ItemStatus.COMPLETED
+    assert history.replay_turn_status(turn_id=turn.turn_id) is TurnStatus.COMPLETED

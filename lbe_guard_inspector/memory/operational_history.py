@@ -65,6 +65,18 @@ class SessionOperationalHistory:
             if c.execute("UPDATE operational_turns SET status=?, finalized_at=? WHERE turn_id=? AND status='running'",(status.value,now,turn_id)).rowcount != 1: raise ValueError("turn is missing or already finalized")
             row=c.execute("SELECT * FROM operational_turns WHERE turn_id=?",(turn_id,)).fetchone()
         return OperationalTurn(row["turn_id"],row["session_id"],TurnStatus(row["status"]),row["created_at"],row["finalized_at"])
+    def finalize_item(self, *, item_id: str, status: ItemStatus) -> OperationalItem:
+        now=utc_now()
+        with self.store._connect() as c:
+            if c.execute("UPDATE operational_items SET status=?, finalized_at=? WHERE item_id=? AND status='running'",(status.value,now,item_id)).rowcount != 1: raise ValueError("item is missing or already finalized")
+            row=c.execute("SELECT * FROM operational_items WHERE item_id=?",(item_id,)).fetchone()
+        return OperationalItem(row["item_id"],row["turn_id"],row["kind"],ItemStatus(row["status"]),row["created_at"],row["finalized_at"])
+    def replay_turn_status(self, *, turn_id: str) -> TurnStatus:
+        events=self.events_for_turn(turn_id=turn_id)
+        mapping={"model.turn.completed":TurnStatus.COMPLETED,"model.turn.incomplete":TurnStatus.INCOMPLETE,"model.turn.refused":TurnStatus.REFUSED,"model.cancelled":TurnStatus.CANCELLED,"model.error":TurnStatus.FAILED,"tool.escalated":TurnStatus.ESCALATED}
+        for event in reversed(events):
+            if event.event_type in mapping: return mapping[event.event_type]
+        raise ValueError("turn events do not contain a replayable terminal state")
     def events_for_turn(self, *, turn_id: str) -> tuple[OperationalEvent,...]:
         with self.store._connect() as c: rows=c.execute("SELECT * FROM operational_events WHERE turn_id=? ORDER BY turn_sequence",(turn_id,)).fetchall()
         return tuple(OperationalEvent(event_id=r["event_id"],session_id=r["session_id"],turn_id=r["turn_id"],item_id=r["item_id"],event_type=r["event_type"],payload=json.loads(r["payload_json"]),provider_id=r["provider_id"],model_id=r["model_id"],provider_request_id=r["provider_request_id"],provider_item_id=r["provider_item_id"],provider_tool_call_id=r["provider_tool_call_id"],lbe_call_id=r["lbe_call_id"],runtime_operation_id=r["runtime_operation_id"],tool_receipt_id=r["tool_receipt_id"],created_at=r["created_at"],session_sequence=r["session_sequence"],turn_sequence=r["turn_sequence"]) for r in rows)
