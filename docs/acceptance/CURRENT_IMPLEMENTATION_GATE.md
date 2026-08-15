@@ -30,6 +30,27 @@ this slice until a real streaming backend exists.
 Reuse decision: reuse `GovernedToolOrchestrator` receipts and P4 history; no
 parallel tool dispatcher or receipt store is permitted.
 
+## Completed P5 checkpoint
+
+```text
+phase: P5_GOVERNED_TOOL_EVENT_PROJECTION
+slice: RECEIPT_TO_ORDERED_HISTORY_PROJECTION
+base_sha: deced77c5c4e1d3edf2b7d6b460e2fe03a01b348
+implementation_sha: 110db48e01b25eb39b03a29318fb883e1c725ceb
+requirements: project existing governed receipt outcomes into ordered SQLite history without tool invocation or authority changes
+existing_owner: GovernedToolOrchestrator/ToolReceipt and SessionOperationalHistory
+reuse_decision: projection only; no new dispatcher, receipt ID, or persistence authority
+required_evidence_level: INTEGRATION
+validation_evidence: focused operational-history/tool-orchestration tests PASS; full repository suite PASS (641); implementation gate PASS; git diff --check PASS
+unverified: real process event streaming; provider tool proposal to governed receipt correlation; approval continuation; replay/TUI/user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
+P5 preserves an existing operation ID, provider tool-call ID, and LBE call ID
+when the caller supplies them. The current receipt type has no receipt ID, so
+none is fabricated.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
