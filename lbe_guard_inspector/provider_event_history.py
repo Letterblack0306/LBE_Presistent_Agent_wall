@@ -26,7 +26,7 @@ def project_provider_events(*, history: SessionOperationalHistory, turn_id: str,
     for event in events:
         if not isinstance(event, NormalizedModelEvent):
             raise TypeError("events must contain NormalizedModelEvent")
-        if terminal is not None:
+        if terminal is not None and event.event_type is not ModelEventType.USAGE_UPDATED:
             raise ValueError("provider events cannot follow a terminal event")
         payload = _payload(event)
         persisted.append(history.append_event(OperationalEvent(
@@ -35,7 +35,7 @@ def project_provider_events(*, history: SessionOperationalHistory, turn_id: str,
             provider_request_id=event.provider_request_id, provider_item_id=event.provider_item_id,
             provider_tool_call_id=event.provider_tool_call_id, lbe_call_id=event.lbe_call_id,
         )))
-        terminal = _TERMINAL_STATUS.get(event.event_type)
+        terminal = _TERMINAL_STATUS.get(event.event_type) or terminal
     if terminal is not None:
         history.finalize_turn(turn_id=turn.turn_id, status=terminal)
     return tuple(persisted)
