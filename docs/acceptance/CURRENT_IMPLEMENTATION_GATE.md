@@ -33,6 +33,12 @@ outside this slice and remains required before any live-provider claim.
 Reuse decision: reuse P0 protocol vocabulary and P1 typed claims. Keep legacy
 provider metadata unchanged; do not add a parallel transport or provider SDK.
 
+The deterministic endpoint map is limited to `/responses`, `/v1/messages` or
+`/messages`, Gemini `interactions`, Gemini `GenerateContent`/
+`streamGenerateContent`, and `/chat/completions`; every other endpoint is
+`unknown`. This identifies protocol syntax only. It is not a streaming, tool,
+reasoning, context-window, or health claim.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
