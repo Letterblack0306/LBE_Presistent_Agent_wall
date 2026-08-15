@@ -26,6 +26,23 @@ event store, tool executor, or UI controller.
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
+## Completed P15 checkpoint
+
+```text
+phase: P15_CONTROLLED_PROVIDER_TURN
+slice: TYPED_START_TO_NON_STREAMING_PROVIDER_PROJECTION
+base_sha: c23eb047db22d963aace96f41e99e4d2e9c2f2a3
+implementation_sha: c2d7ebc12dd063766a52eb83fdd6aded594ca6fc
+requirements: typed start executes one explicitly configured non-streaming provider call through runtime control; normalized output persists to the active turn; UI remains presentation-only
+existing_owner: P10 PersistentTurnControl, P3 adapter, P14 projection, P11 Textual client
+reuse_decision: compose existing owners only; no second provider transport, controller, transcript store, or UI runtime
+required_evidence_level: INTEGRATION plus LIVE_RUNTIME UI flow
+validation_evidence: typed control-provider integration tests PASS (24); live Textual composer -> control -> smollm3-3b -> persisted events PASS, with truthful failed terminal after provider emitted ungoverned tool identity error; full repository suite PASS (654); implementation gate PASS; git diff --check PASS
+unverified: governed tool-call identity and approval continuation; real provider/process interrupt propagation; provider selection through typed control; asynchronous/streaming turns; full user-flow and release acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
 ## Completed P14 checkpoint
 
 ```text
