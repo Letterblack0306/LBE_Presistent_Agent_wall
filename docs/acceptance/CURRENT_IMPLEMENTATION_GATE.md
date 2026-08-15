@@ -38,6 +38,26 @@ unchanged owners. Add one isolated typed professional contract only; do not
 replace or widen the legacy boolean `ProviderCapabilities` metadata before an
 accepted migration slice exists.
 
+Frozen P1 state vocabulary:
+
+```text
+technical support: supported | unsupported | conditional | unknown
+runtime availability: available | gated | unavailable | conditional | unknown
+provider projection: exposed | hidden | conditional
+```
+
+`ProviderModelCapabilities` contains only evidence-backed provider/model
+technical claims. `RuntimeCapabilities` contains only LBE-owned capability
+descriptors, including backend provenance, workspace/mode/permission
+requirements, mutation and external-effect class, interactivity/streaming/
+background/cancellation/parallelism support, schemas, evidence, and validation
+types. `EffectiveSessionCapabilities` combines those layers deterministically
+while keeping runtime availability and provider projection separate.
+
+The only accepted R6C mapping is `ALLOW -> available`, `DENY -> unavailable`,
+and `ESCALATE -> gated`. Unknown provider support hides provider projection; it
+does not erase a direct LBE runtime capability or create authority.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
