@@ -148,6 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
     tui = commands.add_parser("tui", help="Open the persisted Textual session projection")
     _add_database_argument(tui)
     tui.add_argument("--session-id", required=True)
+    tui.add_argument("--provider-config", help="Explicit provider config for non-streaming turn execution")
     tui.set_defaults(handler=_tui)
 
     return parser
@@ -363,15 +364,27 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
 
 def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .memory.operational_history import SessionOperationalHistory
+    from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
     from .persistent_turn_control import PersistentTurnControl
+    from .provider_turn_runtime import NonStreamingProviderTurnRuntime
+    from .reasoning_config import load_provider_config
     from .textual_tui import run_textual_tui
 
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
+    history = SessionOperationalHistory(store=store)
+    provider_runtime = None
+    if args.provider_config is not None:
+        if state.provider_id != "openai-compatible":
+            raise ValueError("Textual non-streaming execution currently requires openai-compatible session provider")
+        config = load_provider_config(args.provider_config)
+        if config.model != state.provider_model:
+            raise ValueError("provider config model must match persisted session model")
+        provider_runtime = NonStreamingProviderTurnRuntime(history=history, adapter=OpenAICompatibleEventAdapter(config=config), provider_id=state.provider_id)
     run_textual_tui(
-        history=SessionOperationalHistory(store=store),
+        history=history,
         session_id=state.session_id,
-        control=PersistentTurnControl(history=SessionOperationalHistory(store=store)),
+        control=PersistentTurnControl(history=history, provider_runtime=provider_runtime),
     )
     return {"action": "tui", "session_id": state.session_id}
 

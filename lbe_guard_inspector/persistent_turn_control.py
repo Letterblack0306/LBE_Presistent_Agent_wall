@@ -5,13 +5,18 @@ from .control_protocol import ControlMethod, ControlOutcome, ControlRequest
 from .memory.operational_history import OperationalEvent, SessionOperationalHistory, TurnStatus
 
 
+class ProviderTurnRuntime:
+    def run(self, *, turn_id: str, text: str) -> None: ...
+
+
 class PersistentTurnControl:
     """Record user control intent through the authoritative operational history."""
 
     _METHODS = frozenset({ControlMethod.TURN_START, ControlMethod.TURN_STEER, ControlMethod.TURN_INTERRUPT, ControlMethod.TURN_CANCEL})
 
-    def __init__(self, *, history: SessionOperationalHistory) -> None:
+    def __init__(self, *, history: SessionOperationalHistory, provider_runtime: ProviderTurnRuntime | None = None) -> None:
         self.history = history
+        self.provider_runtime = provider_runtime
 
     def handle(self, request: ControlRequest) -> ControlOutcome:
         if request.method not in self._METHODS:
@@ -40,6 +45,8 @@ class PersistentTurnControl:
             return ControlOutcome(request.request_id, False, "rejected", "an active turn already exists")
         turn = self.history.start_turn(session_id=session_id)
         self.history.append_event(OperationalEvent(session_id=session_id, turn_id=turn.turn_id, event_type="user.message", payload={"text": _text(request, "text")}))
+        if self.provider_runtime is not None:
+            self.provider_runtime.run(turn_id=turn.turn_id, text=_text(request, "text"))
         return ControlOutcome(request.request_id, True, "started")
 
 
