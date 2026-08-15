@@ -86,6 +86,28 @@ events, control events, persistence, and transcript projections remain outside
 P0. P0 does not manufacture streaming, visible reasoning, partial arguments,
 parallel calls, or server-side state when a provider did not emit/prove them.
 
+## Completed P0 checkpoint
+
+```text
+phase: P0_PROVIDER_EVENT_NORMALIZATION
+slice: FROZEN_NORMALIZED_EVENT_CONTRACT
+base_sha: 004674f2a6fba19d3d18fe6f77f046ccae89e167
+implementation_sha: 0c2d6e01925118fe11c0dae8c880e4099d5fd9ac
+requirements: frozen event/protocol vocabulary; separate provider and LBE identities; invalid-state rejection; no premature runtime receipt identity
+existing_owner: OpenAICompatibleReasoningBackend/ProviderRegistry transport; SessionMemoryRuntimeBridge/WorkspaceMemoryStore session authority; GovernedAgentGateway/ToolExecutionContext/GovernedToolOrchestrator execution authority
+reuse_decision: native typed vocabulary only; no Cline or provider transport dependency added; deferred P3 Cline decision remains NATIVE at the evaluated pin
+required_evidence_level: UNIT
+validation_evidence: py_compile PASS; focused provider tests PASS (39); full repository suite PASS (621); implementation gate PASS; git diff --check PASS
+unverified: provider-native live-wire mappings; provider streaming; persistence; continuation; runtime tool execution; user-flow acceptance
+document_conflicts: none in the active gate
+status: PASS
+```
+
+P0 is complete at its required `UNIT` evidence level. This is not proof of
+provider I/O, live streaming, governed execution, persistence, TUI behavior,
+or user readiness. The next phase remains locked until a new exact slice is
+registered in both the governance state and this record.
+
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
 
