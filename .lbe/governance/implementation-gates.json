@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-  "active_phase": "P8_TYPED_CONTROL_PROTOCOL",
-  "active_slice": "STEERING_INTERRUPT_CANCEL_APPROVAL_VOCABULARY",
+  "active_phase": "P9_REPLAYABLE_TRANSCRIPT_PROJECTION",
+  "active_slice": "AUTHORITATIVE_EVENT_REPLAY_ONLY",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

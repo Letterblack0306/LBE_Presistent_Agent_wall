@@ -2,24 +2,27 @@
 
 Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `P8_TYPED_CONTROL_PROTOCOL`
+Current phase: `P9_REPLAYABLE_TRANSCRIPT_PROJECTION`
 
-Current slice: `STEERING_INTERRUPT_CANCEL_APPROVAL_VOCABULARY`
+Current slice: `AUTHORITATIVE_EVENT_REPLAY_ONLY`
 
 This record owns the one active implementation slice under the progression-lock model.
 
-## Active P8 slice contract
+## Active P9 slice contract
 
-Existing owners inspected: P4 ordered history, P5 receipt projection, P7
-receipt-backed continuation, existing session state, and R6C/tool authority.
+Existing owners inspected: P4 authoritative ordered history and P5 governed
+receipt projection. The existing secondary-worktree transcript is reference
+evidence only and is not an authority owner.
 
-The active work defines typed control requests/outcomes for steering,
-interruption, cancellation, provider selection, and approval response. It must
-not execute tools, mutate session state directly, grant permission, or bypass
-approval. Runtime handlers and persistence remain later integration work.
+The active work is one deterministic, read-only projection of persisted
+operational events in session sequence. It must not create, reorder, amend, or
+infer events; execute tools; mutate session state; grant permission; or bypass
+approval.
 
-Required evidence level: `UNIT` for vocabulary and invalid-state rejection.
-Reuse decision: one control protocol contract; no second session controller.
+Required evidence level: `INTEGRATION` for persisted ordering and replay after
+database reopen. Presentation remains a projection, never storage authority.
+Reuse decision: extend P4 history with a session-scoped reader and add one
+projection; no second transcript store, session controller, or event producer.
 
 Explicit user authorization is recorded for this implementation. Architecture
 changes remain disabled until the decision checkpoint is `PASS`.
