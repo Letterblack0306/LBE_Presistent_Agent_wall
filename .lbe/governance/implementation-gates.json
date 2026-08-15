@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/IMPLEMENTATION_PLAN.md",
-  "active_phase": "GOVERNANCE_LOCK_BASELINE",
-  "active_slice": "MAIN_ONLY_AND_CHECKPOINT_ENFORCEMENT",
+  "active_plan": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
+  "active_phase": "P3_PROVIDER_TRANSPORT_REUSE",
+  "active_slice": "CLINE_LLMS_COMPATIBILITY_DECISION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,

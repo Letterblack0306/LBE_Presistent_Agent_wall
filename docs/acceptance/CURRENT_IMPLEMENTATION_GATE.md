@@ -1,14 +1,38 @@
 # Current Implementation Gate
 
-Status: **PASS — NEXT PHASE LOCKED PENDING EXPLICIT ACTIVATION**
+Status: **OPEN — NEXT PHASE LOCKED**
 
-Current phase: `GOVERNANCE_LOCK_BASELINE`
+Current phase: `P3_PROVIDER_TRANSPORT_REUSE`
 
-Current slice: `MAIN_ONLY_AND_CHECKPOINT_ENFORCEMENT`
+Current slice: `CLINE_LLMS_COMPATIBILITY_DECISION`
 
-This record is the completed first checkpoint under the new progression-lock model.
+This record owns the one active implementation slice under the progression-lock model.
 
-## Base
+## Active P3 slice contract
+
+Existing owners inspected:
+
+- bounded provider transport: `OpenAICompatibleReasoningBackend` through
+  `ProviderRegistry`;
+- session/workspace authority: `SessionMemoryRuntimeBridge` and
+  `WorkspaceMemoryStore`;
+- governed execution: `GovernedAgentGateway`, `ToolExecutionContext`, and
+  `GovernedToolOrchestrator`.
+
+The active work is an evaluation only. It must pin and inspect
+`@cline/llms`, map its stream semantics to LBE's existing provider boundary,
+and decide `REUSE`, `PARTIAL REUSE`, or `NATIVE` with evidence. It must not add
+a Cline session, persistence, authorization, or tool-execution owner.
+
+Required evidence level: `INSTALLED` for exact package/runtime identity and
+`INTEGRATION` for event/identity/continuation mapping. Any production adoption
+also requires a passing dependency/license review; cancellation and
+pre-mutation tool interception remain higher-level gates.
+
+Explicit user authorization is recorded for this evaluation. Architecture
+changes remain disabled until the decision checkpoint is `PASS`.
+
+## Completed governance-lock baseline
 
 - canonical repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 - canonical branch: `main`
