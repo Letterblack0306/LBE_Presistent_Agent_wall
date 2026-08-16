@@ -18,7 +18,7 @@ GitHub -> canonical remote source/docs/gates/checkpoints/patches
 LoopTool/local -> test/debug/runtime execution evidence only
 ```
 
-Failed harness, shell, environment, fixture, provider, or query invocations do not justify production changes unless the intended product predicate is reached and a specific falsifier is proven.
+A failed invocation proves only that invocation until correlated with the intended acceptance predicate. No production change is justified by harness, environment, provider, query, or fixture failure alone.
 
 ## Accepted baseline
 
@@ -45,8 +45,8 @@ observable 4 provider/model switch preserves LBE authority identity: PASS
 observable 5 fresh installed process resumes same session/task: PASS
 observable 6 external workspace change is revalidated as current truth: PASS
 observable 7 audit/investigation remain read-only: PASS
-observable 8 forbidden/out-of-workspace/out-of-authority fail closed: LOCKED_PENDING_EXPLICIT_ADVANCE
-observable 9 receipt/provider continuation correlation: NOT RUN
+observable 8 forbidden/out-of-workspace/out-of-authority fail closed: PASS
+observable 9 receipt/provider continuation correlation: LOCKED_PENDING_EXPLICIT_ADVANCE
 observable 10 provider completion remains provisional: NOT RUN
 observable 11 terminal validated completion survives fresh process: NOT RUN
 observable 12 no credential/secret leakage: NOT RUN
@@ -59,8 +59,7 @@ observable 15 final clean worktree + limitations/falsifiers: NOT RUN
 
 ### Observable 3 — governed coding composition
 
-Decisive command hash:
-`F3FB75C252CB7B561C05A233D4F93FC981032A0DAF41F9B90E9952FB9677F882`
+Decisive command hash: `F3FB75C252CB7B561C05A233D4F93FC981032A0DAF41F9B90E9952FB9677F882`.
 
 ```text
 installed lbe code
@@ -78,70 +77,54 @@ installed lbe code
 
 ### Observable 4 — provider/model authority stability
 
-Decisive command hash:
-`E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6`
+Decisive command hash: `E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6`.
 
-Provider/model changed from `openai-compatible / r7-model-a` to `openai-compatible / r7-model-b` while workspace, mode, permission, runtime policy, profile, permission-policy, evidence-policy, and session identity remained invariant across a fresh process.
+Provider/model changed from `openai-compatible / r7-model-a` to `openai-compatible / r7-model-b` while LBE-owned authority fields remained invariant across a fresh process.
 
 ### Observable 5 — fresh-process persistence
 
-Decisive command hash:
-`EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376`
+Decisive command hash: `EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376`.
 
-Recovered state:
-
-```text
-session: r7-session-repair
-provider/model: openai-compatible / r7-model-b
-task: r7-task-create
-status: running
-last_outcome: AWAITING_VALIDATION
-```
+Recovered state remained `r7-session-repair`, `openai-compatible / r7-model-b`, and `r7-task-create / running / AWAITING_VALIDATION`.
 
 ### Observable 6 — external workspace revalidation
 
-Decisive command hash:
-`4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC`
+Decisive command hash: `4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC`.
 
-```text
-pre-change sha256:
-2c8d9f54650e903b63976d5f66332c069c8bfcb4c6cfb8febc1422bc971d154b
-external/post-change sha256:
-b4bfc4aa24ec334f1f29ff6db0f729377ccf26715303ad2b2d546fdb49093484
-```
-
-Fresh installed evidence observed the external marker and exact changed SHA while preserving task authority.
+Fresh installed evidence observed the externally changed marker and exact post-change SHA instead of stale checkpoint state.
 
 ### Observable 7 — audit/investigation read-only
 
-Decisive command hash:
-`1E59BF836E469E6652D839F076EE7A48E0D531796F39C0D35AB0F8974EADD576`
+Decisive command hash: `1E59BF836E469E6652D839F076EE7A48E0D531796F39C0D35AB0F8974EADD576`.
 
-The deterministic provider attempted `workspace.create_candidate_text` in both audit and investigation.
+Provider-requested mutation was rejected in both audit and investigation; no mutation receipt executed, workspace state stayed unchanged, and session/policy identity remained stable.
+
+### Observable 8 — fail-closed authority boundaries
+
+Decisive command hash: `98B3EC987725DB5B103E6B11B64DD60C4C73EA2F249BC88F260403A52127FDEE`.
+
+Proven:
 
 ```text
-audit unknown mutation tool rejected: PASS
-audit response read_only: PASS
-audit workspace unchanged: PASS
-investigation unknown mutation tool rejected: PASS
-investigation response read_only: PASS
-investigation workspace unchanged: PASS
-provider mutation requests: 2
-executed mutation ToolReceipt: NONE
-session/policy identity preserved: PASS
-source worktree clean: PASS
+forbidden .env target rejected: PASS
+../ out-of-workspace target rejected: PASS
+R6C explicit forbidden => DENY: PASS
+R6E explicit forbidden receipt => DENIED: PASS
+R6C out-of-scope => ESCALATE: PASS
+R6E out-of-scope receipt => ESCALATED: PASS
+rejected handler invocation: NONE
+rejected mutation execution: NONE
+workspace unchanged: PASS
+source checkout clean: PASS
 ```
 
-Final disposable workspace SHA-256:
-`7e8c511fd32c92eda8631e3ab5d6ded5ba8bf59fe28ba593f2b3327423b586c2`
-
-This proves installed audit/investigation do not inherit the coding mutation surface and reject provider-requested mutation at the read-only LBE boundary.
+This preserves the intended boundary: path-specific rejection belongs to the bounded mutation handler, while explicit forbidden/scope expansion decisions remain owned by R6C and are projected by R6E without invoking the handler.
 
 ## Current authority boundary
 
 ```text
 active_phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-current_observable: 7
+current_observable: 8
 current_status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
@@ -149,20 +132,19 @@ next_phase_locked: true
 publish_allowed_now: false
 ```
 
-Observable 8 is not active and requires explicit advancement.
+Observable 9 is not active and requires explicit advancement.
 
 ## Next acceptance target
 
-Observable 8:
+Observable 9:
 
-> Prove that forbidden, out-of-workspace, or otherwise out-of-authority actions fail closed without workspace mutation.
+> Prove that provider tool-call continuation remains correlated to the exact LBE `ToolReceipt` and operation/tool-call identity across the installed governed coding loop.
 
-The test must distinguish LBE denial/escalation from provider failure or harness failure and must prove no mutation occurred.
+The proof must verify the receipt produced by R6E is the receipt represented back into the same provider turn and that correlation cannot silently switch operation/session/tool-call identity.
 
 ## Remaining sequence
 
 ```text
-#8  forbidden/out-of-workspace/out-of-authority actions fail closed
 #9  receipt/provider continuation correlation remains intact
 #10 provider completion remains provisional until deterministic validation
 #11 terminal COMPLETED / VALIDATED_COMPLETION survives fresh process
@@ -175,7 +157,7 @@ The test must distinguish LBE denial/escalation from provider failure or harness
 ## Release progression
 
 ```text
-finish R7 observables 8-15
+finish R7 observables 9-15
  -> R7 PASS
  -> release/package readiness acceptance
  -> only then version/tag/publish
