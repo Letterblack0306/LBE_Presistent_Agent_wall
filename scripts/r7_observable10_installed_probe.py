@@ -154,10 +154,11 @@ def main() -> int:
     workspace.mkdir(parents=True)
     state_dir.mkdir(parents=True)
     (workspace / "test_smoke.py").write_text("def test_smoke():\n    assert True\n", encoding="utf-8")
+    (workspace / ".gitignore").write_text("__pycache__/\n.pytest_cache/\n", encoding="utf-8")
     git(workspace, "init", "-q")
     git(workspace, "config", "user.email", "r7@example.invalid")
     git(workspace, "config", "user.name", "R7 Probe")
-    git(workspace, "add", "test_smoke.py")
+    git(workspace, "add", "test_smoke.py", ".gitignore")
     git(workspace, "commit", "-q", "-m", "R7 observable 10 baseline")
     baseline_status = git(workspace, "status", "--porcelain")
     require(baseline_status == "", f"baseline workspace not clean: {baseline_status!r}")
@@ -234,24 +235,6 @@ def main() -> int:
             "session create",
         )
 
-        store = WorkspaceMemoryStore(database)
-        state = store.load_session_state(session_id=SESSION_ID)
-        require(state is not None, "persisted session missing before completion contract")
-        TaskCompletionContractPersistence(store).save(
-            session_id=SESSION_ID,
-            task_id=TASK_ID,
-            project_workspace_id=PROJECT_ID,
-            canonical_workspace_root=str(workspace),
-            requirements=[
-                {
-                    "requirement_id": "focused-tests",
-                    "evidence_kind": "focused_test",
-                    "description": "A passing deterministic focused-test result is required.",
-                }
-            ],
-        )
-        print("R7_OBS10_PERSISTED_CONTRACT=PASS")
-
         code = json_stdout(
             run(
                 [
@@ -268,6 +251,21 @@ def main() -> int:
             ),
             "installed code",
         )
+
+        store = WorkspaceMemoryStore(database)
+        contract = TaskCompletionContractPersistence(store).load(
+            session_id=SESSION_ID,
+            task_id=TASK_ID,
+            project_workspace_id=PROJECT_ID,
+        )
+        require(contract is not None, "normal coding path did not persist completion contract")
+        contract_kinds = [item.evidence_kind for item in contract.requirements]
+        require(
+            contract_kinds == ["source_change", "focused_test", "git_status"],
+            f"registered completion contract mismatch: {contract_kinds}",
+        )
+        print("R7_OBS10_REGISTERED_CONTRACT=PASS")
+
         require(len(server.requests) == 1, f"provider request count={len(server.requests)}")
         require(code.get("outcome") == "COMPLETED", f"reasoning outcome={code.get('outcome')}")
         response = code.get("response") or {}
@@ -314,14 +312,20 @@ def main() -> int:
         )
         completion = validation.get("completion") or {}
         validated_task = validation.get("task") or {}
-        require(completion.get("verdict") == "BLOCKED", f"completion verdict={completion.get('verdict')}")
-        require(completion.get("satisfied_requirement_ids") == [], "unexpected satisfied completion requirement")
-        require(completion.get("missing_requirement_ids") == ["focused-tests"], f"missing requirements={completion.get('missing_requirement_ids')}")
-        require(validated_task.get("status") == "blocked", f"validated task status={validated_task.get('status')}")
-        require(validated_task.get("last_outcome") == "VALIDATION_INCOMPLETE", f"validated last_outcome={validated_task.get('last_outcome')}")
+        require(completion.get("verdict") == "FAILED", f"completion verdict={completion.get('verdict')}")
+        require(
+            completion.get("satisfied_requirement_ids") == ["focused-tests"],
+            f"satisfied requirements={completion.get('satisfied_requirement_ids')}",
+        )
+        require(
+            completion.get("failed_requirement_ids") == ["source-change", "git-state"],
+            f"failed requirements={completion.get('failed_requirement_ids')}",
+        )
+        require(validated_task.get("status") == "failed", f"validated task status={validated_task.get('status')}")
+        require(validated_task.get("last_outcome") == "VALIDATION_FAILED", f"validated last_outcome={validated_task.get('last_outcome')}")
         require(validated_task.get("status") != "completed", "provider completion bypassed deterministic gate")
         require(validated_task.get("last_outcome") != "VALIDATED_COMPLETION", "provider completion produced validated completion")
-        print("R7_OBS10_MISSING_EVIDENCE_BLOCKED=PASS")
+        print("R7_OBS10_DETERMINISTIC_VALIDATION_REJECTED=PASS")
         print("R7_OBS10_NO_PREMATURE_VALIDATED_COMPLETION=PASS")
         print("R7_OBS10_DETERMINISTIC_COMPLETION_AUTHORITY=PASS")
 
