@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-17
-Status: Active canonical roadmap — evidence reconciled through R6C acceptance
+Status: Active canonical roadmap — R6D acceptance active
 
 This document defines dependency order and acceptance goals for `Letterblack0306/LBE_Presistent_Agent_wall`.
 
@@ -23,7 +23,7 @@ When this roadmap disagrees with live evidence, reconcile the roadmap rather tha
 
 ## 1. Product goal
 
-Build a persistent, provider-neutral LBE runtime where the provider reasons while LBE owns workspace/session identity, mode/policy, authorization, governed execution, receipts/evidence, validation/completion truth, and persistent state.
+Build a persistent, provider-neutral LBE runtime where the provider reasons while LBE owns workspace/session identity, context/evidence authority, mode/policy, authorization, governed execution, receipts, validation/completion truth, and persistent state.
 
 ```text
 user / external agent
@@ -42,18 +42,19 @@ Coding and audit/investigation are control contracts over the same LBE authority
 
 - provider/model changes must not change LBE workspace identity, permissions, guards, evidence authority, validation/completion requirements, or persistent session/task state;
 - modes are typed execution contracts, not prompt personalities;
-- relevant rules/guards are selected and enforced by LBE;
-- pre-authorized operations may proceed without repetitive prompts; authority expansion must `ESCALATE` or `DENY`;
 - current workspace/Git/runtime evidence outranks memory/reference history;
+- relevant rules/guards are selected and enforced by LBE, not inferred into authority by model prose;
+- provider-facing context may contain bounded session/reference material but must not become a parallel retrieval, policy, or guard authority;
+- pre-authorized operations may proceed without repetitive prompts; authority expansion must `ESCALATE` or `DENY`;
 - no unrestricted shell/filesystem bypass around registered governed tools;
-- no second session, mode, authorization, tool, receipt, validation, completion, or recovery owner;
+- no second session, context, retrieval, mode, authorization, tool, receipt, validation, completion, or recovery owner;
 - Cline/provider mechanics remain behind LBE authority.
 
 ---
 
 ## 3. Existing foundation to preserve
 
-Current owners already exist for workspace/project identity, validated memory, `WorkspaceMemoryStore`, `SessionMemoryRuntimeBridge`, bounded classified recovery, provider registry/capabilities/turn/history/control, typed mode policy, deterministic authorization, `GovernedToolOrchestrator`, completion policy/runtime/evidence/gate, CLI/Textual projection, and bounded Node/stdio Cline continuation.
+Current owners already exist for workspace/project identity, validated memory, `WorkspaceMemoryStore`, `SessionMemoryRuntimeBridge`, bounded classified recovery, provider registry/capabilities/turn/history/control, typed mode policy, deterministic authorization, context assembly, evidence/guard selection, `GovernedToolOrchestrator`, completion policy/runtime/evidence/gate, CLI/Textual projection, and bounded Node/stdio Cline continuation.
 
 Missing acceptance evidence must not be treated as permission to reimplement these owners.
 
@@ -68,7 +69,7 @@ R5  PROVEN_COMPLETE
 R6A PROVEN_COMPLETE
 R6B PROVEN_COMPLETE
 R6C PROVEN_COMPLETE
-R6D IMPLEMENTED_NOT_ACCEPTED
+R6D IMPLEMENTED_NOT_ACCEPTED — ACTIVE ACCEPTANCE
 R6E PARTIALLY_PROVEN
 R6F PARTIALLY_PROVEN
 CLI PARTIALLY_PROVEN
@@ -76,22 +77,24 @@ R7  PARTIALLY_PROVEN
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current completed phase:
+Current active phase:
 
 ```text
-phase: R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE
-slice: PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH_GOVERNED_EXECUTION
-status: PASS
+phase: R6D_CONTEXT_ASSEMBLY_ACCEPTANCE
+slice: PROVE_BOUNDED_AUTHORITY_PRESERVING_CONTEXT_ACROSS_PROVIDER_AND_LIVE_WORKSPACE_BOUNDARIES
+status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
+required_evidence_level: INTEGRATION
+base_sha: 3d7bf3fbdc64f7dc9b57a617494381013b4513da
 ```
 
-No later R6 slice is active. Another family requires explicit activation and its own gate.
+No later R6 family is active.
 
 ---
 
-# 5. R3 — Persistent runtime -> existing reasoning boundary
+# 5. R3 — Persistent runtime -> reasoning boundary
 
 **Classification: `PROVEN_COMPLETE`.**
 
@@ -133,15 +136,7 @@ Accepted same-session provider A -> B behavior with session/workspace/task/mode/
 
 **Classification: `PROVEN_COMPLETE`.**
 
-Accepted owner path:
-
-```text
-ModeRequest -> resolve_mode -> ModeDecision -> behavior.contracts
- -> SessionMemoryRuntimeBridge -> persisted session mode
- -> AuthorizationRequest / resolve_authorization
-```
-
-Accepted persistent-session discriminator:
+Accepted persistent-session typed mode path:
 
 ```text
 coding -> propose -> ALLOW
@@ -169,46 +164,60 @@ ModeDecision
  -> ToolReceipt
 ```
 
-Accepted integration behavior on acceptance head `011531b56087432d5401b9dbdc1a04d6f1cadde9`:
+Accepted integration behavior:
 
 ```text
 op-allow-1 -> ALLOW -> EXECUTED
 op-allow-2 -> ALLOW -> EXECUTED
 op-deny -> DENY -> handler not executed
 op-escalate -> ESCALATE -> handler not executed
-op-destructive with explicit destructive delegation -> ALLOW -> EXECUTED
+explicit destructive delegation -> ALLOW -> EXECUTED
 ```
 
-Authorization verdict/rationale remained visible in governed receipts. Repeated delegated authority did not require a second approval mechanism. Explicit forbidden policy denied; scope/authority expansion escalated; no provider-native or prompt-only approval path became canonical authority. Repository-owned resolver tests also cover undelegated/delegated persistent-policy transitions.
-
-Evidence:
-
-```text
-authorization + governed-tool baseline: 26 passed
-integration command hash: 344D8A7C5FF4F980999606734C34B4B228FBC137E15CA25354DDD1FEF11676EF
-focused regression: 81 passed
-runtime/test source unchanged: PASS
-diff check: PASS
-worktree clean: PASS
-```
-
-Canonical checkpoint:
-
-```text
-docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_CHECKPOINT.md
-```
-
-Do not reopen R6C without new contradictory current evidence.
+Authorization provenance remained visible in receipts. Repository-owned tests also cover persistent-policy authority expansion/delegation. Baseline `26 passed`; focused regression `81 passed`; runtime/test source unchanged.
 
 ---
 
 # 11. R6D — Context assembly and rule/guard injection
 
-**Classification: `IMPLEMENTED_NOT_ACCEPTED`.**
+**Classification: `IMPLEMENTED_NOT_ACCEPTED` — active acceptance.**
 
-Current owner: `runtime/context_assembly.py` plus existing evidence/reasoning/guard/memory owners.
+Existing owner path:
 
-Acceptance must prove bounded reproducible context, absence of irrelevant rules, live workspace facts outranking reference evidence, equivalent authoritative context across provider switches, and no model-prose contamination of retrieval authority.
+```text
+LBERequest.reference_context / persisted session context
+ -> runtime.context_assembly.assemble_reasoning_context
+ -> validated indexed reference evidence
+ -> ReasoningRequest.reference_context
+
+LBE-selected guard applicability
+ -> ReasoningRequest.approved_guard_ids
+
+current workspace inspection
+ -> EvidenceService / GuardRunner / validated evidence contracts
+ -> deterministic LBE result
+```
+
+Current source/tests already establish deterministic caller-before-reference ordering, shallow copy semantics, real controller handoff, and separation of guard IDs from reference context. `ReasoningPlan` rejects authority-bearing model fields such as verdict, authorization, policy and mutation.
+
+Active R6D acceptance must prove:
+
+- identical authoritative inputs yield identical bounded provider-facing context;
+- caller/session context remains ahead of validated indexed reference evidence;
+- guard applicability remains on the typed LBE guard channel and is not invented from reference prose;
+- current workspace/deterministic evidence outranks conflicting reference/history;
+- equivalent authoritative inputs remain equivalent across provider A/B;
+- model prose cannot create retrieval, policy, authorization, verdict, mutation, or guard authority;
+- no second context/retrieval/guard/policy owner is introduced.
+
+Canonical active records:
+
+```text
+docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_GATE.md
+docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_CHECKPOINT.md
+```
+
+Implementation remains disabled unless acceptance proves a real defect and a separate repair slice is explicitly activated.
 
 ---
 
@@ -267,19 +276,13 @@ Raw credentials must not be persisted in memory, task records, receipts, checkpo
 
 ---
 
-# 16. Optional API surface
+# 16. Optional API/TUI surfaces
 
-API operations must converge on the same runtime/session services as CLI and must not introduce another policy engine.
-
----
-
-# 17. Optional TUI/operator console
-
-Textual remains a projection/control client over canonical runtime history/control owners, not another runtime authority.
+API and Textual projection must converge on the same runtime/session authorities and must not introduce another policy, context, or execution engine.
 
 ---
 
-# 18. R7 — End-to-end persistent coding/audit proof
+# 17. R7 — End-to-end persistent coding/audit proof
 
 **Classification: `PARTIALLY_PROVEN`.**
 
@@ -291,21 +294,19 @@ Required installed/normal-path proof families remain:
 - D: read-only audit with live evidence and no mutation;
 - E: out-of-authority escalation/denial with no provider bypass.
 
-R6A, R6B and R6C provide lower-layer accepted invariants but do not substitute for installed/normal-path R7 evidence.
+R6A-R6D provide lower-layer invariants only after their respective acceptance gates pass; they do not substitute for installed/normal-path R7 evidence.
 
 ---
 
-# 19. Release/package readiness
+# 18. Release/package readiness
 
 **Classification: `PARTIALLY_PROVEN`.**
 
-Release follows R7 acceptance and requires supported runtime matrix, clean installation, CLI entrypoints, package-content audit, secret/state exclusion, configuration/migration documentation, focused/full regression, and installed end-to-end smoke proof.
-
-No external publish occurs without explicit authorization.
+Release follows R7 acceptance and requires supported runtime matrix, clean installation, CLI entrypoints, package-content audit, secret/state exclusion, configuration/migration documentation, focused/full regression, and installed end-to-end smoke proof. No external publish occurs without explicit authorization.
 
 ---
 
-# 20. Evidence-reconciled progression
+# 19. Evidence-reconciled progression
 
 ```text
 R3 PASS
@@ -314,7 +315,8 @@ R3 PASS
  -> R6A PASS
  -> R6B PASS
  -> R6C PASS
- -> remaining R6 acceptance gaps in dependency order
+ -> R6D acceptance ACTIVE
+ -> remaining R6 acceptance gaps
  -> CLI normal-path coverage
  -> R7 installed end-to-end proof
  -> release/package readiness
@@ -324,19 +326,19 @@ At every step classify the gap first: acceptance only, repair of existing owner,
 
 ---
 
-# 21. Slice discipline
+# 20. Slice discipline
 
 Every slice must define objective, existing owner, reuse classification, scope, exclusions, falsifier, required evidence level, targeted diagnostics/tests, regression requirement, Git/worktree proof, acceptance condition, and next-phase lock. Do not combine roadmap families into one proof or repair slice.
 
 ---
 
-# 22. Explicit non-goals
+# 21. Explicit non-goals
 
-Do not drift into dedicated foundation-model training, passive model learning, separate coding/audit model authorities, unrestricted autonomous shell/filesystem mutation, model-authored guard verdicts, cross-project memory as live truth, TUI-first development, provider-specific governance forks, premature cloud sync, broad multi-agent orchestration, or wholesale ClineCore authority adoption.
+Do not drift into foundation-model training, passive model learning, separate coding/audit model authorities, unrestricted autonomous shell/filesystem mutation, model-authored guard/verdict authority, cross-project memory as live truth, provider-specific governance/context forks, premature TUI/cloud work, broad multi-agent orchestration, or wholesale ClineCore authority adoption.
 
 ---
 
-# 23. Canonical responsibility map
+# 22. Canonical responsibility map
 
 ```text
 User configuration -> delegated authority/defaults
@@ -344,6 +346,7 @@ CLI/API/TUI -> control surfaces
 Persistent runtime -> session/task lifecycle/orchestration/recovery
 Provider/Cline lower layer -> provider-native inference/continuation mechanics
 LLM reasoning -> interpretation/planning/hypotheses/explanation/proposals
+Context assembly -> bounded composition only
 Reference retrieval -> historical candidate guidance
 Current workspace inspector -> current project facts
 Mode policy -> typed capability contract
@@ -356,17 +359,17 @@ Validated memory/checkpoints -> bounded persistent context, never replacement tr
 
 ---
 
-# 24. Final invariant
+# 23. Final invariant
 
 ```text
 Provider reasons.
 Persistent runtime orchestrates.
-Typed LBE mode policy bounds capabilities.
-CLI/API/TUI expose the runtime.
+Context assembly composes but does not create authority.
 Current workspace supplies facts.
+Reference/history remains subordinate context.
 LBE selects/injects applicable rules and guards.
+Typed mode policy bounds capabilities.
 Permission policy authorizes actions.
-Pre-authorized actions proceed without repetitive approval.
 Authority expansion is escalated or denied.
 Governed tools execute only through registered LBE owners after authorization.
 Deterministic guards detect.
