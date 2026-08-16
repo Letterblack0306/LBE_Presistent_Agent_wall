@@ -138,6 +138,8 @@ class GovernedClineWorker:
         result = self.read(timeout_seconds=timeout_seconds)
         process = self._process
         if process is not None:
+            if process.stdin is not None and not process.stdin.closed:
+                process.stdin.close()
             try:
                 process.wait(timeout=timeout_seconds)
             except subprocess.TimeoutExpired as exc:
