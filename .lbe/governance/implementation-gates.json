@@ -3,33 +3,13 @@
   "active_plan": "docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_GATE.md",
   "active_phase": "R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE",
   "active_slice": "PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH_GOVERNED_EXECUTION",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
-  "blocking_statuses": [
-    "FAIL",
-    "UNVERIFIED",
-    "DOCUMENT_CONFLICT",
-    "MISSING_EVIDENCE",
-    "BLOCKED_WORKSPACE_AUTHORITY",
-    "BLOCKED_PARALLEL_ARCHITECTURE"
-  ],
-  "required_checkpoint_fields": [
-    "phase",
-    "slice",
-    "base_sha",
-    "implementation_sha",
-    "requirements",
-    "existing_owner",
-    "reuse_decision",
-    "required_evidence_level",
-    "validation_evidence",
-    "unverified",
-    "document_conflicts",
-    "status"
-  ],
+  "blocking_statuses": ["FAIL", "UNVERIFIED", "DOCUMENT_CONFLICT", "MISSING_EVIDENCE", "BLOCKED_WORKSPACE_AUTHORITY", "BLOCKED_PARALLEL_ARCHITECTURE"],
+  "required_checkpoint_fields": ["phase", "slice", "base_sha", "implementation_sha", "requirements", "existing_owner", "reuse_decision", "required_evidence_level", "validation_evidence", "unverified", "document_conflicts", "status"],
   "rules": {
     "one_active_slice": true,
     "no_next_phase_without_pass": true,
@@ -41,18 +21,21 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Prove repeated delegated authority, deterministic DENY/ESCALATE expansion boundaries, no-execution semantics and visible authorization provenance through the existing governed execution path.",
-    "implementation_changes": "Forbidden by default. If acceptance proves a real defect, stop and activate a separate bounded repair slice before changing runtime or tests.",
-    "allowed_actions": [
-      "inspect current mode authorization and governed tool owners",
-      "run repository-owned authorization and governed tool tests",
-      "prove repeated delegated ALLOW without repetitive confirmation",
-      "prove DENY and ESCALATE prevent handler execution",
-      "prove destructive and persistent-policy authority expansion behavior",
-      "prove authorization verdict and rationale remain visible in receipts",
-      "run focused mode authorization tool regression",
-      "record exact acceptance evidence",
-      "run diff scope and clean worktree validation"
-    ]
+    "purpose": "R6C acceptance is closed PASS. Preserve the proven authorization/governed-execution owners and keep the next phase locked until explicitly activated.",
+    "implementation_changes": "Forbidden. R6C completed as acceptance-only with no runtime/test source change.",
+    "allowed_actions": ["inspect closed R6C evidence", "verify synchronization of the closed gate and checkpoint", "update acceptance status documentation", "keep the next phase locked pending explicit activation"]
+  },
+  "acceptance_evidence": {
+    "acceptance_head": "011531b56087432d5401b9dbdc1a04d6f1cadde9",
+    "authorization_tool_tests": "26 passed",
+    "authorization_tool_tests_command_hash": "8D1A70917D588AFBD736F05B24E04D0FEDAABB19AB0B4B3A0A41A9B7C41824CA",
+    "integration_discriminator": "PASS",
+    "integration_command_hash": "344D8A7C5FF4F980999606734C34B4B228FBC137E15CA25354DDD1FEF11676EF",
+    "focused_regression": "81 passed",
+    "focused_regression_command_hash": "7AFBB97B2A5018C58D59D3D7842B4B601264E1E5BC3F073C37B9304F091543B2",
+    "runtime_test_source_unchanged": true,
+    "diff_check": "PASS",
+    "worktree_clean": true,
+    "observed_falsifier": null
   }
 }
