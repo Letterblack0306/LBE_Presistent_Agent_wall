@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "OBSERVABLE_10_PROVIDER_COMPLETION_PROVISIONAL",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -37,27 +37,25 @@
     "R7_OBSERVABLE_6": "PASS",
     "R7_OBSERVABLE_7": "PASS",
     "R7_OBSERVABLE_8": "PASS",
-    "R7_OBSERVABLE_9": "PASS"
+    "R7_OBSERVABLE_9": "PASS",
+    "R7_OBSERVABLE_10": "PASS"
   },
   "current_observable": {
     "number": 10,
-    "status": "OPEN",
+    "status": "PASS",
     "question": "Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE-owned registered completion contract?",
     "required_evidence_level": "INSTALLED_RUNTIME_PROVISIONAL_COMPLETION_AUTHORITY_PROOF",
-    "implementation_changes_allowed": false
+    "implementation_changes_allowed": false,
+    "decisive_command_hash": "3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946"
   },
-  "observable_10_falsifiers": [
-    "provider/Cline turn completion directly persists task COMPLETED",
-    "provider/Cline completion directly produces VALIDATED_COMPLETION",
-    "session validate returns READY despite deterministic failed or unsatisfied registered completion requirements",
-    "provider lbe_completion_truth is accepted as true",
-    "task is not left provisional after successful reasoning before deterministic validation"
-  ],
   "known_harness_failures": [
     {
       "command_hash": "D366A3D81B771F3CEA6377A37EAA2CE72391C6A8627C3FDA5D240D307AA68E9F",
-      "classification": "TEST_HARNESS_COMPLETION_CONTRACT_INTERFERENCE",
-      "detail": "probe pre-persisted a focused_test-only contract; normal coding gateway correctly retained the immutable contract, then the production source_change evidence producer rejected its undeclared evidence kind before the target observable was reached"
+      "classification": "TEST_HARNESS_COMPLETION_CONTRACT_INTERFERENCE"
+    },
+    {
+      "command_hash": "4CD5439D73CC16ADD4A55FB0F35B9CFB9E402C76A7BA9391347A7BF749807A28",
+      "classification": "TEST_HARNESS_WINDOWS_LOCKED_TEMP_GIT_DIRECTORY"
     }
   ],
   "forbidden": [
@@ -65,13 +63,14 @@
     "architecture rewrite",
     "second completion authority",
     "release version tag or publish work",
-    "continuing to observable 11 before observable 10 is classified PASS"
+    "activating observable 11 without explicit advancement"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 10 through 15",
+      "explicitly activate R7 observable 11",
+      "finish R7 observables 11 through 15",
       "release/package readiness acceptance"
     ]
   }
