@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R3 ACCEPTANCE PROOF — NEXT PHASE LOCKED**
+Status: **PASS — R3 RUNTIME REASONING ACCEPTED — NEXT PHASE LOCKED**
 
 Current phase: `R3_RUNTIME_REASONING_ACCEPTANCE`
 
@@ -8,105 +8,104 @@ Current slice: `PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Active plan
+## Completed acceptance
 
 ```text
 active_plan: docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_CHECKPOINT.md
 kind: acceptance proof, not implementation
+status: PASS
+validated_acceptance_head: d0b542930dcccccc0e9b3a8f3483ac0d3bd20c00
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
 ```
 
-## Prior gate
-
-The immediately previous roadmap-reconciliation phase is complete and remains PASS at validated local/GitHub head:
+## Accepted owner path
 
 ```text
-637e19e251aaad407c9be8502d2c3e2696c28c89
+SessionMemoryRuntimeBridge.run_reasoning(...)
+        |
+        v
+existing LBERequest
+        |
+        v
+real existing LBERequestController.run(...)
+        |
+        v
+existing LBEResponse
+        |
+        v
+canonical task lifecycle persistence
 ```
 
-That reconciliation identified R3 as the earliest roadmap family whose implementation exists but lacks a dedicated current acceptance record.
+No second reasoning controller, session owner, response contract, provider authority, verdict authority or persistence owner was introduced.
 
-## Existing owners
+## Acceptance evidence
+
+Integration command hash:
 
 ```text
-persistent runtime/session/task:
-  SessionMemoryRuntimeBridge
-
-runtime -> reasoning boundary:
-  SessionMemoryRuntimeBridge.run_reasoning()
-
-existing reasoning controller:
-  LBERequestController.run()
-
-composition root:
-  build_provider_controller()
-
-contracts:
-  LBERequest / LBEResponse
+FB9387D0DEA58B5A30C0AB79707D850660E657B929DA0F2E7DC9EF2E7CCD0235
 ```
 
-## Reuse decision
+Observed before harness cleanup:
 
 ```text
-REUSE
+COMPLETED -> TaskStatus.COMPLETED
+INSUFFICIENT_EVIDENCE -> TaskStatus.BLOCKED
+ORCHESTRATION_ERROR -> TaskStatus.FAILED
+real controller class: LBERequestController
+real response class: LBEResponse
+independent controller call: PASS
+R3_ACCEPTANCE_INTEGRATION=PASS
 ```
 
-R3 is not being reimplemented. The current source already contains the required ownership path.
+The command's final nonzero exit came only from Windows `TemporaryDirectory.cleanup()` failing to delete an open SQLite file. It is classified `TEST_HARNESS_CLEANUP_FAILURE`; the acceptance observable had already completed successfully and no R3 implementation defect was observed.
 
-## Acceptance question
-
-Does the current persistent runtime already satisfy the R3 roadmap contract when exercised through the real existing `LBERequestController`, preserving identity and persisting lifecycle outcomes, without any architecture/source patch?
-
-## Required observable
-
-The bounded proof must show:
-
-1. one canonical session/task;
-2. `run_reasoning()` creates/passes the expected `LBERequest`;
-3. the invoked reasoning owner is the real existing `LBERequestController`;
-4. the returned object is the existing `LBEResponse` contract;
-5. task/workspace identity remains consistent;
-6. COMPLETED persists as completed;
-7. INSUFFICIENT_EVIDENCE persists as blocked;
-8. ORCHESTRATION_ERROR persists as failed;
-9. the controller remains independently testable;
-10. no new reasoning/session/persistence authority is introduced.
-
-## Falsifier
-
-R3 cannot PASS if the proof shows any identity mismatch, response-contract substitution, missing/wrong lifecycle persistence, bypass of the existing controller, dependence on a new parallel owner, or focused regression failure.
-
-## Allowed work
-
-- source/test inspection;
-- bounded deterministic integration proof using the real `LBERequestController`;
-- focused regression;
-- acceptance/checkpoint documentation;
-- diff/worktree proof.
-
-## Forbidden work
-
-- runtime source implementation before a real defect is proven;
-- new reasoning/session owner;
-- provider architecture changes;
-- R4/R5/R6/R7 implementation;
-- CLI/TUI/MCP/release changes;
-- architecture changes.
-
-## Current status
+Focused regression command hash:
 
 ```text
-source owner inspection: PASS
-integration proof: NOT RUN
-focused regression: NOT RUN
-checkpoint: UNVERIFIED
+947CDFF19D6A86FFD1FFD6C94F462BD48C2727058646DEF4B63F752137BE394C
+```
+
+Result:
+
+```text
+HEAD == origin/main == d0b542930dcccccc0e9b3a8f3483ac0d3bd20c00
+46 passed in 22.08s
+interruption boundary present: PASS
+runtime/test implementation changed: NO
+git diff --check: PASS
+worktree clean: PASS
+```
+
+Interruption mapping is supported by current source through the explicit `KeyboardInterrupt` boundary and `last_outcome="INTERRUPTED"`; the acceptance harness did not synthesize `KeyboardInterrupt` through the real controller.
+
+## Classification
+
+```text
+R3 persistent runtime -> existing reasoning boundary: PROVEN_COMPLETE
+R4 checkpoint/resume/rehydration: IMPLEMENTED_NOT_ACCEPTED
+```
+
+R3 source did not need repair. The missing artifact was acceptance evidence, and that evidence is now recorded.
+
+## Readiness
+
+```text
 project_user_ready: NO
 release_ready: NO
 next_phase_locked: true
 ```
 
-Do not advance automatically. If the acceptance proof exposes a real defect, stop and activate a separate bounded repair slice before modifying runtime source.
+## Next candidate
+
+```text
+phase: R4_CHECKPOINT_RESUME_ACCEPTANCE
+kind: acceptance proof
+active: NO
+```
+
+R4 is the earliest remaining roadmap family classified `IMPLEMENTED_NOT_ACCEPTED`. Do not start R4 automatically. A separate machine/human gate must first define its exact acceptance observable, falsifier and regression level.
