@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_GATE.md",
-  "active_phase": "LBE_RUNTIME_ROADMAP_RECONCILIATION",
-  "active_slice": "CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_GATE.md",
+  "active_phase": "R3_RUNTIME_REASONING_ACCEPTANCE",
+  "active_slice": "PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,8 +41,18 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Completed documentation-only reconciliation of the stale R2/P16-era roadmap against current main source, accepted checkpoints, and validated Cline continuation evidence.",
-    "implementation_changes": "None. Runtime implementation remained disabled throughout this slice.",
-    "result": "PASS. R3_RUNTIME_REASONING_ACCEPTANCE is the earliest next candidate and is not active until a separate gate is explicitly opened."
+    "purpose": "Prove the existing R3 persistent-runtime to existing-reasoning-controller boundary at integration level without changing runtime implementation.",
+    "implementation_changes": "Forbidden by default. If acceptance evidence proves a real implementation defect, stop and activate a separate repair slice before changing runtime source.",
+    "allowed_actions": [
+      "inspect current R3 owners and focused tests",
+      "run bounded integration proof through the real existing LBERequestController",
+      "use deterministic injected collaborators/backend for reproducible local proof",
+      "prove request/response/task/workspace identity preservation",
+      "prove completed blocked and failed lifecycle persistence",
+      "run focused R3 session-runtime regression",
+      "classify broader regression requirement from evidence",
+      "record exact acceptance evidence",
+      "run diff scope and clean worktree validation"
+    ]
   }
 }
