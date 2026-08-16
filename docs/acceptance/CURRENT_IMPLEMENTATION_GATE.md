@@ -1,10 +1,10 @@
 # Current Implementation Gate
 
-Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 8 — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 9 — IMPLEMENTATION LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
-Current slice: `OBSERVABLE_8_FAIL_CLOSED_AUTHORITY_BOUNDARIES`
+Current slice: `OBSERVABLE_9_RECEIPT_PROVIDER_CONTINUATION_CORRELATION`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
@@ -13,8 +13,8 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: PASS
-required_evidence_level: INSTALLED_RUNTIME_FAIL_CLOSED_AUTHORITY_PROOF
+status: OPEN
+required_evidence_level: INSTALLED_RUNTIME_CORRELATED_RECEIPT_CONTINUATION_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
@@ -36,27 +36,37 @@ observable 8: PASS
 
 Observable 8 decisive proof: `98B3EC987725DB5B103E6B11B64DD60C4C73EA2F249BC88F260403A52127FDEE`.
 
-## Observable 8 result
+## Active observable 9
 
-```text
-forbidden .env path fail closed: PASS
-../ workspace escape fail closed: PASS
-R6C explicitly_forbidden => DENY: PASS
-R6E receipt => DENIED: PASS
-R6C out-of-scope => ESCALATE: PASS
-R6E receipt => ESCALATED: PASS
-rejected authority handler invocation: NONE
-rejected mutation executed: NONE
-workspace unchanged: PASS
-source worktree clean: PASS
-```
+Question:
 
-No production/runtime/package implementation change was required or authorized.
+> Does the installed governed coding loop preserve exact provider tool-call, LBE call, operation, ToolReceipt, and same-turn provider continuation correlation without duplicate execution or identity substitution?
 
-## Current boundary
+Required proof:
 
-Observable 8 is closed `PASS`.
+1. invoke installed `lbe code` from the isolated package against a deterministic local provider;
+2. provider emits exactly one tool call with a fixed `tool_call_id`;
+3. one R6E mutation receipt is returned and is `EXECUTED`;
+4. receipt `operation_id` must be `<turn_id>:tool:<tool_call_id>`;
+5. receipt has one non-empty unique `receipt_id`;
+6. the second provider HTTP request must contain the same assistant tool-call identity and a tool-result message correlated by that same `tool_call_id`;
+7. the governed result in the provider continuation must match the mutation result represented by the LBE receipt;
+8. exactly two provider requests occur for the turn and the mutation executes exactly once;
+9. final turn remains the same installed governed turn and completion truth remains provider-non-authoritative;
+10. source checkout remains clean.
 
-Observable 9 is not active and requires explicit advancement. Its target is receipt/provider-continuation correlation across the installed governed coding loop.
+Source contract used to define the discriminator:
 
-Release/package readiness and publication remain blocked until the remaining R7 observables pass.
+- Node derives `operation_id = <turn_id>:tool:<cline_tool_call_id>` and `lbe_call_id = <turn_id>:lbe:<cline_tool_call_id>`;
+- Python R6E execution returns a `ToolReceipt` and sends `tool.result` with `cline_tool_call_id`, `lbe_call_id`, `operation_id`, and `receipt_id`;
+- Node rejects mismatched session/turn/operation/LBE-call identity before resolving the pending provider tool call.
+
+## Falsifier
+
+Any missing/substituted identity, mismatched operation/receipt, duplicate mutation, provider continuation without the same tool-call identity, or cross-turn continuation is a product falsifier.
+
+Harness/provider/fixture failures that do not reach these predicates do not justify a production patch.
+
+## Stop rule
+
+Do not proceed to observable 10 until observable 9 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
