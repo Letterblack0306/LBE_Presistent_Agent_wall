@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_GATE.md",
-  "active_phase": "R5_BOUNDED_RECOVERY_ACCEPTANCE",
-  "active_slice": "PROVE_CLASSIFIED_BOUNDED_RECOVERY_AND_DUPLICATE_PREVENTION",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_GATE.md",
+  "active_phase": "R6A_PROVIDER_ABSTRACTION_ACCEPTANCE",
+  "active_slice": "PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,13 +41,17 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "R5 bounded classified recovery acceptance is closed PASS. Preserve the accepted recovery owner and do not auto-activate R6.",
-    "implementation_changes": "Forbidden. R5 required no runtime or test implementation change.",
+    "purpose": "Prove same-session provider A to provider B switching through existing provider/session/reasoning owners without LBE authority drift.",
+    "implementation_changes": "Forbidden by default. If acceptance proves a real defect, stop and activate a separate bounded repair slice before changing runtime or tests.",
     "allowed_actions": [
-      "inspect accepted R5 evidence",
-      "verify closure synchronization",
-      "update status and roadmap records",
-      "prepare a separate R6 acceptance gate only after explicit next-slice activation"
+      "inspect current provider registry composition reasoning and session owners",
+      "run repository-owned provider and session discriminators",
+      "prove same-session provider A then provider B behavior",
+      "prove workspace session task mode permission and policy invariants",
+      "prove provider-neutral LBE request response and evidence semantics",
+      "run focused provider session regression",
+      "record exact acceptance evidence",
+      "run diff scope and clean worktree validation"
     ]
   }
 }
