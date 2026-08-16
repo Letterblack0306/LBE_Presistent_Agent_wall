@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — CLI NORMAL-PATH ACCEPTANCE — RELEASE PATH AUTHORIZED — NEXT PHASE LOCKED**
+Status: **PASS — CLI NORMAL-PATH ACCEPTANCE — RELEASE PATH AUTHORIZED — NEXT PHASE LOCKED**
 
 Current phase: `CLI_NORMAL_PATH_ACCEPTANCE`
 
@@ -8,7 +8,7 @@ Current slice: `PROVE_THIN_NONINTERACTIVE_CLI_OVER_ACCEPTED_PERSISTENT_RUNTIME_A
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Active plan
+## Closed plan
 
 ```text
 active_plan: docs/acceptance/CLI_NORMAL_PATH_ACCEPTANCE_GATE.md
@@ -18,7 +18,7 @@ implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: OPEN
+status: PASS
 ```
 
 ## Accepted baseline
@@ -33,23 +33,10 @@ R6C: PROVEN_COMPLETE
 R6D: PROVEN_COMPLETE
 R6E: PROVEN_COMPLETE
 R6F: PROVEN_COMPLETE
+CLI: PROVEN_COMPLETE
 ```
 
-Final synchronized R6F closure baseline:
-
-```text
-HEAD: d12f4d20a462047c0c451d8d1d734601fc1d45e9
-origin/main: d12f4d20a462047c0c451d8d1d734601fc1d45e9
-R6F gate: PASS
-next_phase_locked: true
-LoopTool closure hash: 476F905A97BDFF464514F5030F3F478AE0EC3959B44733213634443834FAE1AC
-```
-
-## Why CLI acceptance is selected next
-
-The release path remains explicitly authorized, while publication remains blocked. The existing package entry point is `lbe = lbe_guard_inspector.cli:main`, and the CLI source declares itself a thin control plane that must not become a second session, provider, permission, tool, evidence, or completion authority.
-
-Existing CLI owner path:
+## Accepted CLI path
 
 ```text
 operator/process argv
@@ -59,32 +46,55 @@ operator/process argv
  -> structured JSON/text result
 ```
 
-Reuse decision: `REUSE`.
+Separate-process acceptance proved:
 
-## Acceptance question
+```text
+session create -> status/inspect
+provider switch -> policy unchanged
+session continue -> same persistent identity
+persisted R6F contract/evidence -> CLI validate READY
+fresh status -> COMPLETED / VALIDATED_COMPLETION
+missing contract -> structured exit 2 failure
+validate CLI exposes identity inputs only, not evidence/verdict/proof injection
+```
 
-Can the existing normal non-interactive CLI preserve persistent session/workspace identity across separate process invocations, expose accepted provider/evidence/completion/runtime services without owning their authority, and fail closed for invalid or unauthorized inputs?
+## Decisive observables
 
-## Required observables
+```text
+repository baseline: 78 passed
+hash: F99F0C0A9857AA1322E51D60488A42A6FD0D74FB511C47A88EDE154B022486C0
 
-1. package `lbe` entrypoint resolves to `lbe_guard_inspector.cli:main`;
-2. session create persists explicit identity and policy fields;
-3. session continue/status/inspect rehydrate/read canonical persistent state;
-4. provider selection changes provider/model only and preserves policy identity;
-5. missing session/unknown provider/invalid input returns structured non-zero failure;
-6. session evidence delegates to the canonical EvidenceService;
-7. session validate consumes persisted R6F contract/evidence through CodingCompletionRuntime;
-8. mode commands delegate through GovernedAgentGateway/provider controller;
-9. separate process CLI invocations preserve state;
-10. output format changes presentation only, not persistent authority/state;
-11. focused regression passes with runtime/test source unchanged and clean worktree.
+separate-process persistence: PASS
+hash: 9FFA8D1A831C394B836DC09CA5D7B15F501D5F141F5499BD7A3CAEA3D766E8FB
+
+provider-policy stability + continue: PASS
+hash: C0FCE90E0449A2063EE195634F182D42EAB7BC0646CB291BCC15CE8470DA3437
+
+persisted completion validate: PASS
+hash: 313468EAD033D330FA260E1A5A50B54A445E8139CE6E2534BD78B51E2B98342B
+
+missing-contract fail closed: PASS
+hash: E136BE394882256738CCAADF905E034BBA251416F5085C963591ABF47B029CE5
+
+no evidence-injection surface: PASS
+hash: 8D13866680263DCE566E737BA1E28D5D70115EE95C76C0F5BC1FA93819665CE4
+
+focused regression: 115 passed
+hash: 7E0351B681A14F14264C066EF7809C4092817ABE10D5794B8AE97AB0EB2C85D2
+
+runtime/test/package source unchanged: PASS
+diff check: PASS
+worktree clean: PASS
+acceptance scope: PASS
+observed product falsifier: NONE
+```
 
 ## Release boundary
 
 ```text
 release_path_authorized: true
 publish_allowed_now: false
-remaining: CLI normal-path -> R7 installed E2E -> release/package readiness
+remaining: R7 installed E2E -> release/package readiness
 ```
 
-No version bump, tag, build-for-publish, or external publish is allowed while CLI acceptance is OPEN. A real falsifier must trigger a separate bounded repair slice before CLI/runtime/test source changes.
+Do not auto-activate R7. No version bump, tag, build-for-publish, or external publish is authorized by CLI PASS alone.
