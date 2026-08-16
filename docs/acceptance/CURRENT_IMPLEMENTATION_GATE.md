@@ -41,30 +41,48 @@ Observable 9 decisive proof: `A323D6AB93CAFECC6A291F785614B92AE007CC0015B0DB9593
 
 Question:
 
-> Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE completion contract?
+> Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE-owned registered completion contract?
 
 Required proof:
 
 1. run installed `lbe code` from isolated site-packages against a deterministic local provider;
-2. provider/Cline turn reaches its normal successful terminal state;
-3. provider-facing runtime remains `lbe_completion_truth=false`;
-4. after reasoning success, the persistent task is `running / AWAITING_VALIDATION`, not completed;
-5. an explicit persisted completion contract contains at least one required evidence kind that is not satisfied;
-6. installed `session validate` evaluates persisted contract/evidence and returns `BLOCKED`;
-7. task becomes `blocked / VALIDATION_INCOMPLETE`, never `COMPLETED / VALIDATED_COMPLETION`;
-8. no provider text or successful turn is accepted as completion evidence;
-9. source checkout stays clean.
+2. allow `GovernedAgentGateway` to establish the normal registered coding completion contract rather than injecting a synthetic replacement;
+3. provider/Cline turn reaches its normal successful terminal state and may state that the task is complete;
+4. provider-facing runtime remains `lbe_completion_truth=false`;
+5. after reasoning success, persistent task remains `running / AWAITING_VALIDATION`, not completed;
+6. verify the registered contract contains `source_change`, `focused_test`, and `git_status` requirements;
+7. for the bounded no-mutation task, deterministic evidence must not satisfy the full contract: focused test may pass, while absent task-bound source change and unreconciled git-state requirements fail;
+8. installed `session validate` must reject completion as `FAILED / VALIDATION_FAILED`, never `READY / VALIDATED_COMPLETION`;
+9. source checkout stays clean and the disposable workspace remains unchanged apart from ignored validation cache artifacts.
 
 Source contract used to define the discriminator:
 
+- `GovernedAgentGateway._establish_coding_contract()` installs the registered policy only when no contract exists;
+- the registered coding policy requires `source_change`, `focused_test`, and `git_status`;
+- coding invokes the three trusted producers after reasoning;
 - `CodingCompletionRuntime.run_reasoning()` records successful reasoning as `RUNNING / AWAITING_VALIDATION`;
-- `evaluate_completion()` returns `BLOCKED` when required evidence is missing or stale;
 - only `CompletionVerdict.READY` maps to `COMPLETED / VALIDATED_COMPLETION`;
-- `session validate` reloads the persisted contract and persisted evidence before finalization.
+- deterministic failed evidence maps to `FAILED / VALIDATION_FAILED`.
+
+## Prior invocation classification
+
+Command hash:
+
+`D366A3D81B771F3CEA6377A37EAA2CE72391C6A8627C3FDA5D240D307AA68E9F`
+
+Classification:
+
+```text
+TEST_HARNESS_COMPLETION_CONTRACT_INTERFERENCE
+product falsifier: NOT REACHED
+production change justified: NO
+```
+
+The probe pre-persisted a custom `focused_test`-only contract. Because task completion contracts are immutable and the gateway correctly preserves an existing contract, the production `source_change` producer then rejected its undeclared evidence kind before the provider-turn completion predicate was reached. The corrected probe removes this synthetic contract and uses the real registered policy.
 
 ## Falsifier
 
-Any successful provider/Cline turn that directly persists completion, any `VALIDATED_COMPLETION` before deterministic validation, or any `READY` verdict with required evidence missing is a product falsifier.
+Any successful provider/Cline turn that directly persists completion, any `VALIDATED_COMPLETION` before deterministic validation, any provider truth accepted as LBE truth, or any `READY` verdict despite deterministic failed/unsatisfied registered requirements is a product falsifier.
 
 Harness/provider/fixture failures that do not reach these predicates do not justify a production patch.
 
