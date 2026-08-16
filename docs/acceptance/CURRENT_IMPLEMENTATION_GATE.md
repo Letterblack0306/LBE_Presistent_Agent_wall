@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R6C PERMISSION / AUTHORIZATION ACCEPTANCE — NEXT PHASE LOCKED**
+Status: **PASS — R6C PERMISSION / AUTHORIZATION ACCEPTANCE — NEXT PHASE LOCKED**
 
 Current phase: `R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE`
 
@@ -8,7 +8,7 @@ Current slice: `PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Active plan
+## Closed plan
 
 ```text
 active_plan: docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_GATE.md
@@ -18,7 +18,7 @@ implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: OPEN
+status: PASS
 ```
 
 ## Accepted baseline
@@ -29,99 +29,86 @@ R4: PROVEN_COMPLETE
 R5: PROVEN_COMPLETE
 R6A: PROVEN_COMPLETE
 R6B: PROVEN_COMPLETE
+R6C: PROVEN_COMPLETE
 ```
 
-Final synchronized R6B closure baseline:
-
-```text
-HEAD: d584752b105fc8db8f941dc09b66ed32f803ec4c
-origin/main: d584752b105fc8db8f941dc09b66ed32f803ec4c
-R6B gate: PASS
-next_phase_locked: true
-LoopTool closure command hash: 57DD2253CC26768B4F311D94DBC45B289568F515CE65B987BEFA106D3869ACBC
-```
-
-## Why R6C is selected next
-
-R6B proved typed mode/capability authority. `GovernedToolOrchestrator` consumes `resolve_authorization()` before handler execution, so R6C is the next dependency boundary before broader governed-tool acceptance.
-
-Current source/tests already prove pieces independently:
-
-- `AuthorizationRequest` consumes typed `ModeDecision`;
-- `resolve_authorization()` returns deterministic `ALLOW`, `DENY`, or `ESCALATE`;
-- already-enabled capability may `ALLOW` without repeat confirmation;
-- explicit forbidden policy `DENY`s;
-- missing capability, workspace expansion, unresolved scope conflict, undelegated destructive action and undelegated persistent-policy change `ESCALATE`;
-- explicitly delegated destructive and persistent-policy changes may `ALLOW`;
-- `GovernedToolOrchestrator` maps `DENY`/`ESCALATE` into receipts and does not invoke handlers;
-- only `ALLOW` reaches the registered handler.
-
-The missing artifact is the combined repeated-authority / authority-expansion / provenance integration proof.
-
-## Existing owners
+## Accepted R6C owner path
 
 ```text
 ModeDecision
-AuthorizationRequest
-AuthorizationDecision
-resolve_authorization
-ToolExecutionContext
-GovernedToolOrchestrator
-ToolReceipt
+ -> AuthorizationRequest / resolve_authorization
+ -> AuthorizationDecision
+ -> ToolExecutionContext
+ -> GovernedToolOrchestrator
+ -> ToolReceipt
 ```
 
-## Reuse decision
+No parallel permission, authorization, prompt-approval, provider, or governed-execution authority was introduced.
+
+## Decisive observables
+
+Acceptance head:
 
 ```text
-REUSE
+011531b56087432d5401b9dbdc1a04d6f1cadde9
 ```
 
-R6C is not being reimplemented.
+Repository-owned contract baseline:
 
-## Acceptance question
+```text
+26 passed
+command_hash: 8D1A70917D588AFBD736F05B24E04D0FEDAABB19AB0B4B3A0A41A9B7C41824CA
+```
 
-Can the existing LBE authorization path reuse already delegated authority for repeated governed operations without repetitive approval, deterministically block or escalate authority expansion, prevent denied/escalated handler execution, and preserve visible authorization provenance in receipts?
+Persistent governed authorization discriminator:
 
-## Required observable
+```text
+command_hash: 344D8A7C5FF4F980999606734C34B4B228FBC137E15CA25354DDD1FEF11676EF
+R6C_ALLOW_1=ALLOW
+R6C_ALLOW_2=ALLOW
+R6C_DENY=DENY
+R6C_ESCALATE=ESCALATE
+R6C_DESTRUCTIVE_AUTHORIZED=ALLOW
+R6C_HANDLER_CALLS=op-allow-1,op-allow-2,op-destructive
+R6C_DENY_HANDLER_EXECUTED=False
+R6C_ESCALATE_HANDLER_EXECUTED=False
+R6C_AUTHORIZATION_PROVENANCE=PASS
+R6C_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARY=PASS
+R6C_WORKSPACE_BOUND_DIAGNOSTIC=PASS
+```
 
-1. two distinct already-delegated governed operations execute with `ALLOW` and no separate approval state;
-2. explicitly forbidden operation returns `DENY` and handler call count does not increase;
-3. capability/scope expansion returns `ESCALATE` and handler call count does not increase;
-4. undelegated destructive/persistent-policy changes `ESCALATE`, while explicitly delegated equivalents may `ALLOW`;
-5. receipts retain authorization verdict and rationale;
-6. no provider-native/prompt-only approval bypass or parallel authorization owner is introduced.
+This proves that distinct already-delegated operations may execute without a new approval state, explicit forbidden policy is denied, scope expansion escalates, denied/escalated requests do not reach handlers, explicitly delegated destructive authority may proceed, and authorization verdict/rationale remain visible in the governed receipt path.
+
+Repository-owned resolver tests additionally cover persistent-policy delegation/expansion semantics.
+
+## Regression and scope
+
+```text
+command_hash: 7AFBB97B2A5018C58D59D3D7842B4B601264E1E5BC3F073C37B9304F091543B2
+81 passed
+R6C_FOCUSED_REGRESSION=PASS
+R6C_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
+R6C_DIFF_CHECK=PASS
+R6C_WORKTREE_CLEAN=PASS
+R6C_ACCEPTANCE_SCOPE=PASS
+```
 
 ## Falsifier
 
-R6C cannot PASS if already delegated operations need an unrelated new confirmation mechanism, if denied/escalated operations execute handlers, if explicit forbidden policy can silently execute, if authority expansion bypasses escalation, if authorization provenance is lost, or if a second authorization owner is required.
-
-## Allowed work
-
-- GitHub inspection of current mode/authorization/tool owners and tests;
-- LoopTool execution of repository-owned tests and bounded runtime diagnostics;
-- R6C acceptance/checkpoint/status documentation through GitHub;
-- diff/scope/worktree verification.
-
-## Forbidden work
-
-- runtime/test implementation before a real defect is proven;
-- R6D-R6F implementation;
-- new permission/authorization/prompt-approval authority;
-- CLI/TUI/MCP/release work;
-- architecture changes.
+```text
+observed_falsifier: NONE
+```
 
 ## Current status
 
 ```text
-source_owner_inspection: PASS
-repository authorization tests: PRESENT
-repository governed-tool authorization tests: PRESENT
-combined repeated-authority integration: NOT RUN
-focused regression: NOT RUN
-checkpoint: UNVERIFIED
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
 project_user_ready: NO
 release_ready: NO
-next_phase_locked: true
 ```
 
-Do not advance automatically. If R6C exposes a real implementation defect, stop and activate a separate repair slice before modifying runtime or tests.
+## Next-phase rule
+
+Do not activate R6D or another family automatically. The next slice requires explicit activation and its own evidence review/gate.
