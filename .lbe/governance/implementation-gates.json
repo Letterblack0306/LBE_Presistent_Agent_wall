@@ -42,16 +42,23 @@
   "current_observable": {
     "number": 10,
     "status": "OPEN",
-    "question": "Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE completion contract?",
+    "question": "Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE-owned registered completion contract?",
     "required_evidence_level": "INSTALLED_RUNTIME_PROVISIONAL_COMPLETION_AUTHORITY_PROOF",
     "implementation_changes_allowed": false
   },
   "observable_10_falsifiers": [
     "provider/Cline turn completion directly persists task COMPLETED",
     "provider/Cline completion directly produces VALIDATED_COMPLETION",
-    "session validate returns READY when required persisted evidence is missing",
+    "session validate returns READY despite deterministic failed or unsatisfied registered completion requirements",
     "provider lbe_completion_truth is accepted as true",
     "task is not left provisional after successful reasoning before deterministic validation"
+  ],
+  "known_harness_failures": [
+    {
+      "command_hash": "D366A3D81B771F3CEA6377A37EAA2CE72391C6A8627C3FDA5D240D307AA68E9F",
+      "classification": "TEST_HARNESS_COMPLETION_CONTRACT_INTERFERENCE",
+      "detail": "probe pre-persisted a focused_test-only contract; normal coding gateway correctly retained the immutable contract, then the production source_change evidence producer rejected its undeclared evidence kind before the target observable was reached"
+    }
   ],
   "forbidden": [
     "source/runtime/package implementation changes",
