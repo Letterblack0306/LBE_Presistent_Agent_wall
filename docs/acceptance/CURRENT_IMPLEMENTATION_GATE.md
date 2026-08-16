@@ -1,10 +1,10 @@
 # Current Implementation Gate
 
-Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 4 — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 5 — IMPLEMENTATION LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
-Current slice: `OBSERVABLE_4_PROVIDER_MODEL_SWITCH_AUTHORITY_STABILITY`
+Current slice: `OBSERVABLE_5_FRESH_PROCESS_SESSION_TASK_RESUME`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
@@ -13,8 +13,8 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: PASS
-required_evidence_level: INSTALLED_RUNTIME_FRESH_PROCESS
+status: OPEN
+required_evidence_level: INSTALLED_RUNTIME_SEPARATE_PROCESSES
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
@@ -34,34 +34,23 @@ Observable 3 decisive repaired proof: `F3FB75C252CB7B561C05A233D4F93FC981032A0DA
 
 Observable 4 decisive proof: `E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6`.
 
-## Observable 4 result
+## Active observable 5
 
-Installed provider/model selection changed:
+Question:
 
-```text
-openai-compatible / r7-model-a
- ->
-openai-compatible / r7-model-b
-```
+> After the prior invoking process is gone, can a newly launched installed process recover the same persisted session and task identity/state from the database?
 
-while preserving:
+Required proof:
 
-```text
-session_id
-project_workspace_id
-canonical_workspace_root
-mode
-permission
-runtime_policy
-active_profile_id
-permission_policy_id
-evidence_policy_id
-```
+1. launch installed `lbe` in one process and capture session/task identity;
+2. allow that process to exit;
+3. launch a distinct installed process and re-read the same session/task;
+4. prove session/workspace/mode/provider/policy identity is unchanged;
+5. prove task identity and provisional state survive (`running / AWAITING_VALIDATION`);
+6. no source-tree import leakage and source worktree stays clean.
 
-A fresh installed process read back the switched provider/model and unchanged authority identity. No source-tree import leakage or source worktree mutation was observed.
+Acceptance is evidence-only. No source/runtime/package implementation change is authorized. A product falsifier stops R7 and requires a separately activated repair slice.
 
-## Current boundary
+## Stop rule
 
-Observable 4 is closed `PASS`.
-
-No source/runtime/package implementation change is authorized. Observable 5 is not active yet and requires explicit advancement. Release/package readiness and publication remain blocked until the remaining R7 observables pass.
+Do not proceed to observable 6 until observable 5 is classified `PASS` and recorded.
