@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_GATE.md",
   "active_phase": "R5_BOUNDED_RECOVERY_ACCEPTANCE",
   "active_slice": "PROVE_CLASSIFIED_BOUNDED_RECOVERY_AND_DUPLICATE_PREVENTION",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,20 +41,13 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Prove the existing R5 bounded classified recovery path at integration level without changing runtime implementation.",
-    "implementation_changes": "Forbidden by default. If acceptance evidence proves a real implementation defect, stop and activate a separate repair slice before changing runtime source.",
+    "purpose": "R5 bounded classified recovery acceptance is closed PASS. Preserve the accepted recovery owner and do not auto-activate R6.",
+    "implementation_changes": "Forbidden. R5 required no runtime or test implementation change.",
     "allowed_actions": [
-      "inspect current R5 recovery and persistent-state owners",
-      "run repository-owned bounded recovery discriminators",
-      "prove transient recovery within policy",
-      "prove deterministic and terminal failures do not retry",
-      "prove idempotency and duplicate-execution protections",
-      "prove evidence-between-attempts enforcement",
-      "prove or explicitly bounded-classify cancellation terminal-stop behavior",
-      "run focused R5 recovery regression",
-      "classify broader regression requirement from evidence",
-      "record exact acceptance evidence",
-      "run diff scope and clean worktree validation"
+      "inspect accepted R5 evidence",
+      "verify closure synchronization",
+      "update status and roadmap records",
+      "prepare a separate R6 acceptance gate only after explicit next-slice activation"
     ]
   }
 }
