@@ -2,66 +2,69 @@
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_7_AUDIT_INVESTIGATION_READ_ONLY
-status: PASS
+slice: OBSERVABLE_8_FAIL_CLOSED_AUTHORITY_BOUNDARIES
+status: OPEN
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
-required_evidence_level: INSTALLED_RUNTIME_READ_ONLY_NEGATIVE_PROOF
+required_evidence_level: INSTALLED_RUNTIME_FAIL_CLOSED_AUTHORITY_PROOF
 implementation_allowed: false
 next_phase_locked: true
 ```
 
-## Accepted R7 evidence
+## Accepted R7 evidence carried forward
 
 ```text
-observable 1 installed package identity/isolation: PASS
-observable 2 persistent installed session identity: PASS
-observable 3 governed coding execution + receipts: PASS_AFTER_REPAIR
-  decisive command hash: F3FB75C252CB7B561C05A233D4F93FC981032A0DAF41F9B90E9952FB9677F882
-observable 4 provider/model switch authority stability: PASS
-  decisive command hash: E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6
-observable 5 fresh-process session/task resume: PASS
-  decisive command hash: EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376
-observable 6 external workspace change revalidation: PASS
-  decisive command hash: 4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC
-observable 7 audit/investigation read-only: PASS
+observable 1: PASS
+observable 2: PASS
+observable 3: PASS_AFTER_REPAIR
+observable 4: PASS
+observable 5: PASS
+observable 6: PASS
+observable 7: PASS
   decisive command hash: 1E59BF836E469E6652D839F076EE7A48E0D531796F39C0D35AB0F8974EADD576
 ```
 
-## Observable 7 result
+## Observable 8 — active
 
-Installed audit and investigation were exercised against a deterministic provider response that attempted to request `workspace.create_candidate_text`.
+Question:
 
-Observed:
+> Do forbidden, out-of-workspace, and otherwise out-of-authority mutation attempts fail closed with no workspace mutation, while preserving the distinction between path-handler rejection and R6C DENY/ESCALATE receipts?
+
+Required installed-runtime proof:
+
+1. installed package resolves from isolated venv site-packages;
+2. normal installed coding path receives a provider request to create a forbidden `.env` target and does not create it;
+3. normal installed coding path receives a provider request using an out-of-workspace `../` path and does not create anything outside the workspace;
+4. rejected normal-path attempts produce no `EXECUTED` mutation receipt;
+5. installed R6E invocation with `explicitly_forbidden=true` returns authorization `DENY` and receipt `DENIED` without invoking the handler;
+6. installed R6E invocation with `within_workspace_scope=false` returns authorization `ESCALATE` and receipt `ESCALATED` without invoking the handler;
+7. baseline tracked workspace hash/Git state remain unchanged after all rejected attempts;
+8. project source checkout stays clean.
+
+## Layer distinction
+
+The normal coding path passes provider path arguments to the governed mutation handler after R6C authorizes the `test_candidate` capability for coding mode. Path-specific forbidden/escape rejection is therefore expected to appear as fail-closed tool execution failure, not necessarily as R6C `DENY`/`ESCALATE`.
+
+R6C `DENY` and `ESCALATE` are separately proven by invoking the installed R6E authority surface with explicit authority-context flags. These must not be conflated with path validation.
+
+## Falsifiers
 
 ```text
-R7_OBS7_AUDIT_UNKNOWN_TOOL_REJECTED=PASS
-R7_OBS7_AUDIT_READ_ONLY=PASS
-R7_OBS7_AUDIT_WORKSPACE_UNCHANGED=PASS
-R7_OBS7_INVESTIGATION_UNKNOWN_TOOL_REJECTED=PASS
-R7_OBS7_INVESTIGATION_READ_ONLY=PASS
-R7_OBS7_INVESTIGATION_WORKSPACE_UNCHANGED=PASS
-R7_OBS7_PROVIDER_MUTATION_REQUESTS=2
-R7_OBS7_NO_EXECUTED_MUTATION_RECEIPT=PASS
-R7_OBS7_SESSION_POLICY_IDENTITY_PRESERVED=PASS
-R7_OBS7_AUDIT_INVESTIGATION_READ_ONLY=PASS
-R7_OBSERVABLE_7=PASS
-R7_OBS7_SOURCE_WORKTREE_CLEAN=PASS
+forbidden path is created
+out-of-workspace path escapes and is created
+explicitly forbidden request is not DENY / DENIED
+out-of-scope request is not ESCALATE / ESCALATED
+denied/escalated request invokes handler
+workspace or Git state changes after rejected attempts
 ```
-
-Final disposable workspace SHA-256:
-
-`7e8c511fd32c92eda8631e3ab5d6ded5ba8bf59fe28ba593f2b3327423b586c2`
-
-The provider attempted mutation twice, but neither audit nor investigation approved or executed it. No mutation receipt with `EXECUTED` status appeared, workspace bytes/Git state stayed unchanged, session/policy identity remained stable, installed import stayed isolated in site-packages, and the project source worktree remained clean.
 
 ## Current classification
 
 ```text
-audit_investigation_read_only: PASS
+fail_closed_authority_boundaries: PENDING
 implementation_changes: FORBIDDEN
-observable_8: LOCKED_PENDING_EXPLICIT_ADVANCE
+observable_9: LOCKED
 release_publish_allowed_now: false
 ```
 
-No product falsifier was observed in observable 7.
+A product falsifier stops R7 and requires a separately activated repair slice. Harness/provider/fixture failures do not justify implementation changes.
