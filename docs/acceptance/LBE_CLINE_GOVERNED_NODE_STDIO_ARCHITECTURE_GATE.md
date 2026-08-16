@@ -1,7 +1,7 @@
 
 LBE Cline Governed Node STDIO Architecture Gate
 
-Status: OPEN - ARCHITECTURE DESIGN ONLY - PRODUCTION IMPLEMENTATION LOCKED
+Status: PASS - ARCHITECTURE BOUNDED - PRODUCTION IMPLEMENTATION REQUIRES SEPARATE SLICE
 
 Active phase
 phase: LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE
@@ -216,4 +216,154 @@ add MCP;
 
 change canonical session persistence;
 
-claim installed/live/user-flow/release readiness.
+claim installed/live/user-flow/release readiness.rnArchitecture proof checkpoint
+phase: LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE
+slice: DEFINE_GOVERNED_NODE_SUBPROCESS_STDIO_BOUNDARY
+base_sha: 726f6b776dfa82778c2a4b400a84adb9c91cb078
+activation_sha: b0a9df6bc718ea1c680465e053bd94b0efaf109c
+reuse_decision: ADAPT Cline AgentRuntime mechanics behind one LBE-owned governed subprocess/stdio boundary
+new_authority_owner_introduced: no
+required_evidence_level: ARCHITECTURE / SOURCE
+Proven source boundary
+
+resolve_authorization() remains decision-only and returns ALLOW / DENY / ESCALATE before execution.
+
+GovernedToolOrchestrator.invoke() remains the governed tool execution boundary.
+
+operation_id is idempotent: repeated invocation returns the prior receipt.
+
+ToolReceipt provides durable receipt_id, operation identity, status, authorization result, output/evidence and failure metadata.
+
+denied/escalated requests return before handler execution.
+
+provider_turn_runtime.py remains the Python provider-turn/cancellation owner.
+
+existing LBE session/history/evidence/validation/completion owners remain canonical.
+
+Pinned Cline boundary
+revision: 8bbdde2a5c1f972864fe1b954f639c21fac61a40
+package: @cline/agents
+version: 0.0.75
+module: ESM
+node: >=22
+license: Apache-2.0
+dependencies: @cline/llms, @cline/shared, nanoid
+
+Reuse symbols:
+
+AgentRuntime / createAgentRuntime
+AgentRuntime.execute()
+generateAssistantMessage()
+executeToolCalls()
+prepareToolExecution()
+executePreparedTool()
+beforeTool
+AgentRuntimeEvent
+AbortController / abort propagation
+Protocol
+protocol_version: lbe-cline-stdio/1
+framing: newline-delimited UTF-8 JSON
+stdout: protocol only
+stderr: diagnostics only
+
+Every message requires:
+
+protocol_version
+message_id
+message_type
+session_id
+turn_id
+
+Python -> Node:
+
+runtime.start
+turn.execute
+tool.result
+control.cancel
+control.steer
+runtime.shutdown
+
+Node -> Python:
+
+runtime.ready
+provider.event
+tool.proposed
+turn.completed
+turn.failed
+runtime.error
+
+Tool identity:
+
+cline_tool_call_id -> lbe_call_id -> operation_id -> receipt_id
+
+A conflicting or missing identity fails closed.
+
+Native Cline tool exclusion
+
+The Node worker must receive an allowlisted tool set derived only from LBE-governed tool definitions.
+
+Native Cline editor, apply-patch, filesystem mutation, shell, terminal and process execution surfaces must be absent or unreachable. Policy denial alone is insufficient if an independent native executor remains reachable.
+
+Fail-closed lifecycle
+
+Python owns child spawn, pipes, startup timeout, turn timeout, cancellation forwarding, shutdown, forced termination and restart policy.
+
+Fail closed on:
+
+child exit during active turn
+startup timeout
+turn timeout
+malformed JSON/frame
+unknown protocol version
+unknown message type
+duplicate message_id
+identity mismatch
+unexpected tool-result correlation
+non-protocol stdout
+
+Worker restart must never replay an executable proposal whose operation_id already has a persisted receipt.
+
+Production implementation adoption gate
+
+The later implementation slice must prove:
+
+Node >=22 on installed path
+exact @cline/agents pin and transitive lock
+license inventory
+dependency/security audit
+worker packaging/install path
+installed worker launch path
+Windows process behavior
+credentials absent from argv/logs/receipts
+provider credential transport/storage contract
+Required implementation tests
+deny-before-execute
+escalation-before-execute
+allow-exactly-once
+operation-id idempotency
+receipt-backed continuation into same Cline loop
+call -> operation -> receipt correlation
+forbidden native tools absent/unreachable
+deterministic Cline -> LBE event mapping
+truthful cancellation forwarding
+child crash fail-closed
+malformed protocol fail-closed
+restart without duplicate execution
+Node cannot mutate outside LBE orchestrator
+installed LBE launches exact worker
+Checkpoint
+phase: LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE
+slice: DEFINE_GOVERNED_NODE_SUBPROCESS_STDIO_BOUNDARY
+base_sha: 726f6b776dfa82778c2a4b400a84adb9c91cb078
+implementation_sha: b0a9df6bc718ea1c680465e053bd94b0efaf109c
+requirements: bounded Python-owned Node subprocess/stdio architecture; typed protocol; identity law; native mutation exclusion; fail-closed lifecycle; adoption proof requirements; implementation test contract
+existing_owner: resolve_authorization; GovernedToolOrchestrator; ToolReceipt; provider_turn_runtime; existing LBE session/history/evidence/validation/completion owners
+reuse_decision: ADAPT Cline AgentRuntime continuation/event/tool mechanics; reject Cline native execution authority
+required_evidence_level: ARCHITECTURE / SOURCE
+validation_evidence: exact LBE owners inspected; exact Cline revision/package/symbols pinned; protocol and failure law defined; gate validator PASS; git diff --check PASS
+unverified: production worker/adapter, installed Node/Cline path, live continuation, event mapping, cancellation integration, dependency/security adoption; intentionally deferred
+document_conflicts: none known
+status: PASS
+project_user_ready: UNVERIFIED
+release_ready: UNVERIFIED
+next_phase_locked: truern

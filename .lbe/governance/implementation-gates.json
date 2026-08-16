@@ -5,7 +5,7 @@
   "active_slice": "DEFINE_GOVERNED_NODE_SUBPROCESS_STDIO_BOUNDARY",
   "status": "OPEN",
   "implementation_allowed": true,
-  "architecture_changes_allowed": true,
+  "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
   "blocking_statuses": [
