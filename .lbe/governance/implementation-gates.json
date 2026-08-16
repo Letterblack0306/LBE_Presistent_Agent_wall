@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "OBSERVABLE_4_PROVIDER_MODEL_SWITCH_AUTHORITY_STABILITY",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -31,26 +31,30 @@
     "CLI": "PROVEN_COMPLETE",
     "R7_OBSERVABLE_1": "PASS",
     "R7_OBSERVABLE_2": "PASS",
-    "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR"
+    "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR",
+    "R7_OBSERVABLE_4": "PASS"
   },
   "current_observable": {
     "number": 4,
+    "status": "PASS",
     "question": "Does provider/model switching preserve workspace, mode, permission, profile, evidence policy, and LBE authority identity?",
     "required_evidence_level": "INSTALLED_RUNTIME_FRESH_PROCESS",
-    "implementation_changes_allowed": false
+    "implementation_changes_allowed": false,
+    "decisive_command_hash": "E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6"
   },
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "continuing to observable 5 before observable 4 is classified PASS"
+    "activating observable 5 without explicit advancement"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 4 through 15",
+      "explicitly activate R7 observable 5",
+      "finish R7 observables 5 through 15",
       "release/package readiness acceptance"
     ]
   }
