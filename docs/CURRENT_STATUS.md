@@ -23,102 +23,94 @@ R3_RUNTIME_REASONING_ACCEPTANCE: PASS / PROVEN_COMPLETE
 R4_CHECKPOINT_RESUME_ACCEPTANCE: PASS / PROVEN_COMPLETE
 R5_BOUNDED_RECOVERY_ACCEPTANCE: PASS / PROVEN_COMPLETE
 R6A_PROVIDER_ABSTRACTION_ACCEPTANCE: PASS / PROVEN_COMPLETE
+R6B_TYPED_MODE_POLICY_ACCEPTANCE: PASS / PROVEN_COMPLETE
 ```
 
-Final synchronized R6A closure:
+## R6B accepted behavior
+
+Accepted owner path:
 
 ```text
-HEAD: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
-origin/main: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
-R6A status: PASS
-R6A roadmap: PROVEN_COMPLETE
-implementation_allowed: false
-architecture_changes_allowed: false
-next_phase_locked: true
-worktree: clean
-LoopTool closure hash: BE73BAAF3292B2DB4FAD6B4C9C548D2BA252D97ADFD12B115FC9C1E4049A35CF
-LoopTool response-check hash: EFCF5A4D97F74E93A62C79301C8C93E752F360813A7E683955DA8C29F076A37D
+ModeRequest / ModeDecision / resolve_mode
+ -> behavior.contracts
+ -> SessionMemoryRuntimeBridge
+ -> persisted session mode
+ -> AuthorizationRequest / resolve_authorization
 ```
 
-R6A decisive acceptance evidence remains:
+Accepted integration invariant:
 
 ```text
-provider A -> COMPLETED
-provider B -> COMPLETED
-same session/workspace/task identity preserved
-mode/permission/runtime policy preserved
-provider/model changed only where intended
-focused regression: 64 passed
-runtime/test source unchanged
-diff check: PASS
-worktree clean: PASS
+coding -> propose -> ALLOW
+audit -> propose -> ESCALATE
+investigation -> propose -> ESCALATE
+same session_id: session-r6b
+same workspace_id: project-r6b
+same task_id: task-r6b
+same provider_id: provider-stable
+permission unchanged: write_allowed
+runtime_policy unchanged: permissive
+mode sequence: coding -> audit -> investigation
 ```
 
-## Active R6B acceptance slice
+Mode is therefore accepted as a typed LBE runtime capability/authorization contract at this boundary, not provider prompt/personality text.
 
-The user explicitly authorized continuing to the next phase. Dependency review selected **R6B typed mode policy** because R6C authorization consumes `ModeDecision`, and later governed-tool/completion claims depend on mode exposing the correct capability boundary.
+## R6B validation evidence
+
+Mode contract tests:
+
+```text
+28 passed
+command_hash: 572E3034723732631FD32DCA972BDD3DAC39C8C859A58AC16D31582753B24F28
+```
+
+Persistent-session integration:
+
+```text
+command_hash: 9C54DBC9E1792039991E4EEFDD4F0FE0C2ED59782318E94BC8DA904135159859
+R6B_PERSISTENT_TYPED_MODE_POLICY=PASS
+R6B_WORKSPACE_BOUND_DIAGNOSTIC=PASS
+```
+
+Focused regression/scope:
+
+```text
+command_hash: F8627BCC2D9EC0B81D9CBC828147876195FC894A439EF795767BC58CAC9C1305
+69 passed
+R6B_FOCUSED_REGRESSION=PASS
+R6B_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
+R6B_DIFF_CHECK=PASS
+R6B_WORKTREE_CLEAN=PASS
+R6B_ACCEPTANCE_SCOPE=PASS
+```
+
+No runtime or test implementation source changed during R6B acceptance.
+
+### Harness failure excluded from product claims
+
+The first oversized temporary diagnostic was truncated by LoopTool transport before Python execution.
+
+```text
+command_hash: E397E967D70C9B128DE8C6E1ABEB4872583D476B10232E292E5EEA9645CDD09B
+classification: TEST_HARNESS_TRANSPORT_TRUNCATION
+product implication: none
+```
+
+The same proof was then built in bounded temporary chunks and passed.
+
+## Current machine/human gate
 
 ```text
 phase: R6B_TYPED_MODE_POLICY_ACCEPTANCE
 slice: PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT
-status: OPEN
+status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-base_sha: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
 ```
 
-Active plan/checkpoint:
-
-```text
-docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md
-docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_CHECKPOINT.md
-```
-
-## R6B evidence review
-
-Existing owners:
-
-```text
-runtime.mode_controller.ModeRequest
-runtime.mode_controller.ModeDecision
-runtime.mode_controller.resolve_mode
-behavior.contracts
-SessionMemoryRuntimeBridge
-WorkspaceMemoryStore
-runtime.authorization_resolver.AuthorizationRequest
-```
-
-Current source/tests already establish separately:
-
-- coding/audit/investigation are typed mode decisions;
-- runtime policy + permission + intent deterministically resolve mode;
-- coding reuses the existing development behavior/capability contract;
-- audit and investigation remove write/proposal/promotion capabilities;
-- investigation remains read-only even with elevated/write permission under permissive policy;
-- persisted session state owns `mode` independently of provider configuration;
-- downstream authorization accepts a typed `ModeDecision`;
-- R6A already proves provider switching does not own LBE mode/policy authority.
-
-Reuse decision:
-
-```text
-REUSE
-```
-
-The unresolved R6B artifact is integration-level proof that one persistent session can intentionally exercise coding -> audit -> investigation typed contracts while preserving session/workspace/provider identity and without authority drift.
-
-## R6B falsifier
-
-R6B cannot PASS if:
-
-- mode is only prompt/personality text;
-- provider identity determines mode or authority;
-- audit/investigation expose write capabilities;
-- mode transition forks session/workspace identity;
-- unrelated policy/provider fields drift;
-- a second mode/session/policy owner is required.
+R6C is not active. No later R6 family is unlocked automatically.
 
 ## Current roadmap classification
 
@@ -128,7 +120,7 @@ R6B cannot PASS if:
 | R4 checkpoint/resume/rehydration | `PROVEN_COMPLETE` |
 | R5 bounded classified recovery | `PROVEN_COMPLETE` |
 | R6A provider abstraction | `PROVEN_COMPLETE` |
-| R6B typed mode policy | `PARTIALLY_PROVEN` — acceptance active |
+| R6B typed mode policy | `PROVEN_COMPLETE` |
 | R6C permission/authorization | `PARTIALLY_PROVEN` |
 | R6D context assembly + rule/guard injection | `IMPLEMENTED_NOT_ACCEPTED` |
 | R6E governed tool orchestration | `PARTIALLY_PROVEN` |
@@ -149,11 +141,11 @@ next_phase_locked: true
 
 Do not:
 
-- reopen R3/R4/R5/R6A without new contradictory current evidence;
-- implement or patch R6B before acceptance proves a real defect;
+- reopen R3/R4/R5/R6A/R6B without new contradictory current evidence;
 - create a second mode/session/policy/authorization owner;
-- allow provider-native mechanics to become LBE authority;
-- treat focused tests alone as integration acceptance;
+- allow provider-native mechanics or prompt personalities to become LBE authority;
+- treat unit tests alone as integration acceptance;
+- patch from harness failures;
 - use LoopTool for normal tracked file authoring when GitHub is available;
 - auto-activate R6C after R6B PASS.
 
