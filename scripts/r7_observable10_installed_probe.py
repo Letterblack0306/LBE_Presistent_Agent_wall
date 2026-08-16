@@ -6,10 +6,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import threading
 from typing import Any
+from uuid import uuid4
 
 from lbe_guard_inspector.memory import WorkspaceMemoryStore
 from lbe_guard_inspector.memory.completion_contracts import TaskCompletionContractPersistence
@@ -146,13 +146,17 @@ def main() -> int:
     require("agents-memory-tool-v6-integration" not in str(package_file).lower(), "source checkout import leakage")
     print("R7_OBS10_PACKAGE_FILE=" + str(package_file))
 
-    probe = installed_root / "obs10"
-    if probe.exists():
-        shutil.rmtree(probe)
+    # Use a fresh disposable root on every invocation. On Windows, prior nested
+    # Git object files may remain temporarily locked after a failed probe; a
+    # rerun must not depend on deleting that prior repository before reaching
+    # the product acceptance predicate.
+    probe = installed_root / f"obs10-{uuid4().hex}"
     workspace = probe / "workspace"
     state_dir = probe / "state"
     workspace.mkdir(parents=True)
     state_dir.mkdir(parents=True)
+    print("R7_OBS10_PROBE_ROOT=" + str(probe))
+
     (workspace / "test_smoke.py").write_text("def test_smoke():\n    assert True\n", encoding="utf-8")
     (workspace / ".gitignore").write_text("__pycache__/\n.pytest_cache/\n", encoding="utf-8")
     git(workspace, "init", "-q")
