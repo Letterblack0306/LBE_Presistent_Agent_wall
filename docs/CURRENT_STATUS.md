@@ -24,48 +24,71 @@ Accepted milestones now include:
 LBE_CLINE_PROVIDER_CONTINUATION: PASS
 LBE_RUNTIME_ROADMAP_RECONCILIATION: PASS
 R3_RUNTIME_REASONING_ACCEPTANCE: PASS
+R4_CHECKPOINT_RESUME_ACCEPTANCE: PASS
 ```
 
-Current completed R3 slice:
+Current completed R4 slice:
 
 ```text
-phase: R3_RUNTIME_REASONING_ACCEPTANCE
-slice: PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY
+phase: R4_CHECKPOINT_RESUME_ACCEPTANCE
+slice: PROVE_CHECKPOINT_RESTART_REHYDRATION_AND_STALE_STATE_INVALIDATION
 status: PASS
-validated_acceptance_head: d0b542930dcccccc0e9b3a8f3483ac0d3bd20c00
+validated_acceptance_head: 7369ae41311870866a919092c59d13d02a99c942
 implementation_allowed: false
 next_phase_locked: true
 ```
 
-## R3 accepted behavior
+## R4 accepted behavior
 
 ```text
-SessionMemoryRuntimeBridge.run_reasoning
- -> existing LBERequest
- -> real LBERequestController.run
- -> existing LBEResponse
- -> canonical TaskStatus persistence
+checkpoint/session state
+ -> restart/reconstruct
+ -> current Git/source reinspection
+ -> stale source-backed fact invalidation
+ -> protected checkpoint revalidation
+ -> current context packet
 ```
 
-Observed lifecycle mappings:
+Proven behaviors:
 
 ```text
-COMPLETED -> completed
-INSUFFICIENT_EVIDENCE -> blocked
-ORCHESTRATION_ERROR -> failed
+changed source fact: VERIFIED -> STALE
+stale fact in resumed verified_facts: NO
+changed Git HEAD: surfaced as current HEAD
+checkpoint HEAD check: MISMATCH
+checkpoint status: INELIGIBLE
+reactivation_allowed: false
+active task status: preserved
+checkpoint constraints: preserved
+session/provider configuration: preserved
+assistant/compaction prose as current workspace truth: prohibited by source contract
 ```
 
-The real controller was also independently callable outside the runtime bridge.
-
-Focused acceptance regression:
+Decisive repository-owned discriminator:
 
 ```text
-46 passed
+tests/test_session_resume_runtime.py::test_resume_invalidates_changed_source_fact_and_reports_changed_head
+1 passed
 ```
 
-No runtime or test implementation source changed during R3 acceptance.
+Focused R4 acceptance regression:
 
-The first integration wrapper exited nonzero only after printing `R3_ACCEPTANCE_INTEGRATION=PASS`, because Windows could not remove a temporary SQLite file still held open. This is recorded as `TEST_HARNESS_CLEANUP_FAILURE`, not a product defect.
+```text
+37 passed
+```
+
+across:
+
+```text
+tests/test_session_resume_runtime.py
+tests/test_session_memory_runtime.py
+tests/test_session_memory_adapter.py
+tests/test_checkpoint_eligibility.py
+```
+
+No runtime or test implementation source changed during R4 acceptance.
+
+Two earlier ad hoc embedded-Python LoopTool probes failed before product execution because command transport corrupted quoting/indentation. They are recorded as `TEST_HARNESS_TRANSPORT_FAILURE`, not product defects. The acceptance method was corrected to repository-owned tests.
 
 ## Product architecture to preserve
 
@@ -93,7 +116,7 @@ Cline may supply provider-native streaming/tool-call/continuation mechanics behi
 | Roadmap family | Current classification |
 |---|---|
 | R3 persistent runtime -> existing reasoning boundary | `PROVEN_COMPLETE` |
-| R4 checkpoint/resume/rehydration | `IMPLEMENTED_NOT_ACCEPTED` |
+| R4 checkpoint/resume/rehydration | `PROVEN_COMPLETE` |
 | R5 bounded classified recovery | `IMPLEMENTED_NOT_ACCEPTED` |
 | R6A provider abstraction | `PARTIALLY_PROVEN` |
 | R6B typed mode policy | `PARTIALLY_PROVEN` |
@@ -108,14 +131,14 @@ Cline may supply provider-native streaming/tool-call/continuation mechanics behi
 ## Earliest next capability gap
 
 ```text
-R4 checkpoint/resume/rehydration acceptance
+R5 bounded classified recovery acceptance
 classification: IMPLEMENTED_NOT_ACCEPTED
 active: NO
 ```
 
-Current source/tests already contain R4 checkpoint/session persistence, restart/rehydration, Git revalidation, stale source-backed claim invalidation, active-constraint survival and provider/session preservation.
+Current source already contains the R5 recovery owner through `recovery.py` and `SessionMemoryRuntimeBridge.run_recoverable()`.
 
-The next task is therefore an R4 **acceptance proof**, not R4 implementation, unless evidence first disproves the existing owner.
+The next task is therefore an R5 **acceptance proof**, not implementation, unless evidence first disproves the existing owner.
 
 ## Current readiness
 
@@ -125,11 +148,11 @@ release_ready: NO
 next_phase_locked: true
 ```
 
-R4 must not start until a separate machine/human acceptance gate defines the exact observable, falsifier and required regression level.
+R5 must not start until a separate machine/human acceptance gate defines the exact observable, falsifier and required regression level.
 
 ## Remaining broad acceptance gaps
 
-After R4, later candidates remain:
+After R4, candidates remain:
 
 - R5 classified recovery acceptance;
 - same-session provider-switch acceptance;
@@ -143,10 +166,10 @@ These are candidates, not active slices.
 
 Do not:
 
-- reopen R3 because an older record describes it as unaccepted;
-- recreate existing R4-R6 owners;
+- reopen R3 or R4 because an older record describes either as unaccepted;
+- recreate existing R5-R6 owners;
 - bypass LBE authority through provider-native mutation tools;
-- treat focused tests alone as roadmap acceptance;
+- treat focused tests alone as roadmap acceptance without the required behavior proof;
 - treat GPT-Knowledge, memory or historical checkpoints as current workspace truth;
 - unlock the next phase automatically from PASS.
 
@@ -159,6 +182,7 @@ prove current authority/revision
 -> define required observable/falsifier
 -> run smallest discriminating proof
 -> classify result
--> update checkpoint
+-> update checkpoint through GitHub
+-> use LoopTool only for local test/debug/runtime verification
 -> stop with next phase locked
 ```
