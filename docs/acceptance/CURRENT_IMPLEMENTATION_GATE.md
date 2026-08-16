@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R6E GOVERNED TOOL ORCHESTRATION ACCEPTANCE — NEXT PHASE LOCKED**
+Status: **PASS — R6E GOVERNED TOOL ORCHESTRATION ACCEPTANCE — NEXT PHASE LOCKED**
 
 Current phase: `R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE`
 
@@ -8,7 +8,7 @@ Current slice: `PROVE_RECEIPT_BACKED_GOVERNED_TOOL_LIFECYCLE_WITH_IDEMPOTENCY_AN
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Active plan
+## Closed plan
 
 ```text
 active_plan: docs/acceptance/R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE_GATE.md
@@ -18,7 +18,7 @@ implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: OPEN
+status: PASS
 ```
 
 ## Accepted baseline
@@ -31,96 +31,76 @@ R6A: PROVEN_COMPLETE
 R6B: PROVEN_COMPLETE
 R6C: PROVEN_COMPLETE
 R6D: PROVEN_COMPLETE
+R6E: PROVEN_COMPLETE
 ```
 
-Final synchronized R6D closure baseline:
-
-```text
-HEAD: a237ac0184116a47fdc5b2efc782940faa065efb
-origin/main: a237ac0184116a47fdc5b2efc782940faa065efb
-R6D gate: PASS
-next_phase_locked: true
-LoopTool closure command hash: 59D4EDC96D22306F176535E3FA9FE52B0373F2BCBAB9FE46970D7A6867D5CCEB
-```
-
-## Why R6E is selected next
-
-R6A-R6D established provider neutrality, typed mode/policy, deterministic authorization and authority-preserving context. The next dependency boundary is actual governed tool execution and receipt-backed continuation. Existing source already contains this owner; R6E is acceptance-first and does not declare a defect.
-
-## Existing owner path
+## Accepted R6E owner path
 
 ```text
 ToolRequest
  -> ToolRegistry lookup
  -> argument validation
  -> R6C resolve_authorization
- -> GovernedToolOrchestrator handler invocation
+ -> GovernedToolOrchestrator
+ -> registered handler / existing service
  -> ToolReceipt(output/evidence/authorization)
- -> operation-id receipt cache/idempotency
+ -> operation-id idempotency
  -> continuation_from_receipt
  -> continue_provider
 ```
 
-Real `workspace.read` delegates to `EvidenceService`; provider continuation only consumes an existing `ToolReceipt` and has no execution authority.
+Provider continuation remains receipt-backed transport only and has no execution authority.
 
-## Reuse decision
+## Decisive observables
 
 ```text
-REUSE
+acceptance_head: 8d755418c81efa75522d8cd360b60f8cdbd55ed5
+
+repository baseline: 29 passed
+hash: 2C05376D268B47A944EDD267CDD5EF4E37B37342FD19A069DADC2F4435CF90AB
+
+authorized execution/idempotency: PASS
+hash: 85A894FA0BB9EFBD297255952B9E61317AEB0250B6D2DF2EBD5DFA453AAB8AD0
+
+receipt-backed continuation: PASS
+hash: B24E0F0CECFE6CCA4DD18D54D929D1DF29FB9C35EF02E4CDABD77620888EB600
+
+combined lifecycle and escalation stop: PASS
+hash: D5D43751BE65F6F765960CA119CA59D74732181E520D3353AE00F1B0329A7A9A
+
+focused regression: 51 passed
+hash: 8D7906D783094242D072C6C2D49D392896810ADF2C162D2B16623A8BFAE9AA43
+
+runtime/test source unchanged: PASS
+diff check: PASS
+worktree clean: PASS
+acceptance scope: PASS
+observed falsifier: NONE
 ```
 
-R6E is not being reimplemented.
+Combined lifecycle proof established:
 
-## Acceptance question
+```text
+ALLOW -> EXECUTED -> one handler call -> receipt evidence retained
+same operation ID -> original receipt -> no re-execution
+executed receipt -> provider continuation with matching operation/receipt/tool/output identity
+ESCALATE -> handler not executed -> provider continuation blocked
+```
 
-Can the existing LBE path prove one bounded registered tool operation through authorization, governed execution, structured receipt/evidence and receipt-backed provider continuation while preserving operation identity/idempotency and stopping denied/escalated/unregistered/invalid paths before execution or continuation?
+## Harness failure retained
 
-## Required observable
-
-1. only registered tools can execute;
-2. invalid arguments and workspace/precondition failures stop before underlying service invocation;
-3. `DENY`/`ESCALATE` stop before handler execution;
-4. authorized execution emits one structured `EXECUTED` receipt with evidence and authorization provenance;
-5. duplicate operation ID returns the original receipt without re-execution;
-6. `workspace.read` delegates to `EvidenceService`;
-7. receipt-backed provider continuation preserves provider-call, LBE-call, runtime-operation, receipt and tool identity;
-8. escalated receipt stops before provider continuation;
-9. continuation code has no execution authority;
-10. no second dispatcher/receipt/continuation owner is introduced.
-
-## Falsifier
-
-R6E cannot PASS if unregistered/unauthorized/invalid work executes, duplicate operation IDs re-execute, receipt evidence/provenance is lost, provider continuation can bypass a governed receipt or proceed from escalation, or a parallel execution/receipt authority is required.
-
-## Allowed work
-
-- GitHub inspection of current tool/authorization/evidence/continuation owners and tests;
-- LoopTool execution of repository-owned tests and bounded runtime diagnostics;
-- R6E acceptance/checkpoint/status documentation through GitHub;
-- diff/scope/worktree verification.
-
-## Forbidden work
-
-- runtime/test implementation before a real defect is proven;
-- R6F implementation;
-- new tool dispatcher/receipt store/provider executor/continuation authority;
-- unrestricted shell/filesystem bypass;
-- CLI/TUI/MCP/release work;
-- architecture changes.
+`F37E90BA...` was a PowerShell transport truncation/parser failure before Python execution. It has no product implication.
 
 ## Current status
 
 ```text
-source_owner_inspection: PASS
-repository tool tests: PRESENT
-repository authorization tests: PRESENT
-repository provider-continuation tests: PRESENT
-combined governed lifecycle integration: NOT RUN
-focused regression: NOT RUN
-checkpoint: UNVERIFIED
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
 project_user_ready: NO
 release_ready: NO
-next_phase_locked: true
 ```
 
-Do not advance automatically. If R6E exposes a real implementation defect, stop and activate a separate repair slice before modifying runtime or tests.
+## Next-phase rule
+
+Do not activate R6F or another family automatically. The next slice requires explicit activation and its own evidence review/gate.
