@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 10 — IMPLEMENTATION LOCKED**
+Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 10 — NEXT OBSERVABLE LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
@@ -13,7 +13,7 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: OPEN
+status: PASS
 required_evidence_level: INSTALLED_RUNTIME_PROVISIONAL_COMPLETION_AUTHORITY_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
@@ -33,59 +33,32 @@ observable 6: PASS
 observable 7: PASS
 observable 8: PASS
 observable 9: PASS
+observable 10: PASS
 ```
 
-Observable 9 decisive proof: `A323D6AB93CAFECC6A291F785614B92AE007CC0015B0DB959359F06747E044D9`.
+Observable 10 decisive proof: `3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946`.
 
-## Active observable 10
-
-Question:
-
-> Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE-owned registered completion contract?
-
-Required proof:
-
-1. run installed `lbe code` from isolated site-packages against a deterministic local provider;
-2. allow `GovernedAgentGateway` to establish the normal registered coding completion contract rather than injecting a synthetic replacement;
-3. provider/Cline turn reaches its normal successful terminal state and may state that the task is complete;
-4. provider-facing runtime remains `lbe_completion_truth=false`;
-5. after reasoning success, persistent task remains `running / AWAITING_VALIDATION`, not completed;
-6. verify the registered contract contains `source_change`, `focused_test`, and `git_status` requirements;
-7. for the bounded no-mutation task, deterministic evidence must not satisfy the full contract: focused test may pass, while absent task-bound source change and unreconciled git-state requirements fail;
-8. installed `session validate` must reject completion as `FAILED / VALIDATION_FAILED`, never `READY / VALIDATED_COMPLETION`;
-9. source checkout stays clean and the disposable workspace remains unchanged apart from ignored validation cache artifacts.
-
-Source contract used to define the discriminator:
-
-- `GovernedAgentGateway._establish_coding_contract()` installs the registered policy only when no contract exists;
-- the registered coding policy requires `source_change`, `focused_test`, and `git_status`;
-- coding invokes the three trusted producers after reasoning;
-- `CodingCompletionRuntime.run_reasoning()` records successful reasoning as `RUNNING / AWAITING_VALIDATION`;
-- only `CompletionVerdict.READY` maps to `COMPLETED / VALIDATED_COMPLETION`;
-- deterministic failed evidence maps to `FAILED / VALIDATION_FAILED`.
-
-## Prior invocation classification
-
-Command hash:
-
-`D366A3D81B771F3CEA6377A37EAA2CE72391C6A8627C3FDA5D240D307AA68E9F`
-
-Classification:
+## Observable 10 result
 
 ```text
-TEST_HARNESS_COMPLETION_CONTRACT_INTERFERENCE
-product falsifier: NOT REACHED
-production change justified: NO
+registered LBE completion contract: PASS
+provider/Cline terminal success: PASS
+lbe_completion_truth=false: PASS
+post-reasoning task running / AWAITING_VALIDATION: PASS
+deterministic validation rejected completion: PASS
+premature VALIDATED_COMPLETION: NONE
+workspace unchanged: PASS
+source worktree clean: PASS
 ```
 
-The probe pre-persisted a custom `focused_test`-only contract. Because task completion contracts are immutable and the gateway correctly preserves an existing contract, the production `source_change` producer then rejected its undeclared evidence kind before the provider-turn completion predicate was reached. The corrected probe removes this synthetic contract and uses the real registered policy.
+This proves provider prose and provider turn success cannot self-authorize LBE completion. Completion authority remains with the persisted deterministic contract/evidence gate.
 
-## Falsifier
+Two earlier failed invocations were classified as harness failures only: synthetic completion-contract interference and Windows locked disposable Git-directory cleanup. No production/runtime/package patch was justified.
 
-Any successful provider/Cline turn that directly persists completion, any `VALIDATED_COMPLETION` before deterministic validation, any provider truth accepted as LBE truth, or any `READY` verdict despite deterministic failed/unsatisfied registered requirements is a product falsifier.
+## Current boundary
 
-Harness/provider/fixture failures that do not reach these predicates do not justify a production patch.
+Observable 10 is closed `PASS`.
 
-## Stop rule
+Observable 11 is **not active** and requires explicit advancement. Its acceptance target is the positive side of the same authority boundary: once the registered deterministic completion contract is fully satisfied, `COMPLETED / VALIDATED_COMPLETION` must persist and a fresh installed process must observe the same terminal state.
 
-Do not proceed to observable 11 until observable 10 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
+No production/runtime/package implementation change is authorized. Release/package readiness and publication remain blocked until remaining R7 observables pass.
