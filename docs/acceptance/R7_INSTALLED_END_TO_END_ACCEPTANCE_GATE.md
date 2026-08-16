@@ -1,11 +1,13 @@
 # R7 Installed End-to-End Acceptance Gate
 
-Status: **OPEN — ACCEPTANCE PROOF ONLY — RELEASE PATH ACTIVE — NEXT PHASE LOCKED**
+Status: **FAIL — INSTALLED CODING AUTHORITY COMPOSITION FALSIFIER — NEXT PHASE LOCKED**
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
 slice: PROVE_INSTALLED_PERSISTENT_AGENT_NORMAL_PATH_OVER_ACCEPTED_AUTHORITIES
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
+activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
+status: FAIL
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
@@ -16,9 +18,9 @@ publish_allowed_now: false
 
 ## Selection rationale
 
-CLI normal-path acceptance is `PROVEN_COMPLETE`. The next release prerequisite is the installed end-to-end path. R7 must prove the shipped/installed surface composes the already accepted persistent runtime authorities without creating a second authority or relying on source-tree-only behavior.
+CLI normal-path acceptance is `PROVEN_COMPLETE`. R7 was activated to prove that the shipped/installed surface composes the already accepted persistent runtime authorities without creating a second authority or relying on source-tree-only behavior.
 
-## Existing authority chain to reuse
+## Existing authority chain expected for reuse
 
 ```text
 installed lbe entry point
@@ -32,9 +34,7 @@ installed lbe entry point
  -> CodingCompletionRuntime / deterministic validation
 ```
 
-Reuse decision: `REUSE`.
-
-Do not introduce a second session store, provider authority, authorization resolver, tool dispatcher, checkpoint owner, completion gate, or installed-only runtime architecture.
+Reuse decision on activation: `REUSE`.
 
 ## Acceptance question
 
@@ -58,36 +58,74 @@ Can a clean installed LBE normal path perform persistent coding/audit work acros
 14. prove project source remains unchanged unless a real product falsifier requires a separately activated repair slice;
 15. leave worktree clean and record exact limitations/falsifiers.
 
-## Falsifier
-
-R7 cannot PASS if the installed command imports the checkout accidentally, creates a second authority, loses session/task identity across processes, misses an external workspace change, allows read-only audit mutation, executes out-of-authority work, lets provider prose establish terminal completion, loses receipt correlation, leaks credentials/secrets, or differs materially from the accepted source/runtime ownership model.
-
-## Evidence ladder
+## Evidence reached before stop
 
 ```text
-installed package identity
--> isolated installed smoke
--> persistent installed session
--> one governed coding path
--> provider switch + fresh-process resume
--> external workspace drift revalidation
--> read-only audit stop
--> out-of-authority fail-closed stop
--> evidence-owned terminal completion
--> installed/runtime regression
--> secret/state + diff/worktree proof
--> checkpoint
+observable 1 exact-head isolated install: PASS
+  package: lbe-guard-inspector 0.2.0
+  import: isolated venv site-packages
+  installed lbe entrypoint: exit 0
+  checkout import leakage: none observed
+  command_hash: 0D8A27FD810FF4068BD4F8DDBFDB1A6A3DC62E45BC2E0D6F8F9A9164DF1303F4
+
+observable 2 persistent installed session: PASS
+  create_hash: 27328C32D6F2BA14A68A6798819F32B583D49ED6E93A2FB3553020019C85D9E7
+  fresh_process_status_inspect_hash: E748592638C757A490053E85BD51E649E20DCF110C81FFD336308A8E7A1445E3
+
+observable 3 governed coding execution + receipts: FAIL
+  installed code exit: 0
+  runtime outcome: INSUFFICIENT_EVIDENCE
+  task status: blocked
+  response.read_only: true
+  captured provider stage: planning
+  captured provider approved_tools: workspace.read
+  marker: R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN
+  command_hash: A2B146E0501F096D870E2ED15A4331366FB954E8F137D7CD980EC97E2FBAE7B4
 ```
 
-## Forbidden work
+## Proven falsifier
 
-- source/runtime/test/package implementation changes before a real falsifier;
-- architecture changes;
-- provider-specific authority outside accepted adapters;
-- direct ungoverned workspace editing by the provider;
+The current installed `lbe code` normal path does not expose the required governed coding execution/receipt path. Runtime capture proves the provider receives only `workspace.read`, and the returned response is explicitly read-only. The required coding mutation/receipt composition was therefore not reached.
+
+Observed composition:
+
+```text
+installed lbe code
+ -> GovernedAgentGateway
+ -> LBERequestController reasoning/inspection path
+ -> provider approved_tools = [workspace.read]
+ -> read_only response
+ -> no governed coding execution/receipt continuation reached
+```
+
+This falsifies observable 3 and therefore R7 as a whole. It does **not** reopen or invalidate the accepted R6E lower-layer authority; it demonstrates an installed normal-path composition gap between the CLI/gateway and the accepted governed tool authority.
+
+## Stop rule applied
+
+Later R7 observables are intentionally not executed after this decisive falsifier. Provider switching, restart/resume, external-change revalidation, audit, fail-closed, receipt correlation, completion, secret-state and release readiness cannot compensate for the missing normal coding execution path.
+
+## Repair boundary
+
+No source/runtime/test/package patch is authorized by this failed acceptance gate itself. Before code changes, activate a separate bounded repair slice whose single question is why installed `lbe code` does not reach the accepted R6E governed tool orchestration/receipt path and what the smallest active-owner composition correction is.
+
+## Evidence ladder result
+
+```text
+installed package identity                 PASS
+isolated installed smoke                  PASS
+persistent installed session              PASS
+one governed coding path                  FAIL — decisive falsifier
+remaining R7 evidence                     STOPPED
+```
+
+## Forbidden work while failed
+
+- continuing R7 as if observable 3 passed;
+- release/package-readiness activation;
 - version bump/tag/publish;
-- release/package-readiness activation while R7 is OPEN.
+- source/runtime/test/package implementation changes without a separately activated bounded repair slice;
+- creating a second execution/session/provider/authorization/receipt authority instead of connecting the existing owners.
 
 ## Completion predicate
 
-PASS only when the installed normal path is proven end to end over accepted persistent authorities at user-visible/runtime evidence level. PASS does not auto-activate release/package readiness or publication.
+`FAIL`. R7 cannot PASS until a separately governed repair restores the installed normal coding composition and R7 is rerun from the appropriate installed evidence boundary.
