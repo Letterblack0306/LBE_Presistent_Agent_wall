@@ -87,8 +87,17 @@ security_evidence:
   - one low @ai-sdk/provider-utils advisory remains and is recorded explicitly
   - Cline upstream PR #13223 remains draft/open and unmerged; it is supporting evidence only, not upstream approval
 
+lock_transfer_evidence:
+  - validated local package-lock.json size: 104917 bytes
+  - validated local package-lock.json SHA-256: 19E594A4143A9241BF9FCE199969DF74574FC20B37B6BA404B786A9AA5AA811C
+  - lock content was transported in eight bounded gzip/base64 chunks and reconstructed exactly; reconstructed size and SHA-256 matched the validated local artifact
+  - a temporary GitHub Actions lock-generation workflow was attempted only after the active gate explicitly authorized it; the GitHub run failed before executing any job steps, consistent with the repository's existing Actions startup-failure condition
+  - the temporary workflow was removed after that failed attempt
+  - one GitHub contents transfer produced a partial lock payload; it was detected before acceptance and immediately deleted. That commit is not canonical evidence and no incomplete lock remains on main
+
 unverified:
-  - the validated package-lock.json exists only in the local verification workspace and is not yet canonical in GitHub
+  - despite exact reconstruction, the current GitHub connector does not provide a file-upload/write primitive that can atomically transfer the full 104917-byte verified lock from the reconstructed artifact without reserializing it through a bounded text argument
+  - therefore package-lock.json is still not canonical in GitHub
   - therefore the wheel proof does not yet prove packaging from a canonical GitHub lock
   - broader project/release readiness
 
@@ -110,6 +119,8 @@ next_phase_locked: true
 
 The dependency-security mitigation itself is validated at integration level. The reachable Dify `undici@5.29.0` path is replaced by `undici@7.29.0`, the prior high-severity audit finding is eliminated, direct Cline import still works, `npm ci` succeeds, and the focused bridge/orchestrator regression remains 20/20.
 
-This checkpoint is still `UNVERIFIED`, not `PASS`, for one concrete reason: the generated and validated `package-lock.json` is not yet canonical in GitHub. The active gate requires a canonical lock and wheel proof from that lock before PASS.
+The validated lock artifact itself is also now byte-for-byte identified and independently reconstructed: `104917` bytes with SHA-256 `19E594A4143A9241BF9FCE199969DF74574FC20B37B6BA404B786A9AA5AA811C`.
+
+This checkpoint remains `UNVERIFIED`, not `PASS`, for one concrete integration reason: the verified lock still cannot be made canonical through the currently available GitHub connector without risking a partial or reserialized transfer, and GitHub Actions cannot currently execute the temporary generation workflow because the repository's Actions startup failure occurs before job steps run.
 
 Do not unlock provider continuation, MCP, UI/TUI, or release work from this checkpoint.
