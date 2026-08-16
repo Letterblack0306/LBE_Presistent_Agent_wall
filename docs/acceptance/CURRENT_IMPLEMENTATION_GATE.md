@@ -1,142 +1,125 @@
 # Current Implementation Gate
 
-Status: **PASS — R5 BOUNDED CLASSIFIED RECOVERY ACCEPTED — NEXT PHASE LOCKED**
+Status: **OPEN — R6A PROVIDER ABSTRACTION ACCEPTANCE — NEXT PHASE LOCKED**
 
-Current phase: `R5_BOUNDED_RECOVERY_ACCEPTANCE`
+Current phase: `R6A_PROVIDER_ABSTRACTION_ACCEPTANCE`
 
-Current slice: `PROVE_CLASSIFIED_BOUNDED_RECOVERY_AND_DUPLICATE_PREVENTION`
+Current slice: `PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
 ## Active plan
 
 ```text
-active_plan: docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_GATE.md
-checkpoint: docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_CHECKPOINT.md
-kind: accepted acceptance proof, not implementation
+active_plan: docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_GATE.md
+checkpoint: docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_CHECKPOINT.md
+kind: acceptance proof, not implementation
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: PASS
+status: OPEN
 ```
 
-## Prior gates
+## Prior accepted baseline
 
-R3 and R4 remain accepted PASS and `PROVEN_COMPLETE`.
+R3, R4 and R5 remain PASS and `PROVEN_COMPLETE`.
 
-R4 validated closure head:
+Final synchronized R5 baseline:
 
 ```text
-030af54df5ba8a514482e4b27dd41995518ff279
+HEAD: 535fe532f3faabf4b64a60d9f007ab584e2c8d37
+origin/main: 535fe532f3faabf4b64a60d9f007ab584e2c8d37
+R5 gate: PASS
+next_phase_locked: true
+LoopTool command hash: A0AE9161A7A1C9B8533A0E48C15D8D876DC0F02EE181733903903AF68A98551E
 ```
 
-## Accepted owner path
+## Why R6A is selected first
+
+R6A is the dependency-first R6 acceptance boundary because provider neutrality must hold before later R6 mode, context, authorization, governed-tool and completion claims can be considered provider-invariant.
+
+Current source/tests already prove pieces of this contract separately:
+
+- generic provider registration/composition through `ProviderRegistry` and `build_provider_controller()`;
+- typed provider backend/request/response contracts;
+- persisted session provider configuration changes without changing workspace/task identity.
+
+What remains unaccepted is the combined same-session A -> B proof.
+
+## Existing owners
 
 ```text
-SessionMemoryRuntimeBridge.run_recoverable
- -> recovery.run_with_recovery
- -> classify_failure / RetryPolicy
- -> persist_recovery_state
- -> WorkspaceMemoryStore
+provider registration/composition:
+  ProviderRegistry
+  build_provider_controller
+
+provider backend contract:
+  reasoning_provider
+
+reasoning boundary:
+  LBERequestController
+  LBERequest / LBEResponse
+
+persistent session/workspace authority:
+  SessionMemoryRuntimeBridge
+  WorkspaceMemoryStore
 ```
 
-Recovery state reload remains owned by:
+## Reuse decision
 
 ```text
-SessionMemoryRuntimeBridge.load_recovery_state
- -> recovery.load_recovery_state
- -> WorkspaceMemoryStore
+REUSE
 ```
 
-No second recovery/session/evidence owner was introduced.
+R6A is not being reimplemented.
 
-## Acceptance result
+## Acceptance question
 
-R5 is accepted at the required integration level.
+Can an equivalent logical request execute through provider A and provider B within one persisted session/workspace contract while provider/model identity changes only where intended and LBE-owned workspace, task, mode, permission, policy, evidence and completion authority remain unchanged?
 
-Repository-owned recovery discriminator:
+## Required observable
 
-```text
-python -m pytest -vv -s tests/test_runtime_recovery.py
-7 passed in 1.24s
-command_hash: 407606465DB8183D8F1998D1FBFEF32C303C1503D379D2625598246D29DFA66F
-```
+1. provider A and provider B are composed through the same registered provider owner;
+2. provider A handles the first logical request through the existing LBE controller contract;
+3. the persisted session switches provider configuration without changing workspace/session/task identity;
+4. provider B handles an equivalent logical request through the same LBE controller contract;
+5. mode, permission/runtime policy and other LBE authority fields do not drift because of provider change;
+6. LBE request/response/evidence semantics remain provider-neutral;
+7. no provider-native path gains workspace, authorization, tool, validation or completion authority;
+8. no second provider/session/reasoning owner is introduced.
 
-It directly proves:
+## Falsifier
 
-1. transient retryable failure can recover within declared policy;
-2. attempt count and terminal success state persist;
-3. retry count persists across runtime reconstruction;
-4. permission denial is terminal and is not retried;
-5. non-idempotent retryable work is rejected before duplicate execution;
-6. required evidence-between-attempts blocks another attempt when evidence is missing;
-7. terminal success blocks duplicate execution under the same task/operation identity;
-8. deterministic classes including `SCOPE_CONFLICT` cannot be configured as retryable.
+R6A cannot PASS if switching providers changes workspace/session/task identity, changes delegated LBE authority, bypasses the existing controller contract, requires a provider-specific governance fork, or requires a parallel owner.
 
-## Cancellation classification
+## Allowed work
 
-No repository-owned direct cancellation test was found.
+- GitHub inspection of current provider/session/reasoning owners and tests;
+- LoopTool execution of repository-owned provider/session tests and bounded diagnostics;
+- R6A acceptance/checkpoint/status documentation through GitHub;
+- diff/scope/worktree verification.
 
-One bounded ad hoc LoopTool attempt to synthesize cancellation failed before runtime entry because command transport corrupted the embedded Python payload.
+## Forbidden work
 
-```text
-classification: TEST_HARNESS_TRANSPORT_FAILURE
-product implication: none
-```
+- runtime/test implementation before a real defect is proven;
+- R6B-R6F implementation;
+- new provider/session/reasoning authority;
+- CLI/TUI/MCP/release work;
+- architecture changes.
 
-The active R5 gate explicitly permitted cancellation to be classified from canonical source plus focused evidence when no repository-owned direct cancellation harness exists.
-
-Canonical `run_with_recovery()` checks `cancellation.is_cancelled()` before incrementing attempts or invoking the operation, persists a terminal `FailureClass.CANCELLATION` state with `succeeded=false`, and raises `RecoveryStoppedError`. `RetryPolicy` forbids `CANCELLATION` from the retryable set.
-
-Accepted cancellation evidence level:
+## Current status
 
 ```text
-SUPPORTED_BY_CANONICAL_SOURCE_ALLOWED_BY_GATE
-DIRECT_RUNTIME_SYNTHESIS: NOT_OBTAINED
-```
-
-This limitation is explicit and does not convert the harness failure into a product defect.
-
-## Focused regression
-
-```text
-python -m pytest -q tests/test_runtime_recovery.py tests/test_session_memory_runtime.py
-30 passed in 22.88s
-command_hash: A31F6821993652C04A377E03F67ED92201B10E254409525C93405440B6C67669
-```
-
-Scope proof from R4 closure base to the R5 acceptance head showed only acceptance/governance documentation changes. No `lbe_guard_inspector/` or `tests/` source changed during R5 acceptance.
-
-## R5 classification
-
-```text
-R5 bounded classified recovery: PROVEN_COMPLETE
-```
-
-## Next dependency
-
-The earliest remaining roadmap candidates are in the R6 family. Their current classifications differ and must be selected from current evidence rather than opened as one combined phase.
-
-Current roadmap order begins with:
-
-```text
-R6A provider abstraction: PARTIALLY_PROVEN
-R6B typed mode policy: PARTIALLY_PROVEN
-R6C permission/authorization: PARTIALLY_PROVEN
-R6D context assembly/rule-guard injection: IMPLEMENTED_NOT_ACCEPTED
-R6E governed tool orchestration: PARTIALLY_PROVEN
-R6F completion/validation: PARTIALLY_PROVEN
-```
-
-No R6 slice is active.
-
-## Readiness
-
-```text
+source_owner_inspection: PASS
+generic provider composition evidence: PRESENT
+persisted provider switch evidence: PRESENT
+combined same-session A->B integration: NOT RUN
+focused regression: NOT RUN
+checkpoint: UNVERIFIED
 project_user_ready: NO
 release_ready: NO
 next_phase_locked: true
 ```
 
-R5 PASS does not imply overall project or release readiness and does not auto-activate R6.
+Do not advance automatically. If R6A exposes a real implementation defect, stop and activate a separate repair slice before modifying runtime or tests.
