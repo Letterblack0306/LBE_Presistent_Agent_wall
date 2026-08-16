@@ -8,8 +8,28 @@
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
-  "blocking_statuses": ["FAIL", "UNVERIFIED", "DOCUMENT_CONFLICT", "MISSING_EVIDENCE", "BLOCKED_WORKSPACE_AUTHORITY", "BLOCKED_PARALLEL_ARCHITECTURE"],
-  "required_checkpoint_fields": ["phase", "slice", "base_sha", "implementation_sha", "requirements", "existing_owner", "reuse_decision", "required_evidence_level", "validation_evidence", "unverified", "document_conflicts", "status"],
+  "blocking_statuses": [
+    "FAIL",
+    "UNVERIFIED",
+    "DOCUMENT_CONFLICT",
+    "MISSING_EVIDENCE",
+    "BLOCKED_WORKSPACE_AUTHORITY",
+    "BLOCKED_PARALLEL_ARCHITECTURE"
+  ],
+  "required_checkpoint_fields": [
+    "phase",
+    "slice",
+    "base_sha",
+    "implementation_sha",
+    "requirements",
+    "existing_owner",
+    "reuse_decision",
+    "required_evidence_level",
+    "validation_evidence",
+    "unverified",
+    "document_conflicts",
+    "status"
+  ],
   "rules": {
     "one_active_slice": true,
     "no_next_phase_without_pass": true,
@@ -21,14 +41,35 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Record the failed R7 installed end-to-end acceptance. The installed code normal path did not reach accepted governed coding tool execution/receipts; progression is stopped pending a separately activated bounded repair slice.",
-    "implementation_changes": "Forbidden. A real product falsifier is now proven, but source/runtime/CLI/test/package changes still require a separately activated bounded repair slice before implementation.",
+    "purpose": "Record and investigate the failed R7 installed coding composition. The installed code normal path did not reach accepted governed coding tool execution/receipts; progression remains stopped pending a separately activated bounded repair investigation.",
+    "implementation_changes": "Forbidden. A real product falsifier is proven, but source/runtime/CLI/test/package changes still require a separately activated bounded repair implementation slice after investigation proves the exact owner and edit surface.",
     "allowed_actions": [
       "record and inspect the proven installed coding composition falsifier",
       "inspect existing active owners and connecting flow without source changes",
-      "define the smallest bounded repair question and falsifier",
+      "trace ToolRequest GovernedToolOrchestrator ToolReceipt provider continuation and provider tool-call consumers",
+      "identify the earliest missing or incorrect composition state",
+      "define the smallest bounded repair hypothesis and falsifier",
+      "define focused and installed-runtime validation before editing",
       "keep release package readiness and publication blocked",
       "preserve exact acceptance evidence and harness-failure classifications"
+    ]
+  },
+  "next_admissible_action": {
+    "kind": "SEPARATELY_ACTIVATED_REPAIR_INVESTIGATION",
+    "status": "NOT_ACTIVATED",
+    "question": "What existing active-owner seam should connect installed lbe code / GovernedAgentGateway reasoning to the accepted R6C/R6E governed tool execution and receipt-continuation path, and what is the smallest correction that restores that composition without creating parallel authority?",
+    "implementation_allowed_during_investigation": false,
+    "architecture_changes_allowed": false,
+    "required_before_implementation": [
+      "trace all current ToolRequest construction and consumer paths",
+      "trace all GovernedToolOrchestrator construction and consumer paths",
+      "trace ToolReceipt correlation persistence and provider continuation paths",
+      "trace provider tool-call and provider-turn runtime paths",
+      "prove earliest missing or incorrect composition state",
+      "prove no already-active alternate coding path was missed",
+      "identify smallest active-owner edit surface",
+      "record one repair hypothesis and falsifier",
+      "define claim-matched focused integration and installed-runtime validation"
     ]
   },
   "accepted_baseline": {
@@ -47,6 +88,11 @@
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
-    "remaining_prerequisites": ["repair installed coding composition and rerun R7 installed end-to-end acceptance", "release/package readiness acceptance"]
+    "remaining_prerequisites": [
+      "activate and complete bounded installed coding composition repair investigation",
+      "separately authorize and validate smallest repair",
+      "rerun R7 installed end-to-end acceptance to PASS",
+      "release/package readiness acceptance"
+    ]
   }
 }
