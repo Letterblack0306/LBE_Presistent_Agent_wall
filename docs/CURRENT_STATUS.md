@@ -55,7 +55,35 @@ worktree: clean
 LoopTool command hash: A0AE9161A7A1C9B8533A0E48C15D8D876DC0F02EE181733903903AF68A98551E
 ```
 
-This is the canonical synchronized R5 closure baseline for selecting the next R6 acceptance slice.
+This is the canonical synchronized R5 closure baseline for R6 work.
+
+## Active R6A acceptance slice
+
+Evidence review across R6A-R6F selected R6A as the dependency-first R6 acceptance boundary.
+
+```text
+phase: R6A_PROVIDER_ABSTRACTION_ACCEPTANCE
+slice: PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT
+status: OPEN
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
+required_evidence_level: INTEGRATION
+```
+
+Selection rationale:
+
+- generic provider composition already exists through `ProviderRegistry` and `build_provider_controller()`;
+- persisted provider/session configuration changes already exist independently;
+- later mode, authorization, context, governed-tool and completion claims must remain invariant across provider changes;
+- the missing R6A artifact is the combined same-session provider A -> provider B acceptance proof, not a new provider architecture.
+
+Active plan/checkpoint:
+
+```text
+docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_GATE.md
+docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_CHECKPOINT.md
+```
 
 ## R5 accepted behavior
 
@@ -141,7 +169,7 @@ Cline may supply provider-native streaming/tool-call/continuation mechanics behi
 | R3 persistent runtime -> existing reasoning boundary | `PROVEN_COMPLETE` |
 | R4 checkpoint/resume/rehydration | `PROVEN_COMPLETE` |
 | R5 bounded classified recovery | `PROVEN_COMPLETE` |
-| R6A provider abstraction | `PARTIALLY_PROVEN` |
+| R6A provider abstraction | `PARTIALLY_PROVEN` — acceptance active |
 | R6B typed mode policy | `PARTIALLY_PROVEN` |
 | R6C permission/authorization | `PARTIALLY_PROVEN` |
 | R6D context assembly + rule/guard injection | `IMPLEMENTED_NOT_ACCEPTED` |
@@ -150,23 +178,6 @@ Cline may supply provider-native streaming/tool-call/continuation mechanics behi
 | CLI control surface | `PARTIALLY_PROVEN` |
 | R7 end-to-end runtime | `PARTIALLY_PROVEN` |
 | Release/package readiness | `PARTIALLY_PROVEN` |
-
-## Earliest next capability selection
-
-There is no single active R6 phase yet.
-
-Current candidate families are:
-
-```text
-R6A provider abstraction: PARTIALLY_PROVEN
-R6B typed mode policy: PARTIALLY_PROVEN
-R6C permission/authorization: PARTIALLY_PROVEN
-R6D context assembly + rule/guard injection: IMPLEMENTED_NOT_ACCEPTED
-R6E governed tool orchestration: PARTIALLY_PROVEN
-R6F completion/validation: PARTIALLY_PROVEN
-```
-
-The next slice must first inspect current evidence and select the earliest dependency-appropriate R6 acceptance gap. Do not combine the R6 families into one gate.
 
 ## Current readiness
 
@@ -178,12 +189,11 @@ next_phase_locked: true
 
 ## Remaining broad acceptance gaps
 
-- R6 provider/mode/authorization/context/tool/completion acceptance gaps in dependency order;
+- current active R6A same-session provider-switch acceptance;
+- after R6A, select the next R6 family from dependency evidence rather than automatically advancing;
 - CLI normal-path coverage of accepted runtime services;
 - installed-path R7 coding/audit/resume/provider-switch/escalation proofs;
 - release/package readiness.
-
-These are candidates, not active slices.
 
 ## No-drift boundary
 
