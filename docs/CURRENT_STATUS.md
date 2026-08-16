@@ -26,141 +26,140 @@ LBE_RUNTIME_ROADMAP_RECONCILIATION: PASS
 R3_RUNTIME_REASONING_ACCEPTANCE: PASS
 R4_CHECKPOINT_RESUME_ACCEPTANCE: PASS
 R5_BOUNDED_RECOVERY_ACCEPTANCE: PASS
+R6A_PROVIDER_ABSTRACTION_ACCEPTANCE: PASS
 ```
 
-Current completed R5 slice:
-
-```text
-phase: R5_BOUNDED_RECOVERY_ACCEPTANCE
-slice: PROVE_CLASSIFIED_BOUNDED_RECOVERY_AND_DUPLICATE_PREVENTION
-status: PASS
-implementation_allowed: false
-architecture_changes_allowed: false
-next_phase_locked: true
-```
-
-### Final R5 synchronization proof
-
-The accepted R5 closure was pulled into the canonical local workspace and verified against `origin/main`.
-
-```text
-HEAD: 535fe532f3faabf4b64a60d9f007ab584e2c8d37
-origin/main: 535fe532f3faabf4b64a60d9f007ab584e2c8d37
-machine gate phase: R5_BOUNDED_RECOVERY_ACCEPTANCE
-machine gate status: PASS
-implementation_allowed: false
-next_phase_locked: true
-roadmap: R5 PROVEN_COMPLETE
-worktree: clean
-LoopTool command hash: A0AE9161A7A1C9B8533A0E48C15D8D876DC0F02EE181733903903AF68A98551E
-```
-
-This is the canonical synchronized R5 closure baseline for R6 work.
-
-## Active R6A acceptance slice
-
-Evidence review across R6A-R6F selected R6A as the dependency-first R6 acceptance boundary.
+Current completed R6A slice:
 
 ```text
 phase: R6A_PROVIDER_ABSTRACTION_ACCEPTANCE
 slice: PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT
-status: OPEN
+status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
 ```
 
-Selection rationale:
+R6B is **not active**. No later R6 phase is unlocked automatically.
 
-- generic provider composition already exists through `ProviderRegistry` and `build_provider_controller()`;
-- persisted provider/session configuration changes already exist independently;
-- later mode, authorization, context, governed-tool and completion claims must remain invariant across provider changes;
-- the missing R6A artifact is the combined same-session provider A -> provider B acceptance proof, not a new provider architecture.
-
-Active plan/checkpoint:
-
-```text
-docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_GATE.md
-docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_CHECKPOINT.md
-```
-
-## R5 accepted behavior
+## R6A accepted behavior
 
 Accepted owner path:
 
 ```text
-SessionMemoryRuntimeBridge.run_recoverable
- -> recovery.run_with_recovery
- -> classify_failure / RetryPolicy
- -> persist_recovery_state
- -> WorkspaceMemoryStore
+ProviderRegistry
+ -> build_provider_controller
+ -> provider-neutral backend contract
+ -> LBERequestController
+ -> SessionMemoryRuntimeBridge.run_reasoning
+ -> persisted session/task state
 ```
 
-Proven by repository-owned tests:
+Acceptance established:
 
 ```text
-transient retryable recovery within max_attempts: PASS
-persisted attempt count / terminal state: PASS
-attempt state after reconstruction: PASS
-permission denial no-retry: PASS
-scope conflict cannot be retryable: PASS
-non-idempotent retry blocked: PASS
-required evidence-between-attempts enforced: PASS
-terminal-success duplicate execution blocked: PASS
+provider A equivalent request -> COMPLETED
+provider configuration switch A/model-a -> B/model-b
+provider B equivalent request -> COMPLETED
+same persisted session/workspace/task identity preserved
+mode preserved
+permission preserved
+runtime policy preserved
+permission-policy identity preserved
+evidence-policy identity preserved
+provider/model changed only in intended fields
 ```
 
-Core discriminator:
+No provider-specific governance, session, reasoning, authorization, tool, validation or completion owner was introduced.
+
+### Target identity proof
+
+LoopTool command hash:
 
 ```text
-tests/test_runtime_recovery.py
-7 passed
-command_hash: 407606465DB8183D8F1998D1FBFEF32C303C1503D379D2625598246D29DFA66F
+93A6B4C3301802876F930F48D3B592901163A645FB28CD2F14A3D8DDED4FFB80
 ```
 
-Focused R5 regression:
+```text
+LBE_PACKAGE=C:\Agents-Memory-Tool-v6-integration\lbe_guard_inspector\__init__.py
+RUNTIME_MODULE=C:\Agents-Memory-Tool-v6-integration\lbe_guard_inspector\session_memory_runtime.py
+R6A_WORKSPACE_IMPORT_IDENTITY=PASS
+```
+
+This bound the decisive proof to the checked-out workspace rather than an installed `site-packages` copy.
+
+### Decisive same-session provider-switch proof
+
+LoopTool command hash:
 
 ```text
-tests/test_runtime_recovery.py
+2F16607C4A8807706BAA13114BCD930B21F3728EF4E487F833D6D46DF7558935
+```
+
+```text
+R6A_PROVIDER_A_OUTCOME=COMPLETED
+R6A_PROVIDER_B_OUTCOME=COMPLETED
+R6A_SESSION_ID=session-r6a
+R6A_WORKSPACE_ID=project-r6a
+R6A_MODE=coding
+R6A_PERMISSION=write_allowed
+R6A_RUNTIME_POLICY=development
+R6A_PROVIDER_SWITCH=provider-a->provider-b
+R6A_TASK_STATUS=completed
+R6A_SAME_SESSION_PROVIDER_SWITCH=PASS
+R6A_WORKSPACE_BOUND_DIAGNOSTIC=PASS
+```
+
+### Focused regression
+
+Existing-owner regression:
+
+```text
+tests/test_provider_registry.py
+tests/test_reasoning_runtime.py
+tests/test_request_controller.py
+tests/test_session_resume_runtime.py
 tests/test_session_memory_runtime.py
-30 passed
-command_hash: A31F6821993652C04A377E03F67ED92201B10E254409525C93405440B6C67669
+64 passed in 29.15s
 ```
 
-No runtime or test implementation source changed during R5 acceptance.
-
-### Cancellation evidence boundary
-
-No repository-owned direct cancellation test was found. One ad hoc LoopTool cancellation probe failed before product execution because command transport corrupted the embedded Python payload; this is `TEST_HARNESS_TRANSPORT_FAILURE`, not a recovery defect.
-
-The R5 gate explicitly permitted source-supported cancellation classification when no repository-owned direct harness exists. Canonical `run_with_recovery()` checks cancellation before another attempt, persists terminal `CANCELLATION` state with `succeeded=false`, and `RetryPolicy` forbids cancellation from the retryable set.
+LoopTool command hash:
 
 ```text
-cancellation: SUPPORTED_BY_CANONICAL_SOURCE_ALLOWED_BY_GATE
-direct runtime synthesis: NOT_OBTAINED
+B8801BF25001FF41F76781E2157DC531A720C3889AD7121F724B9D5EF0835EA6
 ```
 
-## Product architecture to preserve
+The command wrapper exited non-zero only after the tests because the first `git diff --check` syntax was invalid. The 64-test regression itself is accepted as PASS. The missing scope proof was rerun separately rather than relabeling the product regression as failed.
+
+### Final scope/worktree proof
+
+LoopTool command hash:
 
 ```text
-provider / reasoning engine
-        |
-        v
-persistent LBE runtime
-        |
-        +-- workspace/session identity
-        +-- mode/policy
-        +-- bounded classified recovery
-        +-- deterministic authorization
-        +-- governed tool execution
-        +-- receipts/evidence
-        +-- validation/completion authority
-        |
-        v
-current workspace
+1EB7542A3DF61BD0B39169739782553F5B4AC9738FF2E0403713D8CB7AE3FA94
 ```
 
-Cline may supply provider-native streaming/tool-call/continuation mechanics behind the LBE boundary. LBE remains authoritative for workspace identity, policy, recovery, execution ownership, evidence, validation, completion truth, and persistent state.
+```text
+R6A_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
+R6A_DIFF_CHECK=PASS
+R6A_WORKTREE_CLEAN=PASS
+R6A_FOCUSED_REGRESSION_PREVIOUSLY_PROVEN=64_PASSED
+R6A_ACCEPTANCE_SCOPE=PASS
+## main...origin/main
+```
+
+## Harness failures excluded from product claims
+
+Several early diagnostics failed for harness reasons and were not promoted into runtime defects:
+
+- command/Base64 transport truncation;
+- direct `tests.test_*` import against a non-package tests directory;
+- installed-package import precedence;
+- synthetic workspace not initialized as Git;
+- synthetic workspace missing the CEP manifest fixture, causing `UNKNOWN_GUARD` after provider A had already been reached.
+
+Once target identity and fixture preconditions were corrected, the combined A -> B path passed without runtime/test source changes.
 
 ## Current roadmap classification
 
@@ -169,7 +168,7 @@ Cline may supply provider-native streaming/tool-call/continuation mechanics behi
 | R3 persistent runtime -> existing reasoning boundary | `PROVEN_COMPLETE` |
 | R4 checkpoint/resume/rehydration | `PROVEN_COMPLETE` |
 | R5 bounded classified recovery | `PROVEN_COMPLETE` |
-| R6A provider abstraction | `PARTIALLY_PROVEN` — acceptance active |
+| R6A provider abstraction | `PROVEN_COMPLETE` |
 | R6B typed mode policy | `PARTIALLY_PROVEN` |
 | R6C permission/authorization | `PARTIALLY_PROVEN` |
 | R6D context assembly + rule/guard injection | `IMPLEMENTED_NOT_ACCEPTED` |
@@ -189,8 +188,7 @@ next_phase_locked: true
 
 ## Remaining broad acceptance gaps
 
-- current active R6A same-session provider-switch acceptance;
-- after R6A, select the next R6 family from dependency evidence rather than automatically advancing;
+- review R6B-R6F dependency evidence before explicitly activating one next acceptance slice;
 - CLI normal-path coverage of accepted runtime services;
 - installed-path R7 coding/audit/resume/provider-switch/escalation proofs;
 - release/package readiness.
@@ -199,7 +197,7 @@ next_phase_locked: true
 
 Do not:
 
-- reopen R3/R4/R5 because older records describe them as unaccepted;
+- reopen R3/R4/R5/R6A because older records describe them as unaccepted;
 - recreate existing R6 owners before evidence disproves them;
 - bypass LBE authority through provider-native mutation tools;
 - treat focused tests alone as roadmap acceptance without required behavior proof;
