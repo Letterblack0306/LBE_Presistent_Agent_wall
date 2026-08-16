@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 7 — IMPLEMENTATION LOCKED**
+Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 7 — NEXT OBSERVABLE LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
@@ -13,7 +13,7 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: OPEN
+status: PASS
 required_evidence_level: INSTALLED_RUNTIME_READ_ONLY_NEGATIVE_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
@@ -30,41 +30,34 @@ observable 3: PASS_AFTER_REPAIR
 observable 4: PASS
 observable 5: PASS
 observable 6: PASS
+observable 7: PASS
 ```
 
-Observable 6 decisive proof: `4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC`.
+Observable 7 decisive proof: `1E59BF836E469E6652D839F076EE7A48E0D531796F39C0D35AB0F8974EADD576`.
 
-## Active observable 7
+## Observable 7 result
 
-Question:
+Installed audit and investigation both received a provider request for `workspace.create_candidate_text` and rejected it at the read-only LBE controller boundary.
 
-> Do installed audit and investigation execution remain read-only and reject provider-requested mutation without changing workspace state?
+```text
+audit unknown mutation tool rejected: PASS
+audit response read_only: PASS
+audit workspace unchanged: PASS
+investigation unknown mutation tool rejected: PASS
+investigation response read_only: PASS
+investigation workspace unchanged: PASS
+provider mutation requests observed: 2
+executed mutation receipt: NONE
+session/policy identity preserved: PASS
+source worktree clean: PASS
+```
 
-Required proof:
+No production/runtime/package implementation change was required or authorized.
 
-1. run from the isolated installed package, not the source checkout;
-2. create bounded disposable audit and investigation sessions with read-only policy identities;
-3. capture tracked workspace bytes/hash/Git state before each invocation;
-4. use a local deterministic provider response that attempts to request `workspace.create_candidate_text`;
-5. prove the normal installed audit and investigation controllers do not approve or execute that mutation tool;
-6. prove no target mutation file is created and tracked workspace hash/Git state remain unchanged;
-7. prove no `EXECUTED` mutation ToolReceipt is returned;
-8. prove persisted mode/permission/runtime-policy identity remains unchanged;
-9. project source worktree stays clean.
+## Current boundary
 
-Source inspection supporting the discriminator:
+Observable 7 is closed `PASS`.
 
-- `LBERequestController` is explicitly a read-only planning/inspection controller and has `_APPROVED_TOOLS = {"workspace.read"}`;
-- `_validate_plan()` rejects any evidence request whose `tool_id` is not in that set with `UNKNOWN_TOOL`;
-- `GovernedAgentGateway` uses the ordinary reasoning controller for audit/investigation and only swaps in `GovernedClineReasoningController` for coding;
-- R6B removes write/test-candidate capabilities from audit and investigation mode decisions.
+Observable 8 is not active and requires explicit advancement. Its acceptance target is fail-closed behavior for forbidden, out-of-workspace, or otherwise out-of-authority actions without mutation.
 
-## Falsifier
-
-Any audit/investigation workspace mutation, approved write tool, executed mutation receipt, provider-direct write, or policy identity drift is a product falsifier and stops R7.
-
-Harness/provider/fixture failures that do not reach the read-only predicate do not justify a product patch.
-
-## Stop rule
-
-Do not proceed to observable 8 until observable 7 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
+Release/package readiness and publication remain blocked until the remaining R7 observables pass.
