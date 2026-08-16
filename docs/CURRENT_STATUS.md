@@ -10,7 +10,7 @@ Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 
 Canonical branch: `main`
 
-Canonical local workspace used by the latest reconciliation proof:
+Canonical local workspace:
 
 ```text
 C:\Agents-Memory-Tool-v6-integration
@@ -18,36 +18,54 @@ C:\Agents-Memory-Tool-v6-integration
 
 ## Current accepted state
 
-The previously accepted Cline provider-continuation slice remains PASS and is not reopened.
-
-The documentation/roadmap reconciliation slice is also now PASS:
+Accepted milestones now include:
 
 ```text
-phase: LBE_RUNTIME_ROADMAP_RECONCILIATION
-slice: CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
+LBE_CLINE_PROVIDER_CONTINUATION: PASS
+LBE_RUNTIME_ROADMAP_RECONCILIATION: PASS
+R3_RUNTIME_REASONING_ACCEPTANCE: PASS
+```
+
+Current completed R3 slice:
+
+```text
+phase: R3_RUNTIME_REASONING_ACCEPTANCE
+slice: PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY
 status: PASS
+validated_acceptance_head: d0b542930dcccccc0e9b3a8f3483ac0d3bd20c00
+implementation_allowed: false
 next_phase_locked: true
 ```
 
-Validated reconciliation head:
+## R3 accepted behavior
 
 ```text
-c13fe3a6643496ec6a2d5d6fec7e115149d17141
+SessionMemoryRuntimeBridge.run_reasoning
+ -> existing LBERequest
+ -> real LBERequestController.run
+ -> existing LBEResponse
+ -> canonical TaskStatus persistence
 ```
 
-Local validation at that head proved:
+Observed lifecycle mappings:
 
 ```text
-HEAD == origin/main: PASS
-documentation-only fail-closed gate: PASS
-exact reconciliation scope: PASS — 6 files
-runtime/test source changed: NO
-human/machine/roadmap authority aligned: PASS
-git diff --check: PASS
-worktree clean: PASS
+COMPLETED -> completed
+INSUFFICIENT_EVIDENCE -> blocked
+ORCHESTRATION_ERROR -> failed
 ```
 
-The implementation-only checker was intentionally not used as final proof because its contract requires `implementation_allowed=true`; the reconciliation gate correctly kept `implementation_allowed=false`.
+The real controller was also independently callable outside the runtime bridge.
+
+Focused acceptance regression:
+
+```text
+46 passed
+```
+
+No runtime or test implementation source changed during R3 acceptance.
+
+The first integration wrapper exited nonzero only after printing `R3_ACCEPTANCE_INTEGRATION=PASS`, because Windows could not remove a temporary SQLite file still held open. This is recorded as `TEST_HARNESS_CLEANUP_FAILURE`, not a product defect.
 
 ## Product architecture to preserve
 
@@ -68,15 +86,13 @@ persistent LBE runtime
 current workspace
 ```
 
-Cline may provide provider-native streaming/tool-call/continuation mechanics behind the LBE boundary. LBE remains authoritative for workspace identity, policy, execution ownership, evidence, validation, completion truth, and persistent state.
+Cline may supply provider-native streaming/tool-call/continuation mechanics behind the LBE boundary. LBE remains authoritative for workspace identity, policy, execution ownership, evidence, validation, completion truth, and persistent state.
 
-Do not create parallel owners for these responsibilities.
-
-## Reconciled roadmap classification
+## Current roadmap classification
 
 | Roadmap family | Current classification |
 |---|---|
-| R3 persistent runtime -> existing reasoning boundary | `IMPLEMENTED_NOT_ACCEPTED` |
+| R3 persistent runtime -> existing reasoning boundary | `PROVEN_COMPLETE` |
 | R4 checkpoint/resume/rehydration | `IMPLEMENTED_NOT_ACCEPTED` |
 | R5 bounded classified recovery | `IMPLEMENTED_NOT_ACCEPTED` |
 | R6A provider abstraction | `PARTIALLY_PROVEN` |
@@ -89,20 +105,17 @@ Do not create parallel owners for these responsibilities.
 | R7 end-to-end runtime | `PARTIALLY_PROVEN` |
 | Release/package readiness | `PARTIALLY_PROVEN` |
 
-The important conclusion is that older roadmap labels must not be interpreted as missing source implementation merely because they appear later in the historical sequence.
-
 ## Earliest next capability gap
 
 ```text
-phase: R3_RUNTIME_REASONING_ACCEPTANCE
-slice: PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY
-kind: acceptance proof
+R4 checkpoint/resume/rehydration acceptance
+classification: IMPLEMENTED_NOT_ACCEPTED
 active: NO
 ```
 
-R3 source implementation already exists through `SessionMemoryRuntimeBridge.run_reasoning()` and focused tests. What remains is a current bounded acceptance record at the roadmap's claimed proof level.
+Current source/tests already contain R4 checkpoint/session persistence, restart/rehydration, Git revalidation, stale source-backed claim invalidation, active-constraint survival and provider/session preservation.
 
-Therefore the next work must prove R3; it must not reimplement R3.
+The next task is therefore an R4 **acceptance proof**, not R4 implementation, unless evidence first disproves the existing owner.
 
 ## Current readiness
 
@@ -112,31 +125,30 @@ release_ready: NO
 next_phase_locked: true
 ```
 
-A separate machine/human gate must be explicitly activated before R3 acceptance work begins.
+R4 must not start until a separate machine/human acceptance gate defines the exact observable, falsifier and required regression level.
 
 ## Remaining broad acceptance gaps
 
-After R3, later gaps must still be selected in dependency order from current evidence. Current known families include:
+After R4, later candidates remain:
 
-- R4 roadmap-level resume/rehydration acceptance;
-- R5 roadmap-level recovery acceptance;
+- R5 classified recovery acceptance;
 - same-session provider-switch acceptance;
-- complete mode/context/authorization/tool/completion user-flow acceptance;
+- complete mode/context/authorization/tool/completion acceptance;
 - installed-path R7 coding/audit/resume/provider-switch/escalation proofs;
 - release/package readiness.
 
-These are future acceptance candidates, not automatically open tasks.
+These are candidates, not active slices.
 
 ## No-drift boundary
 
 Do not:
 
-- reactivate R2 or P16 because an older document called it current;
-- recreate existing R3-R6 owners;
-- bypass LBE authorization/tool authority through provider-native mutation tools;
-- treat focused tests as roadmap-level acceptance without matching proof;
-- treat GPT-Knowledge, memory, or historical checkpoints as current workspace truth;
-- unlock the next phase automatically from a PASS checkpoint.
+- reopen R3 because an older record describes it as unaccepted;
+- recreate existing R4-R6 owners;
+- bypass LBE authority through provider-native mutation tools;
+- treat focused tests alone as roadmap acceptance;
+- treat GPT-Knowledge, memory or historical checkpoints as current workspace truth;
+- unlock the next phase automatically from PASS.
 
 ## Working method
 
@@ -145,7 +157,7 @@ prove current authority/revision
 -> inspect existing owner
 -> state one acceptance question
 -> define required observable/falsifier
--> run the smallest discriminating proof
+-> run smallest discriminating proof
 -> classify result
 -> update checkpoint
 -> stop with next phase locked
