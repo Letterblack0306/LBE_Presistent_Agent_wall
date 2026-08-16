@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
-Updated: 2026-08-16
-Status: Active canonical roadmap — evidence reconciled through R6B acceptance
+Updated: 2026-08-17
+Status: Active canonical roadmap — evidence reconciled through R6C acceptance
 
 This document defines dependency order and acceptance goals for `Letterblack0306/LBE_Presistent_Agent_wall`.
 
@@ -53,18 +53,7 @@ Coding and audit/investigation are control contracts over the same LBE authority
 
 ## 3. Existing foundation to preserve
 
-Current owners already exist for:
-
-- workspace/project identity and live-evidence separation;
-- validated memory and stale-data invalidation;
-- `WorkspaceMemoryStore` and `SessionMemoryRuntimeBridge`;
-- bounded classified recovery;
-- provider registry/capabilities/turn/history/control;
-- typed mode policy and deterministic authorization;
-- `GovernedToolOrchestrator` execution/receipt/idempotency;
-- completion policy/runtime/evidence/gate;
-- CLI and optional Textual projection;
-- bounded Node/stdio Cline continuation.
+Current owners already exist for workspace/project identity, validated memory, `WorkspaceMemoryStore`, `SessionMemoryRuntimeBridge`, bounded classified recovery, provider registry/capabilities/turn/history/control, typed mode policy, deterministic authorization, `GovernedToolOrchestrator`, completion policy/runtime/evidence/gate, CLI/Textual projection, and bounded Node/stdio Cline continuation.
 
 Missing acceptance evidence must not be treated as permission to reimplement these owners.
 
@@ -78,7 +67,7 @@ R4  PROVEN_COMPLETE
 R5  PROVEN_COMPLETE
 R6A PROVEN_COMPLETE
 R6B PROVEN_COMPLETE
-R6C PARTIALLY_PROVEN
+R6C PROVEN_COMPLETE
 R6D IMPLEMENTED_NOT_ACCEPTED
 R6E PARTIALLY_PROVEN
 R6F PARTIALLY_PROVEN
@@ -90,8 +79,8 @@ release/package readiness PARTIALLY_PROVEN
 Current completed phase:
 
 ```text
-phase: R6B_TYPED_MODE_POLICY_ACCEPTANCE
-slice: PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT
+phase: R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE
+slice: PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH_GOVERNED_EXECUTION
 status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
@@ -106,23 +95,7 @@ No later R6 slice is active. Another family requires explicit activation and its
 
 **Classification: `PROVEN_COMPLETE`.**
 
-Accepted path:
-
-```text
-SessionMemoryRuntimeBridge.run_reasoning
- -> LBERequest
- -> LBERequestController.run
- -> LBEResponse
- -> canonical task lifecycle persistence
-```
-
-Accepted mappings:
-
-```text
-COMPLETED -> TaskStatus.COMPLETED
-INSUFFICIENT_EVIDENCE -> TaskStatus.BLOCKED
-ORCHESTRATION_ERROR -> TaskStatus.FAILED
-```
+Accepted path: `SessionMemoryRuntimeBridge.run_reasoning -> LBERequestController.run -> LBEResponse -> canonical task lifecycle persistence`.
 
 Focused regression: `46 passed`. No runtime/test implementation source changed during acceptance.
 
@@ -131,18 +104,6 @@ Focused regression: `46 passed`. No runtime/test implementation source changed d
 # 6. R4 — Checkpoint, resume, and rehydration
 
 **Classification: `PROVEN_COMPLETE`.**
-
-Accepted path:
-
-```text
-SessionMemoryRuntimeBridge.start_or_resume
- -> SessionMemoryAdapter.rehydrate
- -> current Git/source inspection
- -> verified-record loading
- -> stale source-backed record invalidation
- -> protected checkpoint revalidation
- -> current context packet
-```
 
 Accepted session/task/config continuity, active-constraint survival, stale source-backed fact invalidation, checkpoint HEAD protection, and current-workspace precedence over summaries/history.
 
@@ -154,17 +115,7 @@ Focused regression: `37 passed`.
 
 **Classification: `PROVEN_COMPLETE`.**
 
-Accepted path:
-
-```text
-SessionMemoryRuntimeBridge.run_recoverable
- -> recovery.run_with_recovery
- -> classify_failure / RetryPolicy
- -> persist_recovery_state
- -> WorkspaceMemoryStore
-```
-
-Accepted bounded retry, persisted attempt/terminal state, deterministic no-retry classes, idempotency restrictions, evidence-between-attempts enforcement, duplicate-success blocking, and source-supported cancellation semantics within the R5 gate’s declared evidence boundary.
+Accepted bounded retry, persisted attempt/terminal state, deterministic no-retry classes, idempotency restrictions, evidence-between-attempts enforcement, duplicate-success blocking, and source-supported cancellation semantics within the declared R5 evidence boundary.
 
 Repository discriminator: `7 passed`. Focused regression: `30 passed`.
 
@@ -174,26 +125,7 @@ Repository discriminator: `7 passed`. Focused regression: `30 passed`.
 
 **Classification: `PROVEN_COMPLETE`.**
 
-Accepted path:
-
-```text
-ProviderRegistry
- -> build_provider_controller
- -> provider-neutral backend contract
- -> LBERequestController
- -> SessionMemoryRuntimeBridge.run_reasoning
- -> persisted session/task state
-```
-
-Accepted same-session provider A -> B behavior:
-
-```text
-provider A -> COMPLETED
-provider configuration A/model-a -> B/model-b
-provider B -> COMPLETED
-```
-
-Session/workspace/task/mode/permission/runtime-policy and LBE policy identities remained stable; only intended provider/model fields changed. Focused regression: `64 passed`. Runtime/test source unchanged.
+Accepted same-session provider A -> B behavior with session/workspace/task/mode/permission/runtime-policy and LBE policy identities stable while only intended provider/model fields changed. Focused regression: `64 passed`. Runtime/test source unchanged.
 
 ---
 
@@ -204,67 +136,69 @@ Session/workspace/task/mode/permission/runtime-policy and LBE policy identities 
 Accepted owner path:
 
 ```text
-ModeRequest
- -> resolve_mode
- -> ModeDecision
- -> behavior.contracts
- -> SessionMemoryRuntimeBridge
- -> persisted session mode
+ModeRequest -> resolve_mode -> ModeDecision -> behavior.contracts
+ -> SessionMemoryRuntimeBridge -> persisted session mode
  -> AuthorizationRequest / resolve_authorization
 ```
 
-Accepted persistent-session discriminator on acceptance head `9086ad67bebb48f6505c7b3660f1ac49e0cc57c3`:
+Accepted persistent-session discriminator:
 
 ```text
 coding -> propose -> ALLOW
 audit -> propose -> ESCALATE
 investigation -> propose -> ESCALATE
-mode sequence: coding -> audit -> investigation
 same session/workspace/task/provider identity preserved
-permission: write_allowed
-runtime policy: permissive
 ```
 
-This proves coding, audit and investigation as typed LBE runtime capability/authorization contracts at the accepted boundary rather than prompt-only personalities. Provider identity did not determine mode authority. Audit and investigation excluded the tested proposal capability. Downstream authorization consumed typed `ModeDecision`.
-
-Evidence:
-
-```text
-mode contract tests: 28 passed
-integration command hash: 9C54DBC9E1792039991E4EEFDD4F0FE0C2ED59782318E94BC8DA904135159859
-focused regression: 69 passed
-runtime/test source unchanged: PASS
-diff check: PASS
-worktree clean: PASS
-```
-
-The initial oversized temporary probe was truncated before Python execution and remains classified `TEST_HARNESS_TRANSPORT_TRUNCATION`, not a product defect.
-
-Canonical checkpoint:
-
-```text
-docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_CHECKPOINT.md
-```
-
-Do not reopen R6B without new contradictory current evidence.
+Evidence: mode contract tests `28 passed`; focused regression `69 passed`; runtime/test source unchanged; diff/worktree proof PASS.
 
 ---
 
 # 10. R6C — Permission and authorization
 
-**Classification: `PARTIALLY_PROVEN`.**
+**Classification: `PROVEN_COMPLETE`.**
 
-Current deterministic verdict vocabulary:
+Accepted owner path:
 
 ```text
-ALLOW
-DENY
-ESCALATE
+ModeDecision
+ -> AuthorizationRequest / resolve_authorization
+ -> AuthorizationDecision
+ -> ToolExecutionContext
+ -> GovernedToolOrchestrator
+ -> ToolReceipt
 ```
 
-Current owner: `runtime.authorization_resolver`. R6B now supplies the accepted typed `ModeDecision` input boundary. Remaining R6C acceptance includes repeated pre-authorized operations, visible policy provenance, scope/authority expansion behavior, destructive/persistent-policy boundaries, and no provider bypass.
+Accepted integration behavior on acceptance head `011531b56087432d5401b9dbdc1a04d6f1cadde9`:
 
-R6C is not active until explicitly gated.
+```text
+op-allow-1 -> ALLOW -> EXECUTED
+op-allow-2 -> ALLOW -> EXECUTED
+op-deny -> DENY -> handler not executed
+op-escalate -> ESCALATE -> handler not executed
+op-destructive with explicit destructive delegation -> ALLOW -> EXECUTED
+```
+
+Authorization verdict/rationale remained visible in governed receipts. Repeated delegated authority did not require a second approval mechanism. Explicit forbidden policy denied; scope/authority expansion escalated; no provider-native or prompt-only approval path became canonical authority. Repository-owned resolver tests also cover undelegated/delegated persistent-policy transitions.
+
+Evidence:
+
+```text
+authorization + governed-tool baseline: 26 passed
+integration command hash: 344D8A7C5FF4F980999606734C34B4B228FBC137E15CA25354DDD1FEF11676EF
+focused regression: 81 passed
+runtime/test source unchanged: PASS
+diff check: PASS
+worktree clean: PASS
+```
+
+Canonical checkpoint:
+
+```text
+docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_CHECKPOINT.md
+```
+
+Do not reopen R6C without new contradictory current evidence.
 
 ---
 
@@ -284,7 +218,7 @@ Acceptance must prove bounded reproducible context, absence of irrelevant rules,
 
 Current owner: `GovernedToolOrchestrator`.
 
-Required lifecycle:
+Required lifecycle remains:
 
 ```text
 reasoning proposes tool
@@ -298,7 +232,7 @@ reasoning proposes tool
  -> provider continuation where applicable
 ```
 
-Broader installed coding workflows still require claim-matched proof.
+R6C proves the authorization/no-execution boundary consumed inside this owner, but broader governed-tool acceptance remains separate.
 
 ---
 
@@ -357,7 +291,7 @@ Required installed/normal-path proof families remain:
 - D: read-only audit with live evidence and no mutation;
 - E: out-of-authority escalation/denial with no provider bypass.
 
-R6A and R6B provide lower-layer accepted invariants but do not substitute for installed/normal-path R7 evidence.
+R6A, R6B and R6C provide lower-layer accepted invariants but do not substitute for installed/normal-path R7 evidence.
 
 ---
 
@@ -379,31 +313,20 @@ R3 PASS
  -> R5 PASS
  -> R6A PASS
  -> R6B PASS
+ -> R6C PASS
  -> remaining R6 acceptance gaps in dependency order
  -> CLI normal-path coverage
  -> R7 installed end-to-end proof
  -> release/package readiness
 ```
 
-At every step classify the gap first:
-
-```text
-acceptance only
-repair of existing owner
-missing integration
-truly missing implementation
-blocked configuration
-```
-
-Only a proven defective/missing owner permits implementation changes in that family.
+At every step classify the gap first: acceptance only, repair of existing owner, missing integration, truly missing implementation, or blocked configuration. Only a proven defective/missing owner permits implementation changes in that family.
 
 ---
 
 # 21. Slice discipline
 
-Every slice must define objective, existing owner, reuse classification, scope, exclusions, falsifier, required evidence level, targeted diagnostics/tests, regression requirement, Git/worktree proof, acceptance condition, and next-phase lock.
-
-Do not combine roadmap families into one proof or repair slice.
+Every slice must define objective, existing owner, reuse classification, scope, exclusions, falsifier, required evidence level, targeted diagnostics/tests, regression requirement, Git/worktree proof, acceptance condition, and next-phase lock. Do not combine roadmap families into one proof or repair slice.
 
 ---
 
@@ -444,8 +367,8 @@ Current workspace supplies facts.
 LBE selects/injects applicable rules and guards.
 Permission policy authorizes actions.
 Pre-authorized actions proceed without repetitive approval.
-Authority expansion is escalated.
-Governed tools execute through registered LBE owners.
+Authority expansion is escalated or denied.
+Governed tools execute only through registered LBE owners after authorization.
 Deterministic guards detect.
 Validation proves.
 Completion truth belongs to LBE.
