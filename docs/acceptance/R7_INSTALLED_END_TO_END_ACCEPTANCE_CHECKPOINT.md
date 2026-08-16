@@ -2,11 +2,11 @@
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_4_PROVIDER_MODEL_SWITCH_AUTHORITY_STABILITY
-status: PASS
+slice: OBSERVABLE_5_FRESH_PROCESS_SESSION_TASK_RESUME
+status: OPEN
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
-required_evidence_level: INSTALLED_RUNTIME_FRESH_PROCESS
+required_evidence_level: INSTALLED_RUNTIME_SEPARATE_PROCESSES
 implementation_allowed: false
 next_phase_locked: true
 ```
@@ -27,60 +27,53 @@ observable 3 governed coding execution + receipts: PASS_AFTER_REPAIR
 
 observable 4 provider/model switch authority stability: PASS
   decisive command hash: E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6
-  installed package: isolated venv site-packages
   before provider/model: openai-compatible / r7-model-a
   after provider/model: openai-compatible / r7-model-b
+  authority invariants: PASS
   fresh-process readback: PASS
   source worktree: clean
 ```
 
-## Observable 4 result
+## Observable 5 — active
 
-Question: does normal installed provider/model switching alter only provider/model identity while preserving all LBE session/workspace/mode/policy authority fields?
+Question: after the prior invoking process is gone, can a newly launched installed process recover the same persisted session and task identity/state from the database?
 
-Result: `PASS`.
+Required invariants:
 
-The installed `provider select` operation changed only the model selection from `r7-model-a` to `r7-model-b` under the same registered `openai-compatible` provider.
-
-The following persisted authority fields remained identical before and after the switch and were re-read successfully from a fresh installed process:
-
+Session:
 - session_id
 - project_workspace_id
 - canonical_workspace_root
 - mode
 - permission
 - runtime_policy
+- provider_id
+- provider_model
 - active_profile_id
 - permission_policy_id
 - evidence_policy_id
 
-The provider-selection response also reported unchanged policy state for:
+Task:
+- task_id = r7-task-create
+- status = running
+- last_outcome = AWAITING_VALIDATION
 
-- active_profile_id
-- evidence_policy_id
-- permission
-- permission_policy_id
-- runtime_policy
+Required proof:
 
-No source-tree import leakage was observed and the project source worktree remained clean.
-
-## Harness failures excluded
-
-```text
-DF8532C422FD8422078B7CB41FCEE5491648FE924D1ECACFBFE76ACF0AA1BA41
-  TEST_HARNESS_POWERSHELL_PARSE_ERROR
-  product implication: NONE
-  observable 4 did not execute in that invocation
-```
+1. first installed process reads session and task state;
+2. first process exits;
+3. a distinct installed process reads the same database;
+4. all session authority fields and task identity/state match;
+5. installed package resolves from isolated venv site-packages;
+6. project source worktree remains clean.
 
 ## Current classification
 
 ```text
-provider_switch_policy_stability: PASS
-fresh_process_readback_for_observable_4: PASS
+fresh_process_session_task_resume: PENDING
 implementation_changes: FORBIDDEN
-observable_5: LOCKED_PENDING_EXPLICIT_ADVANCE
+observable_6: LOCKED
 release_publish_allowed_now: false
 ```
 
-No product falsifier was observed in observable 4.
+Any persisted identity/state loss is a product falsifier and stops R7. Harness failures do not justify product changes.
