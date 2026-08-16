@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "OBSERVABLE_8_FAIL_CLOSED_AUTHORITY_BOUNDARIES",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -35,35 +35,30 @@
     "R7_OBSERVABLE_4": "PASS",
     "R7_OBSERVABLE_5": "PASS",
     "R7_OBSERVABLE_6": "PASS",
-    "R7_OBSERVABLE_7": "PASS"
+    "R7_OBSERVABLE_7": "PASS",
+    "R7_OBSERVABLE_8": "PASS"
   },
   "current_observable": {
     "number": 8,
-    "status": "OPEN",
+    "status": "PASS",
     "question": "Do forbidden, out-of-workspace, and otherwise out-of-authority mutation attempts fail closed with no workspace mutation, while preserving the distinction between handler-level path rejection and R6C DENY/ESCALATE authority receipts?",
     "required_evidence_level": "INSTALLED_RUNTIME_FAIL_CLOSED_AUTHORITY_PROOF",
-    "implementation_changes_allowed": false
+    "implementation_changes_allowed": false,
+    "decisive_command_hash": "98B3EC987725DB5B103E6B11B64DD60C4C73EA2F249BC88F260403A52127FDEE"
   },
-  "observable_8_falsifiers": [
-    "forbidden path mutation succeeds",
-    "out-of-workspace path mutation succeeds",
-    "explicitly forbidden R6C request does not return DENY/DENIED",
-    "out-of-scope R6C request does not return ESCALATE/ESCALATED",
-    "a denied or escalated request invokes the mutation handler",
-    "workspace bytes or Git state change after a rejected authority/path attempt"
-  ],
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "continuing to observable 9 before observable 8 is classified PASS"
+    "activating observable 9 without explicit advancement"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 8 through 15",
+      "explicitly activate R7 observable 9",
+      "finish R7 observables 9 through 15",
       "release/package readiness acceptance"
     ]
   }
