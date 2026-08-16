@@ -1,102 +1,88 @@
 # Current Implementation Gate
 
-Status: **OPEN — DOCUMENTATION RECONCILIATION — NEXT PHASE LOCKED**
+Status: **PASS — ROADMAP RECONCILIATION COMPLETE — NEXT PHASE LOCKED**
 
 Current phase: `LBE_RUNTIME_ROADMAP_RECONCILIATION`
 
 Current slice: `CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES`
 
-This file is the human-readable current-slice authority paired with `.lbe/governance/implementation-gates.json`.
+This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Active plan
+## Completed reconciliation
 
 ```text
 active_plan: docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_GATE.md
 checkpoint: docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_CHECKPOINT.md
+status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
-required_evidence_level: SOURCE + ACCEPTANCE_RECORD_RECONCILIATION
+validated_head: c13fe3a6643496ec6a2d5d6fec7e115149d17141
 ```
 
-## Why this slice is active
+The reconciliation established that the broad roadmap had drifted behind live implementation and accepted checkpoints. Existing runtime owners must not be reimplemented merely because older roadmap text listed them as future work.
 
-The immediately previous provider-continuation slice is complete and remains accepted at:
+## Final evidence classification
 
 ```text
-phase: LBE_CLINE_PROVIDER_CONTINUATION
-slice: ENABLE_PROVIDER_BACKED_AGENTRUNTIME_CONTINUATION
-status: PASS
-validated implementation head: 0db541cafe8578130d74f8e8cf89fed0503301ea
-PASS checkpoint commit: c5a70996055b766231236d5e59403ddaf733b5c6
-human closure commit: 121c4faa296c02a3add8b304545079d2011c193a
+R3: IMPLEMENTED_NOT_ACCEPTED
+R4: IMPLEMENTED_NOT_ACCEPTED
+R5: IMPLEMENTED_NOT_ACCEPTED
+R6A: PARTIALLY_PROVEN
+R6B: PARTIALLY_PROVEN
+R6C: PARTIALLY_PROVEN
+R6D: IMPLEMENTED_NOT_ACCEPTED
+R6E: PARTIALLY_PROVEN
+R6F: PARTIALLY_PROVEN
+CLI: PARTIALLY_PROVEN
+R7: PARTIALLY_PROVEN
+release/package readiness: PARTIALLY_PROVEN
 ```
 
-That accepted slice must not be reopened merely because the broad roadmap is stale.
-
-The current problem is documentation/acceptance drift:
-
-- `docs/IMPLEMENTATION_PLAN.md` still labels R2 as current although later runtime owners exist on `main`;
-- R3, R4 and R5 have concrete implementation and focused tests but no dedicated current roadmap acceptance checkpoints were found;
-- later P0-P16 checkpoints prove substantial provider/control/history/tool/TUI runtime layers;
-- `CURRENT_AGENT_EXECUTION_GATE.md` still names an older P16 reconciliation as active;
-- project user-ready and release-ready remain `NO`.
-
-## Current evidence classification
-
-See `docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_CHECKPOINT.md` for the full matrix.
-
-The current earliest insufficiently proven roadmap family is:
+## Earliest next candidate
 
 ```text
-R3_RUNTIME_REASONING_ACCEPTANCE
-classification: IMPLEMENTED_NOT_ACCEPTED
+phase: R3_RUNTIME_REASONING_ACCEPTANCE
+slice: PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY
+kind: acceptance proof, not implementation
+active: NO
 ```
 
-Current implementation evidence:
+Why R3:
+
+- `SessionMemoryRuntimeBridge.run_reasoning()` already owns the runtime-to-existing-reasoning path;
+- focused tests already prove completed/blocked/failed lifecycle persistence;
+- no dedicated current roadmap acceptance checkpoint or installed/normal-path proof was found;
+- therefore the missing artifact is acceptance evidence, not runtime source.
+
+## Reconciled authority state
+
+- `docs/IMPLEMENTATION_PLAN.md` no longer declares stale R2-current sequencing;
+- `CURRENT_AGENT_EXECUTION_GATE.md` no longer claims historical P16 is current authority;
+- the accepted Cline provider-continuation slice remains PASS and preserved;
+- machine and human gates agree;
+- no runtime/test source changed in this reconciliation.
+
+## Local acceptance evidence
 
 ```text
-SessionMemoryRuntimeBridge.run_reasoning
- -> constructs existing LBERequest
- -> invokes existing reasoning controller.run
- -> validates response task identity
- -> returns existing LBEResponse
- -> persists completed / blocked / failed task lifecycle outcome
+HEAD == origin/main at validated reconciliation head: PASS
+documentation-only fail-closed gate: PASS
+exact reconciliation scope: PASS — 6 files
+runtime/test source unchanged: PASS
+human/machine/roadmap alignment: PASS
+git diff --check: PASS
+worktree clean: PASS
 ```
 
-Focused tests exist in `tests/test_session_memory_runtime.py`.
+`scripts/check-implementation-gate.py` was not used as final proof because its contract hard-requires `implementation_allowed=true` and therefore applies to implementation slices. The documentation gate was validated directly while preserving `implementation_allowed=false`.
 
-No dedicated current R3 acceptance checkpoint or installed/normal-path acceptance record was found during this reconciliation pass. Therefore the next work candidate is an R3 **acceptance-proof** slice, not R3 implementation.
+## Readiness
 
-## Allowed work now
+```text
+project_user_ready: NO
+release_ready: NO
+next_phase_locked: true
+```
 
-- inspect current source owners/tests;
-- inspect historical/current acceptance checkpoints;
-- reconcile `docs/IMPLEMENTATION_PLAN.md`;
-- supersede stale current-gate text;
-- complete the reconciliation checkpoint;
-- run local gate/diff/worktree validation.
-
-## Forbidden work now
-
-- runtime source implementation;
-- new provider work;
-- resume/recovery redesign;
-- new tool or CLI behavior;
-- TUI/MCP changes;
-- architecture changes;
-- release work.
-
-## Exit condition
-
-This reconciliation slice becomes PASS only when:
-
-1. R3-R7 and release readiness are classified from current evidence;
-2. stale roadmap/current-gate contradictions are reconciled;
-3. the first next acceptance/implementation gap is explicitly identified;
-4. machine and human gates agree;
-5. local implementation-gate check passes;
-6. `git diff --check` passes;
-7. canonical worktree is clean at the reconciled head.
-
-After PASS, stop. `next_phase_locked` remains true until a separate bounded gate is explicitly activated.
+Do not advance automatically. R3 acceptance must be activated by a separate bounded machine/human gate before any further task execution.
