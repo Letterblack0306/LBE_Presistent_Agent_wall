@@ -1,79 +1,22 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R7_REPAIR_IMPLEMENTATION_GATE.md",
-  "active_phase": "R7_REPAIR_IMPLEMENTATION",
-  "active_slice": "COMPOSE_INSTALLED_CODING_WITH_EXISTING_GOVERNED_EXECUTION",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
+  "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
+  "active_slice": "OBSERVABLE_4_PROVIDER_MODEL_SWITCH_AUTHORITY_STABILITY",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
-  "blocking_statuses": [
-    "FAIL",
-    "UNVERIFIED",
-    "DOCUMENT_CONFLICT",
-    "MISSING_EVIDENCE",
-    "BLOCKED_WORKSPACE_AUTHORITY",
-    "BLOCKED_PARALLEL_ARCHITECTURE"
-  ],
+  "blocking_statuses": ["FAIL","UNVERIFIED","DOCUMENT_CONFLICT","MISSING_EVIDENCE","BLOCKED_WORKSPACE_AUTHORITY","BLOCKED_PARALLEL_ARCHITECTURE"],
   "rules": {
     "one_active_slice": true,
     "no_next_phase_without_pass": true,
     "no_parallel_architecture": true,
-    "existing_owner_audit_required": true,
-    "reuse_evaluation_required": true,
-    "architecture_change_requires_user_authorization": true,
     "checkpoint_required_before_advance": true,
-    "fail_closed": true
+    "fail_closed": true,
+    "implementation_only_after_separate_repair_activation": true
   },
-  "trigger": {
-    "failed_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-    "failed_observable": "normal installed governed coding execution plus receipts",
-    "runtime_marker": "R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN",
-    "investigation_status": "PASS",
-    "investigation_scan_hash": "81684E672EE2A77C49B634D79DF4CBAB84531A613328EC9488434B75BFE6BD2D",
-    "proven_gaps": [
-      "installed coding did not compose GovernedClineWorker/R6E",
-      "no production workspace mutation ToolSpec was registered"
-    ],
-    "repair_status": "PASS",
-    "repaired_observable_3_command_hash": "F3FB75C252CB7B561C05A233D4F93FC981032A0DAF41F9B90E9952FB9677F882"
-  },
-  "allowed_scope": {
-    "purpose": "Repair the proven R7 installed coding composition gap by reusing the existing governed Cline/R6E path and adding one smallest safe workspace-bound production mutation capability behind existing R6C/R6E authority.",
-    "implementation_changes": "Closed. No further implementation changes are authorized under this completed repair slice.",
-    "allowed_actions": []
-  },
-  "authority_reuse": [
-    "SessionMemoryRuntimeBridge",
-    "GovernedAgentGateway",
-    "resolve_authorization",
-    "ToolRegistry",
-    "GovernedToolOrchestrator",
-    "ToolReceipt",
-    "GovernedClineWorker",
-    "CodingCompletionRuntime"
-  ],
-  "forbidden": [
-    "second authorization resolver",
-    "second tool dispatcher",
-    "second session provider or completion authority",
-    "provider-direct workspace mutation",
-    "native Cline mutation authority",
-    "architecture rewrite",
-    "release version tag or publish work"
-  ],
-  "repair_falsifiers": [
-    "installed code remains read-only",
-    "provider mutation occurs without ToolReceipt",
-    "mutation bypasses R6C",
-    "no production mutation tool is available",
-    "denied or escalated mutation executes",
-    "operation tool-call receipt correlation is lost",
-    "parallel authority is introduced",
-    "provider completion bypasses deterministic validation"
-  ],
-  "required_evidence_level": "INTEGRATION_PLUS_INSTALLED_RUNTIME",
   "accepted_baseline": {
     "canonical_base_sha": "69c6ae764bc217cd5795ddf8a972658223a681a0",
     "R3": "PROVEN_COMPLETE",
@@ -86,14 +29,28 @@
     "R6E": "PROVEN_COMPLETE",
     "R6F": "PROVEN_COMPLETE",
     "CLI": "PROVEN_COMPLETE",
+    "R7_OBSERVABLE_1": "PASS",
+    "R7_OBSERVABLE_2": "PASS",
     "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR"
   },
+  "current_observable": {
+    "number": 4,
+    "question": "Does provider/model switching preserve workspace, mode, permission, profile, evidence policy, and LBE authority identity?",
+    "required_evidence_level": "INSTALLED_RUNTIME_FRESH_PROCESS",
+    "implementation_changes_allowed": false
+  },
+  "forbidden": [
+    "source/runtime/package implementation changes",
+    "architecture rewrite",
+    "second authority",
+    "release version tag or publish work",
+    "continuing to observable 5 before observable 4 is classified PASS"
+  ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "explicitly resume R7 installed end-to-end acceptance",
-      "finish remaining R7 observables 4 through 15",
+      "finish R7 observables 4 through 15",
       "release/package readiness acceptance"
     ]
   }
