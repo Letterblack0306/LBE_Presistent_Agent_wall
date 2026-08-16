@@ -16,160 +16,119 @@ Canonical local workspace:
 C:\Agents-Memory-Tool-v6-integration
 ```
 
-## Current accepted state
-
-Accepted milestones now include:
+## Accepted baseline
 
 ```text
-LBE_CLINE_PROVIDER_CONTINUATION: PASS
-LBE_RUNTIME_ROADMAP_RECONCILIATION: PASS
-R3_RUNTIME_REASONING_ACCEPTANCE: PASS
-R4_CHECKPOINT_RESUME_ACCEPTANCE: PASS
-R5_BOUNDED_RECOVERY_ACCEPTANCE: PASS
-R6A_PROVIDER_ABSTRACTION_ACCEPTANCE: PASS
+R3_RUNTIME_REASONING_ACCEPTANCE: PASS / PROVEN_COMPLETE
+R4_CHECKPOINT_RESUME_ACCEPTANCE: PASS / PROVEN_COMPLETE
+R5_BOUNDED_RECOVERY_ACCEPTANCE: PASS / PROVEN_COMPLETE
+R6A_PROVIDER_ABSTRACTION_ACCEPTANCE: PASS / PROVEN_COMPLETE
 ```
 
-Current completed R6A slice:
+Final synchronized R6A closure:
 
 ```text
-phase: R6A_PROVIDER_ABSTRACTION_ACCEPTANCE
-slice: PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT
-status: PASS
+HEAD: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
+origin/main: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
+R6A status: PASS
+R6A roadmap: PROVEN_COMPLETE
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
+worktree: clean
+LoopTool closure hash: BE73BAAF3292B2DB4FAD6B4C9C548D2BA252D97ADFD12B115FC9C1E4049A35CF
+LoopTool response-check hash: EFCF5A4D97F74E93A62C79301C8C93E752F360813A7E683955DA8C29F076A37D
+```
+
+R6A decisive acceptance evidence remains:
+
+```text
+provider A -> COMPLETED
+provider B -> COMPLETED
+same session/workspace/task identity preserved
+mode/permission/runtime policy preserved
+provider/model changed only where intended
+focused regression: 64 passed
+runtime/test source unchanged
+diff check: PASS
+worktree clean: PASS
+```
+
+## Active R6B acceptance slice
+
+The user explicitly authorized continuing to the next phase. Dependency review selected **R6B typed mode policy** because R6C authorization consumes `ModeDecision`, and later governed-tool/completion claims depend on mode exposing the correct capability boundary.
+
+```text
+phase: R6B_TYPED_MODE_POLICY_ACCEPTANCE
+slice: PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT
+status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
+base_sha: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
 ```
 
-R6B is **not active**. No later R6 phase is unlocked automatically.
-
-## R6A accepted behavior
-
-Accepted owner path:
+Active plan/checkpoint:
 
 ```text
-ProviderRegistry
- -> build_provider_controller
- -> provider-neutral backend contract
- -> LBERequestController
- -> SessionMemoryRuntimeBridge.run_reasoning
- -> persisted session/task state
+docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md
+docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_CHECKPOINT.md
 ```
 
-Acceptance established:
+## R6B evidence review
+
+Existing owners:
 
 ```text
-provider A equivalent request -> COMPLETED
-provider configuration switch A/model-a -> B/model-b
-provider B equivalent request -> COMPLETED
-same persisted session/workspace/task identity preserved
-mode preserved
-permission preserved
-runtime policy preserved
-permission-policy identity preserved
-evidence-policy identity preserved
-provider/model changed only in intended fields
+runtime.mode_controller.ModeRequest
+runtime.mode_controller.ModeDecision
+runtime.mode_controller.resolve_mode
+behavior.contracts
+SessionMemoryRuntimeBridge
+WorkspaceMemoryStore
+runtime.authorization_resolver.AuthorizationRequest
 ```
 
-No provider-specific governance, session, reasoning, authorization, tool, validation or completion owner was introduced.
+Current source/tests already establish separately:
 
-### Target identity proof
+- coding/audit/investigation are typed mode decisions;
+- runtime policy + permission + intent deterministically resolve mode;
+- coding reuses the existing development behavior/capability contract;
+- audit and investigation remove write/proposal/promotion capabilities;
+- investigation remains read-only even with elevated/write permission under permissive policy;
+- persisted session state owns `mode` independently of provider configuration;
+- downstream authorization accepts a typed `ModeDecision`;
+- R6A already proves provider switching does not own LBE mode/policy authority.
 
-LoopTool command hash:
+Reuse decision:
 
 ```text
-93A6B4C3301802876F930F48D3B592901163A645FB28CD2F14A3D8DDED4FFB80
+REUSE
 ```
 
-```text
-LBE_PACKAGE=C:\Agents-Memory-Tool-v6-integration\lbe_guard_inspector\__init__.py
-RUNTIME_MODULE=C:\Agents-Memory-Tool-v6-integration\lbe_guard_inspector\session_memory_runtime.py
-R6A_WORKSPACE_IMPORT_IDENTITY=PASS
-```
+The unresolved R6B artifact is integration-level proof that one persistent session can intentionally exercise coding -> audit -> investigation typed contracts while preserving session/workspace/provider identity and without authority drift.
 
-This bound the decisive proof to the checked-out workspace rather than an installed `site-packages` copy.
+## R6B falsifier
 
-### Decisive same-session provider-switch proof
+R6B cannot PASS if:
 
-LoopTool command hash:
-
-```text
-2F16607C4A8807706BAA13114BCD930B21F3728EF4E487F833D6D46DF7558935
-```
-
-```text
-R6A_PROVIDER_A_OUTCOME=COMPLETED
-R6A_PROVIDER_B_OUTCOME=COMPLETED
-R6A_SESSION_ID=session-r6a
-R6A_WORKSPACE_ID=project-r6a
-R6A_MODE=coding
-R6A_PERMISSION=write_allowed
-R6A_RUNTIME_POLICY=development
-R6A_PROVIDER_SWITCH=provider-a->provider-b
-R6A_TASK_STATUS=completed
-R6A_SAME_SESSION_PROVIDER_SWITCH=PASS
-R6A_WORKSPACE_BOUND_DIAGNOSTIC=PASS
-```
-
-### Focused regression
-
-Existing-owner regression:
-
-```text
-tests/test_provider_registry.py
-tests/test_reasoning_runtime.py
-tests/test_request_controller.py
-tests/test_session_resume_runtime.py
-tests/test_session_memory_runtime.py
-64 passed in 29.15s
-```
-
-LoopTool command hash:
-
-```text
-B8801BF25001FF41F76781E2157DC531A720C3889AD7121F724B9D5EF0835EA6
-```
-
-The command wrapper exited non-zero only after the tests because the first `git diff --check` syntax was invalid. The 64-test regression itself is accepted as PASS. The missing scope proof was rerun separately rather than relabeling the product regression as failed.
-
-### Final scope/worktree proof
-
-LoopTool command hash:
-
-```text
-1EB7542A3DF61BD0B39169739782553F5B4AC9738FF2E0403713D8CB7AE3FA94
-```
-
-```text
-R6A_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
-R6A_DIFF_CHECK=PASS
-R6A_WORKTREE_CLEAN=PASS
-R6A_FOCUSED_REGRESSION_PREVIOUSLY_PROVEN=64_PASSED
-R6A_ACCEPTANCE_SCOPE=PASS
-## main...origin/main
-```
-
-## Harness failures excluded from product claims
-
-Several early diagnostics failed for harness reasons and were not promoted into runtime defects:
-
-- command/Base64 transport truncation;
-- direct `tests.test_*` import against a non-package tests directory;
-- installed-package import precedence;
-- synthetic workspace not initialized as Git;
-- synthetic workspace missing the CEP manifest fixture, causing `UNKNOWN_GUARD` after provider A had already been reached.
-
-Once target identity and fixture preconditions were corrected, the combined A -> B path passed without runtime/test source changes.
+- mode is only prompt/personality text;
+- provider identity determines mode or authority;
+- audit/investigation expose write capabilities;
+- mode transition forks session/workspace identity;
+- unrelated policy/provider fields drift;
+- a second mode/session/policy owner is required.
 
 ## Current roadmap classification
 
 | Roadmap family | Current classification |
 |---|---|
-| R3 persistent runtime -> existing reasoning boundary | `PROVEN_COMPLETE` |
+| R3 persistent runtime -> reasoning | `PROVEN_COMPLETE` |
 | R4 checkpoint/resume/rehydration | `PROVEN_COMPLETE` |
 | R5 bounded classified recovery | `PROVEN_COMPLETE` |
 | R6A provider abstraction | `PROVEN_COMPLETE` |
-| R6B typed mode policy | `PARTIALLY_PROVEN` |
+| R6B typed mode policy | `PARTIALLY_PROVEN` — acceptance active |
 | R6C permission/authorization | `PARTIALLY_PROVEN` |
 | R6D context assembly + rule/guard injection | `IMPLEMENTED_NOT_ACCEPTED` |
 | R6E governed tool orchestration | `PARTIALLY_PROVEN` |
@@ -186,24 +145,17 @@ release_ready: NO
 next_phase_locked: true
 ```
 
-## Remaining broad acceptance gaps
-
-- review R6B-R6F dependency evidence before explicitly activating one next acceptance slice;
-- CLI normal-path coverage of accepted runtime services;
-- installed-path R7 coding/audit/resume/provider-switch/escalation proofs;
-- release/package readiness.
-
 ## No-drift boundary
 
 Do not:
 
-- reopen R3/R4/R5/R6A because older records describe them as unaccepted;
-- recreate existing R6 owners before evidence disproves them;
-- bypass LBE authority through provider-native mutation tools;
-- treat focused tests alone as roadmap acceptance without required behavior proof;
-- treat GPT-Knowledge, memory or historical checkpoints as current workspace truth;
-- use LoopTool for normal file transfer/patch authoring when GitHub is available;
-- unlock the next phase automatically from PASS.
+- reopen R3/R4/R5/R6A without new contradictory current evidence;
+- implement or patch R6B before acceptance proves a real defect;
+- create a second mode/session/policy/authorization owner;
+- allow provider-native mechanics to become LBE authority;
+- treat focused tests alone as integration acceptance;
+- use LoopTool for normal tracked file authoring when GitHub is available;
+- auto-activate R6C after R6B PASS.
 
 ## Working method
 
@@ -211,10 +163,11 @@ Do not:
 prove current authority/revision
 -> inspect existing owner
 -> state one acceptance question
--> define required observable/falsifier
--> run smallest discriminating proof
+-> define observable/falsifier
+-> run smallest claim-matched proof
 -> classify result
--> update checkpoint through GitHub
--> use LoopTool only for local test/debug/runtime verification
+-> focused regression
+-> scope/worktree proof
+-> checkpoint through GitHub
 -> stop with next phase locked
 ```
