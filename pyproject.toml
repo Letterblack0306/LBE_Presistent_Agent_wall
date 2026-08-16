@@ -36,7 +36,11 @@ namespaces = true
 
 [tool.setuptools.package-data]
 schemas = ["*.json"]
-lbe_guard_inspector = ["memory/*.sql"]
+lbe_guard_inspector = [
+  "memory/*.sql",
+  "runtime/cline_worker/*.mjs",
+  "runtime/cline_worker/*.json"
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
