@@ -3,11 +3,12 @@
 ```text
 phase: LBE_CLINE_PROVIDER_CONTINUATION
 slice: ENABLE_PROVIDER_BACKED_AGENTRUNTIME_CONTINUATION
-status: UNVERIFIED
+status: PASS
 
 base_sha: fc5512ffd0c405a9028f08f5a6d80f51fbe1d46d
 implementation_sha: 703cf96bb896aa34f80c8e4e53397968fd9196ab
-checkpoint_sha: populated by GitHub commit containing this file
+tested_head: 0db541cafe8578130d74f8e8cf89fed0503301ea
+checkpoint_sha: populated by the GitHub commit containing this PASS record
 
 requirements:
   - instantiate pinned @cline/agents AgentRuntime from ephemeral provider configuration
@@ -26,11 +27,11 @@ existing_owner:
   - worker lifecycle/protocol -> GovernedClineWorker
   - authorization -> resolve_authorization
   - registered tool execution/receipt/idempotency -> GovernedToolOrchestrator.invoke
-  - canonical human implementation history -> docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
+  - canonical human current-slice authority -> docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
 
 reuse_decision:
   decision: ADAPT
-  evidence: the pinned Cline AgentRuntime already owns provider streaming, tool-call parsing, tool execution callbacks, and continuation; LBE supplies proxy tools whose execute callbacks cross the existing governed Python boundary rather than duplicating the Cline loop.
+  evidence: pinned Cline AgentRuntime owns provider streaming, tool-call parsing, callback execution, continuation and abort mechanics; LBE proxy tools cross the existing governed Python authority and no second continuation/tool executor was introduced.
 
 required_evidence_level: INTEGRATION
 
@@ -42,70 +43,103 @@ implementation:
   human_gate_reconciliation_sha: 17a1c64024cd02733baa201344d9636d5ecbbb56
   provider_fixture_fix_sha: 506ffc81f744781ad48e59125fc47c91661eb8b3
   failed_result_mapping_fix_sha: 703cf96bb896aa34f80c8e4e53397968fd9196ab
+  pre_pass_checkpoint_sha: 0db541cafe8578130d74f8e8cf89fed0503301ea
 
 validation_evidence:
   source_contract:
-    result: PASS BY SOURCE INSPECTION
-    evidence: pinned Cline AgentRuntime exposes run/continue/abort; AgentTool execute callback and AgentRunResult shapes were inspected at revision 8bbdde2a5c1f972864fe1b954f639c21fac61a40
-  node_syntax_initial:
-    result: PASS at aecda2d08f0c799cf131a6a01021f7445b127866
-  canonical_install_initial:
-    result: PASS — npm ci installed 213 packages from the canonical worker lock
-  initial_focused_provider_continuation:
-    command: python -m pytest tests/test_cline_stdio_bridge.py -q
-    result: FAIL — 9 passed, 2 failed
-  provider_wire_diagnostic:
-    result: PROVEN — original provider_id=openai produced AgentRunResult status=failed before HTTP; REQUESTS=[]; exact error was Unknown or disabled provider "openai".
-  installed_provider_registry_diagnostic:
-    result: PROVEN — actual installed @cline/llms@0.0.75 registry has no provider id openai; it exposes openai-compatible with model gpt-4o.
-  corrected_provider_direct_runtime_probe:
-    result: PASS — providerId=openai-compatible, modelId=gpt-4o completed with output hello from cline; one POST reached /v1/chat/completions with stream=true and usage enabled.
-  failed_result_terminal_mapping:
-    original_result: DISPROVEN — worker emitted turn.completed even when AgentRuntime returned status=failed and omitted result.error
-    correction: 703cf96bb896aa34f80c8e4e53397968fd9196ab maps failed results to turn.failed / CLINE_AGENTRUNTIME_FAILED and preserves the underlying error message
-  corrected_focused_provider_continuation:
-    result: NOT RUN
-  governed_orchestrator_regression:
-    result: NOT RUN after correction
-  dependency_security:
-    result: PRIOR PASS; must be rechecked for zero high/critical on the corrected head
-  implementation_gate:
-    result: NOT RUN on corrected head
-  git_diff_check:
-    result: NOT RUN on corrected head
+    result: PASS
+    evidence: pinned Cline AgentRuntime run/continue/abort and AgentTool callback contracts inspected at revision 8bbdde2a5c1f972864fe1b954f639c21fac61a40
+
+  root_cause_diagnostics:
+    invalid_provider_probe:
+      result: PROVEN
+      evidence: provider_id=openai failed before HTTP with Unknown or disabled provider "openai" and REQUESTS=[]
+    installed_provider_registry:
+      result: PROVEN
+      evidence: installed @cline/llms@0.0.75 exposes openai-compatible with gpt-4o; openai has no models/registration
+    direct_corrected_provider_probe:
+      result: PASS
+      evidence: openai-compatible/gpt-4o reached /v1/chat/completions and returned hello from cline
+    terminal_mapping_defect:
+      result: PROVEN AND CORRECTED
+      evidence: AgentRuntime status=failed was initially emitted as turn.completed; corrected worker emits turn.failed / CLINE_AGENTRUNTIME_FAILED and preserves the error message
+
+  corrected_head_validation:
+    tested_head: 0db541cafe8578130d74f8e8cf89fed0503301ea
+    head_equals_origin_main: PASS
+    node_syntax: PASS
+    npm_ci: PASS — 213 packages installed from canonical worker lock
+    focused_provider_continuation: PASS — 12 passed in 18.30s
+    governed_orchestrator_regression: PASS — 12 passed in 0.19s
+    dependency_security: PASS — info 0, low 1, moderate 0, high 0, critical 0
+    implementation_gate: PASS — next_phase_locked=true
+    git_diff_check: PASS
+    worktree_clean: PASS
+
+  governed_negative_paths:
+    escalated:
+      result: PASS
+      evidence: handler executed 0 times; Cline continuation received AUTHORIZATION_REQUIRED as the tool result and performed a second provider turn without executing the governed handler
+    denied:
+      result: PASS
+      evidence: handler executed 0 times; Cline continuation received AUTHORIZATION_DENIED as the tool result and performed a second provider turn without executing the governed handler
+    failed:
+      result: PASS
+      evidence: governed handler executed once and raised OSError; ToolReceipt failure was returned to Cline as TOOL_EXECUTION_FAILED; no bypass path executed
+
+  cancellation:
+    result: PASS
+    evidence: control.cancel was sent while /v1/chat/completions was in flight; Cline emitted run-finished followed by terminal turn.completed with status=aborted, iterations=1, empty output, zero usage, and no stderr; this proves the worker maps cancellation to AgentRuntime.abort at the claimed integration level
+
+  credential_exposure:
+    result: PASS FOR OBSERVED PROTOCOL SURFACE
+    evidence: runtime.ready exposes provider_id/model_id but not api_key; deterministic tests use process-memory-only credentials
+
+  external_live_provider:
+    result: BLOCKED_CONFIGURATION
+    evidence: no external provider credentials/endpoint were supplied for this acceptance run; the active gate explicitly permits this classification and does not permit fabricating a live-provider PASS
 
 failure_classification:
-  provider_selection_defect:
-    classification: PROVEN IMPLEMENTATION/TEST CONFIGURATION DEFECT
-    evidence: installed runtime rejects provider id openai and accepts openai-compatible; corrected direct runtime probe reaches the deterministic stub and completes
-  terminal_mapping_defect:
-    classification: PROVEN IMPLEMENTATION DEFECT
-    evidence: AgentRuntime status=failed was wrapped as turn.completed; corrected worker now emits turn.failed
-  test_harness_failure:
-    classification: DISPROVEN for the text completion fixture
-    evidence: the same local SSE fixture completed successfully once the valid installed provider identity was used
-
-unverified:
-  - corrected full focused provider-continuation suite at the exact current GitHub head
-  - real tool-call proposal/result continuation through GovernedToolOrchestrator after provider identity correction
-  - cancellation runtime behavior
-  - external live-provider proof; missing credentials/configuration must remain BLOCKED_CONFIGURATION rather than being fabricated
-  - focused/orchestrator/security/gate/diff validation on the corrected head
-  - broader release readiness
+  provider_selection_defect: RESOLVED
+  terminal_mapping_defect: RESOLVED
+  text/SSE_test_fixture_failure: DISPROVEN
+  governed_tool_authority_bypass: DISPROVEN for executed acceptance paths
+  cancellation_path: PROVEN
 
 document_conflicts:
-  - RESOLVED: CURRENT_IMPLEMENTATION_GATE.md and .lbe/governance/implementation-gates.json now both declare LBE_CLINE_PROVIDER_CONTINUATION / ENABLE_PROVIDER_BACKED_AGENTRUNTIME_CONTINUATION
-  - docs/IMPLEMENTATION_PLAN.md and docs/CURRENT_STATUS.md contain older sequencing and require a later separate reconciliation; they do not override the live machine gate, active plan, current checkpoint, or accepted P0-P16 history
+  - RESOLVED: CURRENT_IMPLEMENTATION_GATE.md and .lbe/governance/implementation-gates.json agree on the active provider-continuation slice
+  - docs/IMPLEMENTATION_PLAN.md and docs/CURRENT_STATUS.md contain older sequencing and remain a separate documentation-reconciliation task; they do not override this accepted checkpoint
+
+unverified:
+  - external credentialed provider execution beyond the deterministic local OpenAI-compatible endpoint
+  - approval response/resume beyond the escalation stop/result behavior proven here
+  - provider-selection UI/TUI integration
+  - MCP
+  - full release/user-flow acceptance
 
 project_user_ready: NO
 release_ready: NO
 next_phase_locked: true
 ```
 
-## Current conclusion
+## Final conclusion
 
-The earlier two-test failure is now causally explained. The actual published `@cline/llms@0.0.75` provider registry does not register `openai`; it registers `openai-compatible`. Direct execution with `openai-compatible` / `gpt-4o` reached the deterministic `/v1/chat/completions` stub and completed successfully, disproving the text-response fixture as the cause of the first failure.
+The bounded provider-backed Cline AgentRuntime continuation slice is **PASS** at the required `INTEGRATION` evidence level.
 
-A second independent adapter defect was also proven: failed `AgentRuntime` results were emitted as `turn.completed`. The worker now maps those results to `turn.failed` with the underlying error.
+The accepted path is:
 
-The slice remains `UNVERIFIED` until the corrected GitHub head is pulled to the canonical workspace and passes the focused provider/tool continuation tests plus the required regressions and gate checks. Do not advance the next phase before that proof.
+```text
+Python/LBE turn.execute
+        -> bounded Node worker
+        -> pinned Cline AgentRuntime
+        -> LBE proxy tool proposal
+        -> GovernedToolOrchestrator
+        -> ToolReceipt
+        -> tool.result
+        -> same Cline continuation loop
+        -> truthful completed / failed / aborted terminal result
+```
+
+LBE remains the sole executable authorization/tool/receipt/evidence/completion authority. Cline supplies provider and continuation mechanics only.
+
+This checkpoint does **not** make the project user-ready or release-ready and does **not** unlock the next phase automatically.
