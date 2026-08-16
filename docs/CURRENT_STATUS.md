@@ -25,55 +25,54 @@ R6F_COMPLETION_VALIDATION_ACCEPTANCE: PASS / PROVEN_COMPLETE
 CLI_NORMAL_PATH_ACCEPTANCE: PASS / PROVEN_COMPLETE
 ```
 
-## CLI normal-path acceptance — PASS
+Final synchronized CLI closure:
 
 ```text
-phase: CLI_NORMAL_PATH_ACCEPTANCE
-slice: PROVE_THIN_NONINTERACTIVE_CLI_OVER_ACCEPTED_PERSISTENT_RUNTIME_AUTHORITIES
-status: PASS
+HEAD: 69c6ae764bc217cd5795ddf8a972658223a681a0
+origin/main: 69c6ae764bc217cd5795ddf8a972658223a681a0
+worktree: clean
+LoopTool closure hash: BEA6C544A9AAB15733DF24AE212232AAF52350EA29B48B918FC9E781D6570045
+```
+
+## Active R7 installed end-to-end acceptance
+
+```text
+phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
+slice: PROVE_INSTALLED_PERSISTENT_AGENT_NORMAL_PATH_OVER_ACCEPTED_AUTHORITIES
+status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
-required_evidence_level: INTEGRATION
-base_sha: d12f4d20a462047c0c451d8d1d734601fc1d45e9
-acceptance_head: 0cdd2fa025878f591334409237d0dca8bb615a32
+required_evidence_level: USER_VISIBLE_RUNTIME
+base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 release_path_authorized: true
 publish_allowed_now: false
 ```
 
-Accepted CLI evidence:
+Active records:
 
 ```text
-repository baseline: 78 passed
-hash: F99F0C0A9857AA1322E51D60488A42A6FD0D74FB511C47A88EDE154B022486C0
-
-separate-process session persistence: PASS
-hash: 9FFA8D1A831C394B836DC09CA5D7B15F501D5F141F5499BD7A3CAEA3D766E8FB
-
-provider switch policy stability and continue: PASS
-hash: C0FCE90E0449A2063EE195634F182D42EAB7BC0646CB291BCC15CE8470DA3437
-
-persisted completion validation: PASS
-completion authority remains runtime-owned: PASS
-hash: 313468EAD033D330FA260E1A5A50B54A445E8139CE6E2534BD78B51E2B98342B
-
-missing completion contract fail closed: PASS
-hash: E136BE394882256738CCAADF905E034BBA251416F5085C963591ABF47B029CE5
-
-validate identity-only/no evidence injection surface: PASS
-hash: 8D13866680263DCE566E737BA1E28D5D70115EE95C76C0F5BC1FA93819665CE4
-
-focused regression: 115 passed
-hash: 7E0351B681A14F14264C066EF7809C4092817ABE10D5794B8AE97AB0EB2C85D2
-
-runtime/test/package source unchanged: PASS
-diff check: PASS
-worktree clean: PASS
-acceptance scope: PASS
-observed product falsifier: NONE
+docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
+docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
 ```
 
-Three failed diagnostic commands during CLI acceptance were harness failures only (PowerShell truncation/parser and null-output wrapper handling). No CLI/runtime/test source was patched from those failures.
+## Reuse boundary
+
+R7 is acceptance-only. It must compose the already accepted installed CLI, persistent session/runtime, provider adapter/controller, governed gateway/authorization/tool/receipt path, checkpoint persistence, and deterministic completion validation. No second authority is permitted.
+
+## Required user-visible/runtime proof
+
+- isolated exact-head install without checkout import leakage;
+- persistent installed session/task across separate processes;
+- one governed coding execution with receipts;
+- provider/model switch with unchanged LBE authority identity;
+- restart/resume after bounded external workspace change with current-truth revalidation;
+- read-only audit/investigation behavior;
+- out-of-authority fail-closed stop with no mutation;
+- receipt/provider continuation correlation;
+- evidence-owned terminal completion persisted across fresh process;
+- credential/secret/state exclusion;
+- focused installed/runtime regression and clean diff/worktree.
 
 ## Current roadmap classification
 
@@ -88,14 +87,14 @@ R6D PROVEN_COMPLETE
 R6E PROVEN_COMPLETE
 R6F PROVEN_COMPLETE
 CLI PROVEN_COMPLETE
-R7  PARTIALLY_PROVEN
+R7  PARTIALLY_PROVEN — ACTIVE ACCEPTANCE
 release/package readiness PARTIALLY_PROVEN
 ```
 
 ## Release progression
 
 ```text
-R7 installed end-to-end acceptance
+R7 installed end-to-end PASS
  -> release/package readiness acceptance
  -> only then version/tag/publish
 ```
@@ -109,4 +108,4 @@ publish_allowed_now: NO
 next_phase_locked: true
 ```
 
-CLI PASS does not auto-activate R7 or release publication. Do not reopen R3-R6F/CLI without new contradictory current evidence.
+A harness failure is not a product defect. A real R7 falsifier requires a separately activated bounded repair slice before runtime/CLI/test/package source changes.
