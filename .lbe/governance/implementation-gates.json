@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_REPAIR_INVESTIGATION_GATE.md",
   "active_phase": "R7_REPAIR_INVESTIGATION",
   "active_slice": "TRACE_INSTALLED_CODE_TO_EXISTING_GOVERNED_EXECUTION",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -40,40 +40,38 @@
     "checkpoint_required_before_advance": true,
     "fail_closed": true
   },
-  "allowed_scope": {
-    "purpose": "Trace the proven R7 installed coding composition gap from the installed lbe code entry point to the existing R6C/R6E execution and receipt-continuation authorities, identify the earliest missing seam, and define the smallest evidence-backed repair hypothesis and falsifier.",
-    "implementation_changes": "Forbidden. This slice is investigation-only. Runtime/CLI/test/package changes require a separately activated repair implementation gate after the investigation closes PASS.",
-    "allowed_actions": [
-      "inspect current GitHub source and project acceptance records",
-      "trace cli GovernedAgentGateway reasoning ToolRequest GovernedToolOrchestrator ToolReceipt and provider continuation paths",
-      "trace provider tool-call provider-turn and persistence correlation owners",
-      "scan for alternate or legacy active coding paths",
-      "identify the earliest missing or incorrect composition state",
-      "identify the smallest active-owner edit surface",
-      "record one bounded repair hypothesis and falsifier",
-      "define focused integration and installed-runtime validation before editing",
-      "keep R7 release package readiness and publication blocked"
+  "closure": {
+    "runtime_scan_command_hash": "81684E672EE2A77C49B634D79DF4CBAB84531A613328EC9488434B75BFE6BD2D",
+    "investigation_head": "0eed3c8a4c9d6eb8407da639fef086b610a279a4",
+    "alternate_active_coding_path": "NOT_FOUND",
+    "production_mutation_tool": "NOT_FOUND",
+    "earliest_missing_composition_state": "installed lbe code selects read-only reasoning.inspect/LBERequestController instead of the existing GovernedClineWorker -> R6E -> ToolReceipt continuation loop",
+    "second_missing_state": "R6E has generic governed execution and workspace.read but no concrete production coding mutation capability",
+    "authority_reuse": "REQUIRED"
+  },
+  "repair_hypothesis": "Compose installed coding through the existing GovernedClineWorker plus existing R6E ToolRegistry/GovernedToolOrchestrator and add one bounded production workspace mutation tool behind existing R6C/R6E authority; provider tool proposals must produce correlated ToolReceipts and continuation while completion remains under existing deterministic validation.",
+  "repair_falsifiers": [
+    "installed code remains read-only and does not reach GovernedClineWorker/R6E",
+    "provider mutates workspace without ToolReceipt",
+    "mutation bypasses R6C authorization",
+    "no concrete production coding mutation tool is available",
+    "denied or escalated mutation executes",
+    "tool-call operation receipt correlation is lost",
+    "a second authority owner is introduced",
+    "provider completion bypasses deterministic completion validation"
+  ],
+  "next_admissible_action": {
+    "kind": "SEPARATELY_ACTIVATED_REPAIR_IMPLEMENTATION",
+    "status": "NOT_ACTIVATED",
+    "implementation_allowed_now": false,
+    "architecture_changes_allowed_now": false,
+    "scope": [
+      "compose existing installed coding path with existing GovernedClineWorker and R6E orchestrator",
+      "add one smallest safe workspace-bound production mutation capability behind existing R6C/R6E",
+      "add claim-matched focused/integration tests",
+      "rebuild/install exact repair head and rerun R7 observable 3"
     ]
   },
-  "trigger": {
-    "failed_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-    "failed_observable": "normal installed governed coding execution plus receipts",
-    "runtime_marker": "R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN",
-    "observed_provider_tools": ["workspace.read"],
-    "observed_response_read_only": true
-  },
-  "investigation_completion_predicate": [
-    "exact provider tool-request producer identified",
-    "exact intended R6E executor consumer identified",
-    "exact ToolReceipt continuation seam identified",
-    "exact session task request tool-call operation correlation owner identified",
-    "no already-active alternate coding path missed",
-    "earliest missing composition state proven",
-    "smallest edit surface identified",
-    "no new authority required",
-    "one repair hypothesis and falsifier recorded",
-    "claim-matched focused integration and installed-runtime validation defined"
-  ],
   "accepted_baseline": {
     "canonical_base_sha": "69c6ae764bc217cd5795ddf8a972658223a681a0",
     "R3": "PROVEN_COMPLETE",
@@ -92,8 +90,8 @@
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "complete R7 repair investigation to PASS",
-      "separately activate and validate smallest repair implementation",
+      "separately activate bounded R7 repair implementation",
+      "validate smallest repair through focused and installed-runtime evidence",
       "rerun R7 installed end-to-end acceptance to PASS",
       "release/package readiness acceptance"
     ]
