@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-16
-Status: Active canonical roadmap — evidence reconciled through R5 acceptance
+Status: Active canonical roadmap — evidence reconciled through R6A acceptance
 
 This document defines dependency order and acceptance goals for `Letterblack0306/LBE_Presistent_Agent_wall`.
 
@@ -81,13 +81,13 @@ Missing acceptance evidence must not be treated as permission to reimplement the
 
 The documentation-only roadmap reconciliation is PASS.
 
-R3, R4 and R5 acceptance are PASS.
+R3, R4, R5 and R6A acceptance are PASS.
 
 ```text
 R3  PROVEN_COMPLETE
 R4  PROVEN_COMPLETE
 R5  PROVEN_COMPLETE
-R6A PARTIALLY_PROVEN
+R6A PROVEN_COMPLETE
 R6B PARTIALLY_PROVEN
 R6C PARTIALLY_PROVEN
 R6D IMPLEMENTED_NOT_ACCEPTED
@@ -98,16 +98,18 @@ R7  PARTIALLY_PROVEN
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current completed R5 phase:
+Current completed R6A phase:
 
 ```text
-phase: R5_BOUNDED_RECOVERY_ACCEPTANCE
-slice: PROVE_CLASSIFIED_BOUNDED_RECOVERY_AND_DUPLICATE_PREVENTION
+phase: R6A_PROVIDER_ABSTRACTION_ACCEPTANCE
+slice: PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT
 status: PASS
+implementation_allowed: false
+architecture_changes_allowed: false
 next_phase_locked: true
 ```
 
-No R6 slice is active. The next R6 family must be selected from current evidence and opened under a separate machine/human gate.
+No later R6 slice is active. The next R6 family must be explicitly activated after reviewing current dependency evidence; PASS does not auto-activate R6B.
 
 ---
 
@@ -229,18 +231,70 @@ Do not reopen R5 implementation unless current evidence later disproves the acce
 
 # 8. R6A — Provider abstraction
 
-**Classification: `PARTIALLY_PROVEN`.**
+**Classification: `PROVEN_COMPLETE`.**
 
-Provider registry/capability/health/turn/event owners and accepted P-series/Cline continuation checkpoints prove substantial mechanics.
-
-Remaining acceptance requirement:
+Accepted owner path:
 
 ```text
-provider A -> reasoning request -> response
-provider B -> equivalent logical request -> response
+ProviderRegistry
+ -> build_provider_controller
+ -> provider-neutral backend contract
+ -> LBERequestController
+ -> SessionMemoryRuntimeBridge.run_reasoning
+ -> persisted session/task state
 ```
 
-within the same persisted session/workspace contract while preserving LBE policy, permissions, guards, evidence semantics, and task identity.
+Accepted combined same-session proof:
+
+```text
+provider A -> equivalent logical request -> COMPLETED
+same persisted session/workspace -> provider configuration A/model-a -> B/model-b
+provider B -> equivalent logical request -> COMPLETED
+```
+
+Proven invariant across the switch:
+
+- session ID unchanged;
+- project workspace ID and canonical workspace root unchanged;
+- task identity unchanged and final task status `completed`;
+- mode unchanged (`coding`);
+- permission unchanged (`write_allowed`);
+- runtime policy unchanged (`development`);
+- permission-policy and evidence-policy identities unchanged;
+- provider/model fields changed only where intended;
+- both providers used the same LBE controller/runtime boundary;
+- no provider-specific governance/session/reasoning owner was introduced.
+
+Decisive workspace-bound integration command hash:
+
+```text
+2F16607C4A8807706BAA13114BCD930B21F3728EF4E487F833D6D46DF7558935
+```
+
+Focused existing-owner regression:
+
+```text
+64 passed
+```
+
+Final scope/worktree proof:
+
+```text
+R6A_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
+R6A_DIFF_CHECK=PASS
+R6A_WORKTREE_CLEAN=PASS
+R6A_ACCEPTANCE_SCOPE=PASS
+```
+
+No runtime/test implementation source changed during R6A acceptance. Earlier failed diagnostics were classified as harness/target/fixture failures and were not promoted into product defects.
+
+Canonical acceptance record:
+
+```text
+docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_CHECKPOINT.md
+```
+
+Do not reopen R6A implementation unless current evidence later disproves the accepted provider-neutral owner path.
 
 ---
 
@@ -363,6 +417,8 @@ Required installed/normal-path proof families remain:
 - D: read-only audit with live evidence and no mutation;
 - E: out-of-authority escalation/denial with no provider bypass.
 
+R6A supplies lower-layer acceptance for the provider-switch invariant, but R7 family B still requires installed/normal-path proof at R7 evidence level.
+
 R7 is complete only when all required families pass from the installed/normal path.
 
 ---
@@ -389,7 +445,10 @@ R4 acceptance: PASS
 R5 acceptance: PASS
         |
         v
-R6 acceptance gaps in dependency order
+R6A acceptance: PASS
+        |
+        v
+remaining R6 acceptance gaps in dependency order
         |
         v
 CLI normal-path coverage
