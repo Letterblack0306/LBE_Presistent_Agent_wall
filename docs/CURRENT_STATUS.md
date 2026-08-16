@@ -4,7 +4,7 @@ Updated: 2026-08-17
 
 ## Authority
 
-This file is a human-readable project summary. Live validation/runtime evidence, current Git/workspace state, the machine gate, and project-owned acceptance records outrank it.
+Live validation/runtime evidence, current Git/workspace state, the machine gate, and project-owned acceptance records outrank this summary.
 
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 
@@ -27,82 +27,83 @@ R6B_TYPED_MODE_POLICY_ACCEPTANCE: PASS / PROVEN_COMPLETE
 R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE: PASS / PROVEN_COMPLETE
 ```
 
-## R6C accepted owner path
+Final synchronized R6C closure:
 
 ```text
-ModeDecision
- -> AuthorizationRequest / resolve_authorization
- -> AuthorizationDecision
- -> ToolExecutionContext
- -> GovernedToolOrchestrator
- -> ToolReceipt
+HEAD: 3d7bf3fbdc64f7dc9b57a617494381013b4513da
+origin/main: 3d7bf3fbdc64f7dc9b57a617494381013b4513da
+R6C status: PASS
+R6C roadmap: PROVEN_COMPLETE
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
+worktree: clean
+LoopTool closure hash: ECEEA88E421AA1DD89CF498E78DCC59DFB35493496581A84828DA421A72FEE62
 ```
 
-Accepted integration invariant:
+## Active R6D acceptance slice
+
+The user explicitly authorized continuing. Dependency review selected **R6D context assembly and rule/guard injection** because provider reasoning consumes assembled context before planning, while LBE must preserve current-workspace, guard and governance authority.
 
 ```text
-op-allow-1 -> ALLOW -> EXECUTED
-op-allow-2 -> ALLOW -> EXECUTED
-op-deny -> DENY -> handler not executed
-op-escalate -> ESCALATE -> handler not executed
-op-destructive with destructive_authorized=True -> ALLOW -> EXECUTED
-```
-
-Authorization verdict and rationale remain present in governed receipts. Repeated delegated authority does not require a separate approval owner. Explicit forbidden policy denies; scope/authority expansion escalates; provider/prompt approval is not canonical authority at this boundary.
-
-## R6C validation evidence
-
-Repository-owned authorization/tool baseline:
-
-```text
-26 passed
-command_hash: 8D1A70917D588AFBD736F05B24E04D0FEDAABB19AB0B4B3A0A41A9B7C41824CA
-```
-
-Integration discriminator:
-
-```text
-command_hash: 344D8A7C5FF4F980999606734C34B4B228FBC137E15CA25354DDD1FEF11676EF
-R6C_ALLOW_1=ALLOW
-R6C_ALLOW_2=ALLOW
-R6C_DENY=DENY
-R6C_ESCALATE=ESCALATE
-R6C_DESTRUCTIVE_AUTHORIZED=ALLOW
-R6C_HANDLER_CALLS=op-allow-1,op-allow-2,op-destructive
-R6C_DENY_HANDLER_EXECUTED=False
-R6C_ESCALATE_HANDLER_EXECUTED=False
-R6C_AUTHORIZATION_PROVENANCE=PASS
-R6C_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARY=PASS
-R6C_WORKSPACE_BOUND_DIAGNOSTIC=PASS
-```
-
-Focused regression/scope:
-
-```text
-command_hash: 7AFBB97B2A5018C58D59D3D7842B4B601264E1E5BC3F073C37B9304F091543B2
-81 passed
-R6C_FOCUSED_REGRESSION=PASS
-R6C_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
-R6C_DIFF_CHECK=PASS
-R6C_WORKTREE_CLEAN=PASS
-R6C_ACCEPTANCE_SCOPE=PASS
-```
-
-No runtime or test implementation source changed during R6C acceptance.
-
-## Current machine/human gate
-
-```text
-phase: R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE
-slice: PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH_GOVERNED_EXECUTION
-status: PASS
+phase: R6D_CONTEXT_ASSEMBLY_ACCEPTANCE
+slice: PROVE_BOUNDED_AUTHORITY_PRESERVING_CONTEXT_ACROSS_PROVIDER_AND_LIVE_WORKSPACE_BOUNDARIES
+status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
+base_sha: 3d7bf3fbdc64f7dc9b57a617494381013b4513da
 ```
 
-R6D is not active. No later R6 family is unlocked automatically.
+Active plan/checkpoint:
+
+```text
+docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_GATE.md
+docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_CHECKPOINT.md
+```
+
+## R6D evidence review
+
+Existing owners:
+
+```text
+runtime.context_assembly.assemble_reasoning_context
+reasoning_contracts.ReasoningRequest
+request_controller.LBERequestController
+EvidenceService
+GuardRunner
+SessionMemoryRuntimeBridge / LBERequest.reference_context
+```
+
+Current source/tests already establish separately:
+
+- deterministic ordering: caller/session context before indexed reference evidence;
+- source mapping copy semantics and no top-level input mutation;
+- real controller handoff into provider-facing `ReasoningRequest`;
+- approved guard IDs remain on a separate typed channel rather than duplicated into reference context;
+- deterministic guard/current-workspace inspection remains LBE-owned;
+- reasoning-plan schema rejects authority-bearing model fields including verdict, authorization, policy and mutation;
+- provider construction remains generic/provider-neutral from the already accepted R6A boundary.
+
+Reuse decision:
+
+```text
+REUSE
+```
+
+The unresolved R6D artifact is integration-level proof that current workspace/deterministic evidence outranks conflicting reference/history, equivalent authoritative inputs produce equivalent LBE context across providers, and model prose cannot become context/retrieval/governance authority.
+
+## R6D falsifier
+
+R6D cannot PASS if:
+
+- reference/history overrides current workspace truth;
+- provider identity changes LBE context authority;
+- unapproved rules/guards become executable from context prose;
+- model output can create retrieval/governance/authorization/verdict/mutation authority;
+- identical authoritative inputs yield materially different LBE context;
+- a second context/retrieval/guard/policy owner is required.
 
 ## Current roadmap classification
 
@@ -114,7 +115,7 @@ R6D is not active. No later R6 family is unlocked automatically.
 | R6A provider abstraction | `PROVEN_COMPLETE` |
 | R6B typed mode policy | `PROVEN_COMPLETE` |
 | R6C permission/authorization | `PROVEN_COMPLETE` |
-| R6D context assembly + rule/guard injection | `IMPLEMENTED_NOT_ACCEPTED` |
+| R6D context assembly + rule/guard injection | `IMPLEMENTED_NOT_ACCEPTED` — acceptance active |
 | R6E governed tool orchestration | `PARTIALLY_PROVEN` |
 | R6F completion/validation | `PARTIALLY_PROVEN` |
 | CLI control surface | `PARTIALLY_PROVEN` |
@@ -133,13 +134,14 @@ next_phase_locked: true
 
 Do not:
 
-- reopen R3/R4/R5/R6A/R6B/R6C without new contradictory current evidence;
-- create a second mode/session/policy/authorization/prompt-approval owner;
-- allow provider-native mechanics or prompt approval prose to become LBE authority;
+- reopen R3-R6C without new contradictory current evidence;
+- implement or patch R6D before acceptance proves a real defect;
+- create a second context/retrieval/guard/policy authority;
+- allow provider-native mechanics or model prose to become LBE context/governance authority;
 - treat unit tests alone as integration acceptance;
 - patch from harness failures;
-- use LoopTool for normal tracked file authoring when GitHub is available;
-- auto-activate R6D or another phase after R6C PASS.
+- use LoopTool for normal tracked authoring when GitHub is available;
+- auto-activate R6E or another phase after R6D PASS.
 
 ## Working method
 
