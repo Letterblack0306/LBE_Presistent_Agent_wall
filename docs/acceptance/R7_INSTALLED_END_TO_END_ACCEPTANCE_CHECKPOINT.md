@@ -30,42 +30,69 @@ observable 9: PASS
 
 Question:
 
-> Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE completion contract?
+> Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE-owned registered completion contract?
 
 Required installed-runtime proof:
 
 1. installed package resolves from isolated venv site-packages;
-2. persist an explicit completion contract for the bounded task;
-3. deterministic local provider completes one installed coding turn normally;
-4. provider terminal output may state that the task is complete, but `lbe_completion_truth` must remain false;
-5. installed coding response may report reasoning outcome `COMPLETED`, but persistent task state must be `running / AWAITING_VALIDATION`;
-6. the persisted completion contract must contain at least one required evidence kind with no passing persisted evidence;
-7. a fresh installed `session validate` must return completion verdict `BLOCKED`;
-8. persisted task must become `blocked / VALIDATION_INCOMPLETE`, not `completed / VALIDATED_COMPLETION`;
-9. source checkout remains clean.
+2. normal installed coding establishes the registered completion contract itself;
+3. contract requirements are exactly the registered coding kinds `source_change`, `focused_test`, and `git_status`;
+4. deterministic local provider completes one installed coding turn normally and may state that the task is complete;
+5. provider terminal state is successful but `lbe_completion_truth` remains false;
+6. installed coding response may report reasoning outcome `COMPLETED`, but persistent task state remains `running / AWAITING_VALIDATION`;
+7. the no-mutation task must not satisfy the full registered deterministic contract;
+8. `session validate` must reject completion from persisted evidence, expected as `FAILED / VALIDATION_FAILED` when deterministic source-change/git-state evidence fails;
+9. task must never become `completed / VALIDATED_COMPLETION` from provider prose or turn success;
+10. source checkout remains clean.
 
 ## Completion authority chain under test
 
 ```text
 provider/Cline terminal success
  -> response outcome COMPLETED
+ -> lbe_completion_truth false
  -> CodingCompletionRuntime.run_reasoning
  -> task RUNNING / AWAITING_VALIDATION
- -> persisted completion contract/evidence
+ -> registered completion contract
+ -> trusted source_change / focused_test / git_status evidence
  -> session validate
  -> evaluate_completion
- -> BLOCKED when required evidence is missing
+ -> FAILED when required deterministic evidence fails
 ```
 
 Only `READY` may establish `COMPLETED / VALIDATED_COMPLETION`.
+
+## Prior failed invocation
+
+Command hash:
+
+`D366A3D81B771F3CEA6377A37EAA2CE72391C6A8627C3FDA5D240D307AA68E9F`
+
+Observed before target predicate:
+
+```text
+R7_OBS10_PERSISTED_CONTRACT=PASS
+installed code => ValueError: completion evidence kind is not declared by the persisted task contract
+```
+
+Classification:
+
+```text
+TEST_HARNESS_COMPLETION_CONTRACT_INTERFERENCE
+product implication: NONE
+observable 10 product predicate: NOT REACHED
+```
+
+Cause: the first harness pre-persisted a synthetic `focused_test`-only contract. The gateway correctly did not replace the immutable existing contract, then its first normal trusted producer (`source_change`) correctly rejected an undeclared evidence kind. The corrected harness uses the real registered completion policy and does not alter production code.
 
 ## Falsifiers
 
 ```text
 provider/Cline success directly makes task COMPLETED
 provider text/prose establishes LBE completion truth
-missing required evidence still yields READY
-VALIDATED_COMPLETION appears before deterministic evidence satisfies the contract
+registered deterministic requirements fail but session validate still yields READY
+VALIDATED_COMPLETION appears before the full deterministic contract passes
+task is not provisional after successful reasoning and before validation
 ```
 
 ## Current classification
