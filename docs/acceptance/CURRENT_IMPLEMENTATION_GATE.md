@@ -1,10 +1,10 @@
 # Current Implementation Gate
 
-Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 9 — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 10 — IMPLEMENTATION LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
-Current slice: `OBSERVABLE_9_RECEIPT_PROVIDER_CONTINUATION_CORRELATION`
+Current slice: `OBSERVABLE_10_PROVIDER_COMPLETION_PROVISIONAL`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
@@ -13,8 +13,8 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: PASS
-required_evidence_level: INSTALLED_RUNTIME_CORRELATED_RECEIPT_CONTINUATION_PROOF
+status: OPEN
+required_evidence_level: INSTALLED_RUNTIME_PROVISIONAL_COMPLETION_AUTHORITY_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
@@ -37,31 +37,37 @@ observable 9: PASS
 
 Observable 9 decisive proof: `A323D6AB93CAFECC6A291F785614B92AE007CC0015B0DB959359F06747E044D9`.
 
-## Observable 9 result
+## Active observable 10
 
-```text
-provider tool_call_id: call_r7_obs9_create_1
-turn_id: turn-5232313195ef418c8970482d79fb3368
-operation_id: turn-5232313195ef418c8970482d79fb3368:tool:call_r7_obs9_create_1
-receipt_id: receipt-df662912e6894ead8a705083bccffa7b
-created sha256: 8bc4e5818a728c4deaa0d7790cf7b9aebfc0231be44b33393d94726c1eb10631
-provider requests: 2
-one tool call -> one receipt: PASS
-operation identity correlated: PASS
-receipt output correlated: PASS
-continuation tool-call identity correlated: PASS
-continuation governed result correlated: PASS
-single mutation execution: PASS
-same-turn provider continuation: PASS
-source worktree clean: PASS
-```
+Question:
 
-The installed result therefore proves exact provider-tool-call/R6E-receipt/provider-continuation correlation, not merely successful mutation followed by another provider request.
+> Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE completion contract?
 
-## Current boundary
+Required proof:
 
-Observable 9 is closed `PASS`.
+1. run installed `lbe code` from isolated site-packages against a deterministic local provider;
+2. provider/Cline turn reaches its normal successful terminal state;
+3. provider-facing runtime remains `lbe_completion_truth=false`;
+4. after reasoning success, the persistent task is `running / AWAITING_VALIDATION`, not completed;
+5. an explicit persisted completion contract contains at least one required evidence kind that is not satisfied;
+6. installed `session validate` evaluates persisted contract/evidence and returns `BLOCKED`;
+7. task becomes `blocked / VALIDATION_INCOMPLETE`, never `COMPLETED / VALIDATED_COMPLETION`;
+8. no provider text or successful turn is accepted as completion evidence;
+9. source checkout stays clean.
 
-Observable 10 is not active and requires explicit advancement. Its acceptance target is that provider completion remains provisional until deterministic persisted completion validation establishes LBE completion truth.
+Source contract used to define the discriminator:
 
-No production/runtime/package implementation change is authorized. Release/package readiness and publication remain blocked until the remaining R7 observables pass.
+- `CodingCompletionRuntime.run_reasoning()` records successful reasoning as `RUNNING / AWAITING_VALIDATION`;
+- `evaluate_completion()` returns `BLOCKED` when required evidence is missing or stale;
+- only `CompletionVerdict.READY` maps to `COMPLETED / VALIDATED_COMPLETION`;
+- `session validate` reloads the persisted contract and persisted evidence before finalization.
+
+## Falsifier
+
+Any successful provider/Cline turn that directly persists completion, any `VALIDATED_COMPLETION` before deterministic validation, or any `READY` verdict with required evidence missing is a product falsifier.
+
+Harness/provider/fixture failures that do not reach these predicates do not justify a production patch.
+
+## Stop rule
+
+Do not proceed to observable 11 until observable 10 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
