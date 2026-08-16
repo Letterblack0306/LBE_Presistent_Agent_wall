@@ -3,10 +3,11 @@
 ```text
 phase: LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION
 slice: RESOLVE_REACHABLE_DIFY_UNDICI_SECURITY_BLOCKER
-status: UNVERIFIED
+status: PASS
 
 base_sha: 999a5b623530229e3135780afa89c984ef227aac
 implementation_sha: 2288ccc38a68e71a6319ed877c670402ccf3bc3e
+canonical_lock_sha: f6d6519c493f8a81c3775c56a7d14ca09a324e14
 checkpoint_sha: populated by GitHub commit containing this file
 
 requirements:
@@ -50,64 +51,72 @@ files_changed:
   - .lbe/governance/implementation-gates.json
   - docs/acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_GATE.md
   - lbe_guard_inspector/runtime/cline_worker/package.json
+  - lbe_guard_inspector/runtime/cline_worker/package-lock.json
   - docs/acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_CHECKPOINT.md
 
 required_evidence_level: INTEGRATION
 
 validation_evidence:
+  canonical_lock:
+    commit: f6d6519c493f8a81c3775c56a7d14ca09a324e14
+    path: lbe_guard_inspector/runtime/cline_worker/package-lock.json
+    size_bytes: 104917
+    sha256: 19E594A4143A9241BF9FCE199969DF74574FC20B37B6BA404B786A9AA5AA811C
+    result: PASS — local HEAD and origin/main matched the canonical lock commit before final validation
+  clean_install:
+    command: npm ci --prefix lbe_guard_inspector/runtime/cline_worker --ignore-scripts --no-audit --no-fund
+    result: PASS — 213 packages installed from canonical lock
   dependency_resolution:
-    command: npm install / npm ls on worker package after adding override undici@<6.0.0 -> >=7.29.0 <8
+    command: npm ls --prefix lbe_guard_inspector/runtime/cline_worker dify-ai-provider @ai-sdk/provider-utils undici --all
     result: PASS — Dify remains 1.1.1, provider-utils remains 3.0.32, its undici resolves to 7.29.0; other observed undici instances resolve to 6.28.0 or 7.29.0
   audit:
     command: npm audit --prefix lbe_guard_inspector/runtime/cline_worker --package-lock-only --json
     result: PASS FOR THIS GATE — 0 critical, 0 high, 0 moderate, 1 low
     residual: @ai-sdk/provider-utils@3.0.32 low severity uncontrolled resource consumption advisory, transitive/non-direct; gate requires zero high/critical rather than zero findings
   direct_import:
-    command: import('@cline/agents') from worker directory
-    result: PASS — AgentRuntime and createAgentRuntime remain functions
+    command: import @cline/agents from the canonical installed worker graph
+    result: PASS — AgentRuntime=function and createAgentRuntime=function
   focused_regression:
     command: python -m pytest tests/test_cline_stdio_bridge.py tests/test_tool_orchestration.py -q
-    result: PASS — 20 passed at 2288ccc38a68e71a6319ed877c670402ccf3bc3e
-  clean_install:
-    command: npm ci --prefix lbe_guard_inspector/runtime/cline_worker --ignore-scripts --no-audit --no-fund
-    result: PASS — generated lock reproduces successfully
+    result: PASS — 20 passed in 3.96s at canonical lock head f6d6519c493f8a81c3775c56a7d14ca09a324e14
   package_build:
     command: python -m build --wheel --outdir .lbe-tmp-dist
-    result: PASS locally — generated wheel contained worker.mjs, package.json, and the locally generated package-lock.json
+    result: PASS — lbe_guard_inspector-0.2.0-py3-none-any.whl built successfully
+    wheel_contents:
+      - lbe_guard_inspector/runtime/cline_worker/worker.mjs
+      - lbe_guard_inspector/runtime/cline_worker/package.json
+      - lbe_guard_inspector/runtime/cline_worker/package-lock.json
+    missing: []
   implementation_gate:
     result: PASS — phase=LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION slice=RESOLVE_REACHABLE_DIFY_UNDICI_SECURITY_BLOCKER next_phase_locked=true
-  git_diff_check:
-    result: PASS on tracked state
+  workspace_state:
+    result: PASS — final git status was main...origin/main with no tracked or untracked changes
 
 security_evidence:
   - original Dify path was import-time reachable and resolved undici 5.29.0
-  - current candidate override resolves the Dify undici dependency to 7.29.0
+  - canonical worker dependency graph resolves the Dify undici dependency to 7.29.0
   - no observed worker-graph undici remains in the gate's affected range <=6.27.0
   - npm audit high finding is eliminated
   - one low @ai-sdk/provider-utils advisory remains and is recorded explicitly
-  - Cline upstream PR #13223 remains draft/open and unmerged; it is supporting evidence only, not upstream approval
+  - Cline upstream PR #13223 remains supporting evidence only; this checkpoint does not treat it as upstream approval
 
-lock_transfer_evidence:
-  - validated local package-lock.json size: 104917 bytes
-  - validated local package-lock.json SHA-256: 19E594A4143A9241BF9FCE199969DF74574FC20B37B6BA404B786A9AA5AA811C
-  - lock content was transported in eight bounded gzip/base64 chunks and reconstructed exactly; reconstructed size and SHA-256 matched the validated local artifact
-  - a temporary GitHub Actions lock-generation workflow was attempted only after the active gate explicitly authorized it; the GitHub run failed before executing any job steps, consistent with the repository's existing Actions startup-failure condition
-  - the temporary workflow was removed after that failed attempt
-  - one GitHub contents transfer produced a partial lock payload; it was detected before acceptance and immediately deleted. That commit is not canonical evidence and no incomplete lock remains on main
+artifact_transfer_evidence:
+  - exact lock artifact was verified at 104917 bytes and SHA-256 19E594A4143A9241BF9FCE199969DF74574FC20B37B6BA404B786A9AA5AA811C before canonicalization
+  - the final canonical lock commit was produced only after verifying local file size/hash and staging exactly one path
+  - the first push was rejected because GitHub main advanced; the intervening remote commits were inspected and proven to be temporary placeholder/revert commits
+  - the lock commit was then rebased onto the verified current origin/main and revalidated byte-for-byte before push
+  - final pushed commit f6d6519c493f8a81c3775c56a7d14ca09a324e14 matched origin/main and contained only package-lock.json relative to the verified remote head
 
-unverified:
-  - despite exact reconstruction, the current GitHub connector does not provide a file-upload/write primitive that can atomically transfer the full 104917-byte verified lock from the reconstructed artifact without reserializing it through a bounded text argument
-  - therefore package-lock.json is still not canonical in GitHub
-  - therefore the wheel proof does not yet prove packaging from a canonical GitHub lock
-  - broader project/release readiness
-
-document_conflicts:
-  - docs/CURRENT_STATUS.md remains stale relative to current main; separate reconciliation remains required
+remaining_non_blocking_findings:
+  - npm audit reports one low @ai-sdk/provider-utils advisory; accepted by this gate because high and critical findings are zero
+  - wheel build reports a pre-existing MANIFEST warning that LICENSE is not found; this slice does not classify that packaging warning as a dependency-security blocker
+  - docs/CURRENT_STATUS.md remains stale relative to current main and requires separate documentation reconciliation
+  - broader project/user readiness and release readiness remain unproven
 
 workspace_proof:
   repository: Letterblack0306/LBE_Presistent_Agent_wall
   branch: main
-  tested_head: 2288ccc38a68e71a6319ed877c670402ccf3bc3e
+  tested_head: f6d6519c493f8a81c3775c56a7d14ca09a324e14
   origin_match: PASS
 
 project_user_ready: NO
@@ -117,10 +126,8 @@ next_phase_locked: true
 
 ## Current conclusion
 
-The dependency-security mitigation itself is validated at integration level. The reachable Dify `undici@5.29.0` path is replaced by `undici@7.29.0`, the prior high-severity audit finding is eliminated, direct Cline import still works, `npm ci` succeeds, and the focused bridge/orchestrator regression remains 20/20.
+The bounded `LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION / RESOLVE_REACHABLE_DIFY_UNDICI_SECURITY_BLOCKER` slice is **PASS** at integration evidence level.
 
-The validated lock artifact itself is also now byte-for-byte identified and independently reconstructed: `104917` bytes with SHA-256 `19E594A4143A9241BF9FCE199969DF74574FC20B37B6BA404B786A9AA5AA811C`.
+The reachable Dify `undici@5.29.0` path is replaced by `undici@7.29.0`; the prior high-severity audit finding is eliminated; the deterministic `package-lock.json` is canonical in GitHub; `npm ci` reproduces the graph from that canonical lock; direct Cline import succeeds; the focused bridge/orchestrator regression is 20/20; and the built Python wheel contains `worker.mjs`, `package.json`, and the canonical `package-lock.json`.
 
-This checkpoint remains `UNVERIFIED`, not `PASS`, for one concrete integration reason: the verified lock still cannot be made canonical through the currently available GitHub connector without risking a partial or reserialized transfer, and GitHub Actions cannot currently execute the temporary generation workflow because the repository's Actions startup failure occurs before job steps run.
-
-Do not unlock provider continuation, MCP, UI/TUI, or release work from this checkpoint.
+This PASS is intentionally narrow. It does **not** establish provider-backed continuation, MCP, UI/TUI, broader project readiness, or release readiness. `next_phase_locked=true` remains in force until a separate bounded slice is explicitly activated.
