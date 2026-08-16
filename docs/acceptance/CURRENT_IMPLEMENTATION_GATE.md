@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — RELEASE PATH AUTHORIZED — NEXT PHASE LOCKED**
+Status: **FAIL — R7 INSTALLED END-TO-END ACCEPTANCE — INSTALLED CODING COMPOSITION FALSIFIER — NEXT PHASE LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
@@ -13,12 +13,12 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-kind: installed end-to-end acceptance proof, not implementation
+kind: failed installed end-to-end acceptance proof, not implementation
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: USER_VISIBLE_RUNTIME
-status: OPEN
+status: FAIL
 ```
 
 ## Accepted baseline
@@ -36,46 +36,62 @@ R6F: PROVEN_COMPLETE
 CLI: PROVEN_COMPLETE
 ```
 
-Final synchronized CLI closure baseline:
+The R7 falsifier does not reopen those lower-layer acceptances. It proves that the current installed normal coding path does not compose through to the accepted R6E execution/receipt authority.
+
+## R7 evidence reached
 
 ```text
-HEAD: 69c6ae764bc217cd5795ddf8a972658223a681a0
-origin/main: 69c6ae764bc217cd5795ddf8a972658223a681a0
-CLI gate: PASS / PROVEN_COMPLETE
-next_phase_locked: true
-LoopTool closure hash: BEA6C544A9AAB15733DF24AE212232AAF52350EA29B48B918FC9E781D6570045
+exact-head isolated install: PASS
+installed package/entrypoint identity: PASS
+checkout import leakage: NOT OBSERVED
+persistent installed session across fresh processes: PASS
+normal installed governed coding execution + receipts: FAIL
 ```
 
-## Why R7 is selected now
-
-The user explicitly authorized continuation after CLI closure. R7 is the next release prerequisite and must prove the installed normal path at user-visible/runtime evidence level. Existing accepted authorities are reused; no new runtime architecture is authorized.
-
-Existing authority chain:
+Decisive runtime evidence:
 
 ```text
-installed lbe
- -> lbe_guard_inspector.cli.main
- -> persistent runtime/session authority
- -> provider controller/adapters
+command hash: A2B146E0501F096D870E2ED15A4331366FB954E8F137D7CD980EC97E2FBAE7B4
+lbe code exit: 0
+outcome: INSUFFICIENT_EVIDENCE
+task status: blocked
+response.read_only: true
+provider stage: planning
+provider approved_tools: workspace.read
+marker: R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN
+```
+
+Observed composition:
+
+```text
+installed lbe code
  -> GovernedAgentGateway
- -> authorization + governed tool orchestration
- -> receipt-backed provider continuation
- -> checkpoint/task persistence
- -> deterministic completion validation
+ -> LBERequestController reasoning/inspection path
+ -> provider approved_tools = [workspace.read]
+ -> read_only response
+ -> governed coding tool execution/receipts not reached
 ```
 
-Reuse decision: `REUSE`.
+## Stop decision
 
-## Acceptance target
+R7 progression stops on required observable 3. Later provider-switch, restart/resume, external-change revalidation, audit, out-of-authority, receipt-correlation, completion, secret-state and release-readiness checks are not substitutes for the missing installed coding execution path.
 
-Prove isolated exact-head installation, persistent installed session/task continuity, one governed coding path, provider-switch authority stability, restart/resume after external workspace change, read-only audit, out-of-authority fail-closed behavior, receipt correlation, evidence-owned completion, and no secret/state leakage.
+## Repair boundary
+
+A real product falsifier is proven, but this failed acceptance gate still does not authorize source changes. The next admissible engineering action is to activate a separate bounded repair slice focused on the connecting flow from installed `lbe code` / `GovernedAgentGateway` to the already accepted R6E `GovernedToolOrchestrator` and receipt continuation path.
+
+Do not create a second tool dispatcher, authorization owner, session authority, provider authority, or completion authority.
 
 ## Release boundary
 
 ```text
 release_path_authorized: true
 publish_allowed_now: false
-remaining: R7 installed E2E -> release/package readiness
+remaining:
+  repair installed coding composition
+  -> rerun R7 installed E2E
+  -> release/package readiness
+next_phase_locked: true
 ```
 
-No version bump, tag, publish, architecture change, or runtime/CLI/test/package repair is allowed while this acceptance gate is OPEN unless a real falsifier is first proven and a separate bounded repair slice is explicitly activated.
+No release/package-readiness activation, version bump, tag, or publish is allowed while this gate is failed.
