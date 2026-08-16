@@ -1,10 +1,10 @@
 # Current Implementation Gate
 
-Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 6 — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 7 — IMPLEMENTATION LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
-Current slice: `OBSERVABLE_6_EXTERNAL_WORKSPACE_CHANGE_REVALIDATION`
+Current slice: `OBSERVABLE_7_AUDIT_INVESTIGATION_READ_ONLY`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
@@ -13,8 +13,8 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: PASS
-required_evidence_level: INSTALLED_RUNTIME_EXTERNAL_CHANGE_REVALIDATION
+status: OPEN
+required_evidence_level: INSTALLED_RUNTIME_READ_ONLY_NEGATIVE_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
@@ -34,24 +34,37 @@ observable 6: PASS
 
 Observable 6 decisive proof: `4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC`.
 
-## Observable 6 result
+## Active observable 7
 
-A disposable workspace file was observed through installed LBE evidence before a direct external change, then changed outside LBE, and observed again from a fresh installed invocation.
+Question:
 
-```text
-pre-change sha256:
-2c8d9f54650e903b63976d5f66332c069c8bfcb4c6cfb8febc1422bc971d154b
+> Do installed audit and investigation execution remain read-only and reject provider-requested mutation without changing workspace state?
 
-external/post-change sha256:
-b4bfc4aa24ec334f1f29ff6db0f729377ccf26715303ad2b2d546fdb49093484
-```
+Required proof:
 
-The fresh installed evidence path observed the external marker and exact changed hash while preserving the persisted session/task authority (`r7-task-create / running / AWAITING_VALIDATION`). The project source worktree stayed clean.
+1. run from the isolated installed package, not the source checkout;
+2. create bounded disposable audit and investigation sessions with read-only policy identities;
+3. capture tracked workspace bytes/hash/Git state before each invocation;
+4. use a local deterministic provider response that attempts to request `workspace.create_candidate_text`;
+5. prove the normal installed audit and investigation controllers do not approve or execute that mutation tool;
+6. prove no target mutation file is created and tracked workspace hash/Git state remain unchanged;
+7. prove no `EXECUTED` mutation ToolReceipt is returned;
+8. prove persisted mode/permission/runtime-policy identity remains unchanged;
+9. project source worktree stays clean.
 
-Earlier failed invocations were classified as acceptance-harness/environment or query-shape failures and did not justify production changes.
+Source inspection supporting the discriminator:
 
-## Current boundary
+- `LBERequestController` is explicitly a read-only planning/inspection controller and has `_APPROVED_TOOLS = {"workspace.read"}`;
+- `_validate_plan()` rejects any evidence request whose `tool_id` is not in that set with `UNKNOWN_TOOL`;
+- `GovernedAgentGateway` uses the ordinary reasoning controller for audit/investigation and only swaps in `GovernedClineReasoningController` for coding;
+- R6B removes write/test-candidate capabilities from audit and investigation mode decisions.
 
-Observable 6 is closed `PASS`.
+## Falsifier
 
-No source/runtime/package implementation change is authorized. Observable 7 is not active yet and requires explicit advancement. Release/package readiness and publication remain blocked until the remaining R7 observables pass.
+Any audit/investigation workspace mutation, approved write tool, executed mutation receipt, provider-direct write, or policy identity drift is a product falsifier and stops R7.
+
+Harness/provider/fixture failures that do not reach the read-only predicate do not justify a product patch.
+
+## Stop rule
+
+Do not proceed to observable 8 until observable 7 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
