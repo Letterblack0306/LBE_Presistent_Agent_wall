@@ -3,7 +3,7 @@
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
 slice: OBSERVABLE_4_PROVIDER_MODEL_SWITCH_AUTHORITY_STABILITY
-status: OPEN
+status: PASS
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
 required_evidence_level: INSTALLED_RUNTIME_FRESH_PROCESS
@@ -24,13 +24,25 @@ observable 3 governed coding execution + receipts: PASS_AFTER_REPAIR
   provider completion truth: false
   persisted task: running / AWAITING_VALIDATION
   source worktree: clean
+
+observable 4 provider/model switch authority stability: PASS
+  decisive command hash: E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6
+  installed package: isolated venv site-packages
+  before provider/model: openai-compatible / r7-model-a
+  after provider/model: openai-compatible / r7-model-b
+  fresh-process readback: PASS
+  source worktree: clean
 ```
 
-## Observable 4 — active
+## Observable 4 result
 
 Question: does normal installed provider/model switching alter only provider/model identity while preserving all LBE session/workspace/mode/policy authority fields?
 
-Required invariants:
+Result: `PASS`.
+
+The installed `provider select` operation changed only the model selection from `r7-model-a` to `r7-model-b` under the same registered `openai-compatible` provider.
+
+The following persisted authority fields remained identical before and after the switch and were re-read successfully from a fresh installed process:
 
 - session_id
 - project_workspace_id
@@ -42,23 +54,33 @@ Required invariants:
 - permission_policy_id
 - evidence_policy_id
 
-Required proof:
+The provider-selection response also reported unchanged policy state for:
 
-1. read installed session identity before switch;
-2. switch to a different registered provider/model through installed `lbe provider select`;
-3. compare all invariant fields before/after;
-4. start a fresh installed process and prove switched provider/model plus unchanged invariants persist;
-5. no source-tree import leakage;
-6. project source worktree remains clean.
+- active_profile_id
+- evidence_policy_id
+- permission
+- permission_policy_id
+- runtime_policy
+
+No source-tree import leakage was observed and the project source worktree remained clean.
+
+## Harness failures excluded
+
+```text
+DF8532C422FD8422078B7CB41FCEE5491648FE924D1ECACFBFE76ACF0AA1BA41
+  TEST_HARNESS_POWERSHELL_PARSE_ERROR
+  product implication: NONE
+  observable 4 did not execute in that invocation
+```
 
 ## Current classification
 
 ```text
-provider_switch_policy_stability: PENDING
-fresh_process_readback_for_observable_4: PENDING
+provider_switch_policy_stability: PASS
+fresh_process_readback_for_observable_4: PASS
 implementation_changes: FORBIDDEN
-observable_5: LOCKED
+observable_5: LOCKED_PENDING_EXPLICIT_ADVANCE
 release_publish_allowed_now: false
 ```
 
-Any invariant drift is a product falsifier and stops R7. Harness failures do not justify product changes.
+No product falsifier was observed in observable 4.
