@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "OBSERVABLE_9_RECEIPT_PROVIDER_CONTINUATION_CORRELATION",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -36,35 +36,30 @@
     "R7_OBSERVABLE_5": "PASS",
     "R7_OBSERVABLE_6": "PASS",
     "R7_OBSERVABLE_7": "PASS",
-    "R7_OBSERVABLE_8": "PASS"
+    "R7_OBSERVABLE_8": "PASS",
+    "R7_OBSERVABLE_9": "PASS"
   },
   "current_observable": {
     "number": 9,
-    "status": "OPEN",
+    "status": "PASS",
     "question": "Does the installed governed coding loop preserve exact provider tool-call, LBE call, operation, ToolReceipt, and same-turn provider continuation correlation without duplicate execution or identity substitution?",
     "required_evidence_level": "INSTALLED_RUNTIME_CORRELATED_RECEIPT_CONTINUATION_PROOF",
-    "implementation_changes_allowed": false
+    "implementation_changes_allowed": false,
+    "decisive_command_hash": "A323D6AB93CAFECC6A291F785614B92AE007CC0015B0DB959359F06747E044D9"
   },
-  "observable_9_falsifiers": [
-    "provider tool-call id does not map to the executed receipt operation id",
-    "continuation request does not carry the same provider tool-call id",
-    "more than one mutation executes for one provider tool call",
-    "receipt identity is missing or duplicated",
-    "provider continuation occurs in a different logical turn or without the governed result",
-    "workspace result does not match the correlated receipt"
-  ],
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "continuing to observable 10 before observable 9 is classified PASS"
+    "activating observable 10 without explicit advancement"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 9 through 15",
+      "explicitly activate R7 observable 10",
+      "finish R7 observables 10 through 15",
       "release/package readiness acceptance"
     ]
   }
