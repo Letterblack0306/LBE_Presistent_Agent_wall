@@ -352,14 +352,27 @@ async function executeTurn(frame) {
   try {
     const result = await runtime.run(text);
     if (!shuttingDown) {
-      write("turn.completed", frame, {
-        status: result.status,
-        run_id: result.runId,
-        iterations: result.iterations,
-        output_text: result.outputText,
-        usage: result.usage,
-        lbe_completion_truth: false,
-      });
+      if (result.status === "failed") {
+        write("turn.failed", frame, {
+          code: "CLINE_AGENTRUNTIME_FAILED",
+          message: String(result.error?.message ?? "Cline AgentRuntime failed"),
+          status: result.status,
+          run_id: result.runId,
+          iterations: result.iterations,
+          output_text: result.outputText,
+          usage: result.usage,
+          lbe_completion_truth: false,
+        });
+      } else {
+        write("turn.completed", frame, {
+          status: result.status,
+          run_id: result.runId,
+          iterations: result.iterations,
+          output_text: result.outputText,
+          usage: result.usage,
+          lbe_completion_truth: false,
+        });
+      }
     }
   } catch (error) {
     if (!shuttingDown) {
