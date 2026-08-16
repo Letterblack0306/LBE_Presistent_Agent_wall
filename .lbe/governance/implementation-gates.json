@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_GATE.md",
-  "active_phase": "R3_RUNTIME_REASONING_ACCEPTANCE",
-  "active_slice": "PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R4_CHECKPOINT_RESUME_ACCEPTANCE_GATE.md",
+  "active_phase": "R4_CHECKPOINT_RESUME_ACCEPTANCE",
+  "active_slice": "PROVE_CHECKPOINT_RESTART_REHYDRATION_AND_STALE_STATE_INVALIDATION",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,8 +41,20 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Completed acceptance proof for the existing R3 persistent-runtime to existing-reasoning-controller boundary without runtime implementation changes.",
-    "implementation_changes": "None. Runtime implementation remained disabled throughout this acceptance slice.",
-    "result": "PASS. R3 is PROVEN_COMPLETE at its roadmap acceptance level. R4 checkpoint/resume acceptance is the earliest next candidate and is not active until a separate gate is explicitly opened."
+    "purpose": "Prove the existing R4 checkpoint/restart/rehydration/stale-state path at integration level without changing runtime implementation.",
+    "implementation_changes": "Forbidden by default. If acceptance evidence proves a real implementation defect, stop and activate a separate repair slice before changing runtime source.",
+    "allowed_actions": [
+      "inspect current R4 checkpoint resume and memory owners",
+      "run bounded checkpoint external-change restart integration proof",
+      "prove session task workspace and provider configuration persistence",
+      "prove stale source-backed fact invalidation and removal from verified context",
+      "prove changed Git HEAD makes protected checkpoint ineligible",
+      "prove checkpoint constraints survive restart",
+      "prove compaction history is not promoted into current workspace truth",
+      "run focused R4 session-memory regression",
+      "classify broader regression requirement from evidence",
+      "record exact acceptance evidence",
+      "run diff scope and clean worktree validation"
+    ]
   }
 }
