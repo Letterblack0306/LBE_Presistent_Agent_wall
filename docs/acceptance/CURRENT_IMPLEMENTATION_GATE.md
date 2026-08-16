@@ -1,24 +1,24 @@
 # Current Implementation Gate
 
-Status: **PASS — R6E GOVERNED TOOL ORCHESTRATION ACCEPTANCE — NEXT PHASE LOCKED**
+Status: **OPEN — R6F COMPLETION/VALIDATION ACCEPTANCE — RELEASE PATH AUTHORIZED — NEXT PHASE LOCKED**
 
-Current phase: `R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE`
+Current phase: `R6F_COMPLETION_VALIDATION_ACCEPTANCE`
 
-Current slice: `PROVE_RECEIPT_BACKED_GOVERNED_TOOL_LIFECYCLE_WITH_IDEMPOTENCY_AND_PROVIDER_CONTINUATION`
+Current slice: `PROVE_EVIDENCE_OWNED_TERMINAL_COMPLETION_THROUGH_PERSISTENT_CODING_RUNTIME`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Closed plan
+## Active plan
 
 ```text
-active_plan: docs/acceptance/R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE_GATE.md
-checkpoint: docs/acceptance/R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE_CHECKPOINT.md
+active_plan: docs/acceptance/R6F_COMPLETION_VALIDATION_ACCEPTANCE_GATE.md
+checkpoint: docs/acceptance/R6F_COMPLETION_VALIDATION_ACCEPTANCE_CHECKPOINT.md
 kind: acceptance proof, not implementation
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: PASS
+status: OPEN
 ```
 
 ## Accepted baseline
@@ -34,73 +34,56 @@ R6D: PROVEN_COMPLETE
 R6E: PROVEN_COMPLETE
 ```
 
-## Accepted R6E owner path
+Final synchronized R6E closure baseline:
 
 ```text
-ToolRequest
- -> ToolRegistry lookup
- -> argument validation
- -> R6C resolve_authorization
- -> GovernedToolOrchestrator
- -> registered handler / existing service
- -> ToolReceipt(output/evidence/authorization)
- -> operation-id idempotency
- -> continuation_from_receipt
- -> continue_provider
-```
-
-Provider continuation remains receipt-backed transport only and has no execution authority.
-
-## Decisive observables
-
-```text
-acceptance_head: 8d755418c81efa75522d8cd360b60f8cdbd55ed5
-
-repository baseline: 29 passed
-hash: 2C05376D268B47A944EDD267CDD5EF4E37B37342FD19A069DADC2F4435CF90AB
-
-authorized execution/idempotency: PASS
-hash: 85A894FA0BB9EFBD297255952B9E61317AEB0250B6D2DF2EBD5DFA453AAB8AD0
-
-receipt-backed continuation: PASS
-hash: B24E0F0CECFE6CCA4DD18D54D929D1DF29FB9C35EF02E4CDABD77620888EB600
-
-combined lifecycle and escalation stop: PASS
-hash: D5D43751BE65F6F765960CA119CA59D74732181E520D3353AE00F1B0329A7A9A
-
-focused regression: 51 passed
-hash: 8D7906D783094242D072C6C2D49D392896810ADF2C162D2B16623A8BFAE9AA43
-
-runtime/test source unchanged: PASS
-diff check: PASS
-worktree clean: PASS
-acceptance scope: PASS
-observed falsifier: NONE
-```
-
-Combined lifecycle proof established:
-
-```text
-ALLOW -> EXECUTED -> one handler call -> receipt evidence retained
-same operation ID -> original receipt -> no re-execution
-executed receipt -> provider continuation with matching operation/receipt/tool/output identity
-ESCALATE -> handler not executed -> provider continuation blocked
-```
-
-## Harness failure retained
-
-`F37E90BA...` was a PowerShell transport truncation/parser failure before Python execution. It has no product implication.
-
-## Current status
-
-```text
-implementation_allowed: false
-architecture_changes_allowed: false
+HEAD: fdb256c09f331610e596f12fdca008785b9518a4
+origin/main: fdb256c09f331610e596f12fdca008785b9518a4
+R6E gate: PASS
 next_phase_locked: true
-project_user_ready: NO
-release_ready: NO
+LoopTool closure hash: 90D0F4EE9255B968DB413A62D67AFA9363AB998EF9D7BED9349F8E26C5408E5D
 ```
 
-## Next-phase rule
+## Why R6F is selected next
 
-Do not activate R6F or another family automatically. The next slice requires explicit activation and its own evidence review/gate.
+The user authorized proceeding toward release. Canonical dependency order still requires R6F completion/validation, CLI normal-path acceptance, and R7 installed end-to-end proof before release/package readiness. Release authorization does not convert missing evidence into PASS.
+
+Existing completion owners already exist:
+
+```text
+runtime.completion_gate.evaluate_completion
+runtime.completion_runtime.CodingCompletionRuntime
+runtime.task_completion_policy
+runtime.completion_evidence_producers
+memory.completion_contracts.TaskCompletionContractPersistence
+memory.completion_evidence.TaskCompletionEvidencePersistence
+SessionMemoryRuntimeBridge
+```
+
+Reuse decision: `REUSE`.
+
+## Acceptance question
+
+Can the existing persistent coding runtime keep reasoning success provisional until producer-bound structured evidence satisfies an explicit completion contract, and only then persist canonical task completion?
+
+## Required observable
+
+1. reasoning `COMPLETED` -> RUNNING/AWAITING_VALIDATION;
+2. completion claim without evidence -> BLOCKED;
+3. stale/missing evidence -> BLOCKED;
+4. failed required evidence -> FAILED;
+5. all required PASS evidence plus explicit claim -> READY;
+6. READY -> canonical task COMPLETED / VALIDATED_COMPLETION;
+7. contract/evidence remain bound to session/task/workspace identity;
+8. no CLI/provider/model completion authority;
+9. no second completion/task-state owner.
+
+## Release boundary
+
+```text
+release_path_authorized: true
+publish_allowed_now: false
+remaining: R6F -> CLI normal-path -> R7 installed E2E -> release/package readiness
+```
+
+Do not tag, version-bump, build-for-publish, or publish while R6F is OPEN. If R6F exposes a real implementation defect, stop and activate a separate bounded repair slice before modifying runtime or tests.
