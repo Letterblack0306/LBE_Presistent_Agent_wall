@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "OBSERVABLE_7_AUDIT_INVESTIGATION_READ_ONLY",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -34,35 +34,30 @@
     "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR",
     "R7_OBSERVABLE_4": "PASS",
     "R7_OBSERVABLE_5": "PASS",
-    "R7_OBSERVABLE_6": "PASS"
+    "R7_OBSERVABLE_6": "PASS",
+    "R7_OBSERVABLE_7": "PASS"
   },
   "current_observable": {
     "number": 7,
-    "status": "OPEN",
+    "status": "PASS",
     "question": "Do installed audit and investigation execution remain read-only and reject provider-requested mutation without changing workspace state?",
     "required_evidence_level": "INSTALLED_RUNTIME_READ_ONLY_NEGATIVE_PROOF",
-    "implementation_changes_allowed": false
+    "implementation_changes_allowed": false,
+    "decisive_command_hash": "1E59BF836E469E6652D839F076EE7A48E0D531796F39C0D35AB0F8974EADD576"
   },
-  "observable_7_falsifiers": [
-    "audit invocation mutates workspace bytes or git state",
-    "investigation invocation mutates workspace bytes or git state",
-    "audit or investigation accepts workspace.create_candidate_text or another mutation tool as approved",
-    "audit or investigation emits an EXECUTED mutation receipt",
-    "provider directly mutates workspace outside LBE authority",
-    "read-only mode/policy identity changes as a side effect"
-  ],
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "continuing to observable 8 before observable 7 is classified PASS"
+    "activating observable 8 without explicit advancement"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 7 through 15",
+      "explicitly activate R7 observable 8",
+      "finish R7 observables 8 through 15",
       "release/package readiness acceptance"
     ]
   }
