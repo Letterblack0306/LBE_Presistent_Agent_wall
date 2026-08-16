@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-16
-Status: Active canonical roadmap — evidence reconciled through R4 acceptance
+Status: Active canonical roadmap — evidence reconciled through R5 acceptance
 
 This document defines dependency order and acceptance goals for `Letterblack0306/LBE_Presistent_Agent_wall`.
 
@@ -51,7 +51,7 @@ CLI/API/TUI are control/projection surfaces, not parallel runtime authorities.
 - pre-authorized operations may proceed without repetitive prompts; authority expansion must `ESCALATE` or `DENY`;
 - current workspace/Git/runtime evidence outranks memory/reference history;
 - no unrestricted shell/filesystem bypass around registered governed tools;
-- no second session, authorization, tool, receipt, validation, or completion owner;
+- no second session, authorization, tool, receipt, validation, completion, or recovery owner;
 - Cline reuse remains `ADAPT`: provider/tool-call/continuation mechanics may be reused behind LBE authority, but `ClineCore` and native mutation paths are not canonical LBE authority.
 
 ---
@@ -65,6 +65,7 @@ Current owners already exist for:
 - deterministic guards and validation-owned verdicts;
 - `WorkspaceMemoryStore`;
 - `SessionMemoryRuntimeBridge`;
+- bounded classified recovery via `recovery.py` and `run_recoverable()`;
 - provider registry/capabilities/turn/history/control;
 - typed mode policy and deterministic authorization;
 - `GovernedToolOrchestrator` execution/receipt/idempotency;
@@ -80,12 +81,12 @@ Missing acceptance evidence must not be treated as permission to reimplement the
 
 The documentation-only roadmap reconciliation is PASS.
 
-R3 and R4 acceptance are PASS.
+R3, R4 and R5 acceptance are PASS.
 
 ```text
 R3  PROVEN_COMPLETE
 R4  PROVEN_COMPLETE
-R5  IMPLEMENTED_NOT_ACCEPTED
+R5  PROVEN_COMPLETE
 R6A PARTIALLY_PROVEN
 R6B PARTIALLY_PROVEN
 R6C PARTIALLY_PROVEN
@@ -97,23 +98,16 @@ R7  PARTIALLY_PROVEN
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current completed R4 phase:
+Current completed R5 phase:
 
 ```text
-phase: R4_CHECKPOINT_RESUME_ACCEPTANCE
-slice: PROVE_CHECKPOINT_RESTART_REHYDRATION_AND_STALE_STATE_INVALIDATION
+phase: R5_BOUNDED_RECOVERY_ACCEPTANCE
+slice: PROVE_CLASSIFIED_BOUNDED_RECOVERY_AND_DUPLICATE_PREVENTION
 status: PASS
 next_phase_locked: true
 ```
 
-Earliest next candidate:
-
-```text
-R5 bounded classified recovery acceptance
-active: NO
-```
-
-A separate machine/human gate must be opened before R5 proof begins.
+No R6 slice is active. The next R6 family must be selected from current evidence and opened under a separate machine/human gate.
 
 ---
 
@@ -147,8 +141,6 @@ Canonical acceptance record:
 docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_CHECKPOINT.md
 ```
 
-Do not reopen R3 implementation unless current evidence later disproves this accepted owner.
-
 ---
 
 # 6. R4 — Checkpoint, resume, and rehydration
@@ -168,50 +160,9 @@ SessionMemoryRuntimeBridge.start_or_resume
  -> current context packet
 ```
 
-Accepted checkpoint path:
+Acceptance established session/task/config continuity, active-constraint survival, current Git/source reinspection, stale source-backed fact invalidation, checkpoint HEAD mismatch/ineligibility after external change, and the rule that assistant/compaction summaries are not current workspace truth.
 
-```text
-SessionMemoryRuntimeBridge.checkpoint
- -> SessionMemoryAdapter.checkpoint_compaction
- -> WorkspaceMemoryStore
-```
-
-Acceptance proof established:
-
-1. persisted session/task/workspace identity survives restart;
-2. persisted mode/provider/profile/permission/evidence configuration survives restart;
-3. checkpoint identity and active constraints survive restart;
-4. an external source change plus commit produces a new current Git HEAD;
-5. resume exposes current Git state rather than treating checkpoint state as current;
-6. protected checkpoint HEAD revalidation becomes `MISMATCH` and status `INELIGIBLE`;
-7. `reactivation_allowed=false` when checkpoint/current HEAD differ;
-8. previously verified source-backed facts are hash-revalidated and become `STALE` when changed;
-9. stale facts are removed from resumed `verified_facts`;
-10. assistant reasoning/compaction summaries are not promoted into current workspace truth.
-
-Decisive integration discriminator:
-
-```text
-tests/test_session_resume_runtime.py::test_resume_invalidates_changed_source_fact_and_reports_changed_head
-PASS
-```
-
-Focused R4 regression:
-
-```text
-37 passed
-```
-
-across:
-
-```text
-tests/test_session_resume_runtime.py
-tests/test_session_memory_runtime.py
-tests/test_session_memory_adapter.py
-tests/test_checkpoint_eligibility.py
-```
-
-No runtime/test implementation source changed during R4 acceptance.
+Focused R4 regression: `37 passed`.
 
 Canonical acceptance record:
 
@@ -219,25 +170,60 @@ Canonical acceptance record:
 docs/acceptance/R4_CHECKPOINT_RESUME_ACCEPTANCE_CHECKPOINT.md
 ```
 
-Do not reopen R4 implementation unless current evidence later disproves this accepted owner.
-
 ---
 
 # 7. R5 — Bounded classified recovery
 
-**Classification: `IMPLEMENTED_NOT_ACCEPTED`.**
+**Classification: `PROVEN_COMPLETE`.**
 
-Current owners include `recovery.py` and `SessionMemoryRuntimeBridge.run_recoverable()`.
+Accepted owner path:
 
-Required acceptance proof:
+```text
+SessionMemoryRuntimeBridge.run_recoverable
+ -> recovery.run_with_recovery
+ -> classify_failure / RetryPolicy
+ -> persist_recovery_state
+ -> WorkspaceMemoryStore
+```
 
-- transient failure recovers within declared policy;
-- deterministic denial/scope conflict does not loop;
-- retry count persists where required;
-- duplicate/non-idempotent writes are prevented;
-- evidence-between-attempts policy is enforced;
-- cancellation stops cleanly;
-- final recovery state records exact evidence.
+Accepted behavior:
+
+- transient retryable failure recovers only within declared policy;
+- attempt count and terminal state persist;
+- retry count survives runtime reconstruction;
+- permission denial does not retry;
+- deterministic classes including scope conflict cannot be configured as retryable;
+- non-idempotent retryable operations are rejected before retry execution;
+- required evidence-between-attempts blocks another attempt when absent;
+- terminal success blocks duplicate execution under the same task/operation identity;
+- cancellation is terminal by canonical source: checked before another attempt, persisted as `CANCELLATION`, `terminal=true`, `succeeded=false`, and forbidden from retryable policy.
+
+Repository-owned discriminator:
+
+```text
+tests/test_runtime_recovery.py
+7 passed
+```
+
+Focused R5 regression:
+
+```text
+tests/test_runtime_recovery.py
+tests/test_session_memory_runtime.py
+30 passed
+```
+
+No runtime/test implementation source changed during R5 acceptance.
+
+Cancellation limitation is explicit: direct ad hoc runtime synthesis was not obtained because LoopTool command transport corrupted the embedded Python payload before runtime entry. The active gate permitted source-supported cancellation classification when no repository-owned direct cancellation harness existed.
+
+Canonical acceptance record:
+
+```text
+docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_CHECKPOINT.md
+```
+
+Do not reopen R5 implementation unless current evidence later disproves the accepted owner.
 
 ---
 
@@ -334,7 +320,7 @@ Remaining acceptance must prove this predicate end to end through the normal cod
 
 Current CLI families already include session create/continue/status/inspect/evidence/validate, code/audit/investigate, provider list/check/select, policy/permissions and TUI.
 
-Remaining acceptance must prove required R5-R6 services through normal non-interactive/installed paths without CLI-owned authority.
+Remaining acceptance must prove required R6 services through normal non-interactive/installed paths without CLI-owned authority.
 
 ---
 
@@ -400,7 +386,7 @@ R3 acceptance: PASS
 R4 acceptance: PASS
         |
         v
-R5 acceptance proof
+R5 acceptance: PASS
         |
         v
 R6 acceptance gaps in dependency order
