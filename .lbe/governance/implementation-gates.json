@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "OBSERVABLE_5_FRESH_PROCESS_SESSION_TASK_RESUME",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -32,27 +32,30 @@
     "R7_OBSERVABLE_1": "PASS",
     "R7_OBSERVABLE_2": "PASS",
     "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR",
-    "R7_OBSERVABLE_4": "PASS"
+    "R7_OBSERVABLE_4": "PASS",
+    "R7_OBSERVABLE_5": "PASS"
   },
   "current_observable": {
     "number": 5,
-    "status": "OPEN",
+    "status": "PASS",
     "question": "After the prior invoking process is gone, can a newly launched installed process recover the same persisted session and task identity/state from the database?",
     "required_evidence_level": "INSTALLED_RUNTIME_SEPARATE_PROCESSES",
-    "implementation_changes_allowed": false
+    "implementation_changes_allowed": false,
+    "decisive_command_hash": "EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376"
   },
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "continuing to observable 6 before observable 5 is classified PASS"
+    "activating observable 6 without explicit advancement"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 5 through 15",
+      "explicitly activate R7 observable 6",
+      "finish R7 observables 6 through 15",
       "release/package readiness acceptance"
     ]
   }
