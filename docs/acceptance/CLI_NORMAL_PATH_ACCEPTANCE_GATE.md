@@ -1,24 +1,26 @@
 # CLI Normal-Path Acceptance Gate
 
-Status: **OPEN — ACCEPTANCE PROOF ONLY — RELEASE PATH ACTIVE — NEXT PHASE LOCKED**
+Status: **PASS — PROVEN_COMPLETE — RELEASE PATH ACTIVE — NEXT PHASE LOCKED**
 
 ```text
 phase: CLI_NORMAL_PATH_ACCEPTANCE
 slice: PROVE_THIN_NONINTERACTIVE_CLI_OVER_ACCEPTED_PERSISTENT_RUNTIME_AUTHORITIES
 base_sha: d12f4d20a462047c0c451d8d1d734601fc1d45e9
+acceptance_head: 0cdd2fa025878f591334409237d0dca8bb615a32
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
 release_path_authorized: true
 publish_allowed_now: false
+status: PASS
 ```
 
-## Selection rationale
+## Accepted question
 
-R6F completion/validation is now `PROVEN_COMPLETE`. The next release prerequisite is the CLI normal path. The existing `lbe` console entry point and `lbe_guard_inspector.cli` already expose session, provider, mode, evidence, policy, permissions, and validation operations as thin adapters over accepted runtime owners. This gate proves that existing path before R7 installed end-to-end acceptance.
+The existing non-interactive `lbe` CLI is proven as a thin persistent control surface over accepted runtime authorities. It preserves persistent session/workspace identity across separate processes, changes provider/model without policy drift, delegates completion to the R6F owner, fails closed for missing completion state, and exposes no CLI completion-evidence injection surface.
 
-## Existing owner
+## Existing owner and reuse decision
 
 ```text
 pyproject.toml [project.scripts] lbe -> lbe_guard_inspector.cli:main
@@ -28,61 +30,65 @@ GovernedAgentGateway
 EvidenceService
 provider registry/runtime adapters
 CodingCompletionRuntime
+reuse: REUSE
+new authority introduced: no
 ```
 
-## Reuse decision
+## Decisive evidence
 
 ```text
-REUSE
+repository baseline: 78 passed
+hash: F99F0C0A9857AA1322E51D60488A42A6FD0D74FB511C47A88EDE154B022486C0
+
+separate-process session persistence: PASS
+hash: 9FFA8D1A831C394B836DC09CA5D7B15F501D5F141F5499BD7A3CAEA3D766E8FB
+
+provider switch policy stability + continue: PASS
+hash: C0FCE90E0449A2063EE195634F182D42EAB7BC0646CB291BCC15CE8470DA3437
+
+persisted completion validation: PASS
+completion authority remains runtime-owned: PASS
+hash: 313468EAD033D330FA260E1A5A50B54A445E8139CE6E2534BD78B51E2B98342B
+
+missing completion contract fail-closed: PASS
+hash: E136BE394882256738CCAADF905E034BBA251416F5085C963591ABF47B029CE5
+
+no completion-evidence injection surface: PASS
+hash: 8D13866680263DCE566E737BA1E28D5D70115EE95C76C0F5BC1FA93819665CE4
+
+focused regression: 115 passed
+hash: 7E0351B681A14F14264C066EF7809C4092817ABE10D5794B8AE97AB0EB2C85D2
+
+runtime/test/package source unchanged: PASS
+diff check: PASS
+worktree clean: PASS
+acceptance scope: PASS
+observed product falsifier: NONE
 ```
 
-Do not introduce another CLI runtime, session store, provider selector, evidence authority, permission resolver, tool dispatcher, or completion gate.
+## Harness failures
 
-## Acceptance question
+Three failed diagnostic commands were classified as harness failures only: one PowerShell transport truncation/parser failure and two null-output wrapper failures. None executed evidence sufficient to falsify CLI behavior; no product source was patched from them.
 
-Can the existing non-interactive `lbe` CLI create and rehydrate persistent sessions, inspect canonical state, switch provider/model without changing workspace policy, expose bounded evidence through the existing evidence owner, run governed mode commands through the existing gateway/provider boundary, and expose R6F completion validation without becoming an authority itself?
-
-## Required observables
-
-1. `lbe` package entry point resolves to `lbe_guard_inspector.cli:main`;
-2. session create persists explicit workspace/session/mode/provider/policy identity;
-3. session continue/status/inspect rehydrate/read existing state rather than creating parallel state;
-4. provider select changes provider/model only and preserves workspace/mode/policy identity;
-5. unknown provider/missing session/invalid input fails closed with structured non-zero CLI result;
-6. session evidence delegates to canonical `EvidenceService` with persisted workspace identity;
-7. session validate consumes persisted completion contract/evidence through `CodingCompletionRuntime` and cannot accept CLI-authored evidence;
-8. normal mode commands delegate through `GovernedAgentGateway` and existing provider controller;
-9. audit/investigation/coding remain mode contracts rather than CLI personalities;
-10. text/JSON output formatting does not alter persistent state;
-11. repository-owned CLI/runtime tests pass on the exact acceptance head;
-12. one normal process-level CLI lifecycle proves state persists across separate CLI invocations;
-13. runtime/test implementation source remains unchanged unless a real falsifier is proven;
-14. worktree remains clean and diff scope is acceptance documentation only.
-
-## Falsifier
-
-CLI acceptance cannot PASS if the CLI creates a second runtime authority, mutates policy while only selecting a provider, accepts completion evidence directly from operator/model input, bypasses persistent session/workspace identity, reports success for a failed command, or normal separate-process CLI invocations do not preserve the accepted persistent state.
-
-## Evidence ladder
+## Accepted invariant
 
 ```text
-source/entrypoint owner inspection
--> repository-owned CLI tests
--> normal separate-process session create/status/continue/provider/validation discriminator
--> governed mode delegation discriminator where existing deterministic/provider fixture permits
--> focused CLI + runtime regression
--> diff/scope/worktree proof
--> checkpoint
+CLI accepts operator intent and identity inputs.
+Persistent runtime owns session/workspace state.
+Provider adapters own provider mechanics.
+Evidence owners supply evidence.
+R6F completion runtime owns terminal completion truth.
+CLI only projects structured results.
 ```
 
-## Forbidden work
+## Release boundary
 
-- CLI/runtime/test implementation before a real defect is proven;
-- new session/provider/evidence/authorization/completion authority;
-- R7 installed E2E or release publication while this gate is OPEN;
-- version bump/tag/publish;
-- architecture changes.
+```text
+CLI_NORMAL_PATH_ACCEPTANCE: PASS / PROVEN_COMPLETE
+R7: still required
+release/package readiness: still required
+publish_allowed_now: false
+next_phase_locked: true
+```
 
-## Completion predicate
-
-PASS only when the existing `lbe` normal path is proven to be a thin persistent control surface over accepted authorities with fail-closed behavior and no second authority. PASS does not auto-activate R7 or release publication.
+PASS does not auto-activate R7 and does not authorize version bump, tag, package publish, or external release publication.
