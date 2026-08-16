@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-16
-Status: Active canonical roadmap — evidence reconciled through R3 acceptance
+Status: Active canonical roadmap — evidence reconciled through R4 acceptance
 
 This document defines dependency order and acceptance goals for `Letterblack0306/LBE_Presistent_Agent_wall`.
 
@@ -80,11 +80,11 @@ Missing acceptance evidence must not be treated as permission to reimplement the
 
 The documentation-only roadmap reconciliation is PASS.
 
-R3 acceptance is also PASS.
+R3 and R4 acceptance are PASS.
 
 ```text
 R3  PROVEN_COMPLETE
-R4  IMPLEMENTED_NOT_ACCEPTED
+R4  PROVEN_COMPLETE
 R5  IMPLEMENTED_NOT_ACCEPTED
 R6A PARTIALLY_PROVEN
 R6B PARTIALLY_PROVEN
@@ -97,11 +97,11 @@ R7  PARTIALLY_PROVEN
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current completed R3 phase:
+Current completed R4 phase:
 
 ```text
-phase: R3_RUNTIME_REASONING_ACCEPTANCE
-slice: PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY
+phase: R4_CHECKPOINT_RESUME_ACCEPTANCE
+slice: PROVE_CHECKPOINT_RESTART_REHYDRATION_AND_STALE_STATE_INVALIDATION
 status: PASS
 next_phase_locked: true
 ```
@@ -109,11 +109,11 @@ next_phase_locked: true
 Earliest next candidate:
 
 ```text
-R4 checkpoint/resume/rehydration acceptance
+R5 bounded classified recovery acceptance
 active: NO
 ```
 
-A separate machine/human gate must be opened before R4 proof begins.
+A separate machine/human gate must be opened before R5 proof begins.
 
 ---
 
@@ -153,32 +153,73 @@ Do not reopen R3 implementation unless current evidence later disproves this acc
 
 # 6. R4 — Checkpoint, resume, and rehydration
 
-**Classification: `IMPLEMENTED_NOT_ACCEPTED`.**
+**Classification: `PROVEN_COMPLETE`.**
 
-Current source/tests already cover:
+Accepted owner path:
 
-- persisted session contract;
-- checkpoint identity and active constraints;
-- restart/rehydration;
-- branch/HEAD revalidation;
-- stale source-backed claim invalidation;
-- provider/session preservation.
+```text
+SessionMemoryRuntimeBridge.start_or_resume
+ -> SessionMemoryAdapter.rehydrate
+ -> memory.context.rehydrate_context
+ -> inspect current Git state
+ -> load VERIFIED records
+ -> invalidate changed source-backed records
+ -> protected checkpoint revalidation
+ -> current context packet
+```
 
-Required acceptance proof:
+Accepted checkpoint path:
 
-1. start a session;
-2. establish a validated workspace fact;
-3. persist an active task constraint;
-4. checkpoint/compact;
-5. change the underlying source;
-6. restart/resume;
-7. prove the old source fact becomes stale;
-8. prove the active constraint survives;
-9. prove current workspace/Git state wins;
-10. prove summary/history text is not treated as current truth;
-11. checkpoint the exact acceptance head.
+```text
+SessionMemoryRuntimeBridge.checkpoint
+ -> SessionMemoryAdapter.checkpoint_compaction
+ -> WorkspaceMemoryStore
+```
 
-No R4 source implementation is authorized merely because acceptance is missing.
+Acceptance proof established:
+
+1. persisted session/task/workspace identity survives restart;
+2. persisted mode/provider/profile/permission/evidence configuration survives restart;
+3. checkpoint identity and active constraints survive restart;
+4. an external source change plus commit produces a new current Git HEAD;
+5. resume exposes current Git state rather than treating checkpoint state as current;
+6. protected checkpoint HEAD revalidation becomes `MISMATCH` and status `INELIGIBLE`;
+7. `reactivation_allowed=false` when checkpoint/current HEAD differ;
+8. previously verified source-backed facts are hash-revalidated and become `STALE` when changed;
+9. stale facts are removed from resumed `verified_facts`;
+10. assistant reasoning/compaction summaries are not promoted into current workspace truth.
+
+Decisive integration discriminator:
+
+```text
+tests/test_session_resume_runtime.py::test_resume_invalidates_changed_source_fact_and_reports_changed_head
+PASS
+```
+
+Focused R4 regression:
+
+```text
+37 passed
+```
+
+across:
+
+```text
+tests/test_session_resume_runtime.py
+tests/test_session_memory_runtime.py
+tests/test_session_memory_adapter.py
+tests/test_checkpoint_eligibility.py
+```
+
+No runtime/test implementation source changed during R4 acceptance.
+
+Canonical acceptance record:
+
+```text
+docs/acceptance/R4_CHECKPOINT_RESUME_ACCEPTANCE_CHECKPOINT.md
+```
+
+Do not reopen R4 implementation unless current evidence later disproves this accepted owner.
 
 ---
 
@@ -293,7 +334,7 @@ Remaining acceptance must prove this predicate end to end through the normal cod
 
 Current CLI families already include session create/continue/status/inspect/evidence/validate, code/audit/investigate, provider list/check/select, policy/permissions and TUI.
 
-Remaining acceptance must prove required R4-R6 services through normal non-interactive/installed paths without CLI-owned authority.
+Remaining acceptance must prove required R5-R6 services through normal non-interactive/installed paths without CLI-owned authority.
 
 ---
 
@@ -356,7 +397,7 @@ No external publish action occurs without explicit authorization.
 R3 acceptance: PASS
         |
         v
-R4 acceptance proof
+R4 acceptance: PASS
         |
         v
 R5 acceptance proof
