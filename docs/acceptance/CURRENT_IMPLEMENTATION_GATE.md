@@ -1,141 +1,134 @@
 # Current Implementation Gate
 
-Status: **PASS — R6A PROVIDER ABSTRACTION ACCEPTANCE — NEXT PHASE LOCKED**
+Status: **OPEN — R6B TYPED MODE POLICY ACCEPTANCE — NEXT PHASE LOCKED**
 
-Current phase: `R6A_PROVIDER_ABSTRACTION_ACCEPTANCE`
+Current phase: `R6B_TYPED_MODE_POLICY_ACCEPTANCE`
 
-Current slice: `PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT`
+Current slice: `PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Closed plan
+## Active plan
 
 ```text
-active_plan: docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_GATE.md
-checkpoint: docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_CHECKPOINT.md
+active_plan: docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md
+checkpoint: docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_CHECKPOINT.md
 kind: acceptance proof, not implementation
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: PASS
+status: OPEN
 ```
 
 ## Prior accepted baseline
-
-R3, R4 and R5 remain PASS and `PROVEN_COMPLETE`.
-
-R6A is now also PASS and `PROVEN_COMPLETE`.
-
-## Accepted R6A owner path
-
-```text
-ProviderRegistry
- -> build_provider_controller
- -> provider-neutral backend contract
- -> LBERequestController
- -> SessionMemoryRuntimeBridge.run_reasoning
- -> persisted session/task state
-```
-
-No parallel provider, session, reasoning, policy, authorization, tool, validation or completion authority was introduced.
-
-## Decisive observable
-
-Acceptance head:
-
-```text
-2f33452c5e45f54e5d60ef16c18c59a224011a11
-```
-
-Integration command hash:
-
-```text
-2F16607C4A8807706BAA13114BCD930B21F3728EF4E487F833D6D46DF7558935
-```
-
-Observed:
-
-```text
-R6A_PROVIDER_A_OUTCOME=COMPLETED
-R6A_PROVIDER_B_OUTCOME=COMPLETED
-R6A_SESSION_ID=session-r6a
-R6A_WORKSPACE_ID=project-r6a
-R6A_MODE=coding
-R6A_PERMISSION=write_allowed
-R6A_RUNTIME_POLICY=development
-R6A_PROVIDER_SWITCH=provider-a->provider-b
-R6A_TASK_STATUS=completed
-R6A_SAME_SESSION_PROVIDER_SWITCH=PASS
-R6A_WORKSPACE_BOUND_DIAGNOSTIC=PASS
-```
-
-Provider/model configuration changed from A/model-a to B/model-b while session ID, workspace identity/root, task identity, mode, permission, runtime policy, permission policy and evidence policy remained stable.
-
-## Regression and scope
-
-Focused existing-owner regression:
-
-```text
-64 passed
-```
-
-Command hash:
-
-```text
-B8801BF25001FF41F76781E2157DC531A720C3889AD7121F724B9D5EF0835EA6
-```
-
-The wrapper ended non-zero only after tests because the first `git diff --check` form was invalid. The regression itself had already completed 64/64. The missing scope proof was then rerun separately.
-
-Final scope command hash:
-
-```text
-1EB7542A3DF61BD0B39169739782553F5B4AC9738FF2E0403713D8CB7AE3FA94
-```
-
-```text
-R6A_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
-R6A_DIFF_CHECK=PASS
-R6A_WORKTREE_CLEAN=PASS
-R6A_FOCUSED_REGRESSION_PREVIOUSLY_PROVEN=64_PASSED
-R6A_ACCEPTANCE_SCOPE=PASS
-```
-
-## Evidence classification
-
-Earlier failed diagnostics were harness failures and did not justify product changes:
-
-- LoopTool Base64 truncation;
-- non-package `tests.*` imports;
-- installed `site-packages` import precedence;
-- synthetic non-Git workspace;
-- synthetic workspace missing the CEP manifest fixture.
-
-After target identity and fixture preconditions were corrected, the same-session A -> B discriminator passed without runtime/test source changes.
-
-## Falsifier
-
-```text
-observed_falsifier: NONE
-```
-
-Provider switching did not change session/workspace/task identity, did not drift LBE mode/permission/policy state, did not bypass `LBERequestController`, and did not require a provider-specific governance fork.
-
-## Current status
 
 ```text
 R3: PROVEN_COMPLETE
 R4: PROVEN_COMPLETE
 R5: PROVEN_COMPLETE
 R6A: PROVEN_COMPLETE
-implementation_allowed: false
-architecture_changes_allowed: false
-next_phase_locked: true
-project_user_ready: NO
-release_ready: NO
 ```
 
-## Next-phase rule
+Final synchronized R6A closure baseline:
 
-Do not activate R6B or another family automatically. The next slice must be explicitly activated after reviewing the remaining R6B-R6F dependency evidence.
+```text
+HEAD: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
+origin/main: 4deee8e6a45c4ec179dbc6bf3524b76a38e9fd2b
+R6A gate: PASS
+next_phase_locked: true
+LoopTool closure command hash: BE73BAAF3292B2DB4FAD6B4C9C548D2BA252D97ADFD12B115FC9C1E4049A35CF
+LoopTool response check hash: EFCF5A4D97F74E93A62C79301C8C93E752F360813A7E683955DA8C29F076A37D
+```
+
+## Why R6B is selected next
+
+R6C authorization consumes `ModeDecision`, and later governed-tool/completion claims depend on mode exposing the correct bounded capabilities. R6A has already established provider neutrality, so R6B is the next dependency boundary.
+
+Current source/tests already prove pieces independently:
+
+- `ModeRequest` and `ModeDecision` are typed public runtime contracts;
+- `resolve_mode()` deterministically maps intent + permission + runtime policy to coding/audit/investigation;
+- audit and investigation filter development/write capabilities;
+- coding exposes the existing development behavior contract;
+- session state persists `mode` independently of provider configuration;
+- `AuthorizationRequest` consumes a typed `ModeDecision`.
+
+The missing artifact is the combined persistent-session coding -> audit -> investigation acceptance proof.
+
+## Existing owners
+
+```text
+mode authority:
+  runtime.mode_controller.ModeRequest
+  runtime.mode_controller.ModeDecision
+  runtime.mode_controller.resolve_mode
+
+behavior vocabulary:
+  behavior.contracts
+
+persistent session/workspace authority:
+  SessionMemoryRuntimeBridge
+  WorkspaceMemoryStore
+
+downstream typed consumer:
+  runtime.authorization_resolver.AuthorizationRequest
+```
+
+## Reuse decision
+
+```text
+REUSE
+```
+
+R6B is not being reimplemented.
+
+## Acceptance question
+
+Can one existing persistent LBE session/runtime apply coding, audit and investigation as typed LBE capability contracts while preserving session/workspace/provider identity, keeping audit/investigation read-only, and preventing provider identity from becoming mode or authorization authority?
+
+## Required observable
+
+1. coding resolves through the existing typed mode owner and exposes only allowed development capabilities;
+2. audit resolves through the same owner and excludes write/proposal/promotion capabilities;
+3. investigation resolves through the same owner and remains read-only even with elevated/write permission under permissive policy;
+4. one persistent session can intentionally transition mode without forking session/workspace/provider identity;
+5. provider identity does not choose or override the mode decision;
+6. downstream authorization receives the typed `ModeDecision`;
+7. no second mode/session/policy owner is introduced.
+
+## Falsifier
+
+R6B cannot PASS if mode is prompt-only, provider identity determines authority, audit/investigation expose write capabilities, mode transition forks session/workspace identity, policy fields drift unintentionally, or a parallel mode/policy owner is required.
+
+## Allowed work
+
+- GitHub inspection of current mode/behavior/session/authorization owners and tests;
+- LoopTool execution of repository-owned tests and bounded runtime diagnostics;
+- R6B acceptance/checkpoint/status documentation through GitHub;
+- diff/scope/worktree verification.
+
+## Forbidden work
+
+- runtime/test implementation before a real defect is proven;
+- R6C-R6F implementation;
+- new mode/session/policy/authorization authority;
+- CLI/TUI/MCP/release work;
+- architecture changes.
+
+## Current status
+
+```text
+source_owner_inspection: PASS
+repository mode tests: PRESENT
+persistent session mode evidence: PRESENT SEPARATELY
+R6A provider-neutrality baseline: PROVEN_COMPLETE
+combined coding -> audit -> investigation integration: NOT RUN
+focused regression: NOT RUN
+checkpoint: UNVERIFIED
+project_user_ready: NO
+release_ready: NO
+next_phase_locked: true
+```
+
+Do not advance automatically. If R6B exposes a real implementation defect, stop and activate a separate repair slice before modifying runtime or tests.
