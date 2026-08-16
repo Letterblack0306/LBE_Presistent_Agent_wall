@@ -2,16 +2,16 @@
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_9_RECEIPT_PROVIDER_CONTINUATION_CORRELATION
-status: PASS
+slice: OBSERVABLE_10_PROVIDER_COMPLETION_PROVISIONAL
+status: OPEN
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
-required_evidence_level: INSTALLED_RUNTIME_CORRELATED_RECEIPT_CONTINUATION_PROOF
+required_evidence_level: INSTALLED_RUNTIME_PROVISIONAL_COMPLETION_AUTHORITY_PROOF
 implementation_allowed: false
 next_phase_locked: true
 ```
 
-## Accepted R7 evidence
+## Accepted R7 evidence carried forward
 
 ```text
 observable 1: PASS
@@ -23,51 +23,58 @@ observable 6: PASS
 observable 7: PASS
 observable 8: PASS
 observable 9: PASS
+  decisive command hash: A323D6AB93CAFECC6A291F785614B92AE007CC0015B0DB959359F06747E044D9
 ```
 
-Observable 9 decisive command hash:
+## Observable 10 — active
 
-`A323D6AB93CAFECC6A291F785614B92AE007CC0015B0DB959359F06747E044D9`
+Question:
 
-## Observable 9 result
+> Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE completion contract?
 
-Installed coding executed one deterministic provider tool call and preserved the correlation chain through R6E receipt mediation and the same provider turn.
+Required installed-runtime proof:
 
-Observed:
+1. installed package resolves from isolated venv site-packages;
+2. persist an explicit completion contract for the bounded task;
+3. deterministic local provider completes one installed coding turn normally;
+4. provider terminal output may state that the task is complete, but `lbe_completion_truth` must remain false;
+5. installed coding response may report reasoning outcome `COMPLETED`, but persistent task state must be `running / AWAITING_VALIDATION`;
+6. the persisted completion contract must contain at least one required evidence kind with no passing persisted evidence;
+7. a fresh installed `session validate` must return completion verdict `BLOCKED`;
+8. persisted task must become `blocked / VALIDATION_INCOMPLETE`, not `completed / VALIDATED_COMPLETION`;
+9. source checkout remains clean.
+
+## Completion authority chain under test
 
 ```text
-provider tool_call_id: call_r7_obs9_create_1
-turn_id: turn-5232313195ef418c8970482d79fb3368
-operation_id: turn-5232313195ef418c8970482d79fb3368:tool:call_r7_obs9_create_1
-receipt_id: receipt-df662912e6894ead8a705083bccffa7b
-created sha256: 8bc4e5818a728c4deaa0d7790cf7b9aebfc0231be44b33393d94726c1eb10631
-provider HTTP requests: 2
+provider/Cline terminal success
+ -> response outcome COMPLETED
+ -> CodingCompletionRuntime.run_reasoning
+ -> task RUNNING / AWAITING_VALIDATION
+ -> persisted completion contract/evidence
+ -> session validate
+ -> evaluate_completion
+ -> BLOCKED when required evidence is missing
 ```
 
-Semantic proof:
+Only `READY` may establish `COMPLETED / VALIDATED_COMPLETION`.
+
+## Falsifiers
 
 ```text
-R7_OBS9_ONE_TOOL_CALL_ONE_RECEIPT=PASS
-R7_OBS9_OPERATION_ID_CORRELATED=PASS
-R7_OBS9_RECEIPT_OUTPUT_CORRELATED=PASS
-R7_OBS9_CONTINUATION_TOOL_CALL_ID_CORRELATED=PASS
-R7_OBS9_CONTINUATION_GOVERNED_RESULT_CORRELATED=PASS
-R7_OBS9_SINGLE_MUTATION_EXECUTION=PASS
-R7_OBS9_SAME_TURN_PROVIDER_CONTINUATION=PASS
-R7_OBS9_RECEIPT_PROVIDER_CONTINUATION_CORRELATION=PASS
-R7_OBSERVABLE_9=PASS
-R7_OBS9_SOURCE_WORKTREE_CLEAN=PASS
+provider/Cline success directly makes task COMPLETED
+provider text/prose establishes LBE completion truth
+missing required evidence still yields READY
+VALIDATED_COMPLETION appears before deterministic evidence satisfies the contract
 ```
-
-This proves the second provider request was not merely another request after a successful mutation. It carried the same provider tool-call identity, the R6E receipt operation ID was derived from the same turn/tool-call identity, the governed result matched the receipt/file hash, and the mutation executed once.
 
 ## Current classification
 
 ```text
-receipt_provider_continuation_correlation: PASS
+provider_completion_provisional: PENDING
 implementation_changes: FORBIDDEN
-observable_10: LOCKED_PENDING_EXPLICIT_ADVANCE
+observable_11: LOCKED
 release_publish_allowed_now: false
 ```
 
-No product falsifier was observed in observable 9.
+A product falsifier stops R7 and requires a separately activated repair slice. Harness/provider/fixture failures do not justify implementation changes.
