@@ -39,6 +39,24 @@ architecture_changes_allowed: false
 next_phase_locked: true
 ```
 
+### Final R5 synchronization proof
+
+The accepted R5 closure was pulled into the canonical local workspace and verified against `origin/main`.
+
+```text
+HEAD: 535fe532f3faabf4b64a60d9f007ab584e2c8d37
+origin/main: 535fe532f3faabf4b64a60d9f007ab584e2c8d37
+machine gate phase: R5_BOUNDED_RECOVERY_ACCEPTANCE
+machine gate status: PASS
+implementation_allowed: false
+next_phase_locked: true
+roadmap: R5 PROVEN_COMPLETE
+worktree: clean
+LoopTool command hash: A0AE9161A7A1C9B8533A0E48C15D8D876DC0F02EE181733903903AF68A98551E
+```
+
+This is the canonical synchronized R5 closure baseline for selecting the next R6 acceptance slice.
+
 ## R5 accepted behavior
 
 Accepted owner path:
