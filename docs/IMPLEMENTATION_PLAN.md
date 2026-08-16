@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-17
-Status: Active canonical roadmap — evidence reconciled through CLI normal-path acceptance
+Status: Active canonical roadmap — R7 installed end-to-end acceptance active on release path
 
 ## 1. Product goal
 
@@ -16,6 +16,7 @@ Build a persistent, provider-neutral LBE runtime where the provider reasons whil
 - provider continuation consumes receipts but owns no execution authority;
 - terminal completion belongs to deterministic LBE validation, not provider/model prose;
 - CLI/TUI/API surfaces are control/projection layers, never duplicate authority owners;
+- installed behavior must compose the same authorities proven in source/runtime acceptance;
 - no second session/context/retrieval/mode/authorization/tool/receipt/completion/continuation/recovery owner.
 
 ## 3. Current roadmap state
@@ -31,21 +32,21 @@ R6D PROVEN_COMPLETE
 R6E PROVEN_COMPLETE
 R6F PROVEN_COMPLETE
 CLI PROVEN_COMPLETE
-R7  PARTIALLY_PROVEN
+R7  PARTIALLY_PROVEN — ACTIVE ACCEPTANCE
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current completed phase:
+Current active phase:
 
 ```text
-phase: CLI_NORMAL_PATH_ACCEPTANCE
-slice: PROVE_THIN_NONINTERACTIVE_CLI_OVER_ACCEPTED_PERSISTENT_RUNTIME_AUTHORITIES
-status: PASS
+phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
+slice: PROVE_INSTALLED_PERSISTENT_AGENT_NORMAL_PATH_OVER_ACCEPTED_AUTHORITIES
+status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
-base_sha: d12f4d20a462047c0c451d8d1d734601fc1d45e9
-acceptance_head: 0cdd2fa025878f591334409237d0dca8bb615a32
+base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
+required_evidence_level: USER_VISIBLE_RUNTIME
 release_path_authorized: true
 publish_allowed_now: false
 ```
@@ -54,91 +55,44 @@ publish_allowed_now: false
 
 R3 through R6F and CLI normal-path acceptance are `PROVEN_COMPLETE`. Do not reopen them without new contradictory current evidence.
 
-## 5. R6F — Completion and validation
+## 5. R7 — Installed end-to-end persistent agent proof
 
-**Classification: `PROVEN_COMPLETE`.** Terminal completion is evidence-owned through the accepted persistent coding runtime. Provider/reasoning `COMPLETED` remains provisional until persisted completion requirements and producer-bound evidence yield deterministic `READY`, which alone promotes canonical task state to `COMPLETED / VALIDATED_COMPLETION`.
+**Classification: `PARTIALLY_PROVEN` — active acceptance.**
 
-Canonical records:
+R7 is not a new architecture phase. It must prove that a clean isolated installation of the exact accepted repository head composes the accepted authorities through the normal installed command path.
 
-```text
-docs/acceptance/R6F_COMPLETION_VALIDATION_ACCEPTANCE_GATE.md
-docs/acceptance/R6F_COMPLETION_VALIDATION_ACCEPTANCE_CHECKPOINT.md
-```
-
-## 6. CLI control surface
-
-**Classification: `PROVEN_COMPLETE`.**
-
-Accepted owner path:
+Required proof includes:
 
 ```text
-pyproject.toml lbe entry point
- -> lbe_guard_inspector.cli.main
- -> SessionMemoryRuntimeBridge / EvidenceService / provider registry+runtime / GovernedAgentGateway / CodingCompletionRuntime
- -> structured JSON/text output
-```
-
-Accepted invariants:
-
-- session create/status/inspect persist and rehydrate canonical session/workspace state across separate processes;
-- provider/model selection preserves workspace, mode, profile, permission, runtime and evidence-policy identity;
-- session continue rehydrates the same persistent authority boundary;
-- completion validation consumes persisted R6F contract/evidence and persists canonical COMPLETED / VALIDATED_COMPLETION;
-- missing completion contract fails closed with structured non-zero output;
-- CLI validation surface exposes identity inputs only and no completion-evidence/verdict/proof injection path;
-- acceptance completed with no CLI/runtime/test/package source changes.
-
-Evidence:
-
-```text
-repository baseline: 78 passed
-hash: F99F0C0A9857AA1322E51D60488A42A6FD0D74FB511C47A88EDE154B022486C0
-separate-process persistence: PASS
-hash: 9FFA8D1A831C394B836DC09CA5D7B15F501D5F141F5499BD7A3CAEA3D766E8FB
-provider-policy stability + continue: PASS
-hash: C0FCE90E0449A2063EE195634F182D42EAB7BC0646CB291BCC15CE8470DA3437
-persisted completion validation: PASS
-hash: 313468EAD033D330FA260E1A5A50B54A445E8139CE6E2534BD78B51E2B98342B
-missing contract fail closed: PASS
-hash: E136BE394882256738CCAADF905E034BBA251416F5085C963591ABF47B029CE5
-no evidence injection surface: PASS
-hash: 8D13866680263DCE566E737BA1E28D5D70115EE95C76C0F5BC1FA93819665CE4
-focused regression: 115 passed
-hash: 7E0351B681A14F14264C066EF7809C4092817ABE10D5794B8AE97AB0EB2C85D2
-runtime/test/package source unchanged: PASS
-diff check: PASS
-worktree clean: PASS
-observed product falsifier: NONE
+exact-head isolated install
+installed lbe identity without source-tree leakage
+persistent session/task across separate processes
+one governed coding execution with receipts
+provider/model switch with LBE policy identity preserved
+fresh-process resume
+external workspace change revalidation
+read-only audit/investigation
+out-of-authority fail-closed stop
+receipt/provider-continuation correlation
+evidence-owned terminal completion
+fresh-process terminal-state persistence
+credential/secret/state exclusion
+focused installed/runtime regression
+clean diff/worktree proof
 ```
 
 Canonical records:
 
 ```text
-docs/acceptance/CLI_NORMAL_PATH_ACCEPTANCE_GATE.md
-docs/acceptance/CLI_NORMAL_PATH_ACCEPTANCE_CHECKPOINT.md
+docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
+docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
 ```
 
-## 7. R7 — End-to-end persistent coding/audit proof
+## 6. Release/package readiness
 
-**Classification: `PARTIALLY_PROVEN`.** This is the next release prerequisite, but it is not auto-activated by CLI PASS. Its acceptance must prove the installed/normal-path system across coding, provider switch, resume after external workspace change, read-only audit, and out-of-authority stop behavior without introducing new authority.
+**Classification: `PARTIALLY_PROVEN`.** Publication remains blocked. After R7 PASS, release/package readiness must separately prove clean installation, package contents, secret/state exclusion, supported runtime matrix, regressions, installed smoke, and release metadata before any version/tag/publish action.
 
-## 8. Release/package readiness
-
-**Classification: `PARTIALLY_PROVEN`.** Release publication is authorized in intent but remains blocked by evidence prerequisites. Required before version/tag/publish:
-
-```text
-R7 installed E2E PASS
-clean installation
-package-content audit
-secret/state exclusion
-supported runtime matrix
-full/focused regression
-installed smoke proof
-```
-
-Package metadata currently declares `lbe-guard-inspector` version `0.2.0` with Python `>=3.11`; existence of packaging metadata does not prove release readiness.
-
-## 9. Evidence-reconciled progression
+## 7. Evidence-reconciled progression
 
 ```text
 R3 PASS
@@ -151,18 +105,18 @@ R3 PASS
  -> R6E PASS
  -> R6F PASS
  -> CLI normal-path PASS
- -> R7 installed end-to-end acceptance
+ -> R7 installed end-to-end acceptance ACTIVE
  -> release/package readiness acceptance
  -> version/tag/publish
 ```
 
-## 10. Final invariant
+## 8. Final invariant
 
 ```text
 Provider reasons and proposes.
 Persistent runtime orchestrates.
 LBE owns authority and execution.
-CLI exposes existing authority but does not own it.
+Installed CLI exposes existing authority but does not own it.
 Receipts carry governed evidence.
 Validation proves.
 Completion truth belongs to LBE.
