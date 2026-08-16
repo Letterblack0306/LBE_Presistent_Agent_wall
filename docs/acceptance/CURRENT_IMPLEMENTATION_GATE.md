@@ -1,24 +1,24 @@
 # Current Implementation Gate
 
-Status: **PASS — R6B TYPED MODE POLICY ACCEPTANCE — NEXT PHASE LOCKED**
+Status: **OPEN — R6C PERMISSION / AUTHORIZATION ACCEPTANCE — NEXT PHASE LOCKED**
 
-Current phase: `R6B_TYPED_MODE_POLICY_ACCEPTANCE`
+Current phase: `R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE`
 
-Current slice: `PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT`
+Current slice: `PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH_GOVERNED_EXECUTION`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Closed plan
+## Active plan
 
 ```text
-active_plan: docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md
-checkpoint: docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_CHECKPOINT.md
+active_plan: docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_GATE.md
+checkpoint: docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_CHECKPOINT.md
 kind: acceptance proof, not implementation
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: PASS
+status: OPEN
 ```
 
 ## Accepted baseline
@@ -31,96 +31,97 @@ R6A: PROVEN_COMPLETE
 R6B: PROVEN_COMPLETE
 ```
 
-## Accepted R6B owner path
+Final synchronized R6B closure baseline:
 
 ```text
-ModeRequest / ModeDecision / resolve_mode
- -> behavior.contracts
- -> SessionMemoryRuntimeBridge
- -> persisted session mode
- -> AuthorizationRequest / resolve_authorization
+HEAD: d584752b105fc8db8f941dc09b66ed32f803ec4c
+origin/main: d584752b105fc8db8f941dc09b66ed32f803ec4c
+R6B gate: PASS
+next_phase_locked: true
+LoopTool closure command hash: 57DD2253CC26768B4F311D94DBC45B289568F515CE65B987BEFA106D3869ACBC
 ```
 
-No parallel mode, policy, session, provider or authorization owner was introduced.
+## Why R6C is selected next
 
-## Decisive observables
+R6B proved typed mode/capability authority. `GovernedToolOrchestrator` consumes `resolve_authorization()` before handler execution, so R6C is the next dependency boundary before broader governed-tool acceptance.
 
-Acceptance head:
+Current source/tests already prove pieces independently:
+
+- `AuthorizationRequest` consumes typed `ModeDecision`;
+- `resolve_authorization()` returns deterministic `ALLOW`, `DENY`, or `ESCALATE`;
+- already-enabled capability may `ALLOW` without repeat confirmation;
+- explicit forbidden policy `DENY`s;
+- missing capability, workspace expansion, unresolved scope conflict, undelegated destructive action and undelegated persistent-policy change `ESCALATE`;
+- explicitly delegated destructive and persistent-policy changes may `ALLOW`;
+- `GovernedToolOrchestrator` maps `DENY`/`ESCALATE` into receipts and does not invoke handlers;
+- only `ALLOW` reaches the registered handler.
+
+The missing artifact is the combined repeated-authority / authority-expansion / provenance integration proof.
+
+## Existing owners
 
 ```text
-9086ad67bebb48f6505c7b3660f1ac49e0cc57c3
+ModeDecision
+AuthorizationRequest
+AuthorizationDecision
+resolve_authorization
+ToolExecutionContext
+GovernedToolOrchestrator
+ToolReceipt
 ```
 
-Mode contract tests:
+## Reuse decision
 
 ```text
-28 passed
-command_hash: 572E3034723732631FD32DCA972BDD3DAC39C8C859A58AC16D31582753B24F28
+REUSE
 ```
 
-Persistent integration:
+R6C is not being reimplemented.
 
-```text
-command_hash: 9C54DBC9E1792039991E4EEFDD4F0FE0C2ED59782318E94BC8DA904135159859
-R6B_CODING_MODE=coding
-R6B_CODING_PROPOSE_AUTH=ALLOW
-R6B_AUDIT_MODE=audit
-R6B_AUDIT_PROPOSE_AUTH=ESCALATE
-R6B_INVESTIGATION_MODE=investigation
-R6B_INVESTIGATION_PROPOSE_AUTH=ESCALATE
-R6B_SESSION_ID=session-r6b
-R6B_WORKSPACE_ID=project-r6b
-R6B_TASK_ID=task-r6b
-R6B_PROVIDER_ID=provider-stable
-R6B_PERMISSION=write_allowed
-R6B_RUNTIME_POLICY=permissive
-R6B_MODE_SEQUENCE=coding->audit->investigation
-R6B_PERSISTENT_TYPED_MODE_POLICY=PASS
-R6B_WORKSPACE_BOUND_DIAGNOSTIC=PASS
-```
+## Acceptance question
 
-The same session/workspace/task/provider identity remained stable while only the intended mode changed. Coding exposed the declared proposal capability and authorization returned `ALLOW`; audit and investigation excluded `propose` and downstream authorization returned `ESCALATE`.
+Can the existing LBE authorization path reuse already delegated authority for repeated governed operations without repetitive approval, deterministically block or escalate authority expansion, prevent denied/escalated handler execution, and preserve visible authorization provenance in receipts?
 
-## Regression and scope
+## Required observable
 
-```text
-command_hash: F8627BCC2D9EC0B81D9CBC828147876195FC894A439EF795767BC58CAC9C1305
-69 passed
-R6B_FOCUSED_REGRESSION=PASS
-R6B_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
-R6B_DIFF_CHECK=PASS
-R6B_WORKTREE_CLEAN=PASS
-R6B_ACCEPTANCE_SCOPE=PASS
-```
-
-## Excluded harness failure
-
-The initial single-command ad hoc probe was truncated before Python execution.
-
-```text
-command_hash: E397E967D70C9B128DE8C6E1ABEB4872583D476B10232E292E5EEA9645CDD09B
-classification: TEST_HARNESS_TRANSPORT_TRUNCATION
-product_implication: none
-```
+1. two distinct already-delegated governed operations execute with `ALLOW` and no separate approval state;
+2. explicitly forbidden operation returns `DENY` and handler call count does not increase;
+3. capability/scope expansion returns `ESCALATE` and handler call count does not increase;
+4. undelegated destructive/persistent-policy changes `ESCALATE`, while explicitly delegated equivalents may `ALLOW`;
+5. receipts retain authorization verdict and rationale;
+6. no provider-native/prompt-only approval bypass or parallel authorization owner is introduced.
 
 ## Falsifier
 
-```text
-observed_falsifier: NONE
-```
+R6C cannot PASS if already delegated operations need an unrelated new confirmation mechanism, if denied/escalated operations execute handlers, if explicit forbidden policy can silently execute, if authority expansion bypasses escalation, if authorization provenance is lost, or if a second authorization owner is required.
 
-Mode was proven as a typed LBE runtime contract, not provider prompt/personality text. Provider identity did not determine mode authority; audit/investigation remained read-only at the tested capability boundary; persistent identity remained stable; downstream authorization consumed typed `ModeDecision`.
+## Allowed work
+
+- GitHub inspection of current mode/authorization/tool owners and tests;
+- LoopTool execution of repository-owned tests and bounded runtime diagnostics;
+- R6C acceptance/checkpoint/status documentation through GitHub;
+- diff/scope/worktree verification.
+
+## Forbidden work
+
+- runtime/test implementation before a real defect is proven;
+- R6D-R6F implementation;
+- new permission/authorization/prompt-approval authority;
+- CLI/TUI/MCP/release work;
+- architecture changes.
 
 ## Current status
 
 ```text
-implementation_allowed: false
-architecture_changes_allowed: false
-next_phase_locked: true
+source_owner_inspection: PASS
+repository authorization tests: PRESENT
+repository governed-tool authorization tests: PRESENT
+combined repeated-authority integration: NOT RUN
+focused regression: NOT RUN
+checkpoint: UNVERIFIED
 project_user_ready: NO
 release_ready: NO
+next_phase_locked: true
 ```
 
-## Next-phase rule
-
-Do not activate R6C or another family automatically. The next slice requires explicit activation and its own evidence review/gate.
+Do not advance automatically. If R6C exposes a real implementation defect, stop and activate a separate repair slice before modifying runtime or tests.
