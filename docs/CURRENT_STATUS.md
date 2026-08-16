@@ -4,11 +4,22 @@ Updated: 2026-08-17
 
 ## Authority
 
-Live validation/runtime evidence, current Git/workspace state, the machine gate, and project-owned acceptance records outrank this summary.
+Live installed/runtime evidence, current Git/workspace state, `.lbe/governance/implementation-gates.json`, and project-owned acceptance checkpoints outrank this summary.
 
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 Canonical branch: `main`
 Canonical local workspace: `C:\Agents-Memory-Tool-v6-integration`
+Current documented project head before the next observable is activated: `58ecd8ebc32f5400520545c000b5f54a9d31dcc6`.
+
+## Engineering route
+
+```text
+GPT-Knowledge -> methodology/routing/reference
+GitHub -> canonical remote source/docs/gates/checkpoints/patches
+LoopTool/local -> test/debug/runtime execution evidence only
+```
+
+No production patch is permitted from a failed acceptance invocation unless the failure reaches the intended product observable and produces a specific falsifier. Harness, shell, environment, fixture, and query-shape failures must be classified separately.
 
 ## Accepted baseline
 
@@ -25,185 +36,212 @@ R6F_COMPLETION_VALIDATION_ACCEPTANCE: PASS / PROVEN_COMPLETE
 CLI_NORMAL_PATH_ACCEPTANCE: PASS / PROVEN_COMPLETE
 ```
 
-These constituent acceptances remain valid for their bounded contracts. They do not prove that the installed `lbe code` entry point composes every accepted authority end to end.
+These are accepted constituent contracts. R7 is the installed composition acceptance proving that the normal installed entry point traverses those authorities correctly.
 
-## R7 installed end-to-end acceptance — failed prerequisite
+## R7 installed end-to-end acceptance — current position
+
+The original observable 3 failure was repaired by composing installed `lbe code` with the existing governed Cline/R6C/R6E path and the smallest bounded production mutation tool behind existing authority. The repair did not create a second authorization resolver, tool dispatcher, session authority, provider authority, or completion authority.
+
+Current R7 status:
 
 ```text
-status: FAIL
-failed_observable: normal installed governed coding execution + receipts
-release_effect: BLOCKS release/package readiness
+observable 1 exact-head isolated install / no source leakage: PASS
+observable 2 persistent installed session identity: PASS
+observable 3 governed installed coding execution + ToolReceipt: PASS_AFTER_REPAIR
+observable 4 provider/model switch preserves LBE authority identity: PASS
+observable 5 fresh installed process resumes same session/task: PASS
+observable 6 external workspace change is revalidated as current truth: PASS
+observable 7 audit/investigation read-only: LOCKED_PENDING_EXPLICIT_ADVANCE
+observable 8 forbidden/out-of-workspace/out-of-authority fail closed: NOT RUN
+observable 9 receipt/provider continuation correlation: NOT RUN
+observable 10 provider completion remains provisional: NOT RUN
+observable 11 terminal validated completion survives fresh process: NOT RUN
+observable 12 no credential/secret leakage: NOT RUN
+observable 13 installed/runtime regression: NOT RUN
+observable 14 no source changes absent a real falsifier: NOT RUN
+observable 15 final clean worktree + limitations/falsifiers: NOT RUN
 ```
 
-Decisive runtime evidence:
+## Repaired observable 3 — proven installed composition
+
+Decisive command hash:
+
+`F3FB75C252CB7B561C05A233D4F93FC981032A0DAF41F9B90E9952FB9677F882`
+
+Proven normal installed chain:
 
 ```text
-command_hash: A2B146E0501F096D870E2ED15A4331366FB954E8F137D7CD980EC97E2FBAE7B4
-R7_CODE_EXIT=0
-outcome=INSUFFICIENT_EVIDENCE
-status=blocked
-response.read_only=true
-R7_PROVIDER_STAGE=planning
-R7_PROVIDER_APPROVED_TOOLS=workspace.read
-R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN
+installed lbe code
+ -> GovernedAgentGateway
+ -> Governed Cline reasoning adapter
+ -> GovernedClineWorker
+ -> R6C authorization
+ -> R6E GovernedToolOrchestrator
+ -> workspace.create_candidate_text
+ -> ToolReceipt
+ -> tool.result continuation
+ -> same Cline turn completes
+ -> CodingCompletionRuntime
+ -> RUNNING / AWAITING_VALIDATION
 ```
 
-The failure proves an installed normal-path coding composition gap. It does not by itself invalidate R6C, R6E, persistent session state, or completion validation.
-
-## Active phase — R7 repair investigation
-
-The user explicitly authorized the bounded investigation after R7 failed.
+Installed proof included:
 
 ```text
-phase: R7_REPAIR_INVESTIGATION
-slice: TRACE_INSTALLED_CODE_TO_EXISTING_GOVERNED_EXECUTION
-status: OPEN
-active_plan: docs/acceptance/R7_REPAIR_INVESTIGATION_GATE.md
-checkpoint: docs/acceptance/R7_REPAIR_INVESTIGATION_CHECKPOINT.md
+mutation authorization: ALLOW
+tool receipt: EXECUTED
+provider requests: 2
+response.read_only: false
+provider lbe_completion_truth: false
+persisted task: running / AWAITING_VALIDATION
+source worktree: clean
+```
+
+## Observable 4 — provider/model authority stability
+
+Decisive command hash:
+
+`E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6`
+
+Installed provider/model changed:
+
+```text
+openai-compatible / r7-model-a
+ ->
+openai-compatible / r7-model-b
+```
+
+while these persisted authority fields remained unchanged and survived fresh-process readback:
+
+```text
+session_id
+project_workspace_id
+canonical_workspace_root
+mode
+permission
+runtime_policy
+active_profile_id
+permission_policy_id
+evidence_policy_id
+```
+
+## Observable 5 — fresh-process session/task resume
+
+Decisive command hash:
+
+`EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376`
+
+Two distinct installed processes reopened the same database. Process B recovered the same persisted authority after process A exited:
+
+```text
+session: r7-session-repair
+provider/model: openai-compatible / r7-model-b
+task: r7-task-create
+status: running
+last_outcome: AWAITING_VALIDATION
+```
+
+## Observable 6 — external workspace truth revalidation
+
+Decisive command hash:
+
+`4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC`
+
+A disposable workspace file was read through installed LBE evidence, changed directly outside LBE, then re-read from a fresh installed process.
+
+```text
+pre-change sha256:
+2c8d9f54650e903b63976d5f66332c069c8bfcb4c6cfb8febc1422bc971d154b
+
+external/post-change sha256:
+b4bfc4aa24ec334f1f29ff6db0f729377ccf26715303ad2b2d546fdb49093484
+```
+
+The fresh installed evidence path observed the new marker and exact changed hash while preserving `r7-task-create / running / AWAITING_VALIDATION`. The project source checkout stayed clean.
+
+### Observable 6 failed invocations that do not count as product failures
+
+```text
+745BCDE8D77CC9C496D9752656CCE90459169ADCDE01F1FCCA319248BEA6E059
+  TEST_HARNESS_ENVIRONMENT_OMISSION
+  missing explicit config/governance/state paths
+  product implication: NONE
+
+85EE21AEED72A7E030FEC521EF2F8130AE56ABAA5BB50A50FB1B64D053E9738A
+  RETRIEVAL_QUERY_SHAPE_MISMATCH
+  two query terms split between filename/content could not satisfy current max-side match threshold
+  product implication for workspace freshness: NONE
+
+916E894792AADBE99A378009CDFEC17E1AB1BC93CD4F75CFB595B4CBA9A21D93
+  bounded diagnostic proving current file truth and empty result under the mixed query shape
+```
+
+The corrected single-marker query then proved the current-workspace SHA changed as expected.
+
+## Current authority boundary
+
+```text
+active_phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
+current_observable: 6
+current_status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
-required_evidence_level: SOURCE_PLUS_RUNTIME_CORRELATION
-release_path_authorized: true
 publish_allowed_now: false
 ```
 
-The active machine gate is `.lbe/governance/implementation-gates.json`.
+No implementation change is currently authorized.
 
-## Investigation question
+## Next admissible acceptance slice
 
-> What existing active-owner seam should connect installed `lbe code` / `GovernedAgentGateway` reasoning to the accepted R6C authorization, R6E governed tool execution, ToolReceipt, and receipt-backed provider continuation path, and what is the smallest correction that restores the composition without creating parallel authority?
+Observable 7 is next and requires explicit activation:
 
-## Current source findings
+> Prove that installed audit and investigation execution remain read-only and cannot mutate workspace state, including when the provider/problem attempts to induce a write.
 
-### 1. Installed CLI path — PROVEN
-
-`lbe_guard_inspector/cli.py::_run_mode_command` currently:
+Expected invariants for observable 7:
 
 ```text
-loads persisted session
- -> loads provider config
- -> build_provider_controller (reasoning controller)
- -> GovernedAgentGateway(runtime, reasoning_controller)
- -> operation_id = reasoning.inspect
- -> gateway.invoke(...)
+audit mode resolves without write/test_candidate mutation capability
+investigation mode resolves without write/test_candidate mutation capability
+no provider-direct workspace mutation
+no EXECUTED mutation receipt
+workspace bytes/Git state unchanged before vs after
+installed package remains site-packages isolated
+source project worktree remains clean
 ```
 
-It does not instantiate `GovernedClineWorker`, `ToolRegistry`, or `GovernedToolOrchestrator`.
+A genuine mutation in audit/investigation is a product falsifier. A provider/harness failure that does not reach this predicate is not.
 
-### 2. Gateway path — PROVEN
-
-`GovernedAgentGateway.invoke()` in coding mode establishes the completion contract, captures completion evidence boundaries, and calls `CodingCompletionRuntime.run_reasoning()` with the read-only reasoning controller. It does not invoke R6E.
-
-The gateway already has helpers to derive the R6B-backed `ToolExecutionContext` and construct an R6E `ToolRequest`, but those helpers are not used by the current installed `code` route.
-
-### 3. Existing governed provider tool loop — PROVEN
-
-`runtime/cline_stdio_bridge.py::GovernedClineWorker.execute_turn()` already implements:
+## Remaining R7 sequence
 
 ```text
-provider/Cline turn
- -> tool.proposed
- -> Python validates session/turn/tool-call/operation identity
- -> GovernedToolOrchestrator.invoke(ToolRequest)
- -> R6C authorization inside R6E
- -> ToolReceipt
- -> typed tool.result with receipt_id + operation_id
- -> same Cline continuation loop
-```
-
-This flow was already accepted in the Cline provider-continuation checkpoint at integration evidence level.
-
-Important clarification: the Cline bridge performs receipt-backed provider continuation through its typed `tool.result` frame. The generic `provider_continuation.py` helper is another receipt-continuation boundary, not a mandatory extra hop for the Cline path.
-
-### 4. Existing ordinary provider-turn runtime — PROVEN
-
-`provider_turn_runtime.py` currently owns non-streaming/background OpenAI-compatible provider turns and event projection. It does not compose Cline, R6E tool orchestration, or ToolReceipt mediation.
-
-The earlier accepted Cline architecture record names provider-turn ownership as an LBE runtime responsibility. Therefore any repair must reconcile with the existing provider-turn/runtime boundary rather than introduce a second provider authority.
-
-### 5. Production coding tool registration — NOT YET PROVEN
-
-`runtime/tool_orchestration.py` visibly defines the production `workspace.read` `ToolSpec` and EvidenceService-backed handler. The generic R6E registry can execute any explicitly registered `ToolSpec`/handler, but current inspected production source has not yet established a concrete write/edit/process coding capability registration.
-
-This is now a required discriminator: wiring installed `code` to the existing Cline/R6E loop would still be insufficient if the production registry exposes only `workspace.read`.
-
-## Evidence classification
-
-```text
-PROVEN
-- installed lbe code currently bypasses the existing Cline/R6E governed tool loop
-- GovernedClineWorker already implements proposal -> R6E -> ToolReceipt -> same-provider continuation
-- GovernedAgentGateway can build R6E context/request objects but current invoke path does not execute them
-- provider_turn_runtime is a separate existing runtime owner and currently does not compose R6E
-- current visible builtin R6E production helper is workspace.read
-
-SUPPORTED
-- repair should reuse the existing Cline/R6E loop rather than turn LBERequestController into a tool executor
-
-HYPOTHESIS
-- the missing primary composition belongs at an existing runtime/gateway/provider-turn composition seam
-- a concrete production coding/write capability may also be missing from registration
-
-UNKNOWN
-- exact smallest source edit surface until repository-wide constructor/consumer/registration scan is complete
-- whether any alternate production coding tool path exists elsewhere in the repository
-```
-
-## Remaining investigation work
-
-Before implementation can be considered:
-
-```text
-1. enumerate all ToolRequest producers/consumers
-2. enumerate all GovernedToolOrchestrator constructions/invocations
-3. enumerate all GovernedClineWorker constructions and execute_turn consumers
-4. enumerate all production ToolSpec / ToolRegistry registrations
-5. locate any workspace write/edit/patch/process capability and prove whether it is production-active
-6. trace session/task/request/tool-call/operation/receipt persistence and correlation
-7. prove no alternate active coding execution route was missed
-8. identify the earliest missing composition state
-9. state one smallest repair hypothesis and its falsifier
-10. define focused + integration + exact installed-runtime validation
-```
-
-## Current roadmap
-
-```text
-R3  PROVEN_COMPLETE
-R4  PROVEN_COMPLETE
-R5  PROVEN_COMPLETE
-R6A PROVEN_COMPLETE
-R6B PROVEN_COMPLETE
-R6C PROVEN_COMPLETE
-R6D PROVEN_COMPLETE
-R6E PROVEN_COMPLETE
-R6F PROVEN_COMPLETE
-CLI PROVEN_COMPLETE
-R7  FAIL — INSTALLED NORMAL-PATH CODING COMPOSITION GAP
-R7_REPAIR_INVESTIGATION OPEN — IMPLEMENTATION LOCKED
-release/package readiness BLOCKED_BY_R7
+#7  audit/investigation remain read-only
+#8  forbidden/out-of-workspace/out-of-authority actions fail closed
+#9  receipt/provider continuation correlation remains intact
+#10 provider completion remains provisional until deterministic validation
+#11 terminal COMPLETED / VALIDATED_COMPLETION survives fresh process
+#12 no credential/secret leakage into repo/logs/receipts/artifacts
+#13 focused installed/runtime regression with exact package/head/environment evidence
+#14 source remains unchanged unless a real falsifier separately authorizes repair
+#15 clean worktree + exact limitations/falsifiers
 ```
 
 ## Release progression
 
 ```text
-complete R7 repair investigation
- -> record exact seam/edit surface/hypothesis/falsifier/validation
- -> separately activate bounded repair implementation
- -> validate focused + integration
- -> build/install exact repair head
- -> rerun R7 observable 3
- -> finish R7 observables 4-15
+finish R7 observables 7-15
  -> R7 PASS
  -> release/package readiness acceptance
  -> only then version/tag/publish
 ```
 
-## Readiness
+Publication is not allowed now.
+
+## Current readiness
 
 ```text
 project_user_ready: NO
+R7_complete: NO
 release_ready: NO
 publish_allowed_now: NO
 implementation_allowed: NO
