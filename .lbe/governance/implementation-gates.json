@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md",
-  "active_phase": "R6B_TYPED_MODE_POLICY_ACCEPTANCE",
-  "active_slice": "PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_GATE.md",
+  "active_phase": "R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE",
+  "active_slice": "PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH_GOVERNED_EXECUTION",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,26 +41,18 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "R6B acceptance is closed PASS. Preserve the proven typed mode/session/authorization owners and keep the next phase locked until explicitly activated.",
-    "implementation_changes": "Forbidden. R6B completed as acceptance-only with no runtime/test source change.",
+    "purpose": "Prove repeated delegated authority, deterministic DENY/ESCALATE expansion boundaries, no-execution semantics and visible authorization provenance through the existing governed execution path.",
+    "implementation_changes": "Forbidden by default. If acceptance proves a real defect, stop and activate a separate bounded repair slice before changing runtime or tests.",
     "allowed_actions": [
-      "inspect closed R6B evidence",
-      "verify synchronization of the closed gate and checkpoint",
-      "update acceptance status documentation",
-      "keep the next phase locked pending explicit activation"
+      "inspect current mode authorization and governed tool owners",
+      "run repository-owned authorization and governed tool tests",
+      "prove repeated delegated ALLOW without repetitive confirmation",
+      "prove DENY and ESCALATE prevent handler execution",
+      "prove destructive and persistent-policy authority expansion behavior",
+      "prove authorization verdict and rationale remain visible in receipts",
+      "run focused mode authorization tool regression",
+      "record exact acceptance evidence",
+      "run diff scope and clean worktree validation"
     ]
-  },
-  "acceptance_evidence": {
-    "acceptance_head": "9086ad67bebb48f6505c7b3660f1ac49e0cc57c3",
-    "mode_contract_tests": "28 passed",
-    "mode_contract_tests_command_hash": "572E3034723732631FD32DCA972BDD3DAC39C8C859A58AC16D31582753B24F28",
-    "persistent_typed_mode_policy": "PASS",
-    "integration_command_hash": "9C54DBC9E1792039991E4EEFDD4F0FE0C2ED59782318E94BC8DA904135159859",
-    "focused_regression": "69 passed",
-    "focused_regression_command_hash": "F8627BCC2D9EC0B81D9CBC828147876195FC894A439EF795767BC58CAC9C1305",
-    "runtime_test_source_unchanged": true,
-    "diff_check": "PASS",
-    "worktree_clean": true,
-    "observed_falsifier": null
   }
 }
