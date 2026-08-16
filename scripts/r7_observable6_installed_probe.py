@@ -192,6 +192,10 @@ def main() -> int:
     require(session.get("provider_id") == "openai-compatible", "provider identity changed during external-change resume")
     require(session.get("provider_model") == "r7-model-b", "provider model changed during external-change resume")
 
+    # Query the unique external content marker alone. Current-workspace retrieval
+    # scores path and content matches independently and takes their max, so a
+    # mixed filename+content two-term query cannot satisfy its two-term threshold.
+    # The observable here is freshness, not mixed-field query semantics.
     after_result = run(
         [
             str(lbe),
@@ -204,7 +208,7 @@ def main() -> int:
             "--task-id",
             TASK_ID,
             "--query",
-            f"{TARGET_REL} {MARKER}",
+            MARKER,
             "--max-results",
             "10",
         ],
