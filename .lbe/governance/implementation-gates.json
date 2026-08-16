@@ -3,8 +3,8 @@
   "active_plan": "docs/acceptance/R7_REPAIR_IMPLEMENTATION_GATE.md",
   "active_phase": "R7_REPAIR_IMPLEMENTATION",
   "active_slice": "COMPOSE_INSTALLED_CODING_WITH_EXISTING_GOVERNED_EXECUTION",
-  "status": "OPEN",
-  "implementation_allowed": true,
+  "status": "PASS",
+  "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -33,22 +33,16 @@
     "investigation_status": "PASS",
     "investigation_scan_hash": "81684E672EE2A77C49B634D79DF4CBAB84531A613328EC9488434B75BFE6BD2D",
     "proven_gaps": [
-      "installed coding does not compose GovernedClineWorker/R6E",
-      "no production workspace mutation ToolSpec is registered"
-    ]
+      "installed coding did not compose GovernedClineWorker/R6E",
+      "no production workspace mutation ToolSpec was registered"
+    ],
+    "repair_status": "PASS",
+    "repaired_observable_3_command_hash": "F3FB75C252CB7B561C05A233D4F93FC981032A0DAF41F9B90E9952FB9677F882"
   },
   "allowed_scope": {
     "purpose": "Repair the proven R7 installed coding composition gap by reusing the existing governed Cline/R6E path and adding one smallest safe workspace-bound production mutation capability behind existing R6C/R6E authority.",
-    "implementation_changes": "Allowed only inside the proven composition/tool-registration seam and claim-matched tests. Architecture rewrite or new authority is forbidden.",
-    "allowed_actions": [
-      "compose installed coding with existing GovernedClineWorker",
-      "construct/reuse existing ToolRegistry and GovernedToolOrchestrator",
-      "add one smallest safe workspace-bound mutation ToolSpec and handler",
-      "preserve ToolReceipt and provider continuation correlation",
-      "add focused and integration tests for allow deny escalate failure idempotency and completion authority",
-      "build and install exact repaired package",
-      "rerun R7 observable 3"
-    ]
+    "implementation_changes": "Closed. No further implementation changes are authorized under this completed repair slice.",
+    "allowed_actions": []
   },
   "authority_reuse": [
     "SessionMemoryRuntimeBridge",
@@ -92,15 +86,14 @@
     "R6E": "PROVEN_COMPLETE",
     "R6F": "PROVEN_COMPLETE",
     "CLI": "PROVEN_COMPLETE",
-    "R7": "FAIL_INSTALLED_CODING_COMPOSITION"
+    "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR"
   },
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "complete R7 repair implementation to PASS",
-      "rerun R7 observable 3 on isolated installed exact head",
-      "finish remaining R7 installed end-to-end acceptance",
+      "explicitly resume R7 installed end-to-end acceptance",
+      "finish remaining R7 observables 4 through 15",
       "release/package readiness acceptance"
     ]
   }
