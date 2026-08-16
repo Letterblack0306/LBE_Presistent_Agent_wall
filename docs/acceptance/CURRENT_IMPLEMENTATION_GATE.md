@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 8 — IMPLEMENTATION LOCKED**
+Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 8 — NEXT OBSERVABLE LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
@@ -13,7 +13,7 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: OPEN
+status: PASS
 required_evidence_level: INSTALLED_RUNTIME_FAIL_CLOSED_AUTHORITY_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
@@ -31,37 +31,32 @@ observable 4: PASS
 observable 5: PASS
 observable 6: PASS
 observable 7: PASS
+observable 8: PASS
 ```
 
-Observable 7 decisive proof: `1E59BF836E469E6652D839F076EE7A48E0D531796F39C0D35AB0F8974EADD576`.
+Observable 8 decisive proof: `98B3EC987725DB5B103E6B11B64DD60C4C73EA2F249BC88F260403A52127FDEE`.
 
-## Active observable 8
-
-Question:
-
-> Do forbidden, out-of-workspace, and otherwise out-of-authority mutation attempts fail closed with no workspace mutation, while preserving the distinction between path-handler rejection and R6C DENY/ESCALATE receipts?
-
-Required proof combines two installed-runtime layers:
+## Observable 8 result
 
 ```text
-normal installed coding path
-  -> forbidden .env path rejected with zero mutation
-  -> ../ workspace escape rejected with zero mutation
-
-installed R6E authority surface
-  -> explicitly_forbidden=true => DENY / DENIED
-  -> within_workspace_scope=false => ESCALATE / ESCALATED
-  -> rejected authority never invokes handler
+forbidden .env path fail closed: PASS
+../ workspace escape fail closed: PASS
+R6C explicitly_forbidden => DENY: PASS
+R6E receipt => DENIED: PASS
+R6C out-of-scope => ESCALATE: PASS
+R6E receipt => ESCALATED: PASS
+rejected authority handler invocation: NONE
+rejected mutation executed: NONE
+workspace unchanged: PASS
+source worktree clean: PASS
 ```
 
-The distinction matters: path governance/escape validation belongs to the bounded tool handler, while R6C owns explicit authority scope and forbidden-operation decisions.
+No production/runtime/package implementation change was required or authorized.
 
-## Falsifier
+## Current boundary
 
-Any rejected attempt that mutates workspace/outside-workspace state, any explicit forbidden request that is not denied, any out-of-scope request that is not escalated, or any denied/escalated request that reaches the handler is a product falsifier.
+Observable 8 is closed `PASS`.
 
-Harness/provider/fixture failures that do not reach these predicates do not justify a product patch.
+Observable 9 is not active and requires explicit advancement. Its target is receipt/provider-continuation correlation across the installed governed coding loop.
 
-## Stop rule
-
-Do not proceed to observable 9 until observable 8 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
+Release/package readiness and publication remain blocked until the remaining R7 observables pass.
