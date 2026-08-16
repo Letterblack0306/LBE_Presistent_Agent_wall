@@ -8,5 +8,8 @@
   },
   "dependencies": {
     "@cline/agents": "0.0.75"
+  },
+  "overrides": {
+    "undici@<6.0.0": ">=7.29.0 <8"
   }
 }
