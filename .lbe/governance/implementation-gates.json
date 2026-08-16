@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_GATE.md",
-  "active_phase": "R6D_CONTEXT_ASSEMBLY_ACCEPTANCE",
-  "active_slice": "PROVE_BOUNDED_AUTHORITY_PRESERVING_CONTEXT_ACROSS_PROVIDER_AND_LIVE_WORKSPACE_BOUNDARIES",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE_GATE.md",
+  "active_phase": "R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE",
+  "active_slice": "PROVE_RECEIPT_BACKED_GOVERNED_TOOL_LIFECYCLE_WITH_IDEMPOTENCY_AND_PROVIDER_CONTINUATION",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -21,32 +21,20 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "R6D acceptance is closed PASS. Preserve bounded authority-preserving context assembly, current-workspace evidence precedence, provider-equivalent authoritative context, typed guard separation and model-prose non-authority.",
-    "implementation_changes": "Forbidden. R6D completed as acceptance-only with no runtime/test source change.",
+    "purpose": "Prove registered/authorized governed tool execution, structured receipt/evidence, operation-id idempotency and receipt-backed provider continuation with escalation stop through the existing R6E owner path.",
+    "implementation_changes": "Forbidden by default. If acceptance proves a real defect, stop and activate a separate bounded repair slice before changing runtime or tests.",
     "allowed_actions": [
-      "inspect closed R6D evidence",
-      "verify synchronization of the closed gate and checkpoint",
-      "update acceptance status documentation",
-      "keep R6E locked pending explicit activation"
-    ]
-  },
-  "acceptance_evidence": {
-    "acceptance_head": "00ff4ca854f7f1568f806ad659d512ca72d8374e",
-    "context_provider_tests": "14 passed",
-    "context_provider_tests_command_hash": "8E61C736848B5CDAEB144F7D80A1304BB119D1CFD6E6C14C4E84CC9B2AD54698",
-    "existing_authority_discriminators": "9 passed",
-    "existing_authority_discriminators_command_hash": "73222C712C91124E873E1A30E3F9241C62ED6C61A4CB568AED17178F9B360820",
-    "provider_equivalence": "PASS",
-    "provider_equivalence_command_hash": "61CDCECAAC3951B7A79051F10819BDB3CC3BA65CD6F8635900CD8ACA2CBE17C7",
-    "focused_regression": "128 passed",
-    "focused_regression_command_hash": "0157C71BFDAF6ACC55A00573C97FAF4181D23D660E3290852B35166EBB841DA9",
-    "runtime_test_source_unchanged": true,
-    "diff_check": "PASS",
-    "worktree_clean": true,
-    "observed_falsifier": null,
-    "non_product_harness_failures": [
-      "02429E4D57B40504D4A4C28DCB9A40BFF85CDBCA7213CB12506DDB04EB16F2CF",
-      "BA3A49472C55BA1BF834686B95690F23D4AB47835F0A5DF65580F50F45469542"
+      "inspect current tool authorization evidence and provider continuation owners",
+      "run repository-owned tool authorization and continuation tests",
+      "prove registered authorized execution and structured receipt evidence",
+      "prove unregistered invalid denied and escalated requests do not execute",
+      "prove duplicate operation id returns original receipt without reexecution",
+      "prove real workspace read delegates to EvidenceService",
+      "prove provider continuation is derived only from governed receipts",
+      "prove escalated receipt stops before provider continuation",
+      "run focused tool authorization continuation runtime regression",
+      "record exact acceptance evidence",
+      "run diff scope and clean worktree validation"
     ]
   }
 }
