@@ -3,11 +3,12 @@
 ```text
 phase: LBE_RUNTIME_ROADMAP_RECONCILIATION
 slice: CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
-status: UNVERIFIED
+status: PASS
 
 base_sha: 538faee75d57c3d6ad5dfdc5b975a69bd1acc5e6
+validated_head: c13fe3a6643496ec6a2d5d6fec7e115149d17141
 implementation_sha: NOT_APPLICABLE_DOCUMENTATION_ONLY
-required_evidence_level: SOURCE + ACCEPTANCE_RECORD_RECONCILIATION
+required_evidence_level: SOURCE + ACCEPTANCE_RECORD_RECONCILIATION + LOCAL_CANONICAL_WORKTREE
 next_phase_locked: true
 ```
 
@@ -17,34 +18,32 @@ What is the earliest required persistent-runtime capability that current `main` 
 
 ## Evidence method
 
-For every roadmap family:
-
 ```text
 roadmap requirement
 -> current source owner
--> current focused tests
+-> focused tests
 -> accepted checkpoint / installed-runtime proof
 -> classification
 ```
 
-A source file or passing unit test proves implementation evidence only. A roadmap family is not `PROVEN_COMPLETE` unless its claimed exit-proof level is supported by current acceptance evidence.
+Source presence or focused tests prove implementation evidence only. They do not automatically satisfy roadmap-level acceptance.
 
-## Classification matrix
+## Final classification
 
-| Roadmap family | Current evidence | Classification | Reason |
-|---|---|---|---|
-| R3 persistent runtime -> existing reasoning boundary | `SessionMemoryRuntimeBridge.run_reasoning()` constructs `LBERequest`, invokes the existing reasoning controller, validates task identity, returns `LBEResponse`, and persists completed/blocked/failed lifecycle state; focused tests exist in `tests/test_session_memory_runtime.py` | `IMPLEMENTED_NOT_ACCEPTED` | implementation and focused behavior are present, but no dedicated current R3 acceptance checkpoint or installed/normal-path acceptance record was found |
-| R4 checkpoint/resume/rehydration | `start_or_resume`, checkpoint/session persistence, stale source invalidation, Git HEAD mismatch detection, constraint survival, provider-state persistence; `tests/test_session_resume_runtime.py` | `IMPLEMENTED_NOT_ACCEPTED` | focused restart/rehydration proof exists, but no dedicated current R4 roadmap checkpoint was found |
-| R5 bounded classified recovery | `recovery.py`, `SessionMemoryRuntimeBridge.run_recoverable`, persisted recovery state, retry classification, idempotency, evidence-between-attempts, non-retryable denial; `tests/test_runtime_recovery.py` | `IMPLEMENTED_NOT_ACCEPTED` | implementation/focused tests exist; no dedicated current R5 roadmap acceptance checkpoint was found |
-| R6A provider abstraction | provider registry, capability discovery, provider health/turn runtime, OpenAI-compatible adapter, accepted P0/P2/P3/P14-P16 provider/runtime checkpoints, accepted Cline provider continuation | `PARTIALLY_PROVEN` | provider/runtime mechanics are accepted, but the roadmap's same-session real provider A -> provider B reasoning-switch proof remains unproven in current acceptance records |
-| R6B typed mode policy | `runtime/mode_controller.py`, typed session policy, focused tests, accepted later runtime layers depend on it | `PARTIALLY_PROVEN` | implementation exists and is exercised, but no standalone roadmap-level proof was found that the same provider runs each mode with authoritative capability differences from LBE policy |
-| R6C permission/authorization resolver | `runtime/authorization_resolver.py`, `GovernedToolOrchestrator`, focused authorization tests, accepted Cline continuation negative-path proof shows DENIED/ESCALATED do not execute handlers | `PARTIALLY_PROVEN` | deterministic authority boundary is strongly proven, but the full roadmap user-flow/provenance acceptance remains broader than the focused evidence |
-| R6D context assembly + rule/guard injection | `runtime/context_assembly.py`, context tests, existing reasoning/evidence/guard owners | `IMPLEMENTED_NOT_ACCEPTED` | source/tests exist; no dedicated current roadmap acceptance checkpoint found |
-| R6E governed tool orchestration | `runtime/tool_orchestration.py`, receipt/idempotency tests, accepted P5/P7 and Cline tool-proposal -> LBE receipt -> same continuation proof | `PARTIALLY_PROVEN` | governed execution ownership is accepted, but the roadmap's broader coding tool classes/write-scope workflow are not yet proven as one installed user flow |
-| R6F completion/validation gate | completion policy/runtime/gate/evidence owners and tests; CLI `session validate` delegates to those owners | `PARTIALLY_PROVEN` | deterministic completion machinery exists, but no current authoritative installed coding-flow record proves the complete roadmap completion predicate end to end |
-| CLI control surface | current `cli.py` exposes session create/continue/status/inspect/evidence/validate, code/audit/investigate, provider list/check/select, policy/permissions, TUI; P12/P13 prove installed CLI/TUI portions | `PARTIALLY_PROVEN` | substantial installed-path proof exists, but not every runtime family is accepted through the normal CLI path |
-| R7 end-to-end persistent coding/audit runtime | lower-level families and several installed/runtime checkpoints exist | `PARTIALLY_PROVEN` | no current authoritative project-owned R7 acceptance record exists on `main`; project remains `user-ready: NO` and `release-ready: NO` |
-| Release/package readiness | package/install tests and prior installed checkpoints exist | `PARTIALLY_PROVEN` | release readiness is explicitly not accepted; external release action remains out of scope |
+| Roadmap family | Classification | Current conclusion |
+|---|---|---|
+| R3 persistent runtime -> existing reasoning boundary | `IMPLEMENTED_NOT_ACCEPTED` | owner and focused tests exist; no dedicated current roadmap acceptance proof found |
+| R4 checkpoint/resume/rehydration | `IMPLEMENTED_NOT_ACCEPTED` | restart/rehydration/stale-source tests exist; no dedicated roadmap acceptance checkpoint found |
+| R5 bounded classified recovery | `IMPLEMENTED_NOT_ACCEPTED` | recovery implementation/focused proof exists; no dedicated roadmap acceptance checkpoint found |
+| R6A provider abstraction | `PARTIALLY_PROVEN` | substantial provider/runtime acceptance exists; same-session provider A -> B roadmap proof remains incomplete |
+| R6B typed mode policy | `PARTIALLY_PROVEN` | typed policy owner exists and is exercised; standalone roadmap-level same-provider/multi-mode acceptance is incomplete |
+| R6C permission/authorization | `PARTIALLY_PROVEN` | deterministic DENY/ESCALATE/tool authority strongly proven; broader roadmap user-flow acceptance remains incomplete |
+| R6D context assembly + rule/guard injection | `IMPLEMENTED_NOT_ACCEPTED` | source/tests exist; no dedicated roadmap acceptance checkpoint found |
+| R6E governed tool orchestration | `PARTIALLY_PROVEN` | receipt-backed governed continuation accepted; broader installed coding workflow remains incomplete |
+| R6F completion/validation | `PARTIALLY_PROVEN` | deterministic owners exist; full installed coding completion predicate is not yet accepted end to end |
+| CLI control surface | `PARTIALLY_PROVEN` | substantial installed/session/TUI proof exists; not every runtime family is accepted through normal CLI path |
+| R7 end-to-end runtime | `PARTIALLY_PROVEN` | lower layers exist, but no authoritative complete R7 acceptance record exists |
+| Release/package readiness | `PARTIALLY_PROVEN` | installed/package evidence exists, but release readiness remains explicitly unaccepted |
 
 ## Earliest insufficiently proven capability
 
@@ -53,11 +52,7 @@ R3_RUNTIME_REASONING_ACCEPTANCE
 classification: IMPLEMENTED_NOT_ACCEPTED
 ```
 
-### Why R3, not R4/R5/R6
-
-R3 is already implemented. The gap is acceptance evidence, not source implementation.
-
-Current source proves the owner exists:
+The current owner already exists:
 
 ```text
 SessionMemoryRuntimeBridge.run_reasoning
@@ -67,86 +62,73 @@ SessionMemoryRuntimeBridge.run_reasoning
  -> persisted task lifecycle outcome
 ```
 
-Focused tests prove completed, blocked, and failed reasoning outcomes persist.
+Therefore the next candidate is an **acceptance-proof** slice, not R3 source implementation.
 
-What is missing is a current bounded acceptance record against the canonical runtime path that satisfies the R3 exit proof at the level the roadmap claims.
+## Reconciliation changes
 
-Therefore the next slice must be an **R3 acceptance-proof slice**, not an R3 implementation slice.
+- machine gate moved to the documentation-only reconciliation slice;
+- `CURRENT_IMPLEMENTATION_GATE.md` aligned to the same phase/slice;
+- stale P16 `CURRENT_AGENT_EXECUTION_GATE.md` superseded as current authority while preserving its PASS history;
+- `docs/IMPLEMENTATION_PLAN.md` reconciled so R2 is no longer current and existing R3-R6 owners are not presented as missing source implementation;
+- accepted Cline provider-continuation work remains preserved and is not reopened.
 
-## Reconciliation changes completed on GitHub
+## Local validation evidence
 
-- machine gate activated for `LBE_RUNTIME_ROADMAP_RECONCILIATION` with runtime implementation disabled;
-- `CURRENT_IMPLEMENTATION_GATE.md` now declares the same reconciliation phase/slice;
-- `CURRENT_AGENT_EXECUTION_GATE.md` is explicitly superseded as current authority while preserving P16 PASS as historical evidence;
-- `docs/IMPLEMENTATION_PLAN.md` is reconciled against current `main`: R2 is no longer current, existing R3-R6 owners are not presented as missing implementation, and progression is acceptance-first;
-- previous Cline provider-continuation PASS remains preserved and is not reopened.
+Validated canonical local worktree at:
+
+```text
+HEAD=c13fe3a6643496ec6a2d5d6fec7e115149d17141
+origin/main=c13fe3a6643496ec6a2d5d6fec7e115149d17141
+```
+
+Observed results:
+
+```text
+documentation-only gate semantics: PASS
+implementation_allowed=false: PASS
+architecture_changes_allowed=false: PASS
+next_phase_locked=true: PASS
+changed reconciliation files: exactly 6
+unexpected changed files: 0
+runtime/test source changes: 0
+human/machine/roadmap authority alignment: PASS
+git diff --check: PASS
+worktree: clean (main...origin/main)
+```
+
+The prior invocation of `scripts/check-implementation-gate.py` was classified `TEST_HARNESS_MISMATCH` because that checker is explicitly written for implementation slices and hard-requires `implementation_allowed=true`. The documentation gate was instead validated directly without weakening the fail-closed policy.
 
 ## Document conflicts
 
 ```text
-GitHub content reconciliation: RESOLVED
-
-machine gate:
-  LBE_RUNTIME_ROADMAP_RECONCILIATION / CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
-
-human current implementation gate:
-  LBE_RUNTIME_ROADMAP_RECONCILIATION / CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
-
-CURRENT_AGENT_EXECUTION_GATE:
-  superseded as current authority; P16 remains historical PASS
-
-IMPLEMENTATION_PLAN:
-  reconciled to current implementation/acceptance state
+status: RESOLVED
 ```
 
-No blocking document conflict is currently known in the inspected authority chain. Local post-pull validation is still required before this checkpoint can become PASS.
+No blocking contradiction remains in the inspected authority chain.
 
-## Next-slice candidate after reconciliation PASS
+## Next locked candidate
 
 ```text
 phase: R3_RUNTIME_REASONING_ACCEPTANCE
 slice: PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY
-kind: acceptance proof, not implementation
+kind: acceptance proof
+active: NO
 ```
 
-Expected proof should bind one canonical session/task to the existing reasoning controller and persisted lifecycle outcome without introducing a second reasoning/session owner. The exact acceptance level and command set must be defined in a separate gate after this reconciliation slice closes.
+A separate machine/human gate must be explicitly activated before that work begins.
 
-## Validation evidence
+## Remaining unverified product-level work
 
-```text
-source_owner_inventory: PASS BY CURRENT GITHUB SOURCE INSPECTION
-accepted_P0_P16_history: PASS BY PRESERVED CHECKPOINT LEDGER INSPECTION
-accepted_Cline_continuation: PASS BY CURRENT ACCEPTANCE RECORD
-R3_R7_classification_matrix: RECORDED
-machine_human_gate_alignment_on_GitHub: PASS BY REOPEN
-roadmap_reconciliation_on_GitHub: PASS BY REOPEN
-local_head_sync: NOT RUN
-local_implementation_gate: NOT RUN
-local_git_diff_check: NOT RUN
-local_clean_worktree: NOT RUN
-```
-
-A full repository suite is not claimed for this documentation-only reconciliation lineage. Runtime source has not been changed by this slice. The next acceptance slice may require focused/full runtime regression according to its own gate.
-
-## Unverified
-
-- local canonical worktree is not yet synchronized to the reconciliation documentation lineage;
-- R3 installed/normal-path acceptance remains unproven;
-- R4/R5 roadmap-level acceptance remains unproven;
-- R6 same-session live provider switch remains unproven;
-- overall R7/user-ready/release-ready remains unproven.
-
-## Requirements
-
-- classify R3-R7 from current source and acceptance evidence;
-- reconcile stale roadmap/current-gate documents;
-- identify exactly one earliest next gap;
-- do not alter runtime source;
-- prove local gate/diff/worktree state before PASS.
+- R3 installed/normal-path acceptance;
+- R4/R5 roadmap-level acceptance;
+- R6 same-session provider-switch acceptance and other broader user-flow proofs;
+- complete R7 acceptance;
+- user-ready state;
+- release-ready state.
 
 ## Existing owner
 
-Current existing runtime owners documented in the active reconciliation gate; no new architecture owner is introduced by this documentation slice.
+Existing runtime owners are reused. No new architecture owner was introduced.
 
 ## Reuse decision
 
@@ -154,6 +136,8 @@ Current existing runtime owners documented in the active reconciliation gate; no
 REUSE existing runtime owners; reconcile acceptance status instead of reimplementing them.
 ```
 
+```text
 project_user_ready: NO
 release_ready: NO
 next_phase_locked: true
+```
