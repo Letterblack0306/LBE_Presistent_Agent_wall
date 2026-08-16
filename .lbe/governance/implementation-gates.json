@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE_GATE.md",
-  "active_phase": "LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE",
-  "active_slice": "DEFINE_GOVERNED_NODE_SUBPROCESS_STDIO_BOUNDARY",
+  "active_plan": "docs/acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_IMPLEMENTATION_GATE.md",
+  "active_phase": "LBE_CLINE_GOVERNED_NODE_STDIO_IMPLEMENTATION",
+  "active_slice": "IMPLEMENT_GOVERNED_NODE_STDIO_BRIDGE_FOUNDATION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
@@ -41,19 +41,18 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Define the minimal governed Python-to-Node subprocess/stdio boundary required to reuse Cline AgentRuntime continuation, tool-call, streaming, and control mechanics while preserving all existing LBE authority owners.",
-    "implementation_changes": "architecture/design activation only; no production Python adapter, Node worker, package dependency, sidecar service, RPC service, embedded runtime, or native Cline mutation/execution enablement in this slice",
+    "purpose": "Implement the smallest production foundation for the already-approved governed Python-to-Node stdio boundary, reusing Cline AgentRuntime mechanics without transferring LBE authority.",
+    "implementation_changes": "protocol/frame types and validation, Python-owned child-process lifecycle adapter, bounded Node worker bootstrap, exact Cline dependency pin/lock, and focused contract tests only; no TUI/MCP/provider expansion and no native Cline mutation/execution authority",
     "allowed_actions": [
-      "inspect current LBE authorization, governed tool orchestration, provider-turn, session, event, receipt, persistence, and process owners",
-      "reuse the completed Cline Core Reuse Boundary Matrix at audited revision 8bbdde2a5c1f972864fe1b954f639c21fac61a40",
-      "define a bounded child-process stdio protocol with Python LBE as lifecycle and authority owner",
-      "define request, response, error, event, cancellation, tool proposal, and tool-result message identities",
-      "define Cline native mutation/execution tools as disabled or unreachable",
-      "define exact mapping from Cline tool call identity to LBE operation_id and ToolReceipt identity",
-      "define failure, restart, timeout, protocol-corruption, and child-exit behavior as fail-closed",
-      "define package/runtime/dependency adoption evidence required before implementation",
-      "update only directly related architecture, acceptance, checkpoint, and machine-gate documentation",
-      "run implementation-gate validation and git diff --check"
+      "add protocol constants/types/validation for lbe-cline-stdio/1",
+      "add Python-owned child-process lifecycle adapter with startup/shutdown/timeout/protocol-failure handling",
+      "add bounded Node worker bootstrap using @cline/agents at the audited compatible line",
+      "register/expose only allowlisted LBE-governed tool definitions to the worker",
+      "keep resolve_authorization and GovernedToolOrchestrator as exclusive execution authority",
+      "add exact Node/Cline dependency metadata and lockfile required by the worker",
+      "add focused tests for protocol validation, child lifecycle, native-tool exclusion, deny-before-execute boundary wiring, identity correlation, malformed-frame failure, and restart/idempotency safety where implementable in this foundation",
+      "run focused tests, implementation-gate validation, full regression if practical for changed owners, and git diff --check",
+      "update only directly related source/tests/package/acceptance files"
     ]
   }
 }
