@@ -107,7 +107,7 @@ def _text_response(text: str):
             "id": "chatcmpl-test",
             "object": "chat.completion.chunk",
             "created": 1,
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "choices": [
                 {
                     "index": 0,
@@ -120,7 +120,7 @@ def _text_response(text: str):
             "id": "chatcmpl-test",
             "object": "chat.completion.chunk",
             "created": 1,
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "choices": [
                 {"index": 0, "delta": {}, "finish_reason": "stop"}
             ],
@@ -139,7 +139,7 @@ def _tool_call_response():
             "id": "chatcmpl-tool",
             "object": "chat.completion.chunk",
             "created": 1,
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "choices": [
                 {
                     "index": 0,
@@ -165,7 +165,7 @@ def _tool_call_response():
             "id": "chatcmpl-tool",
             "object": "chat.completion.chunk",
             "created": 1,
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "choices": [
                 {"index": 0, "delta": {}, "finish_reason": "tool_calls"}
             ],
@@ -181,8 +181,8 @@ def _tool_call_response():
 def _provider_payload(base_url: str, *, allowed_tools=None) -> dict:
     return {
         "provider": {
-            "provider_id": "openai",
-            "model_id": "gpt-4o-mini",
+            "provider_id": "openai-compatible",
+            "model_id": "gpt-4o",
             "api_key": "super-secret-never-echo",
             "base_url": base_url,
         },
@@ -313,11 +313,38 @@ def test_provider_configured_startup_does_not_echo_api_key() -> None:
         ready = worker.start(_frame("runtime.start", payload=_provider_payload(base_url)))
         assert ready.payload["provider_configured"] is True
         assert ready.payload["provider"] == {
-            "provider_id": "openai",
-            "model_id": "gpt-4o-mini",
+            "provider_id": "openai-compatible",
+            "model_id": "gpt-4o",
         }
         assert "super-secret-never-echo" not in ready.to_json_line()
         worker.shutdown(_frame("runtime.shutdown", message_id="py-2"))
+
+
+def test_invalid_cline_provider_maps_failed_run_to_turn_failed(tmp_path: Path) -> None:
+    worker = GovernedClineWorker()
+    worker.start(
+        _frame(
+            "runtime.start",
+            payload={
+                "provider": {
+                    "provider_id": "definitely-not-a-provider",
+                    "model_id": "gpt-4o",
+                },
+                "allowed_tools": [],
+            },
+        )
+    )
+    result = worker.execute_turn(
+        _frame("turn.execute", message_id="py-2", payload={"text": "hello"}),
+        orchestrator=GovernedToolOrchestrator(registry=ToolRegistry()),
+        context=_context(tmp_path, "inspect"),
+        timeout_seconds=15,
+    )
+    assert result.message_type == "turn.failed"
+    assert result.payload["code"] == "CLINE_AGENTRUNTIME_FAILED"
+    assert "Unknown or disabled provider" in result.payload["message"]
+    assert result.payload["status"] == "failed"
+    worker.shutdown(_frame("runtime.shutdown", message_id="py-3"))
 
 
 def test_local_provider_turn_completes_through_real_cline_runtime(tmp_path: Path) -> None:
@@ -335,6 +362,7 @@ def test_local_provider_turn_completes_through_real_cline_runtime(tmp_path: Path
         assert result.payload["output_text"] == "hello from cline"
         assert result.payload["lbe_completion_truth"] is False
         assert len(server.requests) == 1
+        assert server.requests[0]["path"] == "/v1/chat/completions"
         worker.shutdown(_frame("runtime.shutdown", message_id="py-3"))
 
 
