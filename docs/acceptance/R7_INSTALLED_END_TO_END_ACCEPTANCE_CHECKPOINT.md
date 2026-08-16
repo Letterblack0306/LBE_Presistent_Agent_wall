@@ -2,11 +2,11 @@
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_5_FRESH_PROCESS_SESSION_TASK_RESUME
-status: PASS
+slice: OBSERVABLE_6_EXTERNAL_WORKSPACE_CHANGE_REVALIDATION
+status: OPEN
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
-required_evidence_level: INSTALLED_RUNTIME_SEPARATE_PROCESSES
+required_evidence_level: INSTALLED_RUNTIME_EXTERNAL_CHANGE_REVALIDATION
 implementation_allowed: false
 next_phase_locked: true
 ```
@@ -18,70 +18,43 @@ observable 1 installed package identity/isolation: PASS
 observable 2 persistent installed session identity: PASS
 observable 3 governed coding execution + receipts: PASS_AFTER_REPAIR
   decisive command hash: F3FB75C252CB7B561C05A233D4F93FC981032A0DAF41F9B90E9952FB9677F882
-  authorization: ALLOW
-  receipt: EXECUTED
-  provider continuation: PASS
-  provider completion truth: false
-  persisted task: running / AWAITING_VALIDATION
-  source worktree: clean
 
 observable 4 provider/model switch authority stability: PASS
   decisive command hash: E0CB10D5EE683C0485D44AB7FC51A17591716D3BB2EF62F77E2A48D6559E97E6
-  before provider/model: openai-compatible / r7-model-a
-  after provider/model: openai-compatible / r7-model-b
-  authority invariants: PASS
-  fresh-process readback: PASS
-  source worktree: clean
 
 observable 5 fresh-process session/task resume: PASS
   decisive command hash: EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376
-  process A exited before process B: PASS
-  session resume: PASS
-  task resume: PASS
-  authority invariants: PASS
-  persisted provider/model: openai-compatible / r7-model-b
-  persisted task: r7-task-create / running / AWAITING_VALIDATION
-  installed package: isolated venv site-packages
-  source worktree: clean
+  session: r7-session-repair
+  provider/model: openai-compatible / r7-model-b
+  task: r7-task-create / running / AWAITING_VALIDATION
 ```
 
-## Observable 5 result
+## Observable 6 — active
 
-Question: after the prior invoking process is gone, can a newly launched installed process recover the same persisted session and task identity/state from the database?
+Question: after a bounded external workspace change between installed invocations, does the next installed invocation observe and revalidate current workspace truth rather than relying on stale persisted/checkpoint evidence?
 
-Result: `PASS`.
+Required proof:
 
-Two distinct installed processes opened the same persistent database. Process A read the session/task and exited before process B was launched. Process B recovered the same persisted authority and task state.
+1. capture installed evidence for a known workspace file before the external change;
+2. terminate that invocation;
+3. mutate that file directly outside LBE with a unique marker and record its new SHA-256;
+4. launch a fresh installed invocation against the same persisted session/task;
+5. resume/reopen the same task identity;
+6. retrieve bounded current workspace evidence for the changed file;
+7. prove the new external marker and new SHA-256 are observed and the pre-change content/hash are not treated as current truth;
+8. prove the persisted session/task authority remains intact;
+9. installed package resolves from isolated venv site-packages;
+10. project source worktree remains clean.
 
-Session invariants preserved:
-
-- session_id
-- project_workspace_id
-- canonical_workspace_root
-- mode
-- permission
-- runtime_policy
-- provider_id
-- provider_model
-- active_profile_id
-- permission_policy_id
-- evidence_policy_id
-
-Task invariants preserved:
-
-- task_id = r7-task-create
-- status = running
-- last_outcome = AWAITING_VALIDATION
-
-No source-tree import leakage was observed and the project source worktree remained clean.
+The external mutation is confined to the disposable R7 proof workspace under the installed-test root; it must not touch the project source checkout.
 
 ## Current classification
 
 ```text
-fresh_process_session_task_resume: PASS
+external_workspace_change_revalidation: PENDING
 implementation_changes: FORBIDDEN
-observable_6: LOCKED_PENDING_EXPLICIT_ADVANCE
+observable_7: LOCKED
 release_publish_allowed_now: false
 ```
 
-No product falsifier was observed in observable 5.
+Failure to observe the new workspace truth is a product falsifier and stops R7. Harness failures do not justify product changes.
