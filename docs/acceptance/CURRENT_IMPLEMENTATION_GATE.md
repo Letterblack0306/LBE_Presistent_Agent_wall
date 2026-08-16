@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R6D CONTEXT ASSEMBLY ACCEPTANCE — NEXT PHASE LOCKED**
+Status: **PASS — R6D CONTEXT ASSEMBLY ACCEPTANCE — NEXT PHASE LOCKED**
 
 Current phase: `R6D_CONTEXT_ASSEMBLY_ACCEPTANCE`
 
@@ -8,7 +8,7 @@ Current slice: `PROVE_BOUNDED_AUTHORITY_PRESERVING_CONTEXT_ACROSS_PROVIDER_AND_L
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
-## Active plan
+## Closed plan
 
 ```text
 active_plan: docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_GATE.md
@@ -18,7 +18,7 @@ implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-status: OPEN
+status: PASS
 ```
 
 ## Accepted baseline
@@ -30,98 +30,100 @@ R5: PROVEN_COMPLETE
 R6A: PROVEN_COMPLETE
 R6B: PROVEN_COMPLETE
 R6C: PROVEN_COMPLETE
+R6D: PROVEN_COMPLETE
 ```
 
-Final synchronized R6C closure baseline:
+## Accepted R6D owner path
 
 ```text
-HEAD: 3d7bf3fbdc64f7dc9b57a617494381013b4513da
-origin/main: 3d7bf3fbdc64f7dc9b57a617494381013b4513da
-R6C gate: PASS
-next_phase_locked: true
-LoopTool closure command hash: ECEEA88E421AA1DD89CF498E78DCC59DFB35493496581A84828DA421A72FEE62
+LBERequest.reference_context / persisted session context
+ -> assemble_reasoning_context
+ -> validated indexed reference evidence
+ -> ReasoningRequest.reference_context
+
+LBE-selected guard applicability
+ -> ReasoningRequest.approved_guard_ids
+
+current workspace inspection
+ -> EvidenceService / GuardRunner / validated evidence contracts
+ -> deterministic LBE result
 ```
 
-## Why R6D is selected next
+No second context, retrieval, guard, policy or provider-specific authority was introduced.
 
-R6A-R6C established provider neutrality, typed modes and deterministic authorization. Provider reasoning still depends on the context assembled before planning, so R6D is the next dependency boundary: LBE must preserve live workspace/evidence authority while passing bounded reference/session context to any provider.
+## Decisive observables
 
-Current source/tests already prove pieces independently:
-
-- `assemble_reasoning_context()` deterministically orders caller/session context before validated indexed reference evidence;
-- assembly copies source mappings rather than mutating them;
-- `LBERequestController` uses that owner when constructing provider-facing `ReasoningRequest`;
-- approved guard IDs remain a separate typed field rather than being inserted into `reference_context`;
-- deterministic guard/current-workspace inspection remains LBE-owned after provider planning;
-- `ReasoningPlan` rejects authority-bearing model fields including verdict, authorization, policy and mutation.
-
-The missing artifact is combined integration proof for current-workspace-over-reference authority, equivalent LBE context across provider changes, and model-prose non-authority.
-
-## Existing owners
+Acceptance head:
 
 ```text
-assemble_reasoning_context
-ReasoningRequest
-LBERequestController
-EvidenceService
-GuardRunner
-SessionMemoryRuntimeBridge / LBERequest.reference_context
+00ff4ca854f7f1568f806ad659d512ca72d8374e
 ```
 
-## Reuse decision
+Repository-owned context/provider baseline:
 
 ```text
-REUSE
+14 passed
+command_hash: 8E61C736848B5CDAEB144F7D80A1304BB119D1CFD6E6C14C4E84CC9B2AD54698
 ```
 
-R6D is not being reimplemented.
+Repository-owned authority discriminators:
 
-## Acceptance question
+```text
+9 passed
+command_hash: 73222C712C91124E873E1A30E3F9241C62ED6C61A4CB568AED17178F9B360820
+```
 
-Can the existing LBE context path provide bounded deterministic provider-facing context while keeping live workspace facts, guard applicability and governance authority LBE-owned across conflicting reference/history and provider changes?
+Those tests establish stale indexed-hash contradiction against current workspace reread, bounded provider-facing reference context, rejection of model authority fields, explanation inability to alter deterministic verdict, and separate approved-guard authority.
 
-## Required observable
+Provider-equivalence discriminator:
 
-1. identical authoritative inputs produce identical context ordering/content;
-2. caller/session context precedes indexed reference evidence without source mutation;
-3. approved guards stay on the typed guard channel and irrelevant/unapproved guards do not gain authority through context text;
-4. conflicting reference/history cannot override current workspace/deterministic evidence;
-5. provider A/B receive equivalent authoritative LBE context for equivalent inputs;
-6. model-authored output cannot inject retrieval/governance/authorization/verdict/mutation authority;
-7. no second context/retrieval/guard/policy owner is introduced.
+```text
+command_hash: 61CDCECAAC3951B7A79051F10819BDB3CC3BA65CD6F8635900CD8ACA2CBE17C7
+R6D_PROVIDER_A=provider-a/model-a
+R6D_PROVIDER_B=provider-b/model-b
+R6D_REFERENCE_CONTEXT_EQUAL=True
+R6D_WORKSPACE_IDENTITY_EQUAL=True
+R6D_WORKSPACE_PROFILE_EQUAL=True
+R6D_APPROVED_GUARDS_EQUAL=True
+R6D_APPROVED_TOOLS_EQUAL=True
+R6D_PROVIDER_EQUIVALENT_AUTHORITATIVE_CONTEXT=PASS
+R6D_WORKSPACE_BOUND_DIAGNOSTIC=PASS
+```
+
+This proves provider identity/model changes do not change the LBE-owned context, workspace identity/profile, approved guards or approved tools for equivalent authoritative inputs.
+
+## Regression and scope
+
+```text
+command_hash: 0157C71BFDAF6ACC55A00573C97FAF4181D23D660E3290852B35166EBB841DA9
+128 passed
+R6D_FOCUSED_REGRESSION=PASS
+R6D_RUNTIME_TEST_SOURCE_UNCHANGED=PASS
+R6D_DIFF_CHECK=PASS
+R6D_WORKTREE_CLEAN=PASS
+R6D_ACCEPTANCE_SCOPE=PASS
+```
+
+## Harness failures
+
+The failed synthetic fixture command `02429E4D...` never reached either provider because the fixture violated the evidence contract. The command `BA3A4947...` was truncated and failed PowerShell parsing before Python execution. Both are retained as harness failures with no product implication.
 
 ## Falsifier
 
-R6D cannot PASS if reference/history overrides current workspace truth, provider identity changes LBE context authority, unapproved guards become executable from prose, model output can establish policy/retrieval authority, or a parallel context/retrieval owner is required.
-
-## Allowed work
-
-- GitHub inspection of current context/evidence/controller/provider owners and tests;
-- LoopTool execution of repository-owned tests and bounded runtime diagnostics;
-- R6D acceptance/checkpoint/status documentation through GitHub;
-- diff/scope/worktree verification.
-
-## Forbidden work
-
-- runtime/test implementation before a real defect is proven;
-- R6E/R6F implementation;
-- new context store/retrieval/guard selector/prompt-policy authority;
-- provider-specific authority forks;
-- CLI/TUI/MCP/release work;
-- architecture changes.
+```text
+observed_falsifier: NONE
+```
 
 ## Current status
 
 ```text
-source_owner_inspection: PASS
-repository context tests: PRESENT
-controller context handoff: PRESENT
-combined authority-preserving integration: NOT RUN
-focused regression: NOT RUN
-checkpoint: UNVERIFIED
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
 project_user_ready: NO
 release_ready: NO
-next_phase_locked: true
 ```
 
-Do not advance automatically. If R6D exposes a real implementation defect, stop and activate a separate repair slice before modifying runtime or tests.
+## Next-phase rule
+
+Do not activate R6E or another family automatically. The next slice requires explicit activation and its own evidence review/gate.
