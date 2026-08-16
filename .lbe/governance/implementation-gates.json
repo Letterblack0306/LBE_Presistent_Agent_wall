@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R7_REPAIR_INVESTIGATION_GATE.md",
-  "active_phase": "R7_REPAIR_INVESTIGATION",
-  "active_slice": "TRACE_INSTALLED_CODE_TO_EXISTING_GOVERNED_EXECUTION",
-  "status": "PASS",
-  "implementation_allowed": false,
+  "active_plan": "docs/acceptance/R7_REPAIR_IMPLEMENTATION_GATE.md",
+  "active_phase": "R7_REPAIR_IMPLEMENTATION",
+  "active_slice": "COMPOSE_INSTALLED_CODING_WITH_EXISTING_GOVERNED_EXECUTION",
+  "status": "OPEN",
+  "implementation_allowed": true,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -16,20 +16,6 @@
     "BLOCKED_WORKSPACE_AUTHORITY",
     "BLOCKED_PARALLEL_ARCHITECTURE"
   ],
-  "required_checkpoint_fields": [
-    "phase",
-    "slice",
-    "base_sha",
-    "implementation_sha",
-    "requirements",
-    "existing_owner",
-    "reuse_decision",
-    "required_evidence_level",
-    "validation_evidence",
-    "unverified",
-    "document_conflicts",
-    "status"
-  ],
   "rules": {
     "one_active_slice": true,
     "no_next_phase_without_pass": true,
@@ -40,38 +26,60 @@
     "checkpoint_required_before_advance": true,
     "fail_closed": true
   },
-  "closure": {
-    "runtime_scan_command_hash": "81684E672EE2A77C49B634D79DF4CBAB84531A613328EC9488434B75BFE6BD2D",
-    "investigation_head": "0eed3c8a4c9d6eb8407da639fef086b610a279a4",
-    "alternate_active_coding_path": "NOT_FOUND",
-    "production_mutation_tool": "NOT_FOUND",
-    "earliest_missing_composition_state": "installed lbe code selects read-only reasoning.inspect/LBERequestController instead of the existing GovernedClineWorker -> R6E -> ToolReceipt continuation loop",
-    "second_missing_state": "R6E has generic governed execution and workspace.read but no concrete production coding mutation capability",
-    "authority_reuse": "REQUIRED"
-  },
-  "repair_hypothesis": "Compose installed coding through the existing GovernedClineWorker plus existing R6E ToolRegistry/GovernedToolOrchestrator and add one bounded production workspace mutation tool behind existing R6C/R6E authority; provider tool proposals must produce correlated ToolReceipts and continuation while completion remains under existing deterministic validation.",
-  "repair_falsifiers": [
-    "installed code remains read-only and does not reach GovernedClineWorker/R6E",
-    "provider mutates workspace without ToolReceipt",
-    "mutation bypasses R6C authorization",
-    "no concrete production coding mutation tool is available",
-    "denied or escalated mutation executes",
-    "tool-call operation receipt correlation is lost",
-    "a second authority owner is introduced",
-    "provider completion bypasses deterministic completion validation"
-  ],
-  "next_admissible_action": {
-    "kind": "SEPARATELY_ACTIVATED_REPAIR_IMPLEMENTATION",
-    "status": "NOT_ACTIVATED",
-    "implementation_allowed_now": false,
-    "architecture_changes_allowed_now": false,
-    "scope": [
-      "compose existing installed coding path with existing GovernedClineWorker and R6E orchestrator",
-      "add one smallest safe workspace-bound production mutation capability behind existing R6C/R6E",
-      "add claim-matched focused/integration tests",
-      "rebuild/install exact repair head and rerun R7 observable 3"
+  "trigger": {
+    "failed_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
+    "failed_observable": "normal installed governed coding execution plus receipts",
+    "runtime_marker": "R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN",
+    "investigation_status": "PASS",
+    "investigation_scan_hash": "81684E672EE2A77C49B634D79DF4CBAB84531A613328EC9488434B75BFE6BD2D",
+    "proven_gaps": [
+      "installed coding does not compose GovernedClineWorker/R6E",
+      "no production workspace mutation ToolSpec is registered"
     ]
   },
+  "allowed_scope": {
+    "purpose": "Repair the proven R7 installed coding composition gap by reusing the existing governed Cline/R6E path and adding one smallest safe workspace-bound production mutation capability behind existing R6C/R6E authority.",
+    "implementation_changes": "Allowed only inside the proven composition/tool-registration seam and claim-matched tests. Architecture rewrite or new authority is forbidden.",
+    "allowed_actions": [
+      "compose installed coding with existing GovernedClineWorker",
+      "construct/reuse existing ToolRegistry and GovernedToolOrchestrator",
+      "add one smallest safe workspace-bound mutation ToolSpec and handler",
+      "preserve ToolReceipt and provider continuation correlation",
+      "add focused and integration tests for allow deny escalate failure idempotency and completion authority",
+      "build and install exact repaired package",
+      "rerun R7 observable 3"
+    ]
+  },
+  "authority_reuse": [
+    "SessionMemoryRuntimeBridge",
+    "GovernedAgentGateway",
+    "resolve_authorization",
+    "ToolRegistry",
+    "GovernedToolOrchestrator",
+    "ToolReceipt",
+    "GovernedClineWorker",
+    "CodingCompletionRuntime"
+  ],
+  "forbidden": [
+    "second authorization resolver",
+    "second tool dispatcher",
+    "second session provider or completion authority",
+    "provider-direct workspace mutation",
+    "native Cline mutation authority",
+    "architecture rewrite",
+    "release version tag or publish work"
+  ],
+  "repair_falsifiers": [
+    "installed code remains read-only",
+    "provider mutation occurs without ToolReceipt",
+    "mutation bypasses R6C",
+    "no production mutation tool is available",
+    "denied or escalated mutation executes",
+    "operation tool-call receipt correlation is lost",
+    "parallel authority is introduced",
+    "provider completion bypasses deterministic validation"
+  ],
+  "required_evidence_level": "INTEGRATION_PLUS_INSTALLED_RUNTIME",
   "accepted_baseline": {
     "canonical_base_sha": "69c6ae764bc217cd5795ddf8a972658223a681a0",
     "R3": "PROVEN_COMPLETE",
@@ -90,9 +98,9 @@
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "separately activate bounded R7 repair implementation",
-      "validate smallest repair through focused and installed-runtime evidence",
-      "rerun R7 installed end-to-end acceptance to PASS",
+      "complete R7 repair implementation to PASS",
+      "rerun R7 observable 3 on isolated installed exact head",
+      "finish remaining R7 installed end-to-end acceptance",
       "release/package readiness acceptance"
     ]
   }
