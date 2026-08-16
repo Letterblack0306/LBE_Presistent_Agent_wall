@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "OBSERVABLE_6_EXTERNAL_WORKSPACE_CHANGE_REVALIDATION",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -33,27 +33,30 @@
     "R7_OBSERVABLE_2": "PASS",
     "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR",
     "R7_OBSERVABLE_4": "PASS",
-    "R7_OBSERVABLE_5": "PASS"
+    "R7_OBSERVABLE_5": "PASS",
+    "R7_OBSERVABLE_6": "PASS"
   },
   "current_observable": {
     "number": 6,
-    "status": "OPEN",
+    "status": "PASS",
     "question": "After a bounded external workspace change between installed invocations, does the next installed invocation observe and revalidate current workspace truth rather than relying on stale persisted/checkpoint evidence?",
     "required_evidence_level": "INSTALLED_RUNTIME_EXTERNAL_CHANGE_REVALIDATION",
-    "implementation_changes_allowed": false
+    "implementation_changes_allowed": false,
+    "decisive_command_hash": "4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC"
   },
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "continuing to observable 7 before observable 6 is classified PASS"
+    "activating observable 7 without explicit advancement"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 6 through 15",
+      "explicitly activate R7 observable 7",
+      "finish R7 observables 7 through 15",
       "release/package readiness acceptance"
     ]
   }
