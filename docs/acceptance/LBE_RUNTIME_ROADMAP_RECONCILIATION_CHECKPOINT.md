@@ -33,7 +33,7 @@ A source file or passing unit test proves implementation evidence only. A roadma
 
 | Roadmap family | Current evidence | Classification | Reason |
 |---|---|---|---|
-| R3 persistent runtime -> existing reasoning boundary | `SessionMemoryRuntimeBridge.run_reasoning()` constructs `LBERequest`, invokes the existing reasoning controller, validates task identity, returns `LBEResponse`, and persists completed/blocked/failed lifecycle state; focused tests exist in `tests/test_session_memory_runtime.py` | `IMPLEMENTED_NOT_ACCEPTED` | implementation and focused behavior are present, but no dedicated current R3 acceptance checkpoint or installed-path acceptance record was found |
+| R3 persistent runtime -> existing reasoning boundary | `SessionMemoryRuntimeBridge.run_reasoning()` constructs `LBERequest`, invokes the existing reasoning controller, validates task identity, returns `LBEResponse`, and persists completed/blocked/failed lifecycle state; focused tests exist in `tests/test_session_memory_runtime.py` | `IMPLEMENTED_NOT_ACCEPTED` | implementation and focused behavior are present, but no dedicated current R3 acceptance checkpoint or installed/normal-path acceptance record was found |
 | R4 checkpoint/resume/rehydration | `start_or_resume`, checkpoint/session persistence, stale source invalidation, Git HEAD mismatch detection, constraint survival, provider-state persistence; `tests/test_session_resume_runtime.py` | `IMPLEMENTED_NOT_ACCEPTED` | focused restart/rehydration proof exists, but no dedicated current R4 roadmap checkpoint was found |
 | R5 bounded classified recovery | `recovery.py`, `SessionMemoryRuntimeBridge.run_recoverable`, persisted recovery state, retry classification, idempotency, evidence-between-attempts, non-retryable denial; `tests/test_runtime_recovery.py` | `IMPLEMENTED_NOT_ACCEPTED` | implementation/focused tests exist; no dedicated current R5 roadmap acceptance checkpoint was found |
 | R6A provider abstraction | provider registry, capability discovery, provider health/turn runtime, OpenAI-compatible adapter, accepted P0/P2/P3/P14-P16 provider/runtime checkpoints, accepted Cline provider continuation | `PARTIALLY_PROVEN` | provider/runtime mechanics are accepted, but the roadmap's same-session real provider A -> provider B reasoning-switch proof remains unproven in current acceptance records |
@@ -50,6 +50,7 @@ A source file or passing unit test proves implementation evidence only. A roadma
 
 ```text
 R3_RUNTIME_REASONING_ACCEPTANCE
+classification: IMPLEMENTED_NOT_ACCEPTED
 ```
 
 ### Why R3, not R4/R5/R6
@@ -66,26 +67,39 @@ SessionMemoryRuntimeBridge.run_reasoning
  -> persisted task lifecycle outcome
 ```
 
-Focused tests prove completed, blocked and failed reasoning outcomes persist.
+Focused tests prove completed, blocked, and failed reasoning outcomes persist.
 
-What is missing is a current, bounded acceptance record against the canonical runtime path that satisfies the R3 exit proof at the level the roadmap claims.
+What is missing is a current bounded acceptance record against the canonical runtime path that satisfies the R3 exit proof at the level the roadmap claims.
 
 Therefore the next slice must be an **R3 acceptance-proof slice**, not an R3 implementation slice.
 
-## Stale-document findings
+## Reconciliation changes completed on GitHub
 
-1. `docs/IMPLEMENTATION_PLAN.md` still labels R2 as current and sequences R3-R6 as future implementation even though those owners now exist.
-2. `docs/acceptance/CURRENT_AGENT_EXECUTION_GATE.md` still names the older P16 cancellation reconciliation as active.
-3. The machine gate now correctly points to this reconciliation slice.
-4. `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md` must be updated to this reconciliation slice before PASS.
+- machine gate activated for `LBE_RUNTIME_ROADMAP_RECONCILIATION` with runtime implementation disabled;
+- `CURRENT_IMPLEMENTATION_GATE.md` now declares the same reconciliation phase/slice;
+- `CURRENT_AGENT_EXECUTION_GATE.md` is explicitly superseded as current authority while preserving P16 PASS as historical evidence;
+- `docs/IMPLEMENTATION_PLAN.md` is reconciled against current `main`: R2 is no longer current, existing R3-R6 owners are not presented as missing implementation, and progression is acceptance-first;
+- previous Cline provider-continuation PASS remains preserved and is not reopened.
 
-## Required reconciliation before PASS
+## Document conflicts
 
-- update `docs/IMPLEMENTATION_PLAN.md` so it distinguishes implemented-but-unaccepted families from genuinely future implementation;
-- retire/supersede the stale P16 current-agent gate as active authority;
-- update `CURRENT_IMPLEMENTATION_GATE.md` to this reconciliation phase;
-- locally validate exact canonical head, machine gate, diff check and clean worktree;
-- only then mark this checkpoint PASS.
+```text
+GitHub content reconciliation: RESOLVED
+
+machine gate:
+  LBE_RUNTIME_ROADMAP_RECONCILIATION / CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
+
+human current implementation gate:
+  LBE_RUNTIME_ROADMAP_RECONCILIATION / CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
+
+CURRENT_AGENT_EXECUTION_GATE:
+  superseded as current authority; P16 remains historical PASS
+
+IMPLEMENTATION_PLAN:
+  reconciled to current implementation/acceptance state
+```
+
+No blocking document conflict is currently known in the inspected authority chain. Local post-pull validation is still required before this checkpoint can become PASS.
 
 ## Next-slice candidate after reconciliation PASS
 
@@ -95,24 +109,49 @@ slice: PROVE_PERSISTENT_RUNTIME_TO_EXISTING_REASONING_BOUNDARY
 kind: acceptance proof, not implementation
 ```
 
-Expected proof should bind one canonical session/task to the existing reasoning controller and persisted lifecycle outcome without introducing a second reasoning/session owner. The exact command/test level must be defined in a separate gate after this reconciliation slice closes.
+Expected proof should bind one canonical session/task to the existing reasoning controller and persisted lifecycle outcome without introducing a second reasoning/session owner. The exact acceptance level and command set must be defined in a separate gate after this reconciliation slice closes.
+
+## Validation evidence
+
+```text
+source_owner_inventory: PASS BY CURRENT GITHUB SOURCE INSPECTION
+accepted_P0_P16_history: PASS BY PRESERVED CHECKPOINT LEDGER INSPECTION
+accepted_Cline_continuation: PASS BY CURRENT ACCEPTANCE RECORD
+R3_R7_classification_matrix: RECORDED
+machine_human_gate_alignment_on_GitHub: PASS BY REOPEN
+roadmap_reconciliation_on_GitHub: PASS BY REOPEN
+local_head_sync: NOT RUN
+local_implementation_gate: NOT RUN
+local_git_diff_check: NOT RUN
+local_clean_worktree: NOT RUN
+```
+
+A full repository suite is not claimed for this documentation-only reconciliation lineage. Runtime source has not been changed by this slice. The next acceptance slice may require focused/full runtime regression according to its own gate.
 
 ## Unverified
 
-- local canonical worktree is not yet synchronized to this documentation lineage;
-- exact full-suite status at the reconciliation head has not been run;
+- local canonical worktree is not yet synchronized to the reconciliation documentation lineage;
 - R3 installed/normal-path acceptance remains unproven;
 - R4/R5 roadmap-level acceptance remains unproven;
 - R6 same-session live provider switch remains unproven;
 - overall R7/user-ready/release-ready remains unproven.
 
-## Document conflicts
+## Requirements
+
+- classify R3-R7 from current source and acceptance evidence;
+- reconcile stale roadmap/current-gate documents;
+- identify exactly one earliest next gap;
+- do not alter runtime source;
+- prove local gate/diff/worktree state before PASS.
+
+## Existing owner
+
+Current existing runtime owners documented in the active reconciliation gate; no new architecture owner is introduced by this documentation slice.
+
+## Reuse decision
 
 ```text
-ACTIVE UNTIL RECONCILED:
-- IMPLEMENTATION_PLAN current=R2 conflicts with current source/accepted runtime layers
-- CURRENT_AGENT_EXECUTION_GATE active=P16 conflicts with machine active reconciliation slice
-- CURRENT_IMPLEMENTATION_GATE still records completed Cline continuation rather than current reconciliation slice
+REUSE existing runtime owners; reconcile acceptance status instead of reimplementing them.
 ```
 
 project_user_ready: NO
