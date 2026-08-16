@@ -2,8 +2,8 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "OBSERVABLE_8_FAIL_CLOSED_AUTHORITY_BOUNDARIES",
-  "status": "PASS",
+  "active_slice": "OBSERVABLE_9_RECEIPT_PROVIDER_CONTINUATION_CORRELATION",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -39,25 +39,31 @@
     "R7_OBSERVABLE_8": "PASS"
   },
   "current_observable": {
-    "number": 8,
-    "status": "PASS",
-    "question": "Do forbidden, out-of-workspace, and otherwise out-of-authority mutation attempts fail closed with no workspace mutation, while preserving the distinction between handler-level path rejection and R6C DENY/ESCALATE authority receipts?",
-    "required_evidence_level": "INSTALLED_RUNTIME_FAIL_CLOSED_AUTHORITY_PROOF",
-    "implementation_changes_allowed": false,
-    "decisive_command_hash": "98B3EC987725DB5B103E6B11B64DD60C4C73EA2F249BC88F260403A52127FDEE"
+    "number": 9,
+    "status": "OPEN",
+    "question": "Does the installed governed coding loop preserve exact provider tool-call, LBE call, operation, ToolReceipt, and same-turn provider continuation correlation without duplicate execution or identity substitution?",
+    "required_evidence_level": "INSTALLED_RUNTIME_CORRELATED_RECEIPT_CONTINUATION_PROOF",
+    "implementation_changes_allowed": false
   },
+  "observable_9_falsifiers": [
+    "provider tool-call id does not map to the executed receipt operation id",
+    "continuation request does not carry the same provider tool-call id",
+    "more than one mutation executes for one provider tool call",
+    "receipt identity is missing or duplicated",
+    "provider continuation occurs in a different logical turn or without the governed result",
+    "workspace result does not match the correlated receipt"
+  ],
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "activating observable 9 without explicit advancement"
+    "continuing to observable 10 before observable 9 is classified PASS"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "explicitly activate R7 observable 9",
       "finish R7 observables 9 through 15",
       "release/package readiness acceptance"
     ]
