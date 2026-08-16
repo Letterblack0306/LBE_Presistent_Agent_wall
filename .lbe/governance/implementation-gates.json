@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
-  "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "PROVE_INSTALLED_PERSISTENT_AGENT_NORMAL_PATH_OVER_ACCEPTED_AUTHORITIES",
-  "status": "FAIL",
+  "active_plan": "docs/acceptance/R7_REPAIR_INVESTIGATION_GATE.md",
+  "active_phase": "R7_REPAIR_INVESTIGATION",
+  "active_slice": "TRACE_INSTALLED_CODE_TO_EXISTING_GOVERNED_EXECUTION",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,37 +41,39 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Record and investigate the failed R7 installed coding composition. The installed code normal path did not reach accepted governed coding tool execution/receipts; progression remains stopped pending a separately activated bounded repair investigation.",
-    "implementation_changes": "Forbidden. A real product falsifier is proven, but source/runtime/CLI/test/package changes still require a separately activated bounded repair implementation slice after investigation proves the exact owner and edit surface.",
+    "purpose": "Trace the proven R7 installed coding composition gap from the installed lbe code entry point to the existing R6C/R6E execution and receipt-continuation authorities, identify the earliest missing seam, and define the smallest evidence-backed repair hypothesis and falsifier.",
+    "implementation_changes": "Forbidden. This slice is investigation-only. Runtime/CLI/test/package changes require a separately activated repair implementation gate after the investigation closes PASS.",
     "allowed_actions": [
-      "record and inspect the proven installed coding composition falsifier",
-      "inspect existing active owners and connecting flow without source changes",
-      "trace ToolRequest GovernedToolOrchestrator ToolReceipt provider continuation and provider tool-call consumers",
+      "inspect current GitHub source and project acceptance records",
+      "trace cli GovernedAgentGateway reasoning ToolRequest GovernedToolOrchestrator ToolReceipt and provider continuation paths",
+      "trace provider tool-call provider-turn and persistence correlation owners",
+      "scan for alternate or legacy active coding paths",
       "identify the earliest missing or incorrect composition state",
-      "define the smallest bounded repair hypothesis and falsifier",
-      "define focused and installed-runtime validation before editing",
-      "keep release package readiness and publication blocked",
-      "preserve exact acceptance evidence and harness-failure classifications"
+      "identify the smallest active-owner edit surface",
+      "record one bounded repair hypothesis and falsifier",
+      "define focused integration and installed-runtime validation before editing",
+      "keep R7 release package readiness and publication blocked"
     ]
   },
-  "next_admissible_action": {
-    "kind": "SEPARATELY_ACTIVATED_REPAIR_INVESTIGATION",
-    "status": "NOT_ACTIVATED",
-    "question": "What existing active-owner seam should connect installed lbe code / GovernedAgentGateway reasoning to the accepted R6C/R6E governed tool execution and receipt-continuation path, and what is the smallest correction that restores that composition without creating parallel authority?",
-    "implementation_allowed_during_investigation": false,
-    "architecture_changes_allowed": false,
-    "required_before_implementation": [
-      "trace all current ToolRequest construction and consumer paths",
-      "trace all GovernedToolOrchestrator construction and consumer paths",
-      "trace ToolReceipt correlation persistence and provider continuation paths",
-      "trace provider tool-call and provider-turn runtime paths",
-      "prove earliest missing or incorrect composition state",
-      "prove no already-active alternate coding path was missed",
-      "identify smallest active-owner edit surface",
-      "record one repair hypothesis and falsifier",
-      "define claim-matched focused integration and installed-runtime validation"
-    ]
+  "trigger": {
+    "failed_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
+    "failed_observable": "normal installed governed coding execution plus receipts",
+    "runtime_marker": "R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN",
+    "observed_provider_tools": ["workspace.read"],
+    "observed_response_read_only": true
   },
+  "investigation_completion_predicate": [
+    "exact provider tool-request producer identified",
+    "exact intended R6E executor consumer identified",
+    "exact ToolReceipt continuation seam identified",
+    "exact session task request tool-call operation correlation owner identified",
+    "no already-active alternate coding path missed",
+    "earliest missing composition state proven",
+    "smallest edit surface identified",
+    "no new authority required",
+    "one repair hypothesis and falsifier recorded",
+    "claim-matched focused integration and installed-runtime validation defined"
+  ],
   "accepted_baseline": {
     "canonical_base_sha": "69c6ae764bc217cd5795ddf8a972658223a681a0",
     "R3": "PROVEN_COMPLETE",
@@ -83,14 +85,15 @@
     "R6D": "PROVEN_COMPLETE",
     "R6E": "PROVEN_COMPLETE",
     "R6F": "PROVEN_COMPLETE",
-    "CLI": "PROVEN_COMPLETE"
+    "CLI": "PROVEN_COMPLETE",
+    "R7": "FAIL_INSTALLED_CODING_COMPOSITION"
   },
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "activate and complete bounded installed coding composition repair investigation",
-      "separately authorize and validate smallest repair",
+      "complete R7 repair investigation to PASS",
+      "separately activate and validate smallest repair implementation",
       "rerun R7 installed end-to-end acceptance to PASS",
       "release/package readiness acceptance"
     ]
