@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_GATE.md",
-  "active_phase": "R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE",
-  "active_slice": "PROVE_DELEGATED_AUTHORITY_REUSE_AND_EXPANSION_BOUNDARIES_THROUGH_GOVERNED_EXECUTION",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_GATE.md",
+  "active_phase": "R6D_CONTEXT_ASSEMBLY_ACCEPTANCE",
+  "active_slice": "PROVE_BOUNDED_AUTHORITY_PRESERVING_CONTEXT_ACROSS_PROVIDER_AND_LIVE_WORKSPACE_BOUNDARIES",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -21,21 +21,19 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "R6C acceptance is closed PASS. Preserve the proven authorization/governed-execution owners and keep the next phase locked until explicitly activated.",
-    "implementation_changes": "Forbidden. R6C completed as acceptance-only with no runtime/test source change.",
-    "allowed_actions": ["inspect closed R6C evidence", "verify synchronization of the closed gate and checkpoint", "update acceptance status documentation", "keep the next phase locked pending explicit activation"]
-  },
-  "acceptance_evidence": {
-    "acceptance_head": "011531b56087432d5401b9dbdc1a04d6f1cadde9",
-    "authorization_tool_tests": "26 passed",
-    "authorization_tool_tests_command_hash": "8D1A70917D588AFBD736F05B24E04D0FEDAABB19AB0B4B3A0A41A9B7C41824CA",
-    "integration_discriminator": "PASS",
-    "integration_command_hash": "344D8A7C5FF4F980999606734C34B4B228FBC137E15CA25354DDD1FEF11676EF",
-    "focused_regression": "81 passed",
-    "focused_regression_command_hash": "7AFBB97B2A5018C58D59D3D7842B4B601264E1E5BC3F073C37B9304F091543B2",
-    "runtime_test_source_unchanged": true,
-    "diff_check": "PASS",
-    "worktree_clean": true,
-    "observed_falsifier": null
+    "purpose": "Prove bounded deterministic context assembly, live-workspace authority precedence, provider-equivalent authoritative context, separate approved-guard authority, and model-prose non-authority through the existing R6D owner path.",
+    "implementation_changes": "Forbidden by default. If acceptance proves a real defect, stop and activate a separate bounded repair slice before changing runtime or tests.",
+    "allowed_actions": [
+      "inspect current context evidence controller provider and guard owners",
+      "run repository-owned context controller provider and evidence tests",
+      "prove deterministic assembly and copy semantics",
+      "prove current workspace evidence outranks conflicting reference history",
+      "prove equivalent authoritative context across provider changes",
+      "prove approved guard authority remains separate from reference context",
+      "prove model prose cannot create policy authorization verdict mutation or retrieval authority",
+      "run focused context controller provider evidence regression",
+      "record exact acceptance evidence",
+      "run diff scope and clean worktree validation"
+    ]
   }
 }
