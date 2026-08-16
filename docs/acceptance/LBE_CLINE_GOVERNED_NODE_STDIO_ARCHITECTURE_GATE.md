@@ -216,7 +216,9 @@ add MCP;
 
 change canonical session persistence;
 
-claim installed/live/user-flow/release readiness.rnArchitecture proof checkpoint
+claim installed/live/user-flow/release readiness.
+
+## Architecture proof checkpoint
 phase: LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE
 slice: DEFINE_GOVERNED_NODE_SUBPROCESS_STDIO_BOUNDARY
 base_sha: 726f6b776dfa82778c2a4b400a84adb9c91cb078
@@ -366,4 +368,4 @@ document_conflicts: none known
 status: PASS
 project_user_ready: UNVERIFIED
 release_ready: UNVERIFIED
-next_phase_locked: truern
+next_phase_locked: true
