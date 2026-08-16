@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_GATE.md",
-  "active_phase": "R6A_PROVIDER_ABSTRACTION_ACCEPTANCE",
-  "active_slice": "PROVE_SAME_SESSION_PROVIDER_SWITCH_WITHOUT_LBE_AUTHORITY_DRIFT",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md",
+  "active_phase": "R6B_TYPED_MODE_POLICY_ACCEPTANCE",
+  "active_slice": "PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,25 +41,18 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "R6A acceptance is closed PASS. Preserve the proven provider/session/reasoning owners and keep the next phase locked until explicitly activated.",
-    "implementation_changes": "Forbidden. R6A completed as acceptance-only with no runtime/test source change.",
+    "purpose": "Prove coding, audit and investigation as typed LBE mode/capability contracts across the existing persistent runtime without provider or authority drift.",
+    "implementation_changes": "Forbidden by default. If acceptance proves a real defect, stop and activate a separate bounded repair slice before changing runtime or tests.",
     "allowed_actions": [
-      "inspect closed R6A evidence",
-      "verify synchronization of the closed gate and checkpoint",
-      "update acceptance status documentation",
-      "keep the next phase locked pending explicit activation"
+      "inspect current mode behavior session and authorization owners",
+      "run repository-owned mode behavior session and authorization discriminators",
+      "prove persistent-session coding audit investigation transitions",
+      "prove audit and investigation remain read only",
+      "prove provider session workspace identity invariants",
+      "prove downstream authorization consumes typed ModeDecision",
+      "run focused mode session authorization regression",
+      "record exact acceptance evidence",
+      "run diff scope and clean worktree validation"
     ]
-  },
-  "acceptance_evidence": {
-    "acceptance_head": "2f33452c5e45f54e5d60ef16c18c59a224011a11",
-    "same_session_provider_switch": "PASS",
-    "integration_command_hash": "2F16607C4A8807706BAA13114BCD930B21F3728EF4E487F833D6D46DF7558935",
-    "focused_regression": "64 passed",
-    "focused_regression_command_hash": "B8801BF25001FF41F76781E2157DC531A720C3889AD7121F724B9D5EF0835EA6",
-    "final_scope_command_hash": "1EB7542A3DF61BD0B39169739782553F5B4AC9738FF2E0403713D8CB7AE3FA94",
-    "runtime_test_source_unchanged": true,
-    "diff_check": "PASS",
-    "worktree_clean": true,
-    "observed_falsifier": null
   }
 }
