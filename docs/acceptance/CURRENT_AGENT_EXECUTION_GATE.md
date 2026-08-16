@@ -1,137 +1,100 @@
 # Current Agent Execution Gate
 
-Status: **RECONCILIATION PASS — NEXT IMPLEMENTATION PHASE LOCKED**
+Status: **SUPERSEDED AS CURRENT AUTHORITY — HISTORICAL P16 PASS PRESERVED**
 
-## Active phase
+## Current authority
+
+This file no longer declares the active implementation/execution slice.
+
+Current machine/human authority is:
+
+```text
+machine gate:
+  .lbe/governance/implementation-gates.json
+
+human gate:
+  docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
+
+active phase:
+  LBE_RUNTIME_ROADMAP_RECONCILIATION
+
+active slice:
+  CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
+
+implementation_allowed: false
+next_phase_locked: true
+```
+
+The active plan is:
+
+```text
+docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_GATE.md
+```
+
+and the current reconciliation evidence record is:
+
+```text
+docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_CHECKPOINT.md
+```
+
+## Historical P16 record
+
+The prior contents of this file described:
 
 ```text
 phase: P16_CANCELLATION_CHECKPOINT_RECONCILIATION
 slice: RECONCILE_95F8BE0_BEFORE_FURTHER_IMPLEMENTATION
 ```
 
-This gate exists because cancellation support was implemented and pushed at:
+That reconciliation is complete and remains accepted historical evidence.
+
+Canonical P16 checkpoint:
 
 ```text
-95f8be0eb98f57ad050ae662ae1add0d5f9de8ab
+docs/acceptance/P16_CANCELLATION_CHECKPOINT.md
+status: PASS
 ```
 
-but the project must reconcile that implementation into the checkpoint chain before any later implementation phase is activated.
-
-## Existing owners
+Recorded historical evidence included:
 
 ```text
-control intent/terminal turn state:
-  lbe_guard_inspector/persistent_turn_control.py
-
-provider turn lifecycle:
-  lbe_guard_inspector/provider_turn_runtime.py
-
-HTTP/provider transport capability:
-  lbe_guard_inspector/reasoning_provider.py
-
-provider normalized projection:
-  existing provider adapter/history owners
+cancellation implementation lineage: 95f8be0eb98f57ad050ae662ae1add0d5f9de8ab
+full repository suite: PASS — 657 passed
+focused cancellation/control/provider behavior: PASS
+workspace-lock delivery: PASS
+checkpoint reconciliation: PASS
 ```
 
-No new architecture owner is authorized by this reconciliation slice.
+Do not reinterpret this supersession as invalidating P16. It removes only the stale claim that P16 is still the **current** gate.
 
-## Reuse decision
+## Why this file was superseded
 
-`ADAPT` existing P16/P15 owners and transport capability boundary.
+Later accepted work now exists after P16, including the bounded Cline AgentRuntime governance/stdio/provider-continuation path. The provider-continuation slice is accepted as PASS, and the project is currently reconciling the broad R3-R7 roadmap against current source and acceptance evidence.
 
-The real urllib transport truthfully declares live cancellation unsupported. Cancellable transports may opt in through the existing capability/cancel contract.
+Leaving P16 marked as the current execution gate would create a `DOCUMENT_CONFLICT` with the machine gate and `CURRENT_IMPLEMENTATION_GATE.md`.
 
-## Allowed work in this slice
+## Current progression rule
 
-- inspect the exact `95f8be0` implementation and tests;
-- run focused cancellation/provider/control tests;
-- run the full repository suite;
-- run `git diff --check`;
-- verify supported-transport cancellation does not allow late provider projection to replace a cancelled terminal state;
-- verify unsupported urllib cancellation remains rejected;
-- record exact commands/results and current SHA;
-- update checkpoint/governance documentation.
+Do not select future work from this historical P16 record.
 
-## Not allowed in this slice
-
-- new provider transport architecture;
-- new continuation architecture;
-- new session/event/tool authority;
-- TUI redesign;
-- provider switching implementation;
-- approval continuation implementation;
-- streaming implementation;
-- new branch/worktree;
-- any next-phase implementation.
-
-If validation proves the implementation itself is defective, STOP. Activate a separately bounded repair slice before changing implementation source.
-
-## Required evidence
-
-Required evidence level for reconciliation: `INTEGRATION` plus full regression on the exact current lineage.
-
-Required proof:
-
-1. canonical repo/main/primary-worktree proof;
-2. focused cancellation/control/provider tests PASS;
-3. real unsupported urllib transport behavior PASS;
-4. supported mock/test transport cancellation propagation PASS;
-5. no late provider projection after accepted cancellation PASS;
-6. full repository suite PASS;
-7. `git diff --check` PASS;
-8. changed-file/review confirmation PASS;
-9. checkpoint record completed using `.agent/IMPLEMENTATION_CHECKPOINT_TEMPLATE.md`.
-
-## Blocking conditions
-
-Any of the following keeps the next phase locked:
+Use:
 
 ```text
-FAIL
-UNVERIFIED
-DOCUMENT_CONFLICT
-MISSING_EVIDENCE
-BLOCKED_WORKSPACE_AUTHORITY
-BLOCKED_PARALLEL_ARCHITECTURE
+current validation/runtime evidence
+> current workspace/Git evidence
+> .lbe/governance/implementation-gates.json
+> docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
+> active gate/checkpoint
+> current architecture/roadmap docs
+> historical checkpoints such as P16
 ```
 
-## Current known evidence
+The roadmap reconciliation has preliminarily identified R3 as `IMPLEMENTED_NOT_ACCEPTED`, making an R3 acceptance-proof slice the earliest next candidate. That candidate is **not active** until this reconciliation reaches PASS and a separate gate is explicitly activated.
 
-At gate creation:
+## Lock
 
 ```text
-canonical delivery of 95f8be0: PASS
-focused related tests: PASS (subsumed in the full suite)
-workspace-lock push: PASS
-full repository suite on 95f8be0 lineage: PASS (657 passed in 125.57s, 77 files)
-checkpoint reconciliation: PASS (recorded in P16_CANCELLATION_CHECKPOINT.md)
-project user-ready: UNVERIFIED
-release-ready: UNVERIFIED
+project_user_ready: NO
+release_ready: NO
+next_phase_locked: true
 ```
-
-## Exit condition
-
-This slice becomes PASS only when all required evidence above is recorded against the exact current implementation lineage.
-
-This slice's reconciliation PASS has been recorded in `docs/acceptance/P16_CANCELLATION_CHECKPOINT.md` (status PASS). After PASS, **do not implement the next feature automatically**. Create/activate a new bounded phase in both:
-
-- `.lbe/governance/implementation-gates.json`
-- the next active execution/acceptance gate document
-
-and only then begin implementation.
-
-## Push rule
-
-Any documentation/checkpoint commit from this slice must be pushed only as:
-
-```text
-canonical primary-worktree main HEAD -> origin/main
-```
-
-Recommended command:
-
-```powershell
-git push --verbose origin HEAD:refs/heads/main
-```
-
-No `--no-verify`, no alternate branch/worktree, and no API/ref bypass.
