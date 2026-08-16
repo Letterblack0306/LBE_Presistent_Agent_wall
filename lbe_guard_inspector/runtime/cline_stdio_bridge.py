@@ -1,12 +1,22 @@
-"""Python-owned lifecycle for the governed Cline Node stdio worker."""
+"""Python-owned lifecycle and tool mediation for the governed Cline Node worker."""
 from __future__ import annotations
 
 import subprocess
 import threading
 from pathlib import Path
-from typing import TextIO
+from typing import Callable, TextIO
 
-from .cline_stdio_protocol import BridgeFrame, ProtocolError, parse_frame
+from .cline_stdio_protocol import (
+    PROTOCOL_VERSION,
+    BridgeFrame,
+    ProtocolError,
+    parse_frame,
+)
+from .tool_orchestration import (
+    GovernedToolOrchestrator,
+    ToolExecutionContext,
+    ToolRequest,
+)
 
 
 class BridgeProcessError(RuntimeError):
@@ -33,6 +43,7 @@ class GovernedClineWorker:
         self._seen_message_ids: set[str] = set()
         self._stderr_lines: list[str] = []
         self._stderr_thread: threading.Thread | None = None
+        self._outbound_sequence = 0
 
     @property
     def is_running(self) -> bool:
@@ -129,6 +140,66 @@ class GovernedClineWorker:
         self._seen_message_ids.add(frame.message_id)
         return frame
 
+    def execute_turn(
+        self,
+        frame: BridgeFrame,
+        *,
+        orchestrator: GovernedToolOrchestrator,
+        context: ToolExecutionContext,
+        timeout_seconds: float = 60.0,
+        on_provider_event: Callable[[BridgeFrame], None] | None = None,
+    ) -> BridgeFrame:
+        """Run one Cline turn while LBE remains the only executable-tool owner."""
+        if frame.message_type != "turn.execute":
+            raise ValueError("execute_turn requires turn.execute frame")
+        if not isinstance(orchestrator, GovernedToolOrchestrator):
+            raise TypeError("orchestrator must be GovernedToolOrchestrator")
+        if not isinstance(context, ToolExecutionContext):
+            raise TypeError("context must be ToolExecutionContext")
+
+        self.send(frame)
+        while True:
+            response = self.read(timeout_seconds=timeout_seconds)
+            if response.session_id != frame.session_id:
+                self.terminate()
+                raise ProtocolError("worker response session_id mismatch")
+            if response.turn_id != frame.turn_id:
+                self.terminate()
+                raise ProtocolError("worker response turn_id mismatch")
+
+            if response.message_type == "provider.event":
+                if on_provider_event is not None:
+                    on_provider_event(response)
+                continue
+
+            if response.message_type == "tool.proposed":
+                self._mediate_tool_proposal(
+                    response,
+                    orchestrator=orchestrator,
+                    context=context,
+                )
+                continue
+
+            if response.message_type in {"turn.completed", "turn.failed"}:
+                return response
+
+            if response.message_type == "runtime.error":
+                self.terminate()
+                raise BridgeProcessError(
+                    f"worker runtime error: {response.payload.get('code')}: "
+                    f"{response.payload.get('message')}"
+                )
+
+            self.terminate()
+            raise ProtocolError(
+                f"unexpected worker frame during turn: {response.message_type}"
+            )
+
+    def cancel(self, frame: BridgeFrame) -> None:
+        if frame.message_type != "control.cancel":
+            raise ValueError("cancel requires control.cancel frame")
+        self.send(frame)
+
     def shutdown(
         self, frame: BridgeFrame, *, timeout_seconds: float = 5.0
     ) -> BridgeFrame:
@@ -160,6 +231,63 @@ class GovernedClineWorker:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait(timeout=2.0)
+
+    def _mediate_tool_proposal(
+        self,
+        proposal: BridgeFrame,
+        *,
+        orchestrator: GovernedToolOrchestrator,
+        context: ToolExecutionContext,
+    ) -> None:
+        tool_id = proposal.payload.get("tool_id")
+        arguments = proposal.payload.get("arguments", {})
+        if not isinstance(tool_id, str) or not tool_id.strip():
+            self.terminate()
+            raise ProtocolError("tool.proposed requires payload.tool_id")
+        if not isinstance(arguments, dict):
+            self.terminate()
+            raise ProtocolError("tool.proposed payload.arguments must be an object")
+        if not proposal.cline_tool_call_id:
+            self.terminate()
+            raise ProtocolError("tool.proposed requires cline_tool_call_id")
+        if not proposal.lbe_call_id:
+            self.terminate()
+            raise ProtocolError("tool.proposed requires lbe_call_id")
+        if not proposal.operation_id:
+            self.terminate()
+            raise ProtocolError("tool.proposed requires operation_id")
+
+        receipt = orchestrator.invoke(
+            ToolRequest(
+                operation_id=proposal.operation_id,
+                tool_id=tool_id,
+                arguments=arguments,
+                context=context,
+            )
+        )
+        result = BridgeFrame(
+            protocol_version=PROTOCOL_VERSION,
+            message_id=self._next_message_id("tool-result"),
+            message_type="tool.result",
+            session_id=proposal.session_id,
+            turn_id=proposal.turn_id,
+            payload={
+                "status": receipt.status.value,
+                "output": dict(receipt.output or {}),
+                "evidence": [dict(item) for item in receipt.evidence],
+                "error_code": receipt.error_code,
+                "error_message": receipt.error_message,
+            },
+            cline_tool_call_id=proposal.cline_tool_call_id,
+            lbe_call_id=proposal.lbe_call_id,
+            operation_id=proposal.operation_id,
+            receipt_id=receipt.receipt_id,
+        )
+        self.send(result)
+
+    def _next_message_id(self, prefix: str) -> str:
+        self._outbound_sequence += 1
+        return f"py-{prefix}-{self._outbound_sequence}"
 
     def _drain_stderr(self, stream: TextIO) -> None:
         for line in stream:
