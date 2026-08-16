@@ -3,7 +3,7 @@
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
 slice: OBSERVABLE_5_FRESH_PROCESS_SESSION_TASK_RESUME
-status: OPEN
+status: PASS
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
 required_evidence_level: INSTALLED_RUNTIME_SEPARATE_PROCESSES
@@ -32,15 +32,29 @@ observable 4 provider/model switch authority stability: PASS
   authority invariants: PASS
   fresh-process readback: PASS
   source worktree: clean
+
+observable 5 fresh-process session/task resume: PASS
+  decisive command hash: EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376
+  process A exited before process B: PASS
+  session resume: PASS
+  task resume: PASS
+  authority invariants: PASS
+  persisted provider/model: openai-compatible / r7-model-b
+  persisted task: r7-task-create / running / AWAITING_VALIDATION
+  installed package: isolated venv site-packages
+  source worktree: clean
 ```
 
-## Observable 5 — active
+## Observable 5 result
 
 Question: after the prior invoking process is gone, can a newly launched installed process recover the same persisted session and task identity/state from the database?
 
-Required invariants:
+Result: `PASS`.
 
-Session:
+Two distinct installed processes opened the same persistent database. Process A read the session/task and exited before process B was launched. Process B recovered the same persisted authority and task state.
+
+Session invariants preserved:
+
 - session_id
 - project_workspace_id
 - canonical_workspace_root
@@ -53,27 +67,21 @@ Session:
 - permission_policy_id
 - evidence_policy_id
 
-Task:
+Task invariants preserved:
+
 - task_id = r7-task-create
 - status = running
 - last_outcome = AWAITING_VALIDATION
 
-Required proof:
-
-1. first installed process reads session and task state;
-2. first process exits;
-3. a distinct installed process reads the same database;
-4. all session authority fields and task identity/state match;
-5. installed package resolves from isolated venv site-packages;
-6. project source worktree remains clean.
+No source-tree import leakage was observed and the project source worktree remained clean.
 
 ## Current classification
 
 ```text
-fresh_process_session_task_resume: PENDING
+fresh_process_session_task_resume: PASS
 implementation_changes: FORBIDDEN
-observable_6: LOCKED
+observable_6: LOCKED_PENDING_EXPLICIT_ADVANCE
 release_publish_allowed_now: false
 ```
 
-Any persisted identity/state loss is a product falsifier and stops R7. Harness failures do not justify product changes.
+No product falsifier was observed in observable 5.
