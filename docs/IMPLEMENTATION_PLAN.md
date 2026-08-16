@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-17
-Status: Active canonical roadmap — R6D acceptance active
+Status: Active canonical roadmap — evidence reconciled through R6D acceptance
 
 This document defines dependency order and acceptance goals for `Letterblack0306/LBE_Presistent_Agent_wall`.
 
@@ -43,8 +43,8 @@ Coding and audit/investigation are control contracts over the same LBE authority
 - provider/model changes must not change LBE workspace identity, permissions, guards, evidence authority, validation/completion requirements, or persistent session/task state;
 - modes are typed execution contracts, not prompt personalities;
 - current workspace/Git/runtime evidence outranks memory/reference history;
+- context assembly composes bounded material but does not create authority;
 - relevant rules/guards are selected and enforced by LBE, not inferred into authority by model prose;
-- provider-facing context may contain bounded session/reference material but must not become a parallel retrieval, policy, or guard authority;
 - pre-authorized operations may proceed without repetitive prompts; authority expansion must `ESCALATE` or `DENY`;
 - no unrestricted shell/filesystem bypass around registered governed tools;
 - no second session, context, retrieval, mode, authorization, tool, receipt, validation, completion, or recovery owner;
@@ -69,7 +69,7 @@ R5  PROVEN_COMPLETE
 R6A PROVEN_COMPLETE
 R6B PROVEN_COMPLETE
 R6C PROVEN_COMPLETE
-R6D IMPLEMENTED_NOT_ACCEPTED — ACTIVE ACCEPTANCE
+R6D PROVEN_COMPLETE
 R6E PARTIALLY_PROVEN
 R6F PARTIALLY_PROVEN
 CLI PARTIALLY_PROVEN
@@ -77,20 +77,19 @@ R7  PARTIALLY_PROVEN
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current active phase:
+Current completed phase:
 
 ```text
 phase: R6D_CONTEXT_ASSEMBLY_ACCEPTANCE
 slice: PROVE_BOUNDED_AUTHORITY_PRESERVING_CONTEXT_ACROSS_PROVIDER_AND_LIVE_WORKSPACE_BOUNDARIES
-status: OPEN
+status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
-base_sha: 3d7bf3fbdc64f7dc9b57a617494381013b4513da
 ```
 
-No later R6 family is active.
+No later R6 family is active. Another family requires explicit activation and its own gate.
 
 ---
 
@@ -180,9 +179,9 @@ Authorization provenance remained visible in receipts. Repository-owned tests al
 
 # 11. R6D — Context assembly and rule/guard injection
 
-**Classification: `IMPLEMENTED_NOT_ACCEPTED` — active acceptance.**
+**Classification: `PROVEN_COMPLETE`.**
 
-Existing owner path:
+Accepted owner path:
 
 ```text
 LBERequest.reference_context / persisted session context
@@ -198,26 +197,45 @@ current workspace inspection
  -> deterministic LBE result
 ```
 
-Current source/tests already establish deterministic caller-before-reference ordering, shallow copy semantics, real controller handoff, and separation of guard IDs from reference context. `ReasoningPlan` rejects authority-bearing model fields such as verdict, authorization, policy and mutation.
+Accepted invariants:
 
-Active R6D acceptance must prove:
+- caller/session context remains ahead of indexed reference evidence and assembly does not mutate source mappings;
+- stale indexed evidence is detected against an independent current-workspace reread rather than promoted to current truth;
+- provider planning receives bounded indexed/reference context while current-workspace and validation truth remain LBE-owned;
+- approved guards stay on the separate typed guard channel;
+- authority-bearing model plan fields are rejected and explanation cannot overwrite deterministic verdict;
+- provider A/B receive equivalent LBE reference context, workspace identity/profile, approved guards and approved tools for equivalent authoritative inputs;
+- no second context/retrieval/guard/policy authority was introduced.
 
-- identical authoritative inputs yield identical bounded provider-facing context;
-- caller/session context remains ahead of validated indexed reference evidence;
-- guard applicability remains on the typed LBE guard channel and is not invented from reference prose;
-- current workspace/deterministic evidence outranks conflicting reference/history;
-- equivalent authoritative inputs remain equivalent across provider A/B;
-- model prose cannot create retrieval, policy, authorization, verdict, mutation, or guard authority;
-- no second context/retrieval/guard/policy owner is introduced.
-
-Canonical active records:
+Evidence:
 
 ```text
-docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_GATE.md
+context/provider baseline: 14 passed
+hash: 8E61C736848B5CDAEB144F7D80A1304BB119D1CFD6E6C14C4E84CC9B2AD54698
+
+authority discriminators: 9 passed
+hash: 73222C712C91124E873E1A30E3F9241C62ED6C61A4CB568AED17178F9B360820
+
+provider equivalence discriminator: PASS
+hash: 61CDCECAAC3951B7A79051F10819BDB3CC3BA65CD6F8635900CD8ACA2CBE17C7
+
+focused regression: 128 passed
+hash: 0157C71BFDAF6ACC55A00573C97FAF4181D23D660E3290852B35166EBB841DA9
+
+runtime/test source unchanged: PASS
+diff check: PASS
+worktree clean: PASS
+```
+
+Two temporary harness failures were investigated and retained as non-product evidence: one invalid synthetic evidence fixture that reached zero provider requests, and one PowerShell transport truncation before Python execution.
+
+Canonical checkpoint:
+
+```text
 docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_CHECKPOINT.md
 ```
 
-Implementation remains disabled unless acceptance proves a real defect and a separate repair slice is explicitly activated.
+Do not reopen R6D without new contradictory current evidence.
 
 ---
 
@@ -241,7 +259,7 @@ reasoning proposes tool
  -> provider continuation where applicable
 ```
 
-R6C proves the authorization/no-execution boundary consumed inside this owner, but broader governed-tool acceptance remains separate.
+R6C proves the authorization/no-execution boundary consumed inside this owner. R6D proves context/provider authority remains stable before tool proposal. Broader governed-tool acceptance remains separate.
 
 ---
 
@@ -294,7 +312,7 @@ Required installed/normal-path proof families remain:
 - D: read-only audit with live evidence and no mutation;
 - E: out-of-authority escalation/denial with no provider bypass.
 
-R6A-R6D provide lower-layer invariants only after their respective acceptance gates pass; they do not substitute for installed/normal-path R7 evidence.
+R6A-R6D provide accepted lower-layer invariants but do not substitute for installed/normal-path R7 evidence.
 
 ---
 
@@ -315,8 +333,8 @@ R3 PASS
  -> R6A PASS
  -> R6B PASS
  -> R6C PASS
- -> R6D acceptance ACTIVE
- -> remaining R6 acceptance gaps
+ -> R6D PASS
+ -> remaining R6 acceptance gaps in dependency order
  -> CLI normal-path coverage
  -> R7 installed end-to-end proof
  -> release/package readiness
