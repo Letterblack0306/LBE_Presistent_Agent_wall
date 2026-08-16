@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-17
-Status: Active canonical roadmap — CLI normal-path acceptance active on release path
+Status: Active canonical roadmap — evidence reconciled through CLI normal-path acceptance
 
 ## 1. Product goal
 
@@ -30,28 +30,29 @@ R6C PROVEN_COMPLETE
 R6D PROVEN_COMPLETE
 R6E PROVEN_COMPLETE
 R6F PROVEN_COMPLETE
-CLI PARTIALLY_PROVEN — ACTIVE ACCEPTANCE
+CLI PROVEN_COMPLETE
 R7  PARTIALLY_PROVEN
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current active phase:
+Current completed phase:
 
 ```text
 phase: CLI_NORMAL_PATH_ACCEPTANCE
 slice: PROVE_THIN_NONINTERACTIVE_CLI_OVER_ACCEPTED_PERSISTENT_RUNTIME_AUTHORITIES
-status: OPEN
+status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 base_sha: d12f4d20a462047c0c451d8d1d734601fc1d45e9
+acceptance_head: 0cdd2fa025878f591334409237d0dca8bb615a32
 release_path_authorized: true
 publish_allowed_now: false
 ```
 
 ## 4. Accepted phases
 
-R3 through R6F are `PROVEN_COMPLETE`. Do not reopen them without new contradictory current evidence.
+R3 through R6F and CLI normal-path acceptance are `PROVEN_COMPLETE`. Do not reopen them without new contradictory current evidence.
 
 ## 5. R6F — Completion and validation
 
@@ -66,9 +67,9 @@ docs/acceptance/R6F_COMPLETION_VALIDATION_ACCEPTANCE_CHECKPOINT.md
 
 ## 6. CLI control surface
 
-**Classification: `PARTIALLY_PROVEN` — active acceptance.**
+**Classification: `PROVEN_COMPLETE`.**
 
-Existing owner path:
+Accepted owner path:
 
 ```text
 pyproject.toml lbe entry point
@@ -77,18 +78,38 @@ pyproject.toml lbe entry point
  -> structured JSON/text output
 ```
 
-Existing source/tests establish separately that:
+Accepted invariants:
 
-- session create persists explicit workspace/session/mode/provider/policy identity;
-- status/inspect/continue read or rehydrate persisted session state;
-- provider selection preserves workspace/mode/policy fields;
-- unknown provider/missing session/invalid input fails closed;
-- evidence retrieval delegates to canonical EvidenceService;
-- validation uses persisted completion contract/evidence through CodingCompletionRuntime;
-- CLI does not accept operator-authored completion evidence;
-- JSON/text formatting changes presentation only.
+- session create/status/inspect persist and rehydrate canonical session/workspace state across separate processes;
+- provider/model selection preserves workspace, mode, profile, permission, runtime and evidence-policy identity;
+- session continue rehydrates the same persistent authority boundary;
+- completion validation consumes persisted R6F contract/evidence and persists canonical COMPLETED / VALIDATED_COMPLETION;
+- missing completion contract fails closed with structured non-zero output;
+- CLI validation surface exposes identity inputs only and no completion-evidence/verdict/proof injection path;
+- acceptance completed with no CLI/runtime/test/package source changes.
 
-CLI acceptance must prove these through the normal non-interactive process path, including state persistence across separate CLI invocations and accepted mode-command delegation, with no second authority.
+Evidence:
+
+```text
+repository baseline: 78 passed
+hash: F99F0C0A9857AA1322E51D60488A42A6FD0D74FB511C47A88EDE154B022486C0
+separate-process persistence: PASS
+hash: 9FFA8D1A831C394B836DC09CA5D7B15F501D5F141F5499BD7A3CAEA3D766E8FB
+provider-policy stability + continue: PASS
+hash: C0FCE90E0449A2063EE195634F182D42EAB7BC0646CB291BCC15CE8470DA3437
+persisted completion validation: PASS
+hash: 313468EAD033D330FA260E1A5A50B54A445E8139CE6E2534BD78B51E2B98342B
+missing contract fail closed: PASS
+hash: E136BE394882256738CCAADF905E034BBA251416F5085C963591ABF47B029CE5
+no evidence injection surface: PASS
+hash: 8D13866680263DCE566E737BA1E28D5D70115EE95C76C0F5BC1FA93819665CE4
+focused regression: 115 passed
+hash: 7E0351B681A14F14264C066EF7809C4092817ABE10D5794B8AE97AB0EB2C85D2
+runtime/test/package source unchanged: PASS
+diff check: PASS
+worktree clean: PASS
+observed product falsifier: NONE
+```
 
 Canonical records:
 
@@ -99,14 +120,13 @@ docs/acceptance/CLI_NORMAL_PATH_ACCEPTANCE_CHECKPOINT.md
 
 ## 7. R7 — End-to-end persistent coding/audit proof
 
-**Classification: `PARTIALLY_PROVEN`.** After CLI acceptance, prove installed/normal-path coding, provider switch, resume after external workspace change, read-only audit, and out-of-authority stop behavior.
+**Classification: `PARTIALLY_PROVEN`.** This is the next release prerequisite, but it is not auto-activated by CLI PASS. Its acceptance must prove the installed/normal-path system across coding, provider switch, resume after external workspace change, read-only audit, and out-of-authority stop behavior without introducing new authority.
 
 ## 8. Release/package readiness
 
 **Classification: `PARTIALLY_PROVEN`.** Release publication is authorized in intent but remains blocked by evidence prerequisites. Required before version/tag/publish:
 
 ```text
-CLI normal-path PASS
 R7 installed E2E PASS
 clean installation
 package-content audit
@@ -130,7 +150,7 @@ R3 PASS
  -> R6D PASS
  -> R6E PASS
  -> R6F PASS
- -> CLI normal-path acceptance ACTIVE
+ -> CLI normal-path PASS
  -> R7 installed end-to-end acceptance
  -> release/package readiness acceptance
  -> version/tag/publish
