@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
   "active_slice": "PROVE_INSTALLED_PERSISTENT_AGENT_NORMAL_PATH_OVER_ACCEPTED_AUTHORITIES",
-  "status": "OPEN",
+  "status": "FAIL",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -21,21 +21,14 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Prove the installed persistent-agent normal path composes accepted R3-R6F and CLI authorities end to end before release/package readiness acceptance.",
-    "implementation_changes": "Forbidden by default. If installed acceptance proves a real product defect, stop and activate a separate bounded repair slice before changing runtime, CLI, tests, or packaging.",
+    "purpose": "Record the failed R7 installed end-to-end acceptance. The installed code normal path did not reach accepted governed coding tool execution/receipts; progression is stopped pending a separately activated bounded repair slice.",
+    "implementation_changes": "Forbidden. A real product falsifier is now proven, but source/runtime/CLI/test/package changes still require a separately activated bounded repair slice before implementation.",
     "allowed_actions": [
-      "build and install the exact accepted repository head into an isolated environment",
-      "prove installed lbe identity without checkout import leakage",
-      "prove persistent installed session and task continuity across separate processes",
-      "prove one governed coding execution and receipt correlation",
-      "prove provider model switch preserves LBE workspace mode and policy identity",
-      "prove fresh-process resume after an external workspace change revalidates current workspace truth",
-      "prove audit investigation read-only behavior",
-      "prove out-of-authority actions fail closed without mutation",
-      "prove completion remains evidence-owned and terminal validated state persists",
-      "check credentials secrets repository state logs receipts and acceptance artifacts for leakage",
-      "run focused installed and runtime regression",
-      "record exact environment package head evidence diff and clean worktree proof"
+      "record and inspect the proven installed coding composition falsifier",
+      "inspect existing active owners and connecting flow without source changes",
+      "define the smallest bounded repair question and falsifier",
+      "keep release package readiness and publication blocked",
+      "preserve exact acceptance evidence and harness-failure classifications"
     ]
   },
   "accepted_baseline": {
@@ -54,6 +47,6 @@
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
-    "remaining_prerequisites": ["R7 installed end-to-end acceptance", "release/package readiness acceptance"]
+    "remaining_prerequisites": ["repair installed coding composition and rerun R7 installed end-to-end acceptance", "release/package readiness acceptance"]
   }
 }
