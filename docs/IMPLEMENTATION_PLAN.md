@@ -1,7 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
 Updated: 2026-08-17
-Status: Active canonical roadmap — evidence reconciled through R6D acceptance
+Status: Active canonical roadmap — R6E acceptance active
 
 This document defines dependency order and acceptance goals for `Letterblack0306/LBE_Presistent_Agent_wall`.
 
@@ -46,15 +46,17 @@ Coding and audit/investigation are control contracts over the same LBE authority
 - context assembly composes bounded material but does not create authority;
 - relevant rules/guards are selected and enforced by LBE, not inferred into authority by model prose;
 - pre-authorized operations may proceed without repetitive prompts; authority expansion must `ESCALATE` or `DENY`;
+- only explicitly registered governed tools may execute and provider continuation cannot own execution authority;
+- operation identity and receipts must prevent accidental duplicate execution;
 - no unrestricted shell/filesystem bypass around registered governed tools;
-- no second session, context, retrieval, mode, authorization, tool, receipt, validation, completion, or recovery owner;
+- no second session, context, retrieval, mode, authorization, tool, receipt, validation, completion, continuation, or recovery owner;
 - Cline/provider mechanics remain behind LBE authority.
 
 ---
 
 ## 3. Existing foundation to preserve
 
-Current owners already exist for workspace/project identity, validated memory, `WorkspaceMemoryStore`, `SessionMemoryRuntimeBridge`, bounded classified recovery, provider registry/capabilities/turn/history/control, typed mode policy, deterministic authorization, context assembly, evidence/guard selection, `GovernedToolOrchestrator`, completion policy/runtime/evidence/gate, CLI/Textual projection, and bounded Node/stdio Cline continuation.
+Current owners already exist for workspace/project identity, validated memory, `WorkspaceMemoryStore`, `SessionMemoryRuntimeBridge`, bounded classified recovery, provider registry/capabilities/turn/history/control, typed mode policy, deterministic authorization, context assembly, evidence/guard selection, `GovernedToolOrchestrator`, receipt-backed provider continuation, completion policy/runtime/evidence/gate, CLI/Textual projection, and bounded Node/stdio Cline continuation.
 
 Missing acceptance evidence must not be treated as permission to reimplement these owners.
 
@@ -70,26 +72,27 @@ R6A PROVEN_COMPLETE
 R6B PROVEN_COMPLETE
 R6C PROVEN_COMPLETE
 R6D PROVEN_COMPLETE
-R6E PARTIALLY_PROVEN
+R6E PARTIALLY_PROVEN — ACTIVE ACCEPTANCE
 R6F PARTIALLY_PROVEN
 CLI PARTIALLY_PROVEN
 R7  PARTIALLY_PROVEN
 release/package readiness PARTIALLY_PROVEN
 ```
 
-Current completed phase:
+Current active phase:
 
 ```text
-phase: R6D_CONTEXT_ASSEMBLY_ACCEPTANCE
-slice: PROVE_BOUNDED_AUTHORITY_PRESERVING_CONTEXT_ACROSS_PROVIDER_AND_LIVE_WORKSPACE_BOUNDARIES
-status: PASS
+phase: R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE
+slice: PROVE_RECEIPT_BACKED_GOVERNED_TOOL_LIFECYCLE_WITH_IDEMPOTENCY_AND_PROVIDER_CONTINUATION
+status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
+base_sha: a237ac0184116a47fdc5b2efc782940faa065efb
 ```
 
-No later R6 family is active. Another family requires explicit activation and its own gate.
+No later R6 family is active.
 
 ---
 
@@ -173,7 +176,7 @@ op-escalate -> ESCALATE -> handler not executed
 explicit destructive delegation -> ALLOW -> EXECUTED
 ```
 
-Authorization provenance remained visible in receipts. Repository-owned tests also cover persistent-policy authority expansion/delegation. Baseline `26 passed`; focused regression `81 passed`; runtime/test source unchanged.
+Authorization provenance remained visible in receipts. Baseline `26 passed`; focused regression `81 passed`; runtime/test source unchanged.
 
 ---
 
@@ -185,7 +188,7 @@ Accepted owner path:
 
 ```text
 LBERequest.reference_context / persisted session context
- -> runtime.context_assembly.assemble_reasoning_context
+ -> assemble_reasoning_context
  -> validated indexed reference evidence
  -> ReasoningRequest.reference_context
 
@@ -197,69 +200,67 @@ current workspace inspection
  -> deterministic LBE result
 ```
 
-Accepted invariants:
-
-- caller/session context remains ahead of indexed reference evidence and assembly does not mutate source mappings;
-- stale indexed evidence is detected against an independent current-workspace reread rather than promoted to current truth;
-- provider planning receives bounded indexed/reference context while current-workspace and validation truth remain LBE-owned;
-- approved guards stay on the separate typed guard channel;
-- authority-bearing model plan fields are rejected and explanation cannot overwrite deterministic verdict;
-- provider A/B receive equivalent LBE reference context, workspace identity/profile, approved guards and approved tools for equivalent authoritative inputs;
-- no second context/retrieval/guard/policy authority was introduced.
-
-Evidence:
-
-```text
-context/provider baseline: 14 passed
-hash: 8E61C736848B5CDAEB144F7D80A1304BB119D1CFD6E6C14C4E84CC9B2AD54698
-
-authority discriminators: 9 passed
-hash: 73222C712C91124E873E1A30E3F9241C62ED6C61A4CB568AED17178F9B360820
-
-provider equivalence discriminator: PASS
-hash: 61CDCECAAC3951B7A79051F10819BDB3CC3BA65CD6F8635900CD8ACA2CBE17C7
-
-focused regression: 128 passed
-hash: 0157C71BFDAF6ACC55A00573C97FAF4181D23D660E3290852B35166EBB841DA9
-
-runtime/test source unchanged: PASS
-diff check: PASS
-worktree clean: PASS
-```
-
-Two temporary harness failures were investigated and retained as non-product evidence: one invalid synthetic evidence fixture that reached zero provider requests, and one PowerShell transport truncation before Python execution.
-
-Canonical checkpoint:
-
-```text
-docs/acceptance/R6D_CONTEXT_ASSEMBLY_ACCEPTANCE_CHECKPOINT.md
-```
-
-Do not reopen R6D without new contradictory current evidence.
+Accepted invariants include caller-before-reference ordering, stale-reference/current-workspace contradiction handling, separate guard authority, rejection of model-authored authority fields, and provider-equivalent LBE context for equivalent inputs. Baseline `14 passed`; authority discriminators `9 passed`; provider-equivalence discriminator PASS; focused regression `128 passed`; runtime/test source unchanged.
 
 ---
 
 # 12. R6E — Governed tool orchestration
 
-**Classification: `PARTIALLY_PROVEN`.**
+**Classification: `PARTIALLY_PROVEN` — active acceptance.**
 
-Current owner: `GovernedToolOrchestrator`.
-
-Required lifecycle remains:
+Existing owner path:
 
 ```text
-reasoning proposes tool
- -> registered lookup
- -> authorization
- -> workspace/precondition checks
- -> governed execution
- -> structured receipt/evidence
- -> runtime/history update
- -> required validation
- -> provider continuation where applicable
+reasoning/provider tool proposal
+ -> ToolRequest
+ -> ToolRegistry lookup
+ -> argument validation
+ -> R6C resolve_authorization
+ -> GovernedToolOrchestrator
+ -> registered handler / existing service owner
+ -> ToolReceipt(output/evidence/authorization)
+ -> operation-id receipt cache/idempotency
+ -> continuation_from_receipt
+ -> continue_provider
 ```
 
-R6C proves the authorization/no-execution boundary consumed inside this owner. R6D proves context/provider authority remains stable before tool proposal. Broader governed-tool acceptance remains separate.
+Current source/tests already establish separately:
+
+- unregistered tools cannot execute;
+- invalid arguments fail before authorization or handler execution;
+- `DENY`/`ESCALATE` prevent handler execution;
+- authorized registered execution produces structured output/evidence receipts;
+- duplicate operation ID returns the original receipt without re-execution;
+- `workspace.read` delegates to `EvidenceService` and rejects path escape before evidence read;
+- provider continuation is constructed from an existing `ToolReceipt`, preserves operation/receipt/tool identity and has no execution authority;
+- escalated receipt stops before provider continuation.
+
+Active R6E acceptance must prove the combined lifecycle through the existing owners:
+
+```text
+registered + authorized operation
+ -> exactly one governed execution
+ -> structured receipt/evidence
+ -> same operation repeated -> original receipt / no re-execution
+ -> receipt-backed provider continuation
+```
+
+It must also prove the combined stop path:
+
+```text
+ESCALATE
+ -> no handler execution
+ -> no provider continuation
+```
+
+Canonical active records:
+
+```text
+docs/acceptance/R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE_GATE.md
+docs/acceptance/R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE_CHECKPOINT.md
+```
+
+Implementation remains disabled unless acceptance proves a real defect and a separate repair slice is explicitly activated.
 
 ---
 
@@ -312,7 +313,7 @@ Required installed/normal-path proof families remain:
 - D: read-only audit with live evidence and no mutation;
 - E: out-of-authority escalation/denial with no provider bypass.
 
-R6A-R6D provide accepted lower-layer invariants but do not substitute for installed/normal-path R7 evidence.
+R6A-R6E provide lower-layer invariants only after their respective acceptance gates pass; they do not substitute for installed/normal-path R7 evidence.
 
 ---
 
@@ -334,7 +335,8 @@ R3 PASS
  -> R6B PASS
  -> R6C PASS
  -> R6D PASS
- -> remaining R6 acceptance gaps in dependency order
+ -> R6E acceptance ACTIVE
+ -> remaining R6 acceptance gaps
  -> CLI normal-path coverage
  -> R7 installed end-to-end proof
  -> release/package readiness
@@ -352,7 +354,7 @@ Every slice must define objective, existing owner, reuse classification, scope, 
 
 # 21. Explicit non-goals
 
-Do not drift into foundation-model training, passive model learning, separate coding/audit model authorities, unrestricted autonomous shell/filesystem mutation, model-authored guard/verdict authority, cross-project memory as live truth, provider-specific governance/context forks, premature TUI/cloud work, broad multi-agent orchestration, or wholesale ClineCore authority adoption.
+Do not drift into foundation-model training, passive model learning, separate coding/audit model authorities, unrestricted autonomous shell/filesystem mutation, provider-native tool execution bypass, model-authored guard/verdict authority, cross-project memory as live truth, provider-specific governance/context forks, premature TUI/cloud work, broad multi-agent orchestration, or wholesale ClineCore authority adoption.
 
 ---
 
@@ -362,7 +364,7 @@ Do not drift into foundation-model training, passive model learning, separate co
 User configuration -> delegated authority/defaults
 CLI/API/TUI -> control surfaces
 Persistent runtime -> session/task lifecycle/orchestration/recovery
-Provider/Cline lower layer -> provider-native inference/continuation mechanics
+Provider/Cline lower layer -> inference/continuation mechanics only
 LLM reasoning -> interpretation/planning/hypotheses/explanation/proposals
 Context assembly -> bounded composition only
 Reference retrieval -> historical candidate guidance
@@ -370,7 +372,8 @@ Current workspace inspector -> current project facts
 Mode policy -> typed capability contract
 Permission/governance -> authorization
 Rules/guards -> deterministic detection
-Governed tool owner -> execution/operation identity/receipts
+Governed tool owner -> registered execution/operation identity/receipts
+Provider continuation -> receipt-backed transport only
 Validation/completion -> proof and terminal truth
 Validated memory/checkpoints -> bounded persistent context, never replacement truth
 ```
@@ -380,16 +383,17 @@ Validated memory/checkpoints -> bounded persistent context, never replacement tr
 # 23. Final invariant
 
 ```text
-Provider reasons.
+Provider reasons and proposes.
 Persistent runtime orchestrates.
 Context assembly composes but does not create authority.
 Current workspace supplies facts.
-Reference/history remains subordinate context.
 LBE selects/injects applicable rules and guards.
 Typed mode policy bounds capabilities.
 Permission policy authorizes actions.
-Authority expansion is escalated or denied.
 Governed tools execute only through registered LBE owners after authorization.
+Operation identity prevents unintended duplicate execution.
+Receipts carry governed execution evidence/provenance.
+Provider continuation consumes receipts but cannot execute tools.
 Deterministic guards detect.
 Validation proves.
 Completion truth belongs to LBE.
