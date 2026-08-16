@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/LBE_CLINE_PROVIDER_CONTINUATION_GATE.md",
-  "active_phase": "LBE_CLINE_PROVIDER_CONTINUATION",
-  "active_slice": "ENABLE_PROVIDER_BACKED_AGENTRUNTIME_CONTINUATION",
+  "active_plan": "docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_GATE.md",
+  "active_phase": "LBE_RUNTIME_ROADMAP_RECONCILIATION",
+  "active_slice": "CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES",
   "status": "OPEN",
-  "implementation_allowed": true,
+  "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -41,19 +41,17 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Enable provider-backed Cline AgentRuntime continuation behind the already-proven governed Node stdio boundary while preserving Python/LBE authorization, tool execution, receipt, evidence, validation, completion, and session authority.",
-    "implementation_changes": "Cline worker provider construction, proxy-tool proposal/result handoff, Python mediation through GovernedToolOrchestrator, cancellation mapping, focused tests, and acceptance checkpoint only; no MCP, TUI, ClineCore, provider-selection UI, retry redesign, or release work",
+    "purpose": "Reconcile the stale R2/P16-era roadmap and current-gate records against current main source, accepted checkpoints, and validated Cline continuation evidence; identify the earliest genuinely missing or insufficiently proven runtime capability without changing runtime implementation.",
+    "implementation_changes": "Documentation, acceptance classification, and machine/human gate reconciliation only; runtime source changes are forbidden in this slice.",
     "allowed_actions": [
-      "accept ephemeral provider configuration at runtime.start without persisting or echoing credentials",
-      "construct pinned @cline/agents AgentRuntime and use its existing run/continue loop",
-      "expose only explicit LBE allowed_tools as proxy AgentTools",
-      "emit deterministic tool.proposed correlation frames and await matching tool.result frames",
-      "route proposals through existing Python GovernedToolOrchestrator.invoke and ToolReceipt",
-      "map control.cancel to AgentRuntime.abort",
-      "map terminal Cline run result to turn.completed or turn.failed without claiming LBE completion truth",
-      "add focused deterministic continuation and governed tool handoff tests",
-      "run live provider proof when configuration is available and classify missing credentials as BLOCKED_CONFIGURATION",
-      "write the bounded provider-continuation checkpoint"
+      "inspect current runtime source owners and tests",
+      "inspect current acceptance/checkpoint records",
+      "classify R3-R7 and release readiness from current evidence",
+      "reconcile docs/IMPLEMENTATION_PLAN.md to current evidence",
+      "reconcile stale current execution/status gate text",
+      "write a bounded reconciliation checkpoint",
+      "run local implementation-gate and diff/worktree validation",
+      "identify exactly one next implementation or acceptance-proof gap"
     ]
   }
 }
