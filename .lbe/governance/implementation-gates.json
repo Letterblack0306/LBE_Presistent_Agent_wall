@@ -3,7 +3,7 @@
   "active_plan": "docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md",
   "active_phase": "R6B_TYPED_MODE_POLICY_ACCEPTANCE",
   "active_slice": "PROVE_TYPED_MODE_CONTRACTS_ACROSS_PERSISTENT_RUNTIME_WITHOUT_PROVIDER_OR_AUTHORITY_DRIFT",
-  "status": "OPEN",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,18 +41,26 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Prove coding, audit and investigation as typed LBE mode/capability contracts across the existing persistent runtime without provider or authority drift.",
-    "implementation_changes": "Forbidden by default. If acceptance proves a real defect, stop and activate a separate bounded repair slice before changing runtime or tests.",
+    "purpose": "R6B acceptance is closed PASS. Preserve the proven typed mode/session/authorization owners and keep the next phase locked until explicitly activated.",
+    "implementation_changes": "Forbidden. R6B completed as acceptance-only with no runtime/test source change.",
     "allowed_actions": [
-      "inspect current mode behavior session and authorization owners",
-      "run repository-owned mode behavior session and authorization discriminators",
-      "prove persistent-session coding audit investigation transitions",
-      "prove audit and investigation remain read only",
-      "prove provider session workspace identity invariants",
-      "prove downstream authorization consumes typed ModeDecision",
-      "run focused mode session authorization regression",
-      "record exact acceptance evidence",
-      "run diff scope and clean worktree validation"
+      "inspect closed R6B evidence",
+      "verify synchronization of the closed gate and checkpoint",
+      "update acceptance status documentation",
+      "keep the next phase locked pending explicit activation"
     ]
+  },
+  "acceptance_evidence": {
+    "acceptance_head": "9086ad67bebb48f6505c7b3660f1ac49e0cc57c3",
+    "mode_contract_tests": "28 passed",
+    "mode_contract_tests_command_hash": "572E3034723732631FD32DCA972BDD3DAC39C8C859A58AC16D31582753B24F28",
+    "persistent_typed_mode_policy": "PASS",
+    "integration_command_hash": "9C54DBC9E1792039991E4EEFDD4F0FE0C2ED59782318E94BC8DA904135159859",
+    "focused_regression": "69 passed",
+    "focused_regression_command_hash": "F8627BCC2D9EC0B81D9CBC828147876195FC894A439EF795767BC58CAC9C1305",
+    "runtime_test_source_unchanged": true,
+    "diff_check": "PASS",
+    "worktree_clean": true,
+    "observed_falsifier": null
   }
 }
