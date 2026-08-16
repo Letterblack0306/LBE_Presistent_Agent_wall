@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_GATE.md",
-  "active_phase": "LBE_CLINE_AGENTRUNTIME_GOVERNANCE_ADAPTER",
-  "active_slice": "PROVE_INTEROP_AND_PREEXECUTION_AUTHORITY_BOUNDARY",
+  "active_plan": "docs/acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE_GATE.md",
+  "active_phase": "LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE",
+  "active_slice": "DEFINE_GOVERNED_NODE_SUBPROCESS_STDIO_BOUNDARY",
   "status": "OPEN",
   "implementation_allowed": true,
-  "architecture_changes_allowed": false,
+  "architecture_changes_allowed": true,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
   "blocking_statuses": [
@@ -41,19 +41,18 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Prove the exact cross-language/runtime interop and pre-execution governance boundary required to reuse Cline AgentRuntime mechanics from the Python LBE runtime without creating a parallel authority.",
-    "implementation_changes": "production adapter/runtime implementation is prohibited in this slice; boundary proof, source inspection, non-mutating runtime/package probes, and acceptance/research documentation only",
+    "purpose": "Define the minimal governed Python-to-Node subprocess/stdio boundary required to reuse Cline AgentRuntime continuation, tool-call, streaming, and control mechanics while preserving all existing LBE authority owners.",
+    "implementation_changes": "architecture/design activation only; no production Python adapter, Node worker, package dependency, sidecar service, RPC service, embedded runtime, or native Cline mutation/execution enablement in this slice",
     "allowed_actions": [
-      "inspect current LBE source/tests/package metadata and exact Git state",
-      "inspect cline/cline source at audited revision 8bbdde2a5c1f972864fe1b954f639c21fac61a40",
-      "use BirdEye for local workspace evidence and governed non-mutating local commands",
-      "use GitHub for canonical remote repository, commit, patch, and source truth",
-      "determine whether a production-safe Python-to-Cline AgentRuntime boundary already exists or requires new architecture",
-      "prove or reject pre-execution routing through existing R6C resolve_authorization and GovernedToolOrchestrator",
-      "record exact Cline tool-call to LBE operation_id and ToolReceipt identity mapping requirements",
-      "record how native Cline filesystem/editor/shell/process paths would be disabled or made unreachable",
-      "record Node/npm/package/runtime and dependency/license/security prerequisites for any candidate reuse path",
-      "update only the active boundary gate/checkpoint and directly related research/governance documentation",
+      "inspect current LBE authorization, governed tool orchestration, provider-turn, session, event, receipt, persistence, and process owners",
+      "reuse the completed Cline Core Reuse Boundary Matrix at audited revision 8bbdde2a5c1f972864fe1b954f639c21fac61a40",
+      "define a bounded child-process stdio protocol with Python LBE as lifecycle and authority owner",
+      "define request, response, error, event, cancellation, tool proposal, and tool-result message identities",
+      "define Cline native mutation/execution tools as disabled or unreachable",
+      "define exact mapping from Cline tool call identity to LBE operation_id and ToolReceipt identity",
+      "define failure, restart, timeout, protocol-corruption, and child-exit behavior as fail-closed",
+      "define package/runtime/dependency adoption evidence required before implementation",
+      "update only directly related architecture, acceptance, checkpoint, and machine-gate documentation",
       "run implementation-gate validation and git diff --check"
     ]
   }
