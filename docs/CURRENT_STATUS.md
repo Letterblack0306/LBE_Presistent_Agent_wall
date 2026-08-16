@@ -1,388 +1,372 @@
-> **Governance Notice:** This workspace operates under a strict **no destructive action** policy. No file modification, code generation, rule creation, memory promotion, or workspace mutation is permitted without explicit user authorization. All operations are read-only unless explicitly approved. Governance violations must be reported as findings, not silently corrected. See `governance.json` for the current allowed-read and forbidden-glob configuration.
 # Current Status
 
-Updated: 2026-07-30
+Updated: 2026-08-16
 
-## Objective
+## Authority
 
-Build a focused, project-scoped Guard Inspector and persistent evidence system that diagnoses concrete workspace problems through this authority chain:
+This file is the human-readable project status summary. It does not outrank live evidence.
 
-```text
-reference corpus suggests
-current workspace inspection supplies facts
-reasoning selects and explains
-deterministic guards detect
-LBE Core authorizes
-validation proves
-```
-
-Live target workspace state and current validation remain authoritative.
-
-## Repository state
-
-- Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
-- Base branch: `main`
-- Foundation PR `#2`: merged at `7f212f406331dfaf7961143eefbf45f8ceaf6a17`
-- Callback vertical-slice PR `#3`: merged at `0376f52093d079a5911b8c8b164492373e386046`
-- Runtime-neutral adapter PR `#4`: merged at `25ea2560dbd9d440f3caf3be9f9c3b286aed1f5d`
-- Runtime integration profile PR `#5`: merged at `575283ab986abc723de226c0340ec88c81ea2a10`
-- Profile-driven proof PR `#6`: merged at `f41dd154a7450f30b92c05c358220606f5da95fa`
-- Second deterministic guard PR `#7`: merged at `7345149b99d09ac34debaf16bd006107510b8095`
-- Authority-evidence PR `#9`: closed as already integrated/stale; its older
-  branch must not be merged into `main`.
-- Only valid implementation baseline: `main`.
-- Current baseline head: `536ac8143fc380c6d9f821881eaa8d7f6691dd03`.
-
-## Completed foundation
-
-Phases 1-12 provide:
-
-- validated, project-scoped workspace memory with provenance and stale-data invalidation;
-- Module Registry and Module Watcher lifecycle visibility;
-- registry-first inspection with bounded source fallback;
-- read-only Authority Ownership inspection;
-- bounded runtime confirmation without hidden activation;
-- end-to-end foundation proof.
-
-## Phase 13 complete: callback Guard Inspector vertical slice
-
-The first complete deterministic product path diagnoses:
+Use this order for project claims:
 
 ```text
-Provided callback is not a function
+current validation/runtime evidence
+> current workspace/Git evidence
+> active machine gate
+> active acceptance/checkpoint records
+> current architecture/design docs
+> this status summary
+> historical docs
+> model inference
 ```
 
-It resolves one exact configured workspace, separates reference evidence from current workspace evidence, runs the registered `cep.callback_contract` guard, applies read-only LBE authorization, validates independently, and returns `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, or `NOT_APPLICABLE` with evidence-only explanation.
+Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 
-## Phase 14 complete: minimal local invocation surface
+Canonical branch: `main`
 
-The proven callback slice is exposed through:
+Canonical local workspace used for the latest proof:
 
 ```text
-POST /guard-inspector/callback
+C:\Agents-Memory-Tool-v6-integration
 ```
 
-The endpoint remains local-only, read-only, fixed to `CallbackVerticalSlice`, bounded to the narrow callback request contract, and rejects caller-controlled pack or rule selection.
-
-## Phase 15 complete: runtime-neutral invocation adapter
-
-Merged through PR `#4`.
-
-Implemented:
-
-- transport-neutral `InvocationTransport` protocol;
-- configurable in-process callable transport;
-- configurable local HTTP endpoint transport;
-- exact response pass-through without verdict reinterpretation;
-- bounded timeout and explicit cancellation;
-- structured adapter errors;
-- no automatic retry;
-- no fixed runtime, vendor, workspace, path, endpoint, or port.
-
-## Phase 16 complete: configurable runtime integration profile
-
-Merged through PR `#5`.
-
-Implemented:
-
-- stable profile identifier and version;
-- externally supplied transport-factory registry;
-- externally supplied transport configuration;
-- runtime-input mapping restricted to `workspace_root`, `workspace_id`, `reason`, and `max_results`;
-- explicit capability declarations;
-- deterministic rejection of arbitrary guard selection, workspace mutation, and repair execution;
-- bounded timeout and cancellation configuration;
-- deterministic validation of unknown, missing, malformed, and contradictory profile configuration;
-- unchanged adapter response propagation;
-- no vendor-, product-, company-, workspace-, path-, port-, or environment-specific assumptions.
-
-## Phase 17 complete: profile-driven callback invocation proof
-
-Merged through PR `#6` at `f41dd154a7450f30b92c05c358220606f5da95fa`.
-
-The proof covers the full generic callback profile path through both in-process and temporary local HTTP transports. It preserves all four verdicts, structured failures, timeout, cancellation, evidence references, validation references, explanation, decision fingerprint, and workspace immutability without vendor-specific integration.
-
-Validation:
-
-- focused Phase 17 suite: `10 passed`;
-- full repository suite: `215 passed`;
-- `git diff --check`: passed.
-
-## Phase 18 complete: second deterministic guard vertical slice
-
-Merged through PR `#7` at `7345149b99d09ac34debaf16bd006107510b8095`.
-
-Selected problem:
+Latest verified synchronized head:
 
 ```text
-Loaded module receipt has no matching declaration
+121c4faa296c02a3add8b304545079d2011c193a
 ```
 
-Fixed identities:
-
-- pack: `module_registry`;
-- rule: `module_registry.loaded_module_registration`;
-- vertical slice: `ModuleRegistryVerticalSlice`.
-
-Implemented:
-
-- deterministic inspection of `.lbe/module-registry.json` in one exact configured workspace;
-- bounded declaration and lifecycle-receipt parsing;
-- detection of loaded module receipts whose module IDs are absent from declarations;
-- exact registry path, hash, and supporting evidence;
-- explicit `FAIL`, `PASS`, `INSUFFICIENT_EVIDENCE`, and `NOT_APPLICABLE` semantics;
-- independent validation through `GuardRunner`;
-- read-only workspace fingerprint enforcement;
-- fixed guard selection with no caller-controlled pack or rule;
-- callback behavior unchanged.
-
-Validation:
-
-- focused Phase 18 suite: `11 passed`;
-- full repository suite: `226 passed`;
-- `git diff --check`: passed.
-
-## Phase 19 complete: profile-driven module-registry invocation proof
-
-Implemented on `feat/module-registry-profile-proof`.
-
-The runtime profile contract now supports exactly one enabled fixed inspection capability:
-
-- `callback_inspection`; or
-- `module_registry_inspection`.
-
-Both capabilities remain independently explicit. Enabling neither or both is rejected as a contradictory profile. The profile still maps only `workspace_root`, `workspace_id`, `reason`, and `max_results`, while arbitrary guard selection, workspace mutation, and repair execution remain prohibited.
-
-The second fixed local endpoint is:
+At that head:
 
 ```text
-POST /guard-inspector/module-registry
+HEAD == origin/main: PASS
+implementation gate: PASS
+worktree: clean
+next_phase_locked: true
 ```
 
-The endpoint validates the same narrow request field set and invokes only `ModuleRegistryVerticalSlice`.
+## Product objective
 
-`tests/test_module_registry_profile_end_to_end.py` proves:
-
-1. callback and module-registry profiles remain independently valid;
-2. multiple enabled inspection capabilities are rejected;
-3. in-process module-registry profiles preserve all four verdicts;
-4. temporary local HTTP invocation preserves the complete result unchanged;
-5. authorization, evidence refs, validation refs, explanation, fingerprint, and `workspace_unchanged` remain intact;
-6. arbitrary guard-selection fields are rejected;
-7. missing factory and endpoint rejection remain structured;
-8. timeout and cancellation remain deterministic;
-9. transport failures are not retried;
-10. temporary workspaces and ephemeral ports avoid environment assumptions;
-11. target workspace state remains unchanged;
-12. existing callback profile and endpoint tests remain green.
-
-Validated at `b74f2c14b8f9409cf76b401961b5174e0fd3edf9`:
-
-- focused Phase 19 suite: `54 passed`;
-- full repository suite: `238 passed`;
-- `git diff --check`: passed;
-- working tree: clean;
-- branch synchronized with `origin/feat/module-registry-profile-proof`.
-
-## Current product position
-
-The product now has:
-
-- two deterministic guard paths;
-- two narrow fixed local invocation surfaces;
-- one runtime-neutral adapter;
-- one generic runtime integration profile contract with mutually exclusive fixed capabilities;
-- complete in-process and temporary local HTTP proofs for both guards;
-- unchanged structured verdict and evidence contracts across both invocation paths.
-
-The verdict contract remains:
-
-- `PASS`;
-- `FAIL`;
-- `INSUFFICIENT_EVIDENCE`;
-- `NOT_APPLICABLE`.
-
-The model may select, hypothesize, and explain. It must not invent or reinterpret the verdict.
-
-## Controlled integration checkpoint: deterministic project profiling
-
-The audit controller now profiles one selected canonical project root before it
-chooses an approved guard pack. A configured knowledge root is not treated as a
-project identity: `workspace_id` is derived from the canonical project root,
-and sibling projects are not used as profile evidence.
-
-- approved signals currently include `package.json`, `pyproject.toml`,
-  `CSXS/manifest.xml`, and `.lbe/module-registry.json`;
-- one confident profile selects only its allowlisted guard packs and records
-  the signal path/hash rationale in the audit report;
-- the CEP manifest guard reads only `CSXS/manifest.xml` beneath the selected
-  workspace root; it does not use a sibling project or the shared index as
-  manifest proof;
-- the remaining CEP and generic guards use bounded selected-workspace scans or
-  the controller's selected-workspace inventory; callback and module-registry
-  guards already use bounded live-workspace evidence;
-- callback inspection now requires an exact `workspace_root`; absent scope is
-  reported as `blocked` and never falls back to shared-index retrieval;
-- zero or multiple confident profiles produce `insufficient_evidence` for
-  automatic selection rather than guessing;
-- a snapshot is persisted only under generated inspector state at
-  `state/workspace-intelligence/<workspace_id>/snapshot.json`;
-- snapshots record historical signal hashes and prior guard statuses, then
-  report added, removed, and changed signals on the next audit;
-- current filesystem profiling remains authoritative; a snapshot never acts as
-  current workspace proof.
-
-Validation for this checkpoint:
-
-- focused controller and installed-package suite: `16 passed`;
-- full repository suite: `283 passed`;
-- `git diff --check`: passed.
-
-## Indexed corpus integration checkpoint
-
-The indexed corpus is global reference knowledge. It may contain examples from
-the developer's repositories, but those records are never the target workspace
-and never become current truth. The LLM uses them for cross-project,
-request-time pattern specialization; this is retrieval-based specialization,
-not model training.
-
-The intended runtime is:
+Build a persistent, provider-neutral LBE runtime in which:
 
 ```text
-curated cross-project corpus
--> pattern retrieval
--> candidate guards / likely failure domains
--> inspect the current arbitrary workspace
--> deterministic validation
--> verdict
+provider / reasoning engine
+        |
+        v
+persistent LBE runtime
+        |
+        +-- workspace/session identity
+        +-- mode/policy
+        +-- deterministic authorization
+        +-- registered governed tools
+        +-- evidence/receipts
+        +-- validation/completion authority
+        |
+        v
+current workspace
 ```
 
-PASS:
+The provider reasons and owns provider-native continuation mechanics where reused. LBE remains authoritative for workspace identity, policy, authorization, execution ownership, evidence, validation, completion truth, and persistent project state.
 
-- corpus indexing;
-- ranked retrieval;
-- evidence metadata and exclusions;
-- indexed/current evidence separation;
-- LLM reasoning route;
-- deterministic guard execution;
-- automatic injection of bounded `indexed_reference_evidence` into
-  `ReasoningRequest.reference_context`.
+## Accepted foundation
 
-Historical open-defect proof, now resolved in the current worktree:
+The repository already contains and has previously validated the following ownership layers. They are existing foundation and must not be re-created as parallel subsystems:
+
+- project-scoped workspace identity and live evidence separation;
+- validated workspace memory with stale-data invalidation;
+- deterministic guards and validation-owned verdicts;
+- indexed reference corpus used as lower-authority pattern evidence;
+- project profiling and fixed guard selection;
+- governed workspace-rule proposal/apply boundaries;
+- persistent session/task state owners;
+- provider-turn/runtime owners;
+- typed mode/policy and deterministic authorization owners;
+- `GovernedToolOrchestrator` as registered execution/receipt/idempotency owner;
+- provider-event/history/control surfaces established by the accepted P0-P16 lineage;
+- human/machine implementation gates and checkpoint discipline.
+
+The historical P0-P16 acceptance ledger is preserved in Git history at:
 
 ```text
-INDEXED_EVIDENCE_COUNT=3
-CURRENT_EVIDENCE_COUNT=3
-REASONING_REFERENCE_CONTEXT_COUNT=0
+aecda2d08f0c799cf131a6a01021f7445b127866
 ```
 
-The required implementation now runs bounded task-scoped reference retrieval
-before `backend.plan()`, preserves path, hash, source classification, authority,
-verification, and exclusion metadata, and injects only indexed reference
-evidence. Current-workspace and validation evidence remain separate
-deterministic inputs.
+Do not treat older status/roadmap text that predates those accepted layers as current implementation truth.
 
-### Reasoning Context Contract
+## Cline reuse direction — accepted
 
-Before `backend.plan()` executes:
-
-1. Perform bounded task-scoped retrieval.
-2. Build an evidence package.
-3. Inject only `indexed_reference_evidence` into
-   `ReasoningRequest.reference_context`.
-4. Never inject current workspace evidence into `reference_context`.
-5. Never inject validation evidence into `reference_context`.
-6. Preserve evidence IDs, hashes, provenance, authority metadata, and source
-   classifications.
-7. Excluded records must never enter the reasoning context.
-
-Current proof:
+Pinned Cline source revision used by the reuse audit:
 
 ```text
-INDEXED_EVIDENCE_COUNT=5
-REASONING_REFERENCE_CONTEXT_COUNT=5
-injected evidence IDs/hashes match selected indexed records: PASS
-excluded records absent: PASS
-current workspace evidence remains separate: PASS
+cline/cline
+8bbdde2a5c1f972864fe1b954f639c21fac61a40
 ```
 
-The next active implementation step, before Phase 20 release readiness, is a
-cross-project retrieval proof on unfamiliar workspaces. It must resolve each
-selected workspace independently, use corpus matches only as pattern
-candidates, inspect current files before project-specific claims, bind verdicts
-to current evidence and validation, and preserve corpus provenance and
-authority metadata.
-
-## Phase 6 — Governed workspace-rule proposals
-
-The read-only proposal boundary is now the active implementation surface:
+Accepted reuse classification:
 
 ```text
-verified finding
--> equivalent-rule check from the current profile
--> workspace-specific rule proposal
--> exact unified profile diff
--> explicit user approval record
+ADAPT
 ```
 
-Proposal generation and approval recording do not write the workspace, profile,
-rule registry, or index. Automatic application and autonomous repair remain
-disabled. Applying a proposal must remain a separate governed step with
-activation validation, provenance, and rollback proof.
+Cline `AgentRuntime` is reused for provider streaming/tool-call/continuation mechanics behind an LBE-owned boundary. Cline does not become the owner of LBE workspace authority.
 
-The governed apply slice now requires an `APPROVED` decision whose proposal
-hash and workspace match, an injected LBE authorization check, and an injected
-activation validator before reporting `APPLIED`. Rollback artifacts,
-persistent provenance, and autonomous repair remain open follow-on work.
+Rejected as canonical LBE paths:
 
-## Completed project-scoped audit proof
+- native Cline filesystem/editor mutation;
+- native Cline shell/process execution;
+- Cline-owned replacement session/history authority;
+- Cline-owned validation/completion authority;
+- wholesale `ClineCore` adoption.
 
-The end-to-end project-scoped chain is now proven through the installed
-package:
+## Governed Node subprocess architecture — accepted
+
+The selected cross-runtime architecture is:
 
 ```text
-workspace resolver -> project profiler -> guard selector -> exact evidence
--> deterministic guard -> snapshot comparison -> evidence report
+Python LBE runtime — authoritative parent
+        |
+        | strict typed stdio protocol
+        v
+bounded Node worker
+        |
+        v
+pinned Cline AgentRuntime
+        |
+        +-- provider events -> provider.event
+        |
+        +-- model tool callback -> tool.proposed
+                                  |
+                                  v
+                        Python GovernedToolOrchestrator
+                                  |
+                                  v
+                             ToolReceipt
+                                  |
+                                  v
+                             tool.result
+                                  |
+                                  v
+                        same Cline continuation loop
+        |
+        v
+truthful completed / failed / aborted terminal result
 ```
 
-The public command is:
+Invariants:
 
-```powershell
-lbe-guard-audit audit --workspace-root "<target-project-root>"
+1. Python owns the child lifecycle.
+2. Node/Cline proposes; it does not directly mutate the workspace or execute unmanaged processes.
+3. Executable proposals cross the existing LBE authorization and governed tool owners.
+4. Tool identity/operation/receipt correlation is preserved across the boundary.
+5. LBE owns evidence, validation and completion truth.
+6. Provider credentials remain ephemeral and are not echoed in protocol frames.
+7. Protocol/identity failures fail closed.
+
+## Dependency/security checkpoint — PASS
+
+The Cline worker package is locked and packaged with the project.
+
+The dependency-security resolution is accepted. The canonical worker lock resolves the previously reachable Dify/undici branch without high/critical vulnerabilities.
+
+Latest continuation acceptance recheck:
+
+```text
+npm ci: PASS — 213 packages
+npm audit:
+  info: 0
+  low: 1
+  moderate: 0
+  high: 0
+  critical: 0
 ```
 
-The installed-package smoke test proves the generic audit path as well as the
-fixed callback and module-registry slices. The command remains deterministic,
-read-only, project-scoped, and unable to accept arbitrary guard selection or
-repair authority.
+No claim is made that the remaining low advisory is release-irrelevant; it is only below the active slice's high/critical blocker threshold.
 
-## Not yet completed
+## LBE Cline provider continuation — PASS
 
-- remote GitHub Actions proof: the active `validate` workflow currently fails
-  with `startup_failure` before any job is created; this is an external
-  Actions scheduling/startup problem, not an audit-code defect;
-- optional external-runtime integration packages;
-- broader guard gallery coverage;
-- complete UI beyond the minimum read-only proof surface.
+Completed slice:
 
-## Integration policy
+```text
+phase: LBE_CLINE_PROVIDER_CONTINUATION
+slice: ENABLE_PROVIDER_BACKED_AGENTRUNTIME_CONTINUATION
+status: PASS
+next_phase_locked: true
+```
 
-- Do not merge stale feature branches into `main` merely because they contain
-  older slices of the implementation.
-- Treat `main` as the only integration and release baseline.
-- Resolve GitHub Actions startup failures separately from audit-code changes.
+Accepted records:
+
+- `docs/acceptance/LBE_CLINE_PROVIDER_CONTINUATION_GATE.md`
+- `docs/acceptance/LBE_CLINE_PROVIDER_CONTINUATION_CHECKPOINT.md`
+- `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md`
+
+Implementation/acceptance lineage includes:
+
+```text
+provider fixture correction: 506ffc81f744781ad48e59125fc47c91661eb8b3
+failed-result mapping correction: 703cf96bb896aa34f80c8e4e53397968fd9196ab
+validated implementation head: 0db541cafe8578130d74f8e8cf89fed0503301ea
+PASS checkpoint commit: c5a70996055b766231236d5e59403ddaf733b5c6
+current human gate commit: 121c4faa296c02a3add8b304545079d2011c193a
+```
+
+### Root cause resolved during the slice
+
+The first deterministic provider tests used:
+
+```text
+provider_id: openai
+```
+
+but the actual installed `@cline/llms@0.0.75` registry did not expose that provider ID. Runtime evidence proved:
+
+```text
+openai: unavailable/disabled
+openai-compatible: available
+model: gpt-4o
+```
+
+A direct pinned-runtime probe with `openai-compatible / gpt-4o` reached:
+
+```text
+/v1/chat/completions
+```
+
+and completed successfully. This proved the deterministic local provider fixture was valid and the failure was provider selection/configuration, not an architectural continuation failure.
+
+A second independent adapter defect was also corrected: `AgentRuntime` results with `status=failed` were previously emitted as `turn.completed`. They now map truthfully to `turn.failed` with the underlying error.
+
+### Acceptance evidence
+
+At validated head `0db541cafe8578130d74f8e8cf89fed0503301ea`:
+
+```text
+Node syntax: PASS
+npm ci: PASS
+provider-continuation suite: 12 passed
+GovernedToolOrchestrator regression: 12 passed
+npm audit high: 0
+npm audit critical: 0
+implementation gate: PASS
+git diff --check: PASS
+worktree: clean
+```
+
+Additional integration proof established:
+
+- provider-backed text continuation: PASS;
+- governed tool proposal -> LBE orchestrator -> receipt -> same Cline continuation: PASS;
+- `ESCALATED` tool result: handler not executed, authorization error returned to Cline: PASS;
+- `DENIED` tool result: handler not executed, authorization error returned to Cline: PASS;
+- governed handler `FAILED` result returned to Cline as tool failure: PASS;
+- in-flight `control.cancel` -> Cline `AgentRuntime.abort()` -> terminal `status=aborted`: PASS;
+- no provider/tool path was permitted to self-upgrade LBE authority.
+
+External credential-backed provider proof was not fabricated. Where a separately configured external provider is required, that remains:
+
+```text
+BLOCKED_CONFIGURATION
+```
+
+unless and until credentials/configuration are actually supplied for that proof.
+
+## Current readiness
+
+```text
+current continuation slice: PASS
+project user-ready: NO
+release-ready: NO
+next implementation phase: LOCKED
+```
+
+Passing the continuation slice proves the bounded Cline/LBE interop path. It does not prove the entire persistent-agent product, installed end-to-end coding workflow, provider switching, resume/recovery, CLI completeness, or release readiness.
+
+## Documentation/roadmap reconciliation required before further implementation
+
+The runtime/acceptance evidence has advanced beyond several older planning records. These are now known documentation conflicts/staleness that must be reconciled before another implementation slice is activated:
+
+### `docs/IMPLEMENTATION_PLAN.md`
+
+Still labels R2 session/task persistence as the current gate and shows the older R2 -> R7 sequence as future work. Live accepted source and acceptance records have progressed beyond multiple layers described there.
+
+Do not execute the old sequence blindly. Reconcile the plan against current source and accepted checkpoints first.
+
+### `docs/acceptance/CURRENT_AGENT_EXECUTION_GATE.md`
+
+Still declares an older P16 cancellation reconciliation phase as active. It is historical relative to the current PASS `CURRENT_IMPLEMENTATION_GATE.md` and must not be treated as the active implementation gate.
+
+### Other older status/roadmap documents
+
+Any document that describes P0-P16, R2, provider continuation, Cline interop, or cancellation as still unimplemented must be treated as historical until reconciled with current source and acceptance evidence.
+
+## Immediate next task
+
+Before implementing another feature, activate a bounded **documentation and remaining-gap reconciliation** task.
+
+Required work:
+
+1. prove canonical `main`, HEAD, machine gate and clean workspace;
+2. inventory current acceptance/checkpoint documents and current runtime owners;
+3. compare live implementation against `docs/IMPLEMENTATION_PLAN.md` milestones R3-R7;
+4. classify every milestone/capability as:
+   - `PROVEN_COMPLETE`;
+   - `PARTIALLY_PROVEN`;
+   - `NOT_IMPLEMENTED`;
+   - `BLOCKED_CONFIGURATION`;
+   - `STALE_DOCUMENT_ONLY`;
+5. reconcile `docs/IMPLEMENTATION_PLAN.md` so its `CURRENT` section reflects live accepted work;
+6. reconcile or retire the stale `CURRENT_AGENT_EXECUTION_GATE.md` active declaration;
+7. identify the first genuinely missing product capability from evidence, not from roadmap age;
+8. create a new machine gate + human gate for exactly that one next slice;
+9. keep `next_phase_locked=true` until the new slice is explicitly activated.
+
+No implementation source should change merely to make an old roadmap appear correct.
+
+## Candidate future milestone families to evaluate during reconciliation
+
+The canonical roadmap identifies these end-state capabilities, but their current implementation status must be re-proven before selecting one:
+
+- checkpoint/resume/rehydration with stale-source invalidation;
+- bounded classified retry/recovery;
+- provider/model switching while preserving LBE policy/session authority;
+- typed coding/audit/investigation policy behavior;
+- bounded context/rule/guard injection;
+- governed real coding tool classes beyond the currently proven continuation seam;
+- deterministic completion/validation gating;
+- thin CLI/API surfaces over the canonical runtime;
+- installed-path R7 proofs: coding, provider switch, resume-after-workspace-change, read-only audit, escalation/denial;
+- release/package readiness.
+
+These are **evaluation targets**, not automatically open implementation tasks.
 
 ## No-drift boundary
 
-This project is not building:
+Do not introduce:
 
-- a general chat or coding agent;
-- unrestricted personal memory;
-- model-authored truth;
-- passive learning from every conversation;
-- a replacement for Git or current workspace inspection;
-- cross-project truth sharing;
-- broad autonomous repair;
-- automatic global-rule creation;
-- unrestricted mutation;
-- hardcoded runtime, workspace, path, port, application, company, vendor, or environment assumptions.
+- a second session/runtime owner;
+- a second authorization resolver;
+- a second tool dispatcher/receipt store;
+- provider-owned workspace policy;
+- model-authored validation/completion truth;
+- unrestricted shell/filesystem bypass;
+- memory/reference matches as current workspace truth;
+- `ClineCore` as a replacement authority layer;
+- TUI/UI-first development before runtime acceptance proves the underlying service;
+- automatic next-phase activation from a completed checkpoint.
+
+## Working method
+
+For every future slice:
+
+```text
+read canonical project docs
+-> prove current Git/workspace/runtime state
+-> inspect existing owners
+-> classify reuse
+-> define one bounded slice
+-> implement only inside allowed scope
+-> validate from focused proof upward
+-> re-open changed files
+-> checkpoint exact revision/evidence
+-> stop with next phase locked
+```
+
+A successful wrapper command, historical checkpoint, model statement, or old roadmap entry is not enough to prove current state.
