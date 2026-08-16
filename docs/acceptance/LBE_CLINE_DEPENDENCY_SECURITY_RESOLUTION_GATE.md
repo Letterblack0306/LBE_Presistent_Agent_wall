@@ -60,6 +60,7 @@ Only the following changes are authorized:
 8. Build the Python wheel and prove the worker package metadata, worker source, and canonical lock are included.
 9. Record the upstream Cline PR state as supporting evidence only; do not claim upstream approval or merge.
 10. Write a bounded checkpoint with PASS only if all required security/integration evidence is satisfied.
+11. A temporary GitHub Actions workflow may be added solely to generate and upload the deterministic worker `package-lock.json` artifact from the canonical GitHub `package.json`. It must not edit source, commit automatically, change runtime behavior, or broaden CI authority, and it must be removed after the exact generated lock is committed through the GitHub connector.
 
 ## Candidate mitigation under test
 
