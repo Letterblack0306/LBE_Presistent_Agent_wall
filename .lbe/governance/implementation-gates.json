@@ -2,13 +2,13 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "OBSERVABLE_6_EXTERNAL_WORKSPACE_CHANGE_REVALIDATION",
-  "status": "PASS",
+  "active_slice": "OBSERVABLE_7_AUDIT_INVESTIGATION_READ_ONLY",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
-  "blocking_statuses": ["FAIL","UNVERIFIED","DOCUMENT_CONFLICT","MISSING_EVIDENCE","BLOCKED_WORKSPACE_AUTHORITY","BLOCKED_PARALLEL_ARCHITECTURE"],
+  "blocking_statuses": ["FAIL", "UNVERIFIED", "DOCUMENT_CONFLICT", "MISSING_EVIDENCE", "BLOCKED_WORKSPACE_AUTHORITY", "BLOCKED_PARALLEL_ARCHITECTURE"],
   "rules": {
     "one_active_slice": true,
     "no_next_phase_without_pass": true,
@@ -37,25 +37,31 @@
     "R7_OBSERVABLE_6": "PASS"
   },
   "current_observable": {
-    "number": 6,
-    "status": "PASS",
-    "question": "After a bounded external workspace change between installed invocations, does the next installed invocation observe and revalidate current workspace truth rather than relying on stale persisted/checkpoint evidence?",
-    "required_evidence_level": "INSTALLED_RUNTIME_EXTERNAL_CHANGE_REVALIDATION",
-    "implementation_changes_allowed": false,
-    "decisive_command_hash": "4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC"
+    "number": 7,
+    "status": "OPEN",
+    "question": "Do installed audit and investigation execution remain read-only and reject provider-requested mutation without changing workspace state?",
+    "required_evidence_level": "INSTALLED_RUNTIME_READ_ONLY_NEGATIVE_PROOF",
+    "implementation_changes_allowed": false
   },
+  "observable_7_falsifiers": [
+    "audit invocation mutates workspace bytes or git state",
+    "investigation invocation mutates workspace bytes or git state",
+    "audit or investigation accepts workspace.create_candidate_text or another mutation tool as approved",
+    "audit or investigation emits an EXECUTED mutation receipt",
+    "provider directly mutates workspace outside LBE authority",
+    "read-only mode/policy identity changes as a side effect"
+  ],
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "activating observable 7 without explicit advancement"
+    "continuing to observable 8 before observable 7 is classified PASS"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "explicitly activate R7 observable 7",
       "finish R7 observables 7 through 15",
       "release/package readiness acceptance"
     ]
