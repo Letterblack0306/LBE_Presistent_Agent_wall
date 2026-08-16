@@ -36,7 +36,7 @@ R6F: PROVEN_COMPLETE
 CLI: PROVEN_COMPLETE
 ```
 
-The R7 falsifier does not reopen those lower-layer acceptances. It proves that the current installed normal coding path does not compose through to the accepted R6E execution/receipt authority.
+The R7 falsifier does not reopen those lower-layer acceptances. It proves that the installed normal coding entry point does not currently compose through to the accepted R6E execution/receipt authority.
 
 ## R7 evidence reached
 
@@ -61,26 +61,81 @@ provider approved_tools: workspace.read
 marker: R7_CODE_PROVIDER_AUTHORITY_READ_ONLY=PROVEN
 ```
 
-Observed composition:
+## Re-reviewed owner chain
 
 ```text
-installed lbe code
- -> GovernedAgentGateway
- -> LBERequestController reasoning/inspection path
- -> provider approved_tools = [workspace.read]
- -> read_only response
- -> governed coding tool execution/receipts not reached
+CLI transport
+  lbe_guard_inspector/cli.py
+
+persistent state/lifecycle
+  SessionMemoryRuntimeBridge
+
+request identity/mode gateway
+  GovernedAgentGateway
+
+current installed code reasoning path
+  LBERequestController
+  -> read-only planning/inspection
+  -> approved_tools=[workspace.read]
+
+accepted authorization owner
+  runtime/authorization_resolver.py
+
+accepted execution/receipt owner
+  runtime/tool_orchestration.py
+  -> GovernedToolOrchestrator
+  -> ToolReceipt
+
+accepted provider continuation boundary
+  provider_continuation.py
+  -> consumes an existing ToolReceipt only
+
+accepted completion authority
+  CodingCompletionRuntime + deterministic completion gate/evidence owners
 ```
+
+The source review therefore classifies the defect as an **integration/composition gap**. It does not yet prove the exact function to edit.
 
 ## Stop decision
 
-R7 progression stops on required observable 3. Later provider-switch, restart/resume, external-change revalidation, audit, out-of-authority, receipt-correlation, completion, secret-state and release-readiness checks are not substitutes for the missing installed coding execution path.
+R7 progression stops on required observable 3. Later provider-switch, restart/resume, external-change revalidation, audit, out-of-authority, receipt-correlation, completion, secret-state, and release-readiness checks are not substitutes for the missing installed coding execution path.
 
-## Repair boundary
+## Next admissible gate — not activated
 
-A real product falsifier is proven, but this failed acceptance gate still does not authorize source changes. The next admissible engineering action is to activate a separate bounded repair slice focused on the connecting flow from installed `lbe code` / `GovernedAgentGateway` to the already accepted R6E `GovernedToolOrchestrator` and receipt continuation path.
+The next gate may be activated only as a **bounded repair investigation**, not implementation.
 
-Do not create a second tool dispatcher, authorization owner, session authority, provider authority, or completion authority.
+Proposed question:
+
+> What existing active-owner seam should connect installed `lbe code` / `GovernedAgentGateway` reasoning to the already accepted R6C/R6E governed tool execution and receipt-continuation path, and what is the smallest correction that restores that composition without creating parallel authority?
+
+Required investigation evidence before implementation authorization:
+
+```text
+- all ToolRequest construction/consumer paths traced
+- all GovernedToolOrchestrator construction/consumer paths traced
+- all ToolReceipt persistence/correlation/continuation paths traced
+- provider tool-call/continuation runtime paths traced
+- earliest missing/incorrect composition state proven
+- no already-active alternate coding path missed
+- smallest edit surface identified
+- repair hypothesis and falsifier recorded
+- focused + installed-runtime validation plan defined
+```
+
+## Repair invariants
+
+```text
+reuse SessionMemoryRuntimeBridge
+reuse R6C authorization_resolver
+reuse R6E GovernedToolOrchestrator / ToolRegistry / ToolReceipt
+reuse provider_continuation
+reuse CodingCompletionRuntime
+no second tool dispatcher
+no second authorization resolver
+no second session/provider/completion authority
+no direct provider workspace mutation
+no architecture rewrite before owner proof
+```
 
 ## Release boundary
 
@@ -88,10 +143,14 @@ Do not create a second tool dispatcher, authorization owner, session authority, 
 release_path_authorized: true
 publish_allowed_now: false
 remaining:
-  repair installed coding composition
-  -> rerun R7 installed E2E
+  activate bounded repair investigation
+  -> prove exact composition owner/seam
+  -> separately authorize smallest repair
+  -> rebuild/install repaired exact head
+  -> rerun R7 observable 3
+  -> finish R7
   -> release/package readiness
 next_phase_locked: true
 ```
 
-No release/package-readiness activation, version bump, tag, or publish is allowed while this gate is failed.
+No repair implementation, release/package-readiness activation, version bump, tag, or publish is allowed while this failed gate remains active.
