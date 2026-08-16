@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_GATE.md",
-  "active_phase": "LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION",
-  "active_slice": "RESOLVE_REACHABLE_DIFY_UNDICI_SECURITY_BLOCKER",
+  "active_plan": "docs/acceptance/LBE_CLINE_PROVIDER_CONTINUATION_GATE.md",
+  "active_phase": "LBE_CLINE_PROVIDER_CONTINUATION",
+  "active_slice": "ENABLE_PROVIDER_BACKED_AGENTRUNTIME_CONTINUATION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": false,
@@ -41,19 +41,19 @@
     "fail_closed": true
   },
   "allowed_scope": {
-    "purpose": "Resolve the proven reachable transitive Dify/provider-utils/undici security blocker for the governed Cline worker without changing runtime authority or expanding capability scope.",
-    "implementation_changes": "worker dependency override, deterministic worker lockfile, dependency/security validation, package proof, focused Cline import/bridge/orchestrator regression, and acceptance checkpoint only; no continuation, provider expansion, MCP, TUI, or release work",
+    "purpose": "Enable provider-backed Cline AgentRuntime continuation behind the already-proven governed Node stdio boundary while preserving Python/LBE authorization, tool execution, receipt, evidence, validation, completion, and session authority.",
+    "implementation_changes": "Cline worker provider construction, proxy-tool proposal/result handoff, Python mediation through GovernedToolOrchestrator, cancellation mapping, focused tests, and acceptance checkpoint only; no MCP, TUI, ClineCore, provider-selection UI, retry redesign, or release work",
     "allowed_actions": [
-      "add the narrowly scoped undici override candidate documented in the active security gate",
-      "generate and validate the deterministic worker package-lock.json",
-      "run npm ci and inspect the exact resolved Dify/provider-utils/undici graph",
-      "run npm audit and require zero high/critical worker findings before PASS",
-      "prove @cline/agents import remains functional",
-      "run governed Cline worker startup/shutdown and focused bridge/orchestrator regression",
-      "build the Python wheel and verify worker source/package/lock assets are included",
-      "record upstream Cline PR #13223 only as supporting evidence because it remains draft/unmerged",
-      "write the bounded dependency-security checkpoint",
-      "update only directly related worker package/lock and acceptance files"
+      "accept ephemeral provider configuration at runtime.start without persisting or echoing credentials",
+      "construct pinned @cline/agents AgentRuntime and use its existing run/continue loop",
+      "expose only explicit LBE allowed_tools as proxy AgentTools",
+      "emit deterministic tool.proposed correlation frames and await matching tool.result frames",
+      "route proposals through existing Python GovernedToolOrchestrator.invoke and ToolReceipt",
+      "map control.cancel to AgentRuntime.abort",
+      "map terminal Cline run result to turn.completed or turn.failed without claiming LBE completion truth",
+      "add focused deterministic continuation and governed tool handoff tests",
+      "run live provider proof when configuration is available and classify missing credentials as BLOCKED_CONFIGURATION",
+      "write the bounded provider-continuation checkpoint"
     ]
   }
 }
