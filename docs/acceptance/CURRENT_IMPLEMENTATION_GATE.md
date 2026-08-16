@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 9 — IMPLEMENTATION LOCKED**
+Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 9 — NEXT OBSERVABLE LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
@@ -13,7 +13,7 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: OPEN
+status: PASS
 required_evidence_level: INSTALLED_RUNTIME_CORRELATED_RECEIPT_CONTINUATION_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
@@ -32,41 +32,36 @@ observable 5: PASS
 observable 6: PASS
 observable 7: PASS
 observable 8: PASS
+observable 9: PASS
 ```
 
-Observable 8 decisive proof: `98B3EC987725DB5B103E6B11B64DD60C4C73EA2F249BC88F260403A52127FDEE`.
+Observable 9 decisive proof: `A323D6AB93CAFECC6A291F785614B92AE007CC0015B0DB959359F06747E044D9`.
 
-## Active observable 9
+## Observable 9 result
 
-Question:
+```text
+provider tool_call_id: call_r7_obs9_create_1
+turn_id: turn-5232313195ef418c8970482d79fb3368
+operation_id: turn-5232313195ef418c8970482d79fb3368:tool:call_r7_obs9_create_1
+receipt_id: receipt-df662912e6894ead8a705083bccffa7b
+created sha256: 8bc4e5818a728c4deaa0d7790cf7b9aebfc0231be44b33393d94726c1eb10631
+provider requests: 2
+one tool call -> one receipt: PASS
+operation identity correlated: PASS
+receipt output correlated: PASS
+continuation tool-call identity correlated: PASS
+continuation governed result correlated: PASS
+single mutation execution: PASS
+same-turn provider continuation: PASS
+source worktree clean: PASS
+```
 
-> Does the installed governed coding loop preserve exact provider tool-call, LBE call, operation, ToolReceipt, and same-turn provider continuation correlation without duplicate execution or identity substitution?
+The installed result therefore proves exact provider-tool-call/R6E-receipt/provider-continuation correlation, not merely successful mutation followed by another provider request.
 
-Required proof:
+## Current boundary
 
-1. invoke installed `lbe code` from the isolated package against a deterministic local provider;
-2. provider emits exactly one tool call with a fixed `tool_call_id`;
-3. one R6E mutation receipt is returned and is `EXECUTED`;
-4. receipt `operation_id` must be `<turn_id>:tool:<tool_call_id>`;
-5. receipt has one non-empty unique `receipt_id`;
-6. the second provider HTTP request must contain the same assistant tool-call identity and a tool-result message correlated by that same `tool_call_id`;
-7. the governed result in the provider continuation must match the mutation result represented by the LBE receipt;
-8. exactly two provider requests occur for the turn and the mutation executes exactly once;
-9. final turn remains the same installed governed turn and completion truth remains provider-non-authoritative;
-10. source checkout remains clean.
+Observable 9 is closed `PASS`.
 
-Source contract used to define the discriminator:
+Observable 10 is not active and requires explicit advancement. Its acceptance target is that provider completion remains provisional until deterministic persisted completion validation establishes LBE completion truth.
 
-- Node derives `operation_id = <turn_id>:tool:<cline_tool_call_id>` and `lbe_call_id = <turn_id>:lbe:<cline_tool_call_id>`;
-- Python R6E execution returns a `ToolReceipt` and sends `tool.result` with `cline_tool_call_id`, `lbe_call_id`, `operation_id`, and `receipt_id`;
-- Node rejects mismatched session/turn/operation/LBE-call identity before resolving the pending provider tool call.
-
-## Falsifier
-
-Any missing/substituted identity, mismatched operation/receipt, duplicate mutation, provider continuation without the same tool-call identity, or cross-turn continuation is a product falsifier.
-
-Harness/provider/fixture failures that do not reach these predicates do not justify a production patch.
-
-## Stop rule
-
-Do not proceed to observable 10 until observable 9 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
+No production/runtime/package implementation change is authorized. Release/package readiness and publication remain blocked until the remaining R7 observables pass.
