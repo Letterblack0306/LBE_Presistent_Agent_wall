@@ -1,39 +1,58 @@
 # R6E Governed Tool Orchestration Acceptance Gate
 
-Status: **OPEN — ACCEPTANCE PROOF ONLY — NEXT PHASE LOCKED**
+Status: **PASS — ACCEPTANCE PROOF COMPLETE — NEXT PHASE LOCKED**
 
 ```text
 phase: R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE
 slice: PROVE_RECEIPT_BACKED_GOVERNED_TOOL_LIFECYCLE_WITH_IDEMPOTENCY_AND_PROVIDER_CONTINUATION
 base_sha: a237ac0184116a47fdc5b2efc782940faa065efb
+acceptance_head: 8d755418c81efa75522d8cd360b60f8cdbd55ed5
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 required_evidence_level: INTEGRATION
+status: PASS
 ```
 
-## Selection rationale
+## Accepted conclusion
 
-R6D is closed PASS. R6E is the next dependency boundary because provider reasoning/tool proposals must cross the existing LBE governed execution owner before any workspace action, and any provider continuation must be derived from the resulting LBE receipt rather than bypassing governance.
+The existing LBE governed tool path satisfies the R6E acceptance boundary without runtime/test implementation changes or a parallel execution authority.
 
-Current source/tests already prove the component contracts independently. This slice is acceptance-first and does not declare an implementation defect.
-
-## Acceptance question
-
-Can the existing LBE tool path take a bounded registered operation through argument validation, authorization, governed execution, structured receipt/evidence and receipt-backed provider continuation while preserving operation identity/idempotency, stopping escalation before continuation, and preventing any provider or unregistered tool bypass?
-
-## Existing owners
+Accepted lifecycle:
 
 ```text
-lbe_guard_inspector.runtime.tool_orchestration.ToolRegistry
-lbe_guard_inspector.runtime.tool_orchestration.GovernedToolOrchestrator
-lbe_guard_inspector.runtime.tool_orchestration.ToolRequest
-lbe_guard_inspector.runtime.tool_orchestration.ToolReceipt
-lbe_guard_inspector.runtime.tool_orchestration.build_workspace_read_handler
-lbe_guard_inspector.runtime.authorization_resolver.resolve_authorization
-lbe_guard_inspector.provider_continuation.continuation_from_receipt
-lbe_guard_inspector.provider_continuation.continue_provider
+ToolRequest
+ -> ToolRegistry lookup
+ -> argument validation
+ -> R6C authorization
+ -> GovernedToolOrchestrator
+ -> registered handler / existing service owner
+ -> ToolReceipt(output/evidence/authorization)
+ -> operation-id idempotency
+ -> continuation_from_receipt
+ -> continue_provider
+```
+
+The accepted stop path is:
+
+```text
+ESCALATE
+ -> no handler execution
+ -> no provider continuation
+```
+
+## Existing owners preserved
+
+```text
+ToolRegistry
+GovernedToolOrchestrator
+ToolRequest
+ToolReceipt
+build_workspace_read_handler
+resolve_authorization
 EvidenceService
+continuation_from_receipt
+continue_provider
 ```
 
 ## Reuse decision
@@ -42,57 +61,41 @@ EvidenceService
 REUSE
 ```
 
-Do not introduce another tool dispatcher, operation store, receipt authority, provider-native executor, or continuation authority.
+No second dispatcher, operation store, receipt authority, provider executor, or continuation authority was introduced.
 
-## Required observables
-
-1. only an explicitly registered tool can execute;
-2. argument validation and workspace/precondition failures stop before the underlying service is invoked;
-3. R6C authorization is consumed before handler execution and `DENY`/`ESCALATE` do not execute;
-4. an authorized registered tool produces one structured `EXECUTED` receipt with output/evidence;
-5. the receipt preserves operation ID, tool ID and authorization provenance;
-6. repeating the same operation ID returns the original receipt without re-execution;
-7. real workspace read delegates to the existing `EvidenceService` rather than bypassing it;
-8. provider continuation is constructed only from an existing governed receipt and preserves runtime-operation/receipt/tool identity;
-9. an escalated receipt stops before provider continuation;
-10. provider continuation has no execution authority and cannot invoke an unregistered/ungoverned tool;
-11. focused tool/authorization/continuation/runtime regression passes on the exact acceptance head;
-12. no runtime/test implementation source changes are required unless a real falsifier is proven.
-
-## Falsifier
-
-R6E cannot PASS if an unregistered or unauthorized operation executes, invalid/precondition-failing input reaches the underlying service, duplicate operation identity re-executes, receipt evidence/provenance is lost, provider continuation can occur from an escalated/non-governed path, provider code gains execution authority, or a parallel tool/receipt/continuation owner is required.
-
-## Evidence ladder
+## Acceptance evidence
 
 ```text
-source owner inspection
--> repository-owned tool/authorization/continuation tests
--> combined governed execution + receipt discriminator
--> idempotent duplicate-operation discriminator
--> receipt-backed provider continuation discriminator
--> escalation stop discriminator
--> focused regression
--> diff/scope/worktree proof
--> checkpoint
+repository-owned baseline: 29 passed
+command_hash: 2C05376D268B47A944EDD267CDD5EF4E37B37342FD19A069DADC2F4435CF90AB
+
+authorized execution/idempotency: PASS
+command_hash: 85A894FA0BB9EFBD297255952B9E61317AEB0250B6D2DF2EBD5DFA453AAB8AD0
+
+receipt-backed provider continuation: PASS
+command_hash: B24E0F0CECFE6CCA4DD18D54D929D1DF29FB9C35EF02E4CDABD77620888EB600
+
+combined lifecycle + escalation stop: PASS
+command_hash: D5D43751BE65F6F765960CA119CA59D74732181E520D3353AE00F1B0329A7A9A
+
+focused regression: 51 passed
+command_hash: 8D7906D783094242D072C6C2D49D392896810ADF2C162D2B16623A8BFAE9AA43
+
+runtime/test source unchanged: PASS
+diff check: PASS
+worktree clean: PASS
+acceptance scope: PASS
+observed_falsifier: NONE
 ```
 
-## Allowed work
+The combined discriminator proved one authorized operation executes once, emits receipt evidence, reuses the original receipt on duplicate operation ID, and continues the provider only from that receipt. The escalation discriminator proved zero handler execution and blocked continuation.
 
-- GitHub inspection of current tool/authorization/evidence/continuation owners and tests;
-- LoopTool execution of repository-owned tests and bounded runtime diagnostics;
-- R6E acceptance/checkpoint/status documentation through GitHub;
-- diff/scope/worktree verification.
+## Harness failure
 
-## Forbidden work
-
-- runtime/test implementation before a real defect is proven;
-- R6F implementation;
-- new tool dispatcher/receipt store/provider executor/continuation authority;
-- unrestricted shell/filesystem bypass;
-- CLI/TUI/MCP/release work;
-- architecture changes.
+`F37E90BAE875E4620291920E662C5D78DBC3B3C6D11CF28A30745F3CA258161E` is retained as `TEST_HARNESS_TRANSPORT_TRUNCATION / POWERSHELL_PARSE_FAILURE`; Python did not execute, so it carries no product implication.
 
 ## Completion predicate
 
-PASS only when the existing registered/authorized governed execution path, structured receipt/evidence, operation-id idempotency, and receipt-backed provider continuation/stop behavior are proven together with no falsifier. PASS does not auto-activate R6F or another phase.
+Satisfied within the declared R6E boundary. R6E is `PROVEN_COMPLETE`.
+
+PASS does not auto-activate R6F or another phase.
