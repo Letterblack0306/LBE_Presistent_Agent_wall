@@ -2,8 +2,8 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "OBSERVABLE_7_AUDIT_INVESTIGATION_READ_ONLY",
-  "status": "PASS",
+  "active_slice": "OBSERVABLE_8_FAIL_CLOSED_AUTHORITY_BOUNDARIES",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -38,25 +38,31 @@
     "R7_OBSERVABLE_7": "PASS"
   },
   "current_observable": {
-    "number": 7,
-    "status": "PASS",
-    "question": "Do installed audit and investigation execution remain read-only and reject provider-requested mutation without changing workspace state?",
-    "required_evidence_level": "INSTALLED_RUNTIME_READ_ONLY_NEGATIVE_PROOF",
-    "implementation_changes_allowed": false,
-    "decisive_command_hash": "1E59BF836E469E6652D839F076EE7A48E0D531796F39C0D35AB0F8974EADD576"
+    "number": 8,
+    "status": "OPEN",
+    "question": "Do forbidden, out-of-workspace, and otherwise out-of-authority mutation attempts fail closed with no workspace mutation, while preserving the distinction between handler-level path rejection and R6C DENY/ESCALATE authority receipts?",
+    "required_evidence_level": "INSTALLED_RUNTIME_FAIL_CLOSED_AUTHORITY_PROOF",
+    "implementation_changes_allowed": false
   },
+  "observable_8_falsifiers": [
+    "forbidden path mutation succeeds",
+    "out-of-workspace path mutation succeeds",
+    "explicitly forbidden R6C request does not return DENY/DENIED",
+    "out-of-scope R6C request does not return ESCALATE/ESCALATED",
+    "a denied or escalated request invokes the mutation handler",
+    "workspace bytes or Git state change after a rejected authority/path attempt"
+  ],
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
     "second authority",
     "release version tag or publish work",
-    "activating observable 8 without explicit advancement"
+    "continuing to observable 9 before observable 8 is classified PASS"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "explicitly activate R7 observable 8",
       "finish R7 observables 8 through 15",
       "release/package readiness acceptance"
     ]
