@@ -101,14 +101,24 @@ def main() -> int:
     database = probe / "memory.sqlite"
     workspace = probe / "workspace"
     target = workspace / TARGET_REL
+    config_path = probe / "config.json"
+    governance_path = probe / "governance.json"
+    state_dir = probe / "state"
 
     require(lbe.is_file(), f"installed lbe missing: {lbe}")
     require(python.is_file(), f"installed python missing: {python}")
     require(database.is_file(), f"persistent database missing: {database}")
     require(workspace.is_dir(), f"R7 workspace missing: {workspace}")
+    require(config_path.is_file(), f"R7 config missing: {config_path}")
+    require(governance_path.is_file(), f"R7 governance missing: {governance_path}")
+    require(state_dir.is_dir(), f"R7 state directory missing: {state_dir}")
 
     env = os.environ.copy()
     env.pop("PYTHONPATH", None)
+    env["PATH"] = str(venv / "Scripts") + os.pathsep + env.get("PATH", "")
+    env["LBE_GUARD_INSPECTOR_CONFIG_PATH"] = str(config_path)
+    env["LBE_GUARD_INSPECTOR_GOVERNANCE_PATH"] = str(governance_path)
+    env["LBE_GUARD_INSPECTOR_STATE_DIR"] = str(state_dir)
 
     identity = run(
         [str(python), "-I", "-c", "import lbe_guard_inspector; print(lbe_guard_inspector.__file__)"],
@@ -121,13 +131,10 @@ def main() -> int:
     require("Agents-Memory-Tool-v6-integration".lower() not in package_file.lower(), "source checkout import leakage")
     print("R7_OBS6_PACKAGE_FILE=" + package_file)
 
-    # Reset the disposable proof file to a deterministic pre-change state so the
-    # acceptance probe is repeatable. This setup is outside LBE by design.
     target.write_text(BASELINE_TEXT, encoding="utf-8", newline="\n")
     baseline_bytes = target.read_bytes()
     baseline_hash = sha256_bytes(baseline_bytes)
 
-    # Process A: installed LBE captures current pre-change workspace evidence.
     before_result = run(
         [
             str(lbe),
@@ -156,7 +163,6 @@ def main() -> int:
     print("R7_OBS6_BEFORE_SHA256=" + baseline_hash)
     print("R7_OBS6_PROCESS_A_PRECHANGE_EVIDENCE=PASS")
 
-    # The external actor changes workspace bytes after process A has exited.
     target.write_text(CHANGED_TEXT, encoding="utf-8", newline="\n")
     changed_bytes = target.read_bytes()
     changed_hash = sha256_bytes(changed_bytes)
@@ -165,7 +171,6 @@ def main() -> int:
     print("R7_OBS6_EXTERNAL_CHANGE_SHA256=" + changed_hash)
     print("R7_OBS6_EXTERNAL_CHANGE_APPLIED=PASS")
 
-    # Process B1: a fresh installed process reopens/resumes persisted task state.
     continuation_result = run(
         [
             str(lbe),
@@ -187,8 +192,6 @@ def main() -> int:
     require(session.get("provider_id") == "openai-compatible", "provider identity changed during external-change resume")
     require(session.get("provider_model") == "r7-model-b", "provider model changed during external-change resume")
 
-    # Process B2: another fresh installed process must retrieve live changed
-    # workspace evidence, including the external marker and exact changed hash.
     after_result = run(
         [
             str(lbe),
@@ -215,7 +218,6 @@ def main() -> int:
     require(changed_hash in after_text, "post-change evidence did not observe changed SHA-256")
     require(changed_hash != baseline_hash, "hash discriminator collapsed")
 
-    # Persisted task authority must remain intact while evidence changes.
     status_result = run(
         [
             str(lbe),
@@ -250,6 +252,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except Exception as exc:  # acceptance probe: preserve exact discriminator
+    except Exception as exc:
         print(f"R7_OBS6_FAIL={type(exc).__name__}:{exc}", file=sys.stderr)
         raise
