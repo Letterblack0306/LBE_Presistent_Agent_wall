@@ -2,8 +2,8 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "OBSERVABLE_10_PROVIDER_COMPLETION_PROVISIONAL",
-  "status": "PASS",
+  "active_slice": "OBSERVABLE_11_VALIDATED_COMPLETION_FRESH_PROCESS",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -41,13 +41,19 @@
     "R7_OBSERVABLE_10": "PASS"
   },
   "current_observable": {
-    "number": 10,
-    "status": "PASS",
-    "question": "Does a successful provider/Cline turn remain provisional until persisted deterministic completion validation satisfies the LBE-owned registered completion contract?",
-    "required_evidence_level": "INSTALLED_RUNTIME_PROVISIONAL_COMPLETION_AUTHORITY_PROOF",
-    "implementation_changes_allowed": false,
-    "decisive_command_hash": "3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946"
+    "number": 11,
+    "status": "OPEN",
+    "question": "When the registered deterministic completion contract is fully satisfied, does installed LBE persist COMPLETED / VALIDATED_COMPLETION and does a fresh installed process recover the same terminal task/session identity?",
+    "required_evidence_level": "INSTALLED_RUNTIME_VALIDATED_COMPLETION_FRESH_PROCESS_PROOF",
+    "implementation_changes_allowed": false
   },
+  "observable_11_falsifiers": [
+    "all registered deterministic completion requirements pass but session validate does not return READY",
+    "READY does not persist task COMPLETED / VALIDATED_COMPLETION",
+    "a fresh installed process does not recover the same completed task/session identity",
+    "completion evidence or contract identity changes across the fresh process",
+    "validated completion is inferred from provider prose rather than persisted deterministic evidence"
+  ],
   "known_harness_failures": [
     {
       "command_hash": "D366A3D81B771F3CEA6377A37EAA2CE72391C6A8627C3FDA5D240D307AA68E9F",
@@ -63,13 +69,12 @@
     "architecture rewrite",
     "second completion authority",
     "release version tag or publish work",
-    "activating observable 11 without explicit advancement"
+    "continuing to observable 12 before observable 11 is classified PASS"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "explicitly activate R7 observable 11",
       "finish R7 observables 11 through 15",
       "release/package readiness acceptance"
     ]
