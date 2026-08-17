@@ -25,48 +25,66 @@ GPT-Knowledge method currently applied: `ai-agents/unified-agent-engineering-met
 ```text
 R3-R6F: PROVEN_COMPLETE
 CLI_NORMAL_PATH_ACCEPTANCE: PROVEN_COMPLETE
-R7.1-R7.11: PASS (R7.3 PASS_AFTER_REPAIR)
+R7.1-R7.12: PASS (R7.3 PASS_AFTER_REPAIR)
 ```
 
-Observable 11 decisive command hash: `6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D`.
+Observable 12 decisive command hash: `C3BC8C5B57AFC72B06CA6D2F1D663CB461F533E802F605F24CE09A812E8BAFBB`.
 
-## Active R7 observable 12
+## Active R7 observable state
 
 ```text
-observable 12 credential/secret non-leakage: OPEN
+observable 12 credential/secret non-leakage: PASS
 observable 13 installed/runtime regression: LOCKED
 observable 14 no source changes absent a real falsifier: NOT RUN
 observable 15 final clean worktree + limitations/falsifiers: NOT RUN
 ```
 
-Question:
-
-> Does a runtime-generated synthetic provider credential remain confined to the disposable provider-config input and outbound Authorization header, with no leakage into provider JSON bodies, CLI/runtime output, R6E receipts, completion evidence, SQLite/state storage, workspace/repository files, or acceptance artifacts?
-
-Acceptance method:
+## Observable 12 result
 
 ```text
-runtime-generated canary secret
- -> ephemeral provider.json input
- -> actual Authorization header reaches local provider
- -> normal installed governed tool-call/continuation flow
- -> inspect provider JSON bodies
- -> inspect CLI stdout/stderr + returned JSON
- -> inspect deterministic result + R6E receipts
- -> inspect completion evidence
- -> delete provider input
- -> byte-scan disposable persistence + raw SQLite + workspace
- -> scan project source/acceptance surfaces
- -> require clean source worktree
+R7_OBSERVABLE_12=PASS
+
+Verified:
+- provider JSON body clean
+- runtime result clean
+- receipts clean
+- completion evidence clean
+- CLI stdout/stderr clean
+- persisted state clean
+- workspace files clean
+- source and acceptance artifacts clean
+- SQLite raw bytes clean
+- no credential/secret leakage
+
+Allowed secret loci:
+- ephemeral credential input
+- outbound Authorization header only
+
+Observed transport:
+- header name: authorization
+- credential transport header present: PASS
 ```
 
-Only the ephemeral credential input and outbound Authorization header are allowed secret loci. Any raw canary occurrence elsewhere is a product falsifier. Harness/environment failures before the target surfaces are observed do not justify production changes.
+Initial OBS12 failure classification:
+
+```text
+Failure:
+provider authorization header match assertion returned 0
+
+Investigation result:
+- Runtime transport was present.
+- The diagnostic found lowercase header representation (`authorization`).
+- Product leakage behavior was not falsified.
+
+Classification:
+observability/harness assumption issue, not runtime product defect.
+```
 
 ## Current authority boundary
 
 ```text
 active_phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-current_observable: 12
+current_observable: 13
 current_status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
@@ -77,7 +95,6 @@ publish_allowed_now: false
 ## Remaining sequence
 
 ```text
-#12 credential/secret non-leakage
 #13 focused installed/runtime regression
 #14 source remains unchanged absent a real falsifier
 #15 final clean worktree + limitations/falsifiers
@@ -86,7 +103,7 @@ publish_allowed_now: false
 ## Release progression
 
 ```text
-finish R7 observables 12-15
+finish R7 observables 13-15
  -> R7 PASS
  -> release/package readiness acceptance
  -> only then version/tag/publish
