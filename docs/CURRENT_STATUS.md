@@ -40,56 +40,56 @@ observable 7: PASS
 observable 8: PASS
 observable 9: PASS
 observable 10 provider completion provisional: PASS
-observable 11 validated completion survives fresh process: OPEN
-observable 12 credential/secret non-leakage: NOT RUN
+observable 11 validated completion survives fresh process: PASS
+observable 12 credential/secret non-leakage: LOCKED_PENDING_EXPLICIT_ADVANCE
 observable 13 installed/runtime regression: NOT RUN
 observable 14 no source changes absent a real falsifier: NOT RUN
 observable 15 final clean worktree + limitations/falsifiers: NOT RUN
 ```
 
-Observable 10 decisive command hash: `3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946`.
+Observable 11 decisive command hash: `6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D`.
 
-## Active observable 11
-
-Question:
-
-> When the registered deterministic completion contract is fully satisfied, does installed LBE persist `COMPLETED / VALIDATED_COMPLETION`, and does a fresh installed process recover the same terminal task/session identity?
-
-Acceptance boundary:
+## Observable 11 — durable validated completion proven
 
 ```text
-one governed mutation
- -> source_change PASS
- -> focused_test PASS
- -> git_status PASS
- -> provider turn success but lbe_completion_truth=false
- -> task running / AWAITING_VALIDATION
- -> session validate => READY
- -> task completed / VALIDATED_COMPLETION
- -> fresh installed process
- -> same terminal session/task authority
+governed mutation: PASS
+registered completion contract: PASS
+source_change / focused_test / git_status: all PASS
+provider completion truth remained false: PASS
+pre-validation task = running / AWAITING_VALIDATION: PASS
+session validate => READY: PASS
+validated completion persisted: PASS
+fresh installed process terminal state: PASS
+session/task identity preserved: PASS
+completion evidence persisted: PASS
+source checkout clean: PASS
 ```
 
-The normal registered completion policy remains the only completion authority. No synthetic completion contract or alternate persistence path is permitted.
+This proves both sides of the completion boundary: provider turn success cannot self-authorize completion, while fully satisfied LBE-owned deterministic evidence does authorize `COMPLETED / VALIDATED_COMPLETION`, and that terminal authority survives a fresh installed process.
 
 ## Current authority boundary
 
 ```text
 active_phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
 current_observable: 11
-current_status: OPEN
+current_status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 publish_allowed_now: false
 ```
 
-Observable 12 remains locked until observable 11 is classified `PASS` and recorded.
+Observable 12 requires explicit advancement.
+
+## Next acceptance target
+
+Observable 12:
+
+> Prove that credentials/secrets do not leak into repository files, runtime logs, persisted receipts/evidence, provider continuation payloads, or acceptance artifacts during the installed governed flow.
 
 ## Remaining sequence
 
 ```text
-#11 validated completion survives fresh process
 #12 no credential/secret leakage into repo/logs/receipts/artifacts
 #13 focused installed/runtime regression
 #14 no source changes absent a real falsifier
@@ -99,7 +99,7 @@ Observable 12 remains locked until observable 11 is classified `PASS` and record
 ## Release progression
 
 ```text
-finish R7 observables 11-15
+finish R7 observables 12-15
  -> R7 PASS
  -> release/package readiness acceptance
  -> only then version/tag/publish
