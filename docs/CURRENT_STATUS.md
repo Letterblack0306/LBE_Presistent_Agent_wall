@@ -18,7 +18,7 @@ GitHub -> canonical remote source/docs/gates/checkpoints/patches
 LoopTool/local -> test/debug/runtime execution evidence only
 ```
 
-GPT-Knowledge method currently applied: `ai-agents/unified-agent-engineering-methods.md` proof-before-plan, explicit evidence classes, live runtime proof for security/integration claims, receipts over narrative, and provider credential configuration separated from evidence/state.
+GPT-Knowledge method currently applied: proof-before-plan, explicit evidence classes, live runtime proof for security/integration claims, receipts over narrative, and provider credential configuration separated from evidence/state.
 
 ## Accepted baseline
 
@@ -28,13 +28,11 @@ CLI_NORMAL_PATH_ACCEPTANCE: PROVEN_COMPLETE
 R7.1-R7.12: PASS (R7.3 PASS_AFTER_REPAIR)
 ```
 
-Observable 12 decisive command hash: `C3BC8C5B57AFC72B06CA6D2F1D663CB461F533E802F605F24CE09A812E8BAFBB`.
-
-## Active R7 observable state
+## Current R7 observable state
 
 ```text
 observable 12 credential/secret non-leakage: PASS
-observable 13 installed/runtime regression: LOCKED
+observable 13 installed/runtime regression: OPEN
 observable 14 no source changes absent a real falsifier: NOT RUN
 observable 15 final clean worktree + limitations/falsifiers: NOT RUN
 ```
@@ -73,7 +71,7 @@ provider authorization header match assertion returned 0
 
 Investigation result:
 - Runtime transport was present.
-- The diagnostic found lowercase header representation (`authorization`).
+- Diagnostic confirmed lowercase header representation (`authorization`).
 - Product leakage behavior was not falsified.
 
 Classification:
