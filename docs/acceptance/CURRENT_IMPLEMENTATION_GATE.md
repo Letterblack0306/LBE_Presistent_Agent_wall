@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 12 — IMPLEMENTATION LOCKED**
+Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 12 — DIAGNOSTIC ACTIVE — IMPLEMENTATION LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
@@ -30,24 +30,52 @@ Observable 11 decisive proof: `6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FF
 
 Question:
 
-> Does a synthetic provider credential remain confined to the explicit provider-config input and outbound Authorization header, with no leakage into provider JSON bodies, runtime/CLI output, receipts, completion evidence, persistent state, workspace/repository files, or acceptance artifacts?
+> Does a synthetic provider credential remain confined to the explicit ephemeral provider-config input and outbound provider transport header(s), with no leakage into provider JSON bodies, runtime/CLI output, receipts, completion evidence, persistent state, workspace/repository files, or acceptance artifacts?
 
-### Required installed proof
+### Prior invocation
 
-- isolated site-packages import;
-- runtime-generated canary credential, never committed or printed;
-- exact Authorization header observed by the local deterministic provider;
-- no canary in either provider JSON request body, including tool-result continuation;
-- no canary in CLI stdout/stderr or returned JSON;
-- no canary in deterministic result, R6E ToolReceipt, or completion evidence;
-- after deleting the ephemeral provider input, no canary in the disposable probe filesystem, raw SQLite bytes, state directory, workspace, source checkout, or acceptance surfaces;
-- source worktree remains clean.
+Command hash:
 
-GPT-Knowledge method applied: proof-before-plan, live-runtime evidence for security claims, explicit evidence classes, receipts over narrative, and provider credential configuration kept separate from persisted evidence.
+`F92FFB2C41E692FF4B44A2E7EF4E9C94027F69A94148655E19C07F7289B9ACAC`
+
+Classification:
+
+```text
+TEST_HARNESS_PROVIDER_HEADER_SHAPE_ASSUMPTION
+product secret leak: NOT PROVEN
+product credential transport failure: NOT PROVEN
+production patch justified: NO
+```
+
+The installed flow reached the provider twice, but the probe asserted one transport representation: `Authorization: Bearer <canary>`. Exact HTTP header serialization belongs to the provider/client transport layer and is not itself an LBE acceptance invariant.
+
+### Current bounded diagnostic
+
+Run `scripts/r7_observable12_header_diagnostic.py` through LoopTool/local only.
+
+The diagnostic:
+
+- generates the canary at runtime;
+- scans outbound HTTP header **values** for the exact canary;
+- prints only matching header **names**, never values;
+- preserves the existing provider-body/runtime/receipt/evidence/persistence/source leakage checks;
+- changes no installed or production LBE source.
+
+Discriminator:
+
+```text
+credential canary observed in one or more outbound HTTP headers
+ -> credential transport proven; continue/close non-leakage predicate if all forbidden surfaces remain clean
+
+credential canary absent from every outbound HTTP header
+ -> real provider-transport/configuration falsifier; stop and investigate before any patch
+```
+
+GPT-Knowledge method applied: proof-before-plan, live-runtime evidence for security/integration claims, failed invocation proves only that invocation, explicit evidence classes, receipts over narrative, and provider credential configuration kept separate from persisted evidence.
 
 ## Falsifier
 
-Any raw canary occurrence outside the explicitly allowed credential input / outbound Authorization header is a product falsifier. A harness/environment failure before these surfaces are inspected is not a product falsifier and does not authorize a patch.
+Any raw canary occurrence outside the explicitly allowed ephemeral provider input / outbound provider transport header is a product leak falsifier. Complete absence of the configured canary from all outbound provider HTTP headers is a provider-transport/configuration falsifier. A harness/environment failure before these predicates are inspected is not a product falsifier.
 
 ## Stop rule
 
