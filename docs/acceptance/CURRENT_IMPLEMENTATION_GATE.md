@@ -1,10 +1,10 @@
 # Current Implementation Gate
 
-Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 11 — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 12 — IMPLEMENTATION LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
-Current slice: `OBSERVABLE_11_VALIDATED_COMPLETION_FRESH_PROCESS`
+Current slice: `OBSERVABLE_12_CREDENTIAL_SECRET_NON_LEAKAGE`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
@@ -26,31 +26,32 @@ observable 11: PASS
 
 Observable 11 decisive proof: `6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D`.
 
-## Observable 11 result
+## Active observable 12
 
-The installed positive completion path is proven:
+Question:
 
-```text
-one governed mutation: PASS
-registered completion contract: PASS
-source_change / focused_test / git_status evidence: all PASS
-provider lbe_completion_truth=false: PASS
-pre-validation task running / AWAITING_VALIDATION: PASS
-session validate => READY: PASS
-persisted task completed / VALIDATED_COMPLETION: PASS
-fresh installed process recovers same terminal state: PASS
-session/task/workspace/provider/model identity preserved: PASS
-completion evidence remains persisted: PASS
-source checkout clean: PASS
-```
+> Does a synthetic provider credential remain confined to the explicit provider-config input and outbound Authorization header, with no leakage into provider JSON bodies, runtime/CLI output, receipts, completion evidence, persistent state, workspace/repository files, or acceptance artifacts?
 
-This proves positive completion truth is established only by the existing LBE deterministic contract/evidence gate and persists durably across a fresh installed process.
+### Required installed proof
 
-## Current boundary
+- isolated site-packages import;
+- runtime-generated canary credential, never committed or printed;
+- exact Authorization header observed by the local deterministic provider;
+- no canary in either provider JSON request body, including tool-result continuation;
+- no canary in CLI stdout/stderr or returned JSON;
+- no canary in deterministic result, R6E ToolReceipt, or completion evidence;
+- after deleting the ephemeral provider input, no canary in the disposable probe filesystem, raw SQLite bytes, state directory, workspace, source checkout, or acceptance surfaces;
+- source worktree remains clean.
 
-Observable 11 is closed `PASS`.
+GPT-Knowledge method applied: proof-before-plan, live-runtime evidence for security claims, explicit evidence classes, receipts over narrative, and provider credential configuration kept separate from persisted evidence.
 
-Observable 12 is **not active** and requires explicit advancement. Its target is credential/secret non-leakage across repository files, logs, receipts, provider continuation payloads, and generated acceptance artifacts.
+## Falsifier
+
+Any raw canary occurrence outside the explicitly allowed credential input / outbound Authorization header is a product falsifier. A harness/environment failure before these surfaces are inspected is not a product falsifier and does not authorize a patch.
+
+## Stop rule
+
+Do not proceed to observable 13 until observable 12 is classified `PASS` and recorded.
 
 ```text
 implementation_allowed: false
@@ -58,5 +59,3 @@ architecture_changes_allowed: false
 next_phase_locked: true
 publish_allowed_now: false
 ```
-
-No production/runtime/package implementation change is authorized. Release/package readiness and publication remain blocked until remaining R7 observables pass.
