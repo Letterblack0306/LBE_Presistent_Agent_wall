@@ -1,25 +1,12 @@
 # Current Implementation Gate
 
-Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 11 — IMPLEMENTATION LOCKED**
+Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 11 — NEXT OBSERVABLE LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
 Current slice: `OBSERVABLE_11_VALIDATED_COMPLETION_FRESH_PROCESS`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
-
-## Active plan
-
-```text
-active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
-checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: OPEN
-required_evidence_level: INSTALLED_RUNTIME_VALIDATED_COMPLETION_FRESH_PROCESS_PROOF
-implementation_allowed: false
-architecture_changes_allowed: false
-next_phase_locked: true
-publish_allowed_now: false
-```
 
 ## Accepted R7 baseline
 
@@ -34,36 +21,42 @@ observable 7: PASS
 observable 8: PASS
 observable 9: PASS
 observable 10: PASS
+observable 11: PASS
 ```
 
-Observable 10 decisive proof: `3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946`.
+Observable 11 decisive proof: `6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D`.
 
-## Active observable 11
+## Observable 11 result
 
-Question:
+The installed positive completion path is proven:
 
-> When the registered deterministic completion contract is fully satisfied, does installed LBE persist `COMPLETED / VALIDATED_COMPLETION`, and does a fresh installed process recover the same terminal task/session identity?
+```text
+one governed mutation: PASS
+registered completion contract: PASS
+source_change / focused_test / git_status evidence: all PASS
+provider lbe_completion_truth=false: PASS
+pre-validation task running / AWAITING_VALIDATION: PASS
+session validate => READY: PASS
+persisted task completed / VALIDATED_COMPLETION: PASS
+fresh installed process recovers same terminal state: PASS
+session/task/workspace/provider/model identity preserved: PASS
+completion evidence remains persisted: PASS
+source checkout clean: PASS
+```
 
-Required proof:
+This proves positive completion truth is established only by the existing LBE deterministic contract/evidence gate and persists durably across a fresh installed process.
 
-1. use isolated installed `lbe` / site-packages only;
-2. create a fresh disposable Git workspace with a passing pytest baseline;
-3. run normal installed coding against a deterministic provider that requests one governed candidate-text mutation;
-4. let the normal gateway establish the registered `source_change`, `focused_test`, and `git_status` completion contract;
-5. require all three trusted completion evidence kinds to persist as `PASS`;
-6. before explicit validation, require persistent task state `running / AWAITING_VALIDATION` and provider `lbe_completion_truth=false`;
-7. invoke installed `session validate` and require completion verdict `READY`;
-8. require persisted task state `completed / VALIDATED_COMPLETION`;
-9. start a fresh installed process and require it to recover the same session ID, task ID, workspace identity, provider/model identity, and terminal task state;
-10. require completion contract/evidence still present and consistent after restart;
-11. source checkout remains clean.
+## Current boundary
 
-## Falsifier
+Observable 11 is closed `PASS`.
 
-Any fully passing registered contract that does not produce `READY`, any `READY` result that does not persist `COMPLETED / VALIDATED_COMPLETION`, or any fresh installed process that loses/substitutes the terminal session/task identity is a product falsifier.
+Observable 12 is **not active** and requires explicit advancement. Its target is credential/secret non-leakage across repository files, logs, receipts, provider continuation payloads, and generated acceptance artifacts.
 
-Harness/provider/fixture/environment failures that do not reach these predicates do not justify a production patch.
+```text
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
+publish_allowed_now: false
+```
 
-## Stop rule
-
-Do not proceed to observable 12 until observable 11 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
+No production/runtime/package implementation change is authorized. Release/package readiness and publication remain blocked until remaining R7 observables pass.
