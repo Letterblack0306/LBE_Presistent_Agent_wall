@@ -1,10 +1,10 @@
 # Current Implementation Gate
 
-Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 10 — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — R7 INSTALLED END-TO-END ACCEPTANCE — OBSERVABLE 11 — IMPLEMENTATION LOCKED**
 
 Current phase: `R7_INSTALLED_END_TO_END_ACCEPTANCE`
 
-Current slice: `OBSERVABLE_10_PROVIDER_COMPLETION_PROVISIONAL`
+Current slice: `OBSERVABLE_11_VALIDATED_COMPLETION_FRESH_PROCESS`
 
 This file is the human-readable authority paired with `.lbe/governance/implementation-gates.json`.
 
@@ -13,8 +13,8 @@ This file is the human-readable authority paired with `.lbe/governance/implement
 ```text
 active_plan: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
 checkpoint: docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
-status: PASS
-required_evidence_level: INSTALLED_RUNTIME_PROVISIONAL_COMPLETION_AUTHORITY_PROOF
+status: OPEN
+required_evidence_level: INSTALLED_RUNTIME_VALIDATED_COMPLETION_FRESH_PROCESS_PROOF
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
@@ -38,27 +38,32 @@ observable 10: PASS
 
 Observable 10 decisive proof: `3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946`.
 
-## Observable 10 result
+## Active observable 11
 
-```text
-registered LBE completion contract: PASS
-provider/Cline terminal success: PASS
-lbe_completion_truth=false: PASS
-post-reasoning task running / AWAITING_VALIDATION: PASS
-deterministic validation rejected completion: PASS
-premature VALIDATED_COMPLETION: NONE
-workspace unchanged: PASS
-source worktree clean: PASS
-```
+Question:
 
-This proves provider prose and provider turn success cannot self-authorize LBE completion. Completion authority remains with the persisted deterministic contract/evidence gate.
+> When the registered deterministic completion contract is fully satisfied, does installed LBE persist `COMPLETED / VALIDATED_COMPLETION`, and does a fresh installed process recover the same terminal task/session identity?
 
-Two earlier failed invocations were classified as harness failures only: synthetic completion-contract interference and Windows locked disposable Git-directory cleanup. No production/runtime/package patch was justified.
+Required proof:
 
-## Current boundary
+1. use isolated installed `lbe` / site-packages only;
+2. create a fresh disposable Git workspace with a passing pytest baseline;
+3. run normal installed coding against a deterministic provider that requests one governed candidate-text mutation;
+4. let the normal gateway establish the registered `source_change`, `focused_test`, and `git_status` completion contract;
+5. require all three trusted completion evidence kinds to persist as `PASS`;
+6. before explicit validation, require persistent task state `running / AWAITING_VALIDATION` and provider `lbe_completion_truth=false`;
+7. invoke installed `session validate` and require completion verdict `READY`;
+8. require persisted task state `completed / VALIDATED_COMPLETION`;
+9. start a fresh installed process and require it to recover the same session ID, task ID, workspace identity, provider/model identity, and terminal task state;
+10. require completion contract/evidence still present and consistent after restart;
+11. source checkout remains clean.
 
-Observable 10 is closed `PASS`.
+## Falsifier
 
-Observable 11 is **not active** and requires explicit advancement. Its acceptance target is the positive side of the same authority boundary: once the registered deterministic completion contract is fully satisfied, `COMPLETED / VALIDATED_COMPLETION` must persist and a fresh installed process must observe the same terminal state.
+Any fully passing registered contract that does not produce `READY`, any `READY` result that does not persist `COMPLETED / VALIDATED_COMPLETION`, or any fresh installed process that loses/substitutes the terminal session/task identity is a product falsifier.
 
-No production/runtime/package implementation change is authorized. Release/package readiness and publication remain blocked until remaining R7 observables pass.
+Harness/provider/fixture/environment failures that do not reach these predicates do not justify a production patch.
+
+## Stop rule
+
+Do not proceed to observable 12 until observable 11 is classified `PASS` and recorded. No production implementation change is authorized under this acceptance slice.
