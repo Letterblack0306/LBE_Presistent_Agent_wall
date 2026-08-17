@@ -2,15 +2,15 @@
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_11_VALIDATED_COMPLETION_FRESH_PROCESS
-status: PASS
+slice: OBSERVABLE_12_CREDENTIAL_SECRET_NON_LEAKAGE
+status: OPEN
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
-required_evidence_level: INSTALLED_RUNTIME_VALIDATED_COMPLETION_FRESH_PROCESS_PROOF
+required_evidence_level: INSTALLED_RUNTIME_CREDENTIAL_SECRET_NON_LEAKAGE_PROOF
 implementation_allowed: false
 next_phase_locked: true
 ```
 
-## Accepted R7 evidence
+## Accepted R7 evidence carried forward
 
 ```text
 observable 1: PASS
@@ -24,41 +24,69 @@ observable 8: PASS
 observable 9: PASS
 observable 10: PASS
 observable 11: PASS
+  decisive command hash: 6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D
 ```
 
-Observable 11 decisive command hash:
+## Observable 12 — active
 
-`6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D`
+Question:
 
-## Observable 11 result
+> Does a synthetic provider credential remain confined to its explicit credential input and outbound Authorization header, without leaking into runtime/persistence/repository/acceptance surfaces?
 
-Installed positive completion path proved:
+Method follows GPT-Knowledge `ai-agents/unified-agent-engineering-methods.md`: establish revision identity, use live runtime proof for security/integration claims, distinguish observation from inference, inspect exact outputs/state, and treat credential configuration separately from evidence/receipts.
+
+### Allowed credential locus
 
 ```text
-R7_OBS11_GOVERNED_MUTATION=PASS
-R7_OBS11_PROVIDER_COMPLETION_TRUTH_FALSE=PASS
-R7_OBS11_REGISTERED_CONTRACT=PASS
-R7_OBS11_ALL_COMPLETION_EVIDENCE_PASS=PASS
-R7_OBS11_AWAITING_VALIDATION_PERSISTED=PASS
-R7_OBS11_VALIDATION_READY=PASS
-R7_OBS11_VALIDATED_COMPLETION_PERSISTED=PASS
-R7_OBS11_FRESH_PROCESS_TERMINAL_STATE=PASS
-R7_OBS11_SESSION_TASK_IDENTITY_PRESERVED=PASS
-R7_OBS11_COMPLETION_EVIDENCE_PERSISTED=PASS
-R7_OBS11_VALIDATED_COMPLETION_FRESH_PROCESS=PASS
-R7_OBSERVABLE_11=PASS
-R7_OBS11_SOURCE_WORKTREE_CLEAN=PASS
+ephemeral disposable provider.json input
+outbound Authorization: Bearer <canary> header received by local deterministic provider stub
 ```
 
-The normal registered contract (`source_change`, `focused_test`, `git_status`) was fully satisfied by trusted producers. Provider completion remained non-authoritative (`lbe_completion_truth=false`) until explicit deterministic validation returned `READY`, which persisted `COMPLETED / VALIDATED_COMPLETION`. A distinct fresh installed process then recovered the same terminal task/session authority and persisted completion evidence.
+The provider input file is deleted before the persistence/file scans. The raw canary is never printed by the probe; only its SHA-256 may be emitted as test identity.
+
+### Forbidden leakage surfaces
+
+```text
+provider JSON request bodies
+CLI stdout/stderr and JSON responses
+deterministic_result/provider events
+governed R6E ToolReceipt payloads
+persisted completion evidence
+raw SQLite/state files
+workspace/Git files
+source checkout files
+acceptance docs/scripts/artifacts
+```
+
+### Required proof
+
+1. installed package resolves from isolated site-packages;
+2. local provider receives the exact synthetic credential through Authorization on both provider requests;
+3. provider JSON bodies do not contain the canary;
+4. installed governed coding executes one normal tool-call/continuation flow;
+5. CLI output, deterministic result, receipts, and completion evidence do not contain the canary;
+6. provider input is deleted, then all remaining disposable persistence files are scanned byte-for-byte for the canary;
+7. raw SQLite bytes and state files are clean;
+8. workspace files and project source/acceptance surfaces are clean;
+9. source worktree remains unchanged;
+10. no production/source patch is made unless this probe proves a real leak.
+
+## Falsifiers
+
+```text
+canary in provider JSON body
+canary in CLI stdout/stderr
+canary in deterministic result or ToolReceipt
+canary in completion evidence / SQLite / state files
+canary in workspace/source/acceptance files
+provider not actually authenticated with the canary header
+```
 
 ## Current classification
 
 ```text
-validated_completion_fresh_process: PASS
+credential_secret_non_leakage: PENDING
 implementation_changes: FORBIDDEN
-observable_12: LOCKED_PENDING_EXPLICIT_ADVANCE
+observable_13: LOCKED
 release_publish_allowed_now: false
 ```
-
-No product falsifier was observed. Observable 12 must not be activated without explicit user advancement.
