@@ -40,7 +40,7 @@ observable 7: PASS
 observable 8: PASS
 observable 9: PASS
 observable 10 provider completion provisional: PASS
-observable 11 validated completion survives fresh process: LOCKED_PENDING_EXPLICIT_ADVANCE
+observable 11 validated completion survives fresh process: OPEN
 observable 12 credential/secret non-leakage: NOT RUN
 observable 13 installed/runtime regression: NOT RUN
 observable 14 no source changes absent a real falsifier: NOT RUN
@@ -49,66 +49,42 @@ observable 15 final clean worktree + limitations/falsifiers: NOT RUN
 
 Observable 10 decisive command hash: `3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946`.
 
-## Observable 10 — completion authority proven
+## Active observable 11
+
+Question:
+
+> When the registered deterministic completion contract is fully satisfied, does installed LBE persist `COMPLETED / VALIDATED_COMPLETION`, and does a fresh installed process recover the same terminal task/session identity?
+
+Acceptance boundary:
 
 ```text
-registered completion contract: PASS
-provider turn terminal success: PASS
-provider completion claim present: PASS
-lbe_completion_truth=false: PASS
-reasoning completion remains provisional: PASS
-persisted task = running / AWAITING_VALIDATION: PASS
-deterministic validation rejects unsatisfied contract: PASS
-premature COMPLETED / VALIDATED_COMPLETION: NONE
-workspace unchanged: PASS
-source worktree clean: PASS
+one governed mutation
+ -> source_change PASS
+ -> focused_test PASS
+ -> git_status PASS
+ -> provider turn success but lbe_completion_truth=false
+ -> task running / AWAITING_VALIDATION
+ -> session validate => READY
+ -> task completed / VALIDATED_COMPLETION
+ -> fresh installed process
+ -> same terminal session/task authority
 ```
 
-The provider may finish its own turn and claim completion, but that does not establish LBE completion truth. Only persisted deterministic completion evidence evaluated against the registered LBE contract can produce `VALIDATED_COMPLETION`.
-
-Two failed observable-10 invocations were correctly excluded from product diagnosis:
-
-```text
-D366A3... = TEST_HARNESS_COMPLETION_CONTRACT_INTERFERENCE
-4CD543... = TEST_HARNESS_WINDOWS_LOCKED_TEMP_GIT_DIRECTORY
-```
-
-No production patch was made for either.
+The normal registered completion policy remains the only completion authority. No synthetic completion contract or alternate persistence path is permitted.
 
 ## Current authority boundary
 
 ```text
 active_phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-current_observable: 10
-current_status: PASS
+current_observable: 11
+current_status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
 publish_allowed_now: false
 ```
 
-Observable 11 requires explicit advancement.
-
-## Synchronization checkpoint
-
-```text
-checkpoint_date: 2026-08-17
-project_state: R7.1-R7.10 accepted
-latest_decisive_runtime_proof: 3C5DCA411AF217AE301344B803B6D9BD1753CE52B66A5C746129C05BC889B946
-next_observable: R7.11
-next_observable_state: LOCKED_PENDING_EXPLICIT_ADVANCE
-implementation_allowed: false
-publish_allowed_now: false
-mirror_target: Letterblack0306/GPT-Knowledge/project-engineering/projects/lbe-persistent-agent-wall-status.md
-```
-
-This checkpoint is a status synchronization marker only. It does not activate R7.11 and does not authorize implementation or release work.
-
-## Next acceptance target
-
-Observable 11:
-
-> Prove the positive completion path: once the registered deterministic completion contract is fully satisfied, LBE persists `COMPLETED / VALIDATED_COMPLETION`, and a fresh installed process observes that same terminal state and task/session identity.
+Observable 12 remains locked until observable 11 is classified `PASS` and recorded.
 
 ## Remaining sequence
 
