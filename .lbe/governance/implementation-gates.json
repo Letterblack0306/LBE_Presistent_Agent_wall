@@ -2,8 +2,8 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "OBSERVABLE_11_VALIDATED_COMPLETION_FRESH_PROCESS",
-  "status": "PASS",
+  "active_slice": "OBSERVABLE_12_CREDENTIAL_SECRET_NON_LEAKAGE",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -42,25 +42,36 @@
     "R7_OBSERVABLE_11": "PASS"
   },
   "current_observable": {
-    "number": 11,
-    "status": "PASS",
-    "question": "When the registered deterministic completion contract is fully satisfied, does installed LBE persist COMPLETED / VALIDATED_COMPLETION and does a fresh installed process recover the same terminal task/session identity?",
-    "required_evidence_level": "INSTALLED_RUNTIME_VALIDATED_COMPLETION_FRESH_PROCESS_PROOF",
-    "implementation_changes_allowed": false,
-    "decisive_command_hash": "6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D"
+    "number": 12,
+    "status": "OPEN",
+    "question": "Does a synthetic provider credential remain confined to the explicit provider-config input and outbound Authorization header, with no leakage into provider JSON bodies, CLI output, runtime results, receipts, completion evidence, persistent SQLite/state files, workspace/repository files, or acceptance artifacts?",
+    "required_evidence_level": "INSTALLED_RUNTIME_CREDENTIAL_SECRET_NON_LEAKAGE_PROOF",
+    "implementation_changes_allowed": false
   },
+  "observable_12_falsifiers": [
+    "credential canary appears in provider request JSON body",
+    "credential canary appears in CLI stdout or stderr",
+    "credential canary appears in deterministic runtime result or governed ToolReceipt",
+    "credential canary appears in persisted completion evidence or SQLite/state storage",
+    "credential canary appears in workspace/repository files or acceptance artifacts",
+    "installed provider does not receive the canary through the Authorization header on the actual provider requests"
+  ],
+  "allowed_secret_locus": [
+    "ephemeral disposable provider-config input before deletion",
+    "outbound provider Authorization header observed only by the local deterministic stub"
+  ],
+  "method_reference": "GPT-Knowledge ai-agents/unified-agent-engineering-methods.md: proof-before-plan, explicit evidence classes, runtime proof, provider credentialRef separation, receipts outrank narrative",
   "forbidden": [
     "source/runtime/package implementation changes",
     "architecture rewrite",
-    "second completion authority",
+    "secret-redaction patch without a proven leak",
     "release version tag or publish work",
-    "activating observable 12 without explicit advancement"
+    "continuing to observable 13 before observable 12 is classified PASS"
   ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "explicitly activate R7 observable 12",
       "finish R7 observables 12 through 15",
       "release/package readiness acceptance"
     ]
