@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/RELEASE_PACKAGE_CONTRACT_REPAIR_GATE.md",
-  "active_phase": "RELEASE_PACKAGE_CONTRACT_REPAIR",
-  "active_slice": "ALIGN_PUBLISH_WORKFLOW_WITH_CANONICAL_PACKAGE_METADATA",
+  "active_plan": "docs/acceptance/RELEASE_PACKAGE_READINESS_AUDIT_GATE.md",
+  "active_phase": "RELEASE_PACKAGE_READINESS_ACCEPTANCE",
+  "active_slice": "VERIFY_REPAIRED_DISTRIBUTION_CONTRACT",
   "status": "OPEN",
-  "implementation_allowed": true,
+  "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -54,35 +54,32 @@
     "R7_OBSERVABLE_13": "PASS_AFTER_REPAIR",
     "R7_OBSERVABLE_14": "PASS",
     "R7_OBSERVABLE_15": "PASS",
-    "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS"
+    "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS",
+    "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS"
   },
   "current_release_audit": {
-    "status": "FAIL",
-    "question": "What is the current canonical distribution contract on main, and are its package metadata, release workflows, built artifacts, isolated install behavior, and documented publication assumptions internally consistent?",
-    "required_evidence_level": "CURRENT_SOURCE_PLUS_LOCAL_BUILD_PLUS_ARTIFACT_CONTRACT",
-    "implementation_changes_allowed": true,
+    "status": "OPEN",
+    "question": "Is the repaired canonical Python distribution contract now internally consistent on main, with package metadata authoritative, publication workflow version-derived and manual-only, current package evidence still valid, and publication still locked?",
+    "required_evidence_level": "CURRENT_SOURCE_PLUS_REPAIRED_WORKFLOW_CONTRACT_PLUS_EXISTING_EXACT_HEAD_PACKAGE_PROOF",
+    "implementation_changes_allowed": false,
     "publish_allowed": false,
-    "classification": "PROVEN_WORKFLOW_PACKAGE_CONTRACT_CONFLICT",
+    "prior_classification": "PROVEN_WORKFLOW_PACKAGE_CONTRACT_CONFLICT",
     "packaging_tests": "PASS",
     "packaging_test_count": 2,
     "packaging_test_duration_seconds": 1206.98,
-    "audit_command_hash": "D67319F83220590A76E4F973A61C57E4B0AB503FEF6E56B57B680644035DE320",
+    "audit_command_hash": "D67319F83220590A76E4F973A61C57E4B0AB503FEF6ABC63AE9531B562D2BA1A2C",
     "audit_command_classification": "HARNESS_TIMEOUT_AFTER_DECISIVE_TEST_PASS"
   },
-  "known_release_conflict": {
-    "canonical_python_package_version": "0.2.0",
-    "publish_workflow_expected_version": "2.0.1",
-    "publish_workflow_branch": "release/python-runtime-v2.0.1",
-    "classification": "DOCUMENT_WORKFLOW_VS_CURRENT_PACKAGE_CONFLICT"
-  },
   "release_repair": {
-    "status": "OPEN",
-    "purpose": "Align the existing Python publish workflow with pyproject.toml as the canonical version owner without changing version or publishing.",
-    "allowed_changes": [
-      ".github/workflows/publish-python-runtime.yml",
-      "docs/acceptance/RELEASE_PACKAGE_CONTRACT_REPAIR_GATE.md",
-      ".lbe/governance/implementation-gates.json"
-    ],
+    "status": "PASS",
+    "decisive_hash": "F55FC30C77F746DC035A7D82C3241ADC8552C5B9418F6B390D75EF778FAB3140",
+    "validated_head": "a99984e812c11b4ecc0dd13514c99d28a6aa4918",
+    "canonical_python_package_version": "0.2.0",
+    "version_authority": "pyproject.toml",
+    "stale_version_removed": true,
+    "historical_release_branch_removed": true,
+    "manual_only_trigger": true,
+    "scope_validation": "PASS",
     "publish_allowed": false
   },
   "accepted_observable_15_evidence": {
@@ -141,17 +138,17 @@
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "release workflow contract repair",
-      "release/package readiness acceptance"
+      "verify repaired distribution contract",
+      "release/package readiness acceptance closure"
     ]
   },
   "forbidden": [
-    "changing pyproject.toml version during this repair",
-    "publishing to PyPI or npm during this repair",
+    "package version change during readiness verification",
+    "publishing to PyPI or npm during readiness verification",
     "release tag or GitHub release creation",
-    "historical release branch activation",
+    "automatic historical release branch activation",
     "adding an npm publication path",
     "runtime/provider/tool/authorization/memory/completion architecture changes",
-    "second publication workflow"
+    "workflow implementation changes without a separately activated repair gate"
   ]
 }
