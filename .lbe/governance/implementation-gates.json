@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/RELEASE_PACKAGE_READINESS_AUDIT_GATE.md",
-  "active_phase": "RELEASE_PACKAGE_READINESS_ACCEPTANCE",
-  "active_slice": "VERIFY_REPAIRED_DISTRIBUTION_CONTRACT",
+  "active_plan": "docs/acceptance/PUBLICATION_PRECHECK_GATE.md",
+  "active_phase": "PUBLICATION_PRECHECK",
+  "active_slice": "VERIFY_PYPI_NAMESPACE_VERSION_AND_TRUSTED_PUBLISHING",
   "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
@@ -13,8 +13,12 @@
     "UNVERIFIED",
     "DOCUMENT_CONFLICT",
     "MISSING_EVIDENCE",
-    "BLOCKED_WORKSPACE_AUTHORITY",
-    "BLOCKED_PARALLEL_ARCHITECTURE"
+    "PYPI_NAMESPACE_UNRESOLVED",
+    "PYPI_NAMESPACE_FOREIGN",
+    "PYPI_VERSION_ALREADY_EXISTS",
+    "TRUSTED_PUBLISHING_UNVERIFIED",
+    "TRACKED_SOURCE_DIRTY",
+    "PACKAGE_VERSION_CONFLICT"
   ],
   "rules": {
     "one_active_slice": true,
@@ -28,7 +32,6 @@
     "architecture_change_requires_user_authorization": true
   },
   "accepted_baseline": {
-    "canonical_base_sha": "69c6ae764bc217cd5795ddf8a972658223a681a0",
     "R3": "PROVEN_COMPLETE",
     "R4": "PROVEN_COMPLETE",
     "R5": "PROVEN_COMPLETE",
@@ -39,116 +42,74 @@
     "R6E": "PROVEN_COMPLETE",
     "R6F": "PROVEN_COMPLETE",
     "CLI": "PROVEN_COMPLETE",
-    "R7_OBSERVABLE_1": "PASS",
-    "R7_OBSERVABLE_2": "PASS",
-    "R7_OBSERVABLE_3": "PASS_AFTER_REPAIR",
-    "R7_OBSERVABLE_4": "PASS",
-    "R7_OBSERVABLE_5": "PASS",
-    "R7_OBSERVABLE_6": "PASS",
-    "R7_OBSERVABLE_7": "PASS",
-    "R7_OBSERVABLE_8": "PASS",
-    "R7_OBSERVABLE_9": "PASS",
-    "R7_OBSERVABLE_10": "PASS",
-    "R7_OBSERVABLE_11": "PASS",
-    "R7_OBSERVABLE_12": "PASS",
-    "R7_OBSERVABLE_13": "PASS_AFTER_REPAIR",
-    "R7_OBSERVABLE_14": "PASS",
-    "R7_OBSERVABLE_15": "PASS",
     "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS",
-    "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS"
+    "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS",
+    "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS"
   },
-  "current_release_audit": {
-    "status": "OPEN",
-    "question": "Is the repaired canonical Python distribution contract now internally consistent on main, with package metadata authoritative, publication workflow version-derived and manual-only, current package evidence still valid, and publication still locked?",
-    "required_evidence_level": "CURRENT_SOURCE_PLUS_REPAIRED_WORKFLOW_CONTRACT_PLUS_EXISTING_EXACT_HEAD_PACKAGE_PROOF",
-    "implementation_changes_allowed": false,
-    "publish_allowed": false,
-    "prior_classification": "PROVEN_WORKFLOW_PACKAGE_CONTRACT_CONFLICT",
+  "release_package_readiness": {
+    "status": "PASS",
+    "decisive_hash": "B0A7F67A78B8DB9DC7BB7A78D0B40F529E1DFFC44143BFE51F6E461407E6CFCA",
+    "canonical_version": "0.2.0",
+    "version_authority": "pyproject.toml",
+    "workflow_contract": "PASS",
+    "manual_only_publish_trigger": true,
+    "package_proof_still_applicable": true,
     "packaging_tests": "PASS",
-    "packaging_test_count": 2,
-    "packaging_test_duration_seconds": 1206.98,
-    "audit_command_hash": "D67319F83220590A76E4F973A61C57E4B0AB503FEF6ABC63AE9531B562D2BA1A2C",
-    "audit_command_classification": "HARNESS_TIMEOUT_AFTER_DECISIVE_TEST_PASS"
+    "publish_allowed": false
   },
   "release_repair": {
     "status": "PASS",
     "decisive_hash": "F55FC30C77F746DC035A7D82C3241ADC8552C5B9418F6B390D75EF778FAB3140",
     "validated_head": "a99984e812c11b4ecc0dd13514c99d28a6aa4918",
     "canonical_python_package_version": "0.2.0",
-    "version_authority": "pyproject.toml",
     "stale_version_removed": true,
     "historical_release_branch_removed": true,
     "manual_only_trigger": true,
-    "scope_validation": "PASS",
     "publish_allowed": false
   },
-  "accepted_observable_15_evidence": {
-    "decisive_hash": "1EA6416387E3A1AF9F2ABEC5CFA84ED414CDBCB11793C13AAB6FE34B00BE6919",
-    "canonical_main": "PASS",
-    "head_origin_identity": "PASS",
-    "tracked_worktree_clean": "PASS",
-    "untracked_artifacts_classified": "PASS",
-    "implementation_locked": "PASS",
-    "architecture_locked": "PASS",
-    "limitations_recorded": "PASS",
-    "publish_locked": "PASS"
-  },
-  "accepted_observable_13_evidence": {
-    "decisive_hash": "A2AC0D1058E3D817DF8E35A1540D6BC89D492C25F7D2D6A3936D54C44BD9A3AE",
-    "repair_gate": "docs/acceptance/R7_OBSERVABLE13_DEPENDENCY_PROVISIONING_REPAIR_GATE.md",
-    "repair_status": "PASS",
-    "isolated_site_packages": "PASS",
-    "locked_worker_dependencies_in_wheel": "PASS",
-    "installed_cline_agents_resolution": "PASS",
-    "governed_provider_tool_final_continuation": "PASS",
-    "tool_receipt_persistence": "PASS",
-    "completion_authority": "PASS",
-    "credential_non_leakage": "PASS",
-    "source_unchanged": "PASS",
-    "unexpected_workspace_mutation": "NONE"
-  },
-  "accepted_observable_14_evidence": {
-    "decisive_hash": "ED2E9D5763EEB5C57B073C002D616B3DC4298C067D5EFDBE3D463088E74DD054",
-    "canonical_main": "PASS",
-    "head_origin_identity": "PASS",
-    "implementation_locked": "PASS",
-    "architecture_locked": "PASS",
-    "tracked_source_unchanged": "PASS",
-    "untracked_generated_evidence_reported": "PASS"
+  "publication_precheck": {
+    "status": "OPEN",
+    "distribution": "lbe-guard-inspector",
+    "canonical_version": "0.2.0",
+    "required_evidence_level": "LIVE_REGISTRY_PLUS_GITHUB_PUBLISHING_CONFIGURATION",
+    "publish_allowed": false,
+    "required_checks": [
+      "live PyPI namespace state",
+      "live PyPI version collision state",
+      "GitHub pypi environment/trusted-publishing readiness",
+      "manual workflow OIDC contract",
+      "canonical main tracked-clean state"
+    ]
   },
   "known_harness_classifications": [
     {
       "observable": 13,
-      "classification": "TEST_HARNESS_REQUIREMENT_ID_VS_EVIDENCE_KIND_ASSERTION",
-      "detail": "The first repaired Observable 13 completion assertion compared CompletionDecision.satisfied_requirement_ids with contract evidence_kind values. Canonical completion evaluation returns requirement_id values by design. Runtime behavior was correct; only the probe assertion was corrected."
+      "classification": "TEST_HARNESS_REQUIREMENT_ID_VS_EVIDENCE_KIND_ASSERTION"
     },
     {
       "observable": 14,
-      "classification": "TEST_HARNESS_COMMIT_GATE_USED_AS_RUNTIME_VALIDATOR",
-      "detail": "The first Observable 14 command invoked scripts/check-implementation-gate.py while implementation was locked and no documentation paths were staged. That checker is a commit/staging gate, not a read-only runtime validator. The corrected Observable 14 proof did not invoke it and passed without source changes."
+      "classification": "TEST_HARNESS_COMMIT_GATE_USED_AS_RUNTIME_VALIDATOR"
     },
     {
       "phase": "RELEASE_PACKAGE_READINESS_ACCEPTANCE",
       "classification": "HARNESS_TIMEOUT_AFTER_DECISIVE_TEST_PASS",
-      "detail": "Release audit command D67319F8 timed out only after tests/test_release_packaging.py completed successfully: 2 passed in 1206.98s. The timeout occurred before a redundant additional wheel build and is not a package failure."
+      "detail": "tests/test_release_packaging.py passed 2 tests in 1206.98s before the outer command timeout"
     }
   ],
-  "method_reference": "GPT-Knowledge ai-agents/unified-agent-engineering-methods.md: proof-before-plan, explicit evidence classes, runtime proof over narrative, receipts over narrative, distinguish product falsifiers from harness failures",
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "verify repaired distribution contract",
-      "release/package readiness acceptance closure"
+      "publication precheck",
+      "separate explicit publication execution authorization"
     ]
   },
   "forbidden": [
-    "package version change during readiness verification",
-    "publishing to PyPI or npm during readiness verification",
-    "release tag or GitHub release creation",
-    "automatic historical release branch activation",
+    "publishing to PyPI during precheck",
+    "changing pyproject.toml version during precheck",
+    "choosing a replacement version by inference",
+    "creating tags or GitHub releases",
     "adding an npm publication path",
-    "runtime/provider/tool/authorization/memory/completion architecture changes",
-    "workflow implementation changes without a separately activated repair gate"
+    "runtime/package/workflow implementation changes without a separate repair gate"
   ]
 }
