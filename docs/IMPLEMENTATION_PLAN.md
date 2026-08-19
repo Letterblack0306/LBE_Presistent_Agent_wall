@@ -2,6 +2,33 @@
 
 Updated: 2026-08-17
 Status: Active canonical roadmap — R7 installed end-to-end acceptance failed on installed coding composition; repair investigation required before any implementation or release progression
+## Authority reconciliation (READ FIRST)
+
+Current machine-gate authority — `.lbe/governance/implementation-gates.json` and
+`docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md`:
+
+```text
+phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
+slice: OBSERVABLE_13_INSTALLED_RUNTIME_REGRESSION
+status: OPEN
+observables 1-12: PASS (observable 3 PASS_AFTER_REPAIR)
+observable 13: OPEN (current active slice)
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
+base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
+HEAD: 24d6e5950b912c0889396e95d307e41bdf05d06f
+```
+
+The status lines in the body below that describe "R7 FAIL / repair not yet activated" are
+**historical records** of the earlier observable-3 installed coding-composition failure and
+its repair investigation. They are not current machine-gate state. Live Git/runtime/validation
+evidence and the machine gate outrank them.
+
+**Architecture correction — read before extending the LBE wall:** the reasoning controller
+became the agent. See `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and section 15.
+
+
 
 ## 1. Product goal
 
@@ -396,3 +423,122 @@ Validation proves.
 Completion truth belongs to LBE.
 Release claims require installed/runtime/package evidence, not lower-layer inference.
 ```
+
+## 15. Documentation reconciliation & proposed agent-agency architecture review
+
+This section records the architectural lesson and the proposed future correction. It does
+**not** change current machine-gate state and does **not** activate any new gate.
+
+### CURRENT MACHINE STATE (authoritative)
+
+See the banner at the top of this file and the machine gate:
+
+```text
+phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
+slice: OBSERVABLE_13_INSTALLED_RUNTIME_REGRESSION
+status: OPEN
+observables 1-12: PASS (observable 3 PASS_AFTER_REPAIR)
+observable 13: OPEN (current active slice)
+implementation_allowed: false
+architecture_changes_allowed: false
+next_phase_locked: true
+```
+
+### HISTORICAL FAILURE (preserved, not current state)
+
+The earlier observable-3 installed coding-composition failure (installed `lbe code` reached
+`GovernedAgentGateway` → `LBERequestController` with `approved_tools=[workspace.read]` and
+`read_only=true`, never reaching the accepted R6E governed coding path) is **historical
+evidence**. It was addressed by the recorded repair investigation and observable 3 is recorded
+`PASS_AFTER_REPAIR`. Any "R7 FAIL / repair not yet activated" lines in the body above are
+historical records, not current machine-gate state.
+
+### ARCHITECTURAL LESSON
+
+> **The reasoning controller became the agent.**
+
+`LBERequestController` and the fixed `ReasoningPlan` workflow evolved from a bounded read-only
+inspection mechanism into the central cognitive path:
+
+```text
+provider = constrained planner / explainer
+LBE     = reasoning workflow engine
+```
+
+The intended architecture is:
+
+```text
+reasoning agent
+    ↓ uses
+LBE governed capabilities
+```
+
+Corrected invariant:
+
+> **LBE governs an agent's capabilities and consequences; it does not prescribe the agent's
+> reasoning procedure.**
+
+Ownership boundary:
+
+```text
+Agent / provider owns:
+- reasoning
+- investigation strategy
+- hypothesis formation
+- capability / tool selection
+- replanning after results
+- interpretation
+- communication
+
+LBE owns:
+- workspace / session identity
+- mode / policy
+- authorization
+- capability boundaries
+- governed execution
+- operation identity
+- ToolReceipt
+- evidence provenance
+- persistence
+- deterministic validation / completion truth
+```
+
+### WHAT WAS BUILT / WHAT WAS INTENDED / WHAT MUST CHANGE
+
+| Item | WAS BUILT | WAS INTENDED | MUST CHANGE |
+|------|-----------|--------------|-------------|
+| Mandatory `ReasoningPlan` | provider must emit a fixed plan structure each turn | optional structured output for planning/inspection | make optional; main agent may operate without it |
+| Reasoning contract | `workspace.read`-only; LBE builds evidence, asks plan, selects/runs guard, asks explanation | provider freely chooses among registered capabilities | expose capabilities the agent may invoke; do not encode the sequence |
+| Guard selection | driven by LBE workflow | one available capability | `LBERequestController` -> bounded/specialist investigation capability (`guard.inspect`) |
+| Deterministic Guard Inspector | correct deterministic mechanism | same | REPOSITION, not discarded |
+| R6C authorization | correct deterministic authorization | same | NOT a mistake; remains authoritative execution boundary |
+| R6E governed tool orchestration | correct deterministic execution | same | NOT a mistake; remains authoritative execution boundary |
+| ToolReceipt | correct execution-evidence boundary | same | NOT a mistake; remains the execution evidence boundary |
+| Provider continuation | correct receipt-backed continuation | same | NOT a mistake; remains receipt-backed |
+| Persistent session/task state | correct LBE-owned persistence | same | NOT a mistake; remains LBE-owned |
+| Completion validation | correct LBE-owned deterministic truth | same | NOT a mistake; remains LBE-owned |
+
+Deterministic guards, authorization, receipts, persistence, and completion evidence are
+**not mistakes**. The mistake is their placement around the reasoning agent — the controller
+became the agent instead of the agent using governed capabilities.
+
+### PROPOSED FUTURE CORRECTION (proposed follow-on review, not an active gate)
+
+Reposition rather than discard:
+
+```text
+LBERequestController    -> bounded/specialist investigation capability
+ReasoningPlan           -> optional structured contract for planning/inspection
+Guard Inspector         -> deterministic capability available to an agent
+R6C / R6E / ToolReceipt -> remain the authoritative governed-execution boundary
+memory / context        -> resources supplied to reasoning, not replacements for reasoning
+```
+
+Future architecture acceptance question (recorded as a proposed follow-on review):
+
+> Can a reasoning agent independently choose among registered LBE capabilities, perform
+> multiple reasoning/tool turns, revise its approach from receipts/evidence, and complete
+> work without LBE prescribing a fixed cognitive workflow, while all mutation, authorization,
+> identity, persistence, receipts, and completion authority remain governed by LBE?
+
+Primary record: `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md`.

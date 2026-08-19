@@ -103,6 +103,31 @@ Provider/Cline/native adapters may own provider mechanics only within the accept
 
 The TUI/CLI/IDE/MCP surfaces must not become second runtime authorities.
 
+## Architectural correction — required reading
+
+A documented architectural lesson supersedes how "provider reasons" was first wired:
+
+> **LBE governs an agent's capabilities and consequences; it does not prescribe the agent's
+> reasoning procedure.**
+
+**The reasoning controller became the agent.** `LBERequestController` plus the fixed
+`ReasoningPlan` workflow must be treated as a bounded/specialist investigation capability
+(`guard.inspect`), not the central cognitive path.
+
+- The provider owns: reasoning, investigation strategy, hypothesis formation, capability/tool
+  selection, replanning after results, interpretation, and communication.
+- LBE owns: workspace/session identity, mode/policy, authorization, capability boundaries,
+  governed execution, operation identity, ToolReceipt, evidence provenance, persistence, and
+  deterministic validation/completion truth.
+- Deterministic guards, R6C/R6E authorization and orchestration, ToolReceipt, provider
+  continuation, persistence, and completion validation are **NOT mistakes**; only their
+  placement around the reasoning agent is.
+
+**Read first:** `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and
+`docs/IMPLEMENTATION_PLAN.md` section 15. This is a **proposed follow-on architecture review**,
+not an active machine gate, and does not change current gate state.
+
+
 ## Reuse-before-rebuild direction
 
 Existing owners must be inspected and extended before new systems are introduced.
