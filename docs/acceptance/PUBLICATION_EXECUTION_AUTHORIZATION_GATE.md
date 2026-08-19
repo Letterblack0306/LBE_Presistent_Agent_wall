@@ -1,12 +1,12 @@
 # Publication Execution Authorization Gate
 
-Status: **OPEN — EXPLICIT USER AUTHORIZATION REQUIRED — PUBLISH LOCKED**
+Status: **AUTHORIZED FOR 2.0.3 — PUBLISH LOCKED PENDING VERSION VALIDATION**
 
 phase: `PUBLICATION_EXECUTION_AUTHORIZATION`
 
-slice: `AUTHORIZE_PYPI_0_2_0_WORKFLOW_DISPATCH`
+slice: `AUTHORIZE_PYPI_2_0_3_WORKFLOW_DISPATCH`
 
-required_evidence_level: `EXPLICIT_USER_AUTHORIZATION_PLUS_LIVE_WORKFLOW_EXECUTION`
+required_evidence_level: `EXPLICIT_USER_AUTHORIZATION_PLUS_EXACT_VERSION_VALIDATION_PLUS_LIVE_WORKFLOW_EXECUTION`
 
 ## Proven prerequisite
 
@@ -17,51 +17,47 @@ required_evidence_level: `EXPLICIT_USER_AUTHORIZATION_PLUS_LIVE_WORKFLOW_EXECUTI
 - repository: `Letterblack0306/LBE_Presistent_Agent_wall`
 - canonical ref: `main`
 - distribution: `lbe-guard-inspector`
-- version: `0.2.0`
+- version: `2.0.3`
 - workflow: `.github/workflows/publish-python-runtime.yml`
 - GitHub environment: `pypi`
 - authentication: OIDC trusted publishing
 
+## User authorization
+
+The user explicitly authorized publication and then clarified the intended version as **`2.0.3`**. This supersedes the earlier `0.2.0` target.
+
 ## Already proven
 
-- release/package readiness: PASS;
+- release/package readiness: PASS for the pre-version-change package state;
 - repaired distribution contract: PASS;
 - PyPI namespace exists;
 - PyPI versions `2.0.1` and `2.0.2` exist;
-- version `0.2.0` has no collision;
 - GitHub `pypi` environment exists;
 - workflow OIDC contract is present;
 - workflow is manual-only;
-- canonical tracked source is clean.
+- PyPI trusted publisher configuration is confirmed for repository `Letterblack0306/LBE_Presistent_Agent_wall`, workflow `publish-python-runtime.yml`, environment `pypi`.
 
-## Remaining uncertainty
+## Remaining validation before dispatch
 
-The PyPI-side trusted-publisher binding cannot be conclusively tested without entering the actual publish flow. Historical publish runs provide no successful binding proof.
+The canonical version must first be prepared and validated as `2.0.3` under `docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md`.
 
-## Authorization boundary
+No workflow dispatch is permitted until that gate passes.
 
-No workflow dispatch is permitted merely because technical prechecks passed.
-
-The user must explicitly authorize publication of **`lbe-guard-inspector==0.2.0` to PyPI from canonical `main`**.
-
-Only after that explicit authorization may `publish_allowed_now` be set true for the single bounded execution.
-
-## Execution requirements after authorization
+## Execution requirements after version validation
 
 1. re-confirm `main == origin/main`;
-2. re-confirm canonical version is exactly `0.2.0`;
-3. re-query PyPI and prove `0.2.0` is still absent immediately before dispatch;
+2. re-confirm canonical version is exactly `2.0.3`;
+3. re-query PyPI and prove `2.0.3` is still absent immediately before dispatch;
 4. dispatch only `.github/workflows/publish-python-runtime.yml` on `main`;
 5. observe the exact workflow run to completion;
 6. if any step fails, stop and classify the failure; do not retry blindly;
-7. if publish succeeds, query PyPI and prove `0.2.0` exists;
+7. if publish succeeds, query PyPI and prove `2.0.3` exists;
 8. record workflow run ID, commit SHA, published artifact state, and final gate closure.
 
 ## Forbidden
 
-- implicit publication authorization;
-- version changes;
-- publication of `2.0.1` or `2.0.2`;
+- publication of any version other than `2.0.3`;
+- publication before exact-version validation;
 - alternate branches/worktrees;
 - API-token fallback without a separate authorized security decision;
 - repeated publish attempts after a failure without diagnosis;
