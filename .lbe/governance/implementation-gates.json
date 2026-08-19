@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/PUBLICATION_PRECHECK_GATE.md",
-  "active_phase": "PUBLICATION_PRECHECK",
-  "active_slice": "VERIFY_PYPI_NAMESPACE_VERSION_AND_TRUSTED_PUBLISHING",
+  "active_plan": "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md",
+  "active_phase": "PUBLICATION_EXECUTION_AUTHORIZATION",
+  "active_slice": "AUTHORIZE_PYPI_0_2_0_WORKFLOW_DISPATCH",
   "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
@@ -13,12 +13,11 @@
     "UNVERIFIED",
     "DOCUMENT_CONFLICT",
     "MISSING_EVIDENCE",
-    "PYPI_NAMESPACE_UNRESOLVED",
-    "PYPI_NAMESPACE_FOREIGN",
     "PYPI_VERSION_ALREADY_EXISTS",
-    "TRUSTED_PUBLISHING_UNVERIFIED",
+    "TRUSTED_PUBLISHING_EXECUTION_FAILURE",
     "TRACKED_SOURCE_DIRTY",
-    "PACKAGE_VERSION_CONFLICT"
+    "PACKAGE_VERSION_CONFLICT",
+    "EXPLICIT_PUBLICATION_AUTHORIZATION_MISSING"
   ],
   "rules": {
     "one_active_slice": true,
@@ -29,7 +28,8 @@
     "implementation_only_after_separate_repair_activation": true,
     "existing_owner_audit_required": true,
     "reuse_evaluation_required": true,
-    "architecture_change_requires_user_authorization": true
+    "architecture_change_requires_user_authorization": true,
+    "publication_requires_explicit_user_authorization": true
   },
   "accepted_baseline": {
     "R3": "PROVEN_COMPLETE",
@@ -44,7 +44,8 @@
     "CLI": "PROVEN_COMPLETE",
     "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS",
     "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS",
-    "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS"
+    "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS",
+    "PUBLICATION_PRECHECK": "PASS"
   },
   "release_package_readiness": {
     "status": "PASS",
@@ -68,18 +69,32 @@
     "publish_allowed": false
   },
   "publication_precheck": {
-    "status": "OPEN",
+    "status": "PASS",
+    "decisive_hash": "CB87655106DEB0D947FD03546929CB9B6B0432A2707539C5A3D2B16C8B962D4D",
     "distribution": "lbe-guard-inspector",
     "canonical_version": "0.2.0",
-    "required_evidence_level": "LIVE_REGISTRY_PLUS_GITHUB_PUBLISHING_CONFIGURATION",
+    "pypi_project_present": true,
+    "pypi_existing_versions": [
+      "2.0.1",
+      "2.0.2"
+    ],
+    "canonical_version_collision": false,
+    "github_pypi_environment": "PASS",
+    "workflow_oidc_contract": "PASS",
+    "historical_successful_publish_runs": 0,
+    "trusted_publisher_binding_pre_publish_proof": "NOT_POSSIBLE_WITHOUT_REAL_PUBLISH",
+    "publish_allowed": false
+  },
+  "publication_execution": {
+    "status": "AWAITING_EXPLICIT_USER_AUTHORIZATION",
+    "repository": "Letterblack0306/LBE_Presistent_Agent_wall",
+    "ref": "main",
+    "distribution": "lbe-guard-inspector",
+    "version": "0.2.0",
+    "workflow": ".github/workflows/publish-python-runtime.yml",
+    "environment": "pypi",
     "publish_allowed": false,
-    "required_checks": [
-      "live PyPI namespace state",
-      "live PyPI version collision state",
-      "GitHub pypi environment/trusted-publishing readiness",
-      "manual workflow OIDC contract",
-      "canonical main tracked-clean state"
-    ]
+    "required_authorization": "Explicit user authorization to publish lbe-guard-inspector==0.2.0 to PyPI from canonical main"
   },
   "known_harness_classifications": [
     {
@@ -100,16 +115,18 @@
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "publication precheck",
-      "separate explicit publication execution authorization"
+      "explicit publication execution authorization",
+      "successful live trusted-publishing workflow execution",
+      "post-publish PyPI verification"
     ]
   },
   "forbidden": [
-    "publishing to PyPI during precheck",
-    "changing pyproject.toml version during precheck",
-    "choosing a replacement version by inference",
-    "creating tags or GitHub releases",
+    "publishing without explicit user authorization",
+    "changing pyproject.toml version by inference",
+    "publishing 2.0.1 or 2.0.2",
+    "creating tags or GitHub releases without separate authorization",
     "adding an npm publication path",
-    "runtime/package/workflow implementation changes without a separate repair gate"
+    "API-token fallback without a separate authorized security decision",
+    "blind retry after publication failure"
   ]
 }
