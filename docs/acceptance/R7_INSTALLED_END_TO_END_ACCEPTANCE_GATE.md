@@ -1,10 +1,10 @@
 # R7 Installed End-to-End Acceptance Gate
 
-Status: **OPEN — OBSERVABLE 14 ACTIVE — IMPLEMENTATION LOCKED — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — OBSERVABLE 15 ACTIVE — IMPLEMENTATION LOCKED — NEXT PHASE LOCKED**
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_14_SOURCE_UNCHANGED_UNLESS_REAL_FALSIFIER
+slice: OBSERVABLE_15_CLEAN_WORKTREE_LIMITATIONS_FALSIFIERS
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
 resume_after_repair: true
@@ -12,7 +12,7 @@ status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
-required_evidence_level: SOURCE_UNCHANGED_UNLESS_REAL_FALSIFIER_PROOF
+required_evidence_level: CLEAN_WORKTREE_PLUS_EXACT_LIMITATIONS_FALSIFIERS_PROOF
 release_path_authorized: true
 publish_allowed_now: false
 ```
@@ -36,10 +36,10 @@ Can a clean installed LBE normal path perform persistent coding/audit work acros
 11. terminal `COMPLETED / VALIDATED_COMPLETION` persists across a fresh process — `PASS`;
 12. no credential/secret leakage into repo/logs/receipts/artifacts — `PASS`;
 13. focused installed/runtime regression with exact package/head/environment evidence — `PASS_AFTER_REPAIR`;
-14. **ACTIVE:** source remains unchanged unless a real falsifier activates a separate repair slice;
-15. clean worktree plus exact limitations/falsifiers.
+14. source remains unchanged unless a real falsifier activates a separate repair slice — `PASS`;
+15. **ACTIVE:** clean worktree plus exact limitations/falsifiers.
 
-## Accepted installed evidence through observable 13
+## Accepted installed evidence through observable 14
 
 ```text
 observable 3 decisive hash:
@@ -56,6 +56,9 @@ observable 6 decisive hash:
 
 observable 13 decisive hash:
 A2AC0D1058E3D817DF8E35A1540D6BC89D492C25F7D2D6A3936D54C44BD9A3AE
+
+observable 14 decisive hash:
+ED2E9D5763EEB5C57B073C002D616B3DC4298C067D5EFDBE3D463088E74DD054
 ```
 
 Observable 6 proved that fresh installed current-workspace evidence re-read an externally changed file and returned the exact new SHA while persistent task authority remained intact.
@@ -66,31 +69,41 @@ Observable 12 proved credential/secret non-leakage (`PASS`): provider JSON body,
 
 Observable 13 proved the repaired installed package can build a self-contained wheel containing the locked Cline worker dependency tree, install into a fresh isolated venv, resolve `@cline/agents` without source-tree dependency state, execute the governed provider/tool/final continuation, persist receipts and completion evidence, preserve LBE-only completion authority, restore session/task state in fresh processes, prevent credential leakage, and avoid unexpected workspace/source mutation. The only intermediate failure after dependency provisioning was a stale probe assertion that compared completion requirement IDs against evidence kinds; the runtime behavior matched the canonical completion contract and the harness was corrected.
 
-## Observable 14 predicate
+Observable 14 proved canonical `main` remained identical to `origin/main`, implementation and architecture remained locked, tracked source remained unchanged, and generated acceptance evidence remained untracked. The first Observable 14 command incorrectly invoked the implementation commit gate as a read-only validator; that was classified as a harness error and did not authorize a source change.
 
-Prove that the canonical source checkout remains unchanged by the installed-runtime acceptance flow itself and that no product/source patch is made merely because of a harness, fixture, provider, environment, or assertion failure.
+## Observable 15 predicate
+
+Prove final R7 acceptance closure without overstating product or release readiness.
 
 Required invariants:
 
 ```text
 canonical branch remains main
-HEAD equals origin/main before and after the proof
-tracked source diff remains unchanged across the bounded proof
-no production/runtime/package source file is modified by installed execution
-no repair slice is activated without a reproducible product falsifier
-harness-only failures remain classified as harness failures
-installed/runtime evidence is collected outside the canonical source implementation paths
-any generated probe/wheel/venv artifacts remain untracked or otherwise outside accepted source state
-implementation_allowed remains false throughout observable 14
+HEAD equals origin/main
+tracked canonical worktree is clean
+no generated validation artifact is staged or tracked as product source
+all remaining untracked/generated artifacts are enumerated and classified
+implementation_allowed remains false
 architecture_changes_allowed remains false
+all known R7 harness failures remain recorded as harness failures
+all known product limitations and remaining falsifiers are stated exactly
+R7 acceptance completion does not itself imply package/release/publish readiness
+publish_allowed_now remains false until separate release/package readiness acceptance passes
 ```
 
-## Falsifier
+## Exact remaining limitations at Observable 15 entry
 
-Any tracked source mutation caused by the installed/runtime proof, any source patch made without a reproducible product falsifier, any authority/policy drift that silently re-enables implementation, or any acceptance flow that depends on modifying canonical source state is an Observable 14 falsifier.
+```text
+R7 proves the accepted installed-runtime behaviors only for the bounded evidence and environments exercised by its observables.
+The repaired Python wheel now carries the locked Cline worker dependency tree; this increases wheel size and requires the package build environment to provide the declared Node runtime/npm build dependency path.
+Generated local validation directories and the standalone documentation instruction file are not accepted product source and must remain untracked or be removed before any clean-worktree claim that requires zero untracked files.
+R7 acceptance is not release/package readiness acceptance and does not authorize versioning, tagging, or publishing.
+```
 
-Generated local validation artifacts are not by themselves a source mutation, but they must be reported exactly and must not be misclassified as canonical source changes.
+## Observable 15 falsifier
+
+Any tracked canonical worktree dirtiness, staged/generated evidence mistaken for source, HEAD/origin drift, omission or material understatement of known limitations/falsifiers, silent enabling of implementation/architecture changes, or claim of release/publish readiness before separate package/release acceptance is an Observable 15 falsifier.
 
 ## Stop rule
 
-Observable 14 is the only active acceptance slice. Do not run Observable 15 or change production code until Observable 14 is classified `PASS`. A real product falsifier requires a separately activated bounded repair slice. Harness, fixture, provider, environment, or assertion failures that do not prove a product/source defect do not authorize implementation changes.
+Observable 15 is the only active acceptance slice. No implementation, architecture, version, tag, release, or publish work is authorized by this gate. A real product falsifier requires a separately activated bounded repair slice. R7 may close only after Observable 15 is classified `PASS`; package/release readiness remains a separate acceptance step.
