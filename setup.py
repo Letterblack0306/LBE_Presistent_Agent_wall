@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,9 +21,14 @@ class BuildPyWithClineWorkerDependencies(_build_py):
         if not package_json.is_file() or not package_lock.is_file():
             raise RuntimeError("Cline worker package.json and package-lock.json are required")
 
+        npm_name = "npm.cmd" if os.name == "nt" else "npm"
+        npm_executable = shutil.which(npm_name)
+        if npm_executable is None:
+            raise RuntimeError(f"required Node package manager is unavailable: {npm_name}")
+
         subprocess.run(
             [
-                "npm",
+                npm_executable,
                 "ci",
                 "--ignore-scripts",
                 "--omit=dev",
