@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md",
-  "active_phase": "PUBLICATION_EXECUTION_AUTHORIZATION",
-  "active_slice": "AUTHORIZE_PYPI_0_2_0_WORKFLOW_DISPATCH",
+  "active_plan": "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md",
+  "active_phase": "PUBLICATION_VERSION_PREPARATION",
+  "active_slice": "SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3",
   "status": "OPEN",
-  "implementation_allowed": false,
+  "implementation_allowed": true,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -16,8 +16,7 @@
     "PYPI_VERSION_ALREADY_EXISTS",
     "TRUSTED_PUBLISHING_EXECUTION_FAILURE",
     "TRACKED_SOURCE_DIRTY",
-    "PACKAGE_VERSION_CONFLICT",
-    "EXPLICIT_PUBLICATION_AUTHORIZATION_MISSING"
+    "PACKAGE_VERSION_CONFLICT"
   ],
   "rules": {
     "one_active_slice": true,
@@ -25,7 +24,6 @@
     "no_parallel_architecture": true,
     "checkpoint_required_before_advance": true,
     "fail_closed": true,
-    "implementation_only_after_separate_repair_activation": true,
     "existing_owner_audit_required": true,
     "reuse_evaluation_required": true,
     "architecture_change_requires_user_authorization": true,
@@ -50,83 +48,72 @@
   "release_package_readiness": {
     "status": "PASS",
     "decisive_hash": "B0A7F67A78B8DB9DC7BB7A78D0B40F529E1DFFC44143BFE51F6E461407E6CFCA",
-    "canonical_version": "0.2.0",
+    "previous_canonical_version": "0.2.0",
     "version_authority": "pyproject.toml",
     "workflow_contract": "PASS",
     "manual_only_publish_trigger": true,
-    "package_proof_still_applicable": true,
+    "package_proof_still_applicable_before_version_change": true,
     "packaging_tests": "PASS",
-    "publish_allowed": false
-  },
-  "release_repair": {
-    "status": "PASS",
-    "decisive_hash": "F55FC30C77F746DC035A7D82C3241ADC8552C5B9418F6B390D75EF778FAB3140",
-    "validated_head": "a99984e812c11b4ecc0dd13514c99d28a6aa4918",
-    "canonical_python_package_version": "0.2.0",
-    "stale_version_removed": true,
-    "historical_release_branch_removed": true,
-    "manual_only_trigger": true,
     "publish_allowed": false
   },
   "publication_precheck": {
     "status": "PASS",
     "decisive_hash": "CB87655106DEB0D947FD03546929CB9B6B0432A2707539C5A3D2B16C8B962D4D",
     "distribution": "lbe-guard-inspector",
-    "canonical_version": "0.2.0",
+    "previous_canonical_version": "0.2.0",
     "pypi_project_present": true,
-    "pypi_existing_versions": [
-      "2.0.1",
-      "2.0.2"
-    ],
-    "canonical_version_collision": false,
+    "pypi_existing_versions": ["2.0.1", "2.0.2"],
     "github_pypi_environment": "PASS",
     "workflow_oidc_contract": "PASS",
-    "historical_successful_publish_runs": 0,
-    "trusted_publisher_binding_pre_publish_proof": "NOT_POSSIBLE_WITHOUT_REAL_PUBLISH",
+    "trusted_publisher_binding": "PROVEN_BY_USER_SUPPLIED_PYPI_CONFIGURATION",
+    "trusted_publisher_repository": "Letterblack0306/LBE_Presistent_Agent_wall",
+    "trusted_publisher_workflow": "publish-python-runtime.yml",
+    "trusted_publisher_environment": "pypi",
+    "publish_allowed": false
+  },
+  "version_preparation": {
+    "status": "OPEN",
+    "distribution": "lbe-guard-inspector",
+    "from_version": "0.2.0",
+    "target_version": "2.0.3",
+    "authorization": "EXPLICIT_USER_AUTHORIZATION",
+    "allowed_paths": [
+      "pyproject.toml",
+      ".lbe/governance/implementation-gates.json",
+      "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md",
+      "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md"
+    ],
     "publish_allowed": false
   },
   "publication_execution": {
-    "status": "AWAITING_EXPLICIT_USER_AUTHORIZATION",
+    "status": "AUTHORIZED_PENDING_VERSION_PREPARATION_AND_VALIDATION",
     "repository": "Letterblack0306/LBE_Presistent_Agent_wall",
     "ref": "main",
     "distribution": "lbe-guard-inspector",
-    "version": "0.2.0",
+    "version": "2.0.3",
     "workflow": ".github/workflows/publish-python-runtime.yml",
     "environment": "pypi",
     "publish_allowed": false,
-    "required_authorization": "Explicit user authorization to publish lbe-guard-inspector==0.2.0 to PyPI from canonical main"
+    "authorization": "User explicitly authorized publication and specified version 2.0.3"
   },
-  "known_harness_classifications": [
-    {
-      "observable": 13,
-      "classification": "TEST_HARNESS_REQUIREMENT_ID_VS_EVIDENCE_KIND_ASSERTION"
-    },
-    {
-      "observable": 14,
-      "classification": "TEST_HARNESS_COMMIT_GATE_USED_AS_RUNTIME_VALIDATOR"
-    },
-    {
-      "phase": "RELEASE_PACKAGE_READINESS_ACCEPTANCE",
-      "classification": "HARNESS_TIMEOUT_AFTER_DECISIVE_TEST_PASS",
-      "detail": "tests/test_release_packaging.py passed 2 tests in 1206.98s before the outer command timeout"
-    }
-  ],
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "explicit publication execution authorization",
+      "set canonical pyproject.toml version to 2.0.3",
+      "validate exact 2.0.3 wheel and installed runtime",
+      "prove PyPI 2.0.3 is absent immediately before dispatch",
       "successful live trusted-publishing workflow execution",
       "post-publish PyPI verification"
     ]
   },
   "forbidden": [
-    "publishing without explicit user authorization",
-    "changing pyproject.toml version by inference",
-    "publishing 2.0.1 or 2.0.2",
+    "publishing before the 2.0.3 artifact is validated",
+    "publishing any version other than 2.0.3",
     "creating tags or GitHub releases without separate authorization",
     "adding an npm publication path",
     "API-token fallback without a separate authorized security decision",
-    "blind retry after publication failure"
+    "blind retry after publication failure",
+    "runtime or architecture changes outside the bounded version-preparation scope"
   ]
 }
