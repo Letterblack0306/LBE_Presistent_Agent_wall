@@ -39,7 +39,8 @@ schemas = ["*.json"]
 lbe_guard_inspector = [
   "memory/*.sql",
   "runtime/cline_worker/*.mjs",
-  "runtime/cline_worker/*.json"
+  "runtime/cline_worker/*.json",
+  "runtime/cline_worker/node_modules/**/*"
 ]
 
 [tool.pytest.ini_options]
