@@ -1,84 +1,92 @@
 # Release / Package Readiness Audit Gate
 
-Status: **OPEN — AUDIT ONLY — IMPLEMENTATION LOCKED — PUBLISH LOCKED**
+Status: **PASS — RELEASE/PACKAGE READINESS PROVEN — PUBLICATION STILL LOCKED**
 
 phase: `RELEASE_PACKAGE_READINESS_ACCEPTANCE`
 
-slice: `AUDIT_CURRENT_DISTRIBUTION_CONTRACT`
+slice: `VERIFY_REPAIRED_DISTRIBUTION_CONTRACT`
 
-required_evidence_level: `CURRENT_SOURCE_PLUS_LOCAL_BUILD_PLUS_ARTIFACT_CONTRACT`
+required_evidence_level: `CURRENT_SOURCE_PLUS_REPAIRED_WORKFLOW_CONTRACT_PLUS_EXISTING_EXACT_HEAD_PACKAGE_PROOF`
 
 ## Entry condition
 
 R7 installed end-to-end acceptance is `PASS`.
 
-This phase is separate from R7 and must not inherit a publication claim from R7 success.
+This phase is separate from R7 and does not inherit a publication claim from R7 success.
 
-## Proven trigger
+## Original falsifier
 
-Canonical `main` currently contains a distribution-state conflict:
+The initial audit proved a real distribution-contract conflict:
 
-- `pyproject.toml` declares `lbe-guard-inspector` version `0.2.0`;
-- `.github/workflows/publish-python-runtime.yml` asserts and publishes version `2.0.1`;
-- that workflow is also tied to the historical branch `release/python-runtime-v2.0.1`;
-- the current repository has no root `package.json` or `npm/package.json` distribution owner at canonical `main`.
+- canonical `pyproject.toml` version: `0.2.0`;
+- publish workflow hard-coded `2.0.1`;
+- publish workflow used historical branch `release/python-runtime-v2.0.1`.
 
-Therefore release/package readiness is **not yet proven** and publication remains forbidden.
+The bounded `RELEASE_PACKAGE_CONTRACT_REPAIR` corrected only that workflow contract and closed `PASS`.
 
-## Audit question
+## Accepted package evidence
 
-What is the current canonical distribution contract that can be proven from `main`, and which release/package assets are current, stale, missing, or contradictory?
+- current-head packaging tests: `2 passed`;
+- packaging-test duration: `1206.98s`;
+- command hash: `D67319F83220590A76E4F973A61C57E4B0AB503FEF6E56B57B680644035DE320`;
+- timeout classification: `HARNESS_TIMEOUT_AFTER_DECISIVE_TEST_PASS`;
+- no package-affecting source changed after the accepted Observable 13 installed-runtime package proof;
+- Observable 13 exact installed-runtime proof remains accepted for wheel-contained Cline worker dependencies, isolated install, governed continuation, receipts, completion authority, credential non-leakage, and source integrity.
 
-## Allowed actions
+## Accepted workflow-repair evidence
 
-- inspect canonical packaging metadata and release workflows;
-- inspect current release/readiness documentation and historical records as evidence only;
-- build the exact current Python package from canonical `main` without changing source;
-- inspect wheel and sdist contents, metadata, entrypoints, bundled Cline worker dependencies, and package isolation;
-- run existing package/release tests and installed smoke tests;
-- identify stale version, branch, filename, workflow, or documentation assumptions;
-- classify each finding as `CURRENT`, `STALE`, `MISSING`, `CONFLICT`, `HARNESS_FAILURE`, or `PROVEN`;
-- define a smallest bounded repair gate if and only if a real release-readiness falsifier is proven.
+Repair validation hash:
 
-## Forbidden
+`F55FC30C77F746DC035A7D82C3241ADC8552C5B9418F6B390D75EF778FAB3140`
 
-- changing package version;
-- changing runtime/source/package/workflow implementation during this audit;
-- creating tags or releases;
-- publishing to PyPI or npm;
-- activating a historical release branch;
-- treating historical 2.0.1/2.0.2 evidence as current without exact-head proof;
-- inventing an npm release path when no current canonical npm package owner exists;
-- architecture changes.
+Proven:
 
-## Initial known conflict
+- `pyproject.toml` remains the canonical version authority;
+- workflow no longer contains literal `2.0.1` release authority;
+- historical automatic release-branch trigger removed;
+- publication workflow is `workflow_dispatch` only;
+- artifact names and installed-version checks derive from canonical package metadata;
+- repair touched only workflow/governance/acceptance surfaces;
+- no package version change occurred;
+- no publication occurred.
 
-```text
-canonical Python package version: 0.2.0
-publish-python-runtime workflow expected version: 2.0.1
-workflow branch trigger: release/python-runtime-v2.0.1
-classification: DOCUMENT/WORKFLOW VS CURRENT PACKAGE CONFLICT
-```
+## Final readiness verification
 
-This conflict is an audit trigger, not authorization to choose a new public version.
+Decisive command hash:
 
-## Validation ladder
+`B0A7F67A78B8DB9DC7BB7A78D0B40F529E1DFFC44143BFE51F6E461407E6CFCA`
+
+Result:
 
 ```text
-canonical main / clean tracked state
--> current package metadata inventory
--> current release workflow inventory
--> current release-document inventory
--> exact-head wheel + sdist build
--> artifact metadata/content inspection
--> isolated install + CLI/worker smoke
--> existing packaging/release tests
--> current-vs-stale classification
--> readiness verdict
+RELEASE_READINESS_CANONICAL_MAIN=PASS
+RELEASE_READINESS_VERSION_AUTHORITY=PASS
+RELEASE_READINESS_WORKFLOW_CONTRACT=PASS
+RELEASE_READINESS_MANUAL_ONLY_PUBLISH_TRIGGER=PASS
+RELEASE_READINESS_PACKAGE_PROOF_STILL_APPLICABLE=PASS
+RELEASE_READINESS_PACKAGING_TESTS=PASS
+RELEASE_READINESS_PUBLISH_LOCKED=PASS
+VERIFY_REPAIRED_DISTRIBUTION_CONTRACT=PASS
 ```
 
-## Advancement rule
+## Classification
 
-- If the current distribution contract is internally consistent and all required artifact/install evidence passes, close this audit `PASS` and activate the next documented release-readiness slice.
-- If a real conflict requires source/workflow/package changes, close this audit with the exact falsifier and activate a separate bounded repair implementation gate.
-- Publication remains locked in either case until the full release/package readiness acceptance phase passes.
+```text
+RELEASE_PACKAGE_READINESS_ACCEPTANCE=PASS
+```
+
+This proves the current source/package/workflow contract is internally consistent and ready for a separately governed publication decision.
+
+It does **not** prove that publication may execute yet.
+
+## Remaining publication prerequisites
+
+Before any PyPI publication action:
+
+1. prove live PyPI project/version state for `lbe-guard-inspector`;
+2. prove whether canonical version `0.2.0` is available or already published;
+3. prove the repository/environment trusted-publishing configuration expected by `.github/workflows/publish-python-runtime.yml`;
+4. confirm the exact publish target/version without changing it by inference;
+5. keep publication blocked if any live prerequisite is missing or contradictory.
+
+No npm publication path is authorized by this acceptance.
