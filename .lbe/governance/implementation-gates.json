@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R7_OBSERVABLE13_DEPENDENCY_PROVISIONING_REPAIR_GATE.md",
-  "active_phase": "R7_OBSERVABLE13_REPAIR_IMPLEMENTATION",
-  "active_slice": "PROVISION_INSTALLED_CLINE_WORKER_DEPENDENCIES",
+  "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
+  "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
+  "active_slice": "OBSERVABLE_14_SOURCE_UNCHANGED_UNLESS_REAL_FALSIFIER",
   "status": "OPEN",
-  "implementation_allowed": true,
+  "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -50,76 +50,58 @@
     "R7_OBSERVABLE_9": "PASS",
     "R7_OBSERVABLE_10": "PASS",
     "R7_OBSERVABLE_11": "PASS",
-    "R7_OBSERVABLE_12": "PASS"
+    "R7_OBSERVABLE_12": "PASS",
+    "R7_OBSERVABLE_13": "PASS_AFTER_REPAIR"
   },
   "current_observable": {
-    "number": 13,
-    "status": "FAIL",
-    "question": "Does the installed package remain fully functional after all R7 repairs, with package isolation from the source checkout, a working installed CLI entrypoint, and a persistent runtime chain of session creation, session/task persistence, fresh-process restoration, provider continuation, governed tool execution, receipt persistence, and correct completion authority, while preserving security boundaries with no credential leakage and no unexpected workspace mutation?",
-    "required_evidence_level": "INSTALLED_RUNTIME_REGRESSION_PROOF",
-    "implementation_changes_allowed": true
+    "number": 14,
+    "status": "OPEN",
+    "question": "Does the canonical source checkout remain unchanged by the installed-runtime acceptance flow itself, with implementation remaining locked unless a reproducible real product falsifier activates a separate repair slice?",
+    "required_evidence_level": "SOURCE_UNCHANGED_UNLESS_REAL_FALSIFIER_PROOF",
+    "implementation_changes_allowed": false
   },
-  "observable_13_falsifiers": [
-    "installed package import resolves from the repository source checkout instead of isolated site-packages",
-    "installed lbe CLI entrypoint fails to parse or run",
-    "session creation or session/task persistence fails",
-    "a fresh installed process cannot restore the persisted session/task identity",
-    "provider continuation does not complete the normal provider-tool/final flow",
-    "governed tool execution fails or produces no persisted ToolReceipt",
-    "receipts or completion evidence do not persist across a fresh process",
-    "completion authority accepts an invalid completion or lets the provider set completion truth",
-    "credential canary leaks into SQLite/state/output/receipts/evidence",
-    "unexpected workspace mutation beyond the governed, authorized artifact"
+  "observable_14_falsifiers": [
+    "tracked canonical source changes during installed/runtime proof execution",
+    "production/runtime/package source is patched without a reproducible product falsifier",
+    "implementation_allowed becomes true without a separately activated repair gate",
+    "architecture_changes_allowed becomes true without explicit authorization",
+    "acceptance proof depends on modifying canonical source implementation state",
+    "harness fixture provider environment or assertion failure is misclassified as product source defect"
   ],
-  "allowed_secret_locus": [
-    "ephemeral disposable provider-config input before deletion",
-    "outbound provider transport header observed only by the local deterministic stub"
+  "accepted_observable_13_evidence": {
+    "decisive_hash": "A2AC0D1058E3D817DF8E35A1540D6BC89D492C25F7D2D6A3936D54C44BD9A3AE",
+    "repair_gate": "docs/acceptance/R7_OBSERVABLE13_DEPENDENCY_PROVISIONING_REPAIR_GATE.md",
+    "repair_status": "PASS",
+    "isolated_site_packages": "PASS",
+    "locked_worker_dependencies_in_wheel": "PASS",
+    "installed_cline_agents_resolution": "PASS",
+    "governed_provider_tool_final_continuation": "PASS",
+    "tool_receipt_persistence": "PASS",
+    "completion_authority": "PASS",
+    "credential_non_leakage": "PASS",
+    "source_unchanged": "PASS",
+    "unexpected_workspace_mutation": "NONE"
+  },
+  "known_harness_classifications": [
+    {
+      "observable": 13,
+      "classification": "TEST_HARNESS_REQUIREMENT_ID_VS_EVIDENCE_KIND_ASSERTION",
+      "detail": "The first repaired Observable 13 completion assertion compared CompletionDecision.satisfied_requirement_ids with contract evidence_kind values. Canonical completion evaluation returns requirement_id values by design. Runtime behavior was correct; only the probe assertion was corrected."
+    }
   ],
-  "method_reference": "GPT-Knowledge ai-agents/unified-agent-engineering-methods.md: proof-before-plan, explicit evidence classes, runtime proof over narrative, receipts over narrative, installed-runtime-only execution",
+  "method_reference": "GPT-Knowledge ai-agents/unified-agent-engineering-methods.md: proof-before-plan, explicit evidence classes, runtime proof over narrative, receipts over narrative, distinguish product falsifiers from harness failures",
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 13 through 15",
+      "finish R7 observables 14 through 15",
       "release/package readiness acceptance"
     ]
   },
-  "trigger": {
-    "failed_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-    "failed_observable": "OBSERVABLE_13_INSTALLED_RUNTIME_REGRESSION",
-    "investigation_status": "PASS",
-    "proven_gap": "installed Cline worker ships worker.mjs/package.json/package-lock.json but no deterministic dependency provisioning; @cline/agents is absent in isolated installed runtime and worker exits ERR_MODULE_NOT_FOUND",
-    "historical_evidence_correction": "prior observable 3 dependency PASS did not prove self-contained installed dependency resolution because worker_node_modules_inside_wheel was absent and local ignored source node_modules existed"
-  },
-  "allowed_scope": {
-    "purpose": "Repair only the proven installed Cline worker dependency provisioning defect while preserving the existing GovernedClineWorker architecture and all LBE authority owners.",
-    "implementation_changes": "Allowed only for deterministic installed-worker dependency provisioning, package/build integration required by that provisioning, and claim-matched tests/probes.",
-    "allowed_actions": [
-      "determine and implement the smallest deterministic dependency provisioning mechanism for the existing cline_worker package",
-      "preserve the pinned package.json and package-lock.json dependency contract",
-      "ensure isolated installed runtime resolves @cline/agents without source checkout node_modules",
-      "add installed-package regression coverage that starts the actual worker",
-      "rebuild and reinstall the exact repaired wheel",
-      "rerun observable 13 from an isolated environment"
-    ]
-  },
-  "authority_reuse": [
-    "GovernedClineWorker",
-    "cline_worker/package.json",
-    "cline_worker/package-lock.json",
-    "existing Python wheel distribution",
-    "existing R6C/R6E authorities",
-    "GovernedToolOrchestrator",
-    "ToolReceipt",
-    "SessionMemoryRuntimeBridge"
-  ],
   "forbidden": [
-    "new provider architecture",
-    "second worker implementation",
-    "runtime network npm install during an agent turn",
-    "source-tree node_modules dependency",
-    "second authorization/tool/session/completion authority",
-    "release/version/tag/publish work",
-    "observable 14 progression"
+    "source/runtime/package implementation changes without a separately activated repair gate",
+    "architecture rewrite",
+    "release version tag or publish work",
+    "continuing to observable 15 before observable 14 is classified PASS"
   ]
 }
