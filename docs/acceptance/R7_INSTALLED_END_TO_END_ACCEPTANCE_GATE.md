@@ -1,10 +1,10 @@
 # R7 Installed End-to-End Acceptance Gate
 
-Status: **OPEN — OBSERVABLE 7 ACTIVE — IMPLEMENTATION LOCKED — NEXT OBSERVABLE LOCKED**
+Status: **OPEN — OBSERVABLE 13 ACTIVE — IMPLEMENTATION LOCKED — NEXT OBSERVABLE LOCKED**
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_7_AUDIT_INVESTIGATION_READ_ONLY
+slice: OBSERVABLE_13_INSTALLED_RUNTIME_REGRESSION
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
 resume_after_repair: true
@@ -12,7 +12,7 @@ status: OPEN
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
-required_evidence_level: INSTALLED_RUNTIME_READ_ONLY_NEGATIVE_PROOF
+required_evidence_level: INSTALLED_RUNTIME_REGRESSION_PROOF
 release_path_authorized: true
 publish_allowed_now: false
 ```
@@ -29,17 +29,17 @@ Can a clean installed LBE normal path perform persistent coding/audit work acros
 4. provider/model switch preserves workspace, mode, permission, profile, evidence policy, and LBE authority identity — `PASS`;
 5. fresh installed process resumes the same persistent session/task identity — `PASS`;
 6. bounded external workspace change is observed/revalidated rather than stale checkpoint state — `PASS`;
-7. **ACTIVE:** audit/investigation cannot mutate workspace state;
-8. out-of-workspace/forbidden/out-of-authority action fails closed without mutation;
-9. receipt/provider continuation correlation remains intact;
-10. provider completion remains provisional until deterministic persisted validation;
-11. terminal `COMPLETED / VALIDATED_COMPLETION` persists across a fresh process;
-12. no credential/secret leakage into repo/logs/receipts/artifacts;
-13. focused installed/runtime regression with exact package/head/environment evidence;
+7. audit/investigation cannot mutate workspace state — `PASS`;
+8. out-of-workspace/forbidden/out-of-authority action fails closed without mutation — `PASS`;
+9. receipt/provider continuation correlation remains intact — `PASS`;
+10. provider completion remains provisional until deterministic persisted validation — `PASS`;
+11. terminal `COMPLETED / VALIDATED_COMPLETION` persists across a fresh process — `PASS`;
+12. no credential/secret leakage into repo/logs/receipts/artifacts — `PASS`;
+13. **ACTIVE:** focused installed/runtime regression with exact package/head/environment evidence;
 14. source remains unchanged unless a real falsifier activates a separate repair slice;
 15. clean worktree plus exact limitations/falsifiers.
 
-## Accepted installed evidence through observable 6
+## Accepted installed evidence through observable 12
 
 ```text
 observable 3 decisive hash:
@@ -56,6 +56,10 @@ observable 6 decisive hash:
 ```
 
 Observable 6 proved that fresh installed current-workspace evidence re-read an externally changed file and returned the exact new SHA while persistent task authority remained intact.
+
+Observable 11 decisive proof: `6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D`.
+
+Observable 12 proved credential/secret non-leakage (`PASS`): provider JSON body, runtime result, receipts, completion evidence, CLI stdout/stderr, persisted state, workspace/source/acceptance files, and SQLite raw bytes stayed clean; the configured canary appeared only in its ephemeral input and the outbound provider transport header (name `authorization`).
 
 ## Observable 7 predicate
 
@@ -87,4 +91,4 @@ A provider/harness/fixture failure that does not reach the read-only predicate m
 
 ## Stop rule
 
-Observable 7 is the only active acceptance slice. Do not run observable 8 or change production code until observable 7 is classified. A real product falsifier requires a separately activated repair slice.
+Observable 13 is the only active acceptance slice. Do not run observable 14 or change production code until observable 13 is classified `PASS`. The proof must run from an isolated site-packages install, not the repository source checkout. A real product falsifier requires a separately activated repair slice.

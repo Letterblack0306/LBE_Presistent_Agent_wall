@@ -1,21 +1,31 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
-  "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "OBSERVABLE_12_CREDENTIAL_SECRET_NON_LEAKAGE",
+  "active_plan": "docs/acceptance/R7_OBSERVABLE13_DEPENDENCY_PROVISIONING_REPAIR_GATE.md",
+  "active_phase": "R7_OBSERVABLE13_REPAIR_IMPLEMENTATION",
+  "active_slice": "PROVISION_INSTALLED_CLINE_WORKER_DEPENDENCIES",
   "status": "OPEN",
-  "implementation_allowed": false,
+  "implementation_allowed": true,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
-  "blocking_statuses": ["FAIL", "UNVERIFIED", "DOCUMENT_CONFLICT", "MISSING_EVIDENCE", "BLOCKED_WORKSPACE_AUTHORITY", "BLOCKED_PARALLEL_ARCHITECTURE"],
+  "blocking_statuses": [
+    "FAIL",
+    "UNVERIFIED",
+    "DOCUMENT_CONFLICT",
+    "MISSING_EVIDENCE",
+    "BLOCKED_WORKSPACE_AUTHORITY",
+    "BLOCKED_PARALLEL_ARCHITECTURE"
+  ],
   "rules": {
     "one_active_slice": true,
     "no_next_phase_without_pass": true,
     "no_parallel_architecture": true,
     "checkpoint_required_before_advance": true,
     "fail_closed": true,
-    "implementation_only_after_separate_repair_activation": true
+    "implementation_only_after_separate_repair_activation": true,
+    "existing_owner_audit_required": true,
+    "reuse_evaluation_required": true,
+    "architecture_change_requires_user_authorization": true
   },
   "accepted_baseline": {
     "canonical_base_sha": "69c6ae764bc217cd5795ddf8a972658223a681a0",
@@ -39,49 +49,77 @@
     "R7_OBSERVABLE_8": "PASS",
     "R7_OBSERVABLE_9": "PASS",
     "R7_OBSERVABLE_10": "PASS",
-    "R7_OBSERVABLE_11": "PASS"
+    "R7_OBSERVABLE_11": "PASS",
+    "R7_OBSERVABLE_12": "PASS"
   },
   "current_observable": {
-    "number": 12,
-    "status": "OPEN",
-    "question": "Does a synthetic provider credential remain confined to the explicit ephemeral provider-config input and outbound provider transport headers, with no leakage into provider JSON bodies, CLI output, runtime results, receipts, completion evidence, persistent SQLite/state files, workspace/repository files, or acceptance artifacts?",
-    "required_evidence_level": "INSTALLED_RUNTIME_CREDENTIAL_SECRET_NON_LEAKAGE_PROOF",
-    "implementation_changes_allowed": false
+    "number": 13,
+    "status": "FAIL",
+    "question": "Does the installed package remain fully functional after all R7 repairs, with package isolation from the source checkout, a working installed CLI entrypoint, and a persistent runtime chain of session creation, session/task persistence, fresh-process restoration, provider continuation, governed tool execution, receipt persistence, and correct completion authority, while preserving security boundaries with no credential leakage and no unexpected workspace mutation?",
+    "required_evidence_level": "INSTALLED_RUNTIME_REGRESSION_PROOF",
+    "implementation_changes_allowed": true
   },
-  "observable_12_falsifiers": [
-    "credential canary appears in provider request JSON body",
-    "credential canary appears in CLI stdout or stderr",
-    "credential canary appears in deterministic runtime result or governed ToolReceipt",
-    "credential canary appears in persisted completion evidence or SQLite/state storage",
-    "credential canary appears in workspace/repository files or acceptance artifacts",
-    "configured credential canary is not observed in any outbound provider HTTP header on actual provider requests"
+  "observable_13_falsifiers": [
+    "installed package import resolves from the repository source checkout instead of isolated site-packages",
+    "installed lbe CLI entrypoint fails to parse or run",
+    "session creation or session/task persistence fails",
+    "a fresh installed process cannot restore the persisted session/task identity",
+    "provider continuation does not complete the normal provider-tool/final flow",
+    "governed tool execution fails or produces no persisted ToolReceipt",
+    "receipts or completion evidence do not persist across a fresh process",
+    "completion authority accepts an invalid completion or lets the provider set completion truth",
+    "credential canary leaks into SQLite/state/output/receipts/evidence",
+    "unexpected workspace mutation beyond the governed, authorized artifact"
   ],
   "allowed_secret_locus": [
     "ephemeral disposable provider-config input before deletion",
     "outbound provider transport header observed only by the local deterministic stub"
   ],
-  "known_harness_failures": [
-    {
-      "command_hash": "F92FFB2C41E692FF4B44A2E7EF4E9C94027F69A94148655E19C07F7289B9ACAC",
-      "classification": "TEST_HARNESS_PROVIDER_HEADER_SHAPE_ASSUMPTION",
-      "detail": "the first probe assumed the configured @cline/agents credential must appear specifically as Authorization: Bearer; the provider transport was reached twice, but that exact header shape was not observed. The invocation did not prove a secret leak or a dropped credential. A bounded diagnostic now scans all outbound header values for the canary and reports header names only."
-    }
-  ],
-  "method_reference": "GPT-Knowledge ai-agents/unified-agent-engineering-methods.md: proof-before-plan, explicit evidence classes, runtime proof, provider credentialRef separation, receipts outrank narrative",
-  "forbidden": [
-    "source/runtime/package implementation changes",
-    "architecture rewrite",
-    "secret-redaction patch without a proven leak",
-    "credential transport patch without proving the installed adapter dropped the configured canary",
-    "release version tag or publish work",
-    "continuing to observable 13 before observable 12 is classified PASS"
-  ],
+  "method_reference": "GPT-Knowledge ai-agents/unified-agent-engineering-methods.md: proof-before-plan, explicit evidence classes, runtime proof over narrative, receipts over narrative, installed-runtime-only execution",
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observables 12 through 15",
+      "finish R7 observables 13 through 15",
       "release/package readiness acceptance"
     ]
-  }
+  },
+  "trigger": {
+    "failed_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
+    "failed_observable": "OBSERVABLE_13_INSTALLED_RUNTIME_REGRESSION",
+    "investigation_status": "PASS",
+    "proven_gap": "installed Cline worker ships worker.mjs/package.json/package-lock.json but no deterministic dependency provisioning; @cline/agents is absent in isolated installed runtime and worker exits ERR_MODULE_NOT_FOUND",
+    "historical_evidence_correction": "prior observable 3 dependency PASS did not prove self-contained installed dependency resolution because worker_node_modules_inside_wheel was absent and local ignored source node_modules existed"
+  },
+  "allowed_scope": {
+    "purpose": "Repair only the proven installed Cline worker dependency provisioning defect while preserving the existing GovernedClineWorker architecture and all LBE authority owners.",
+    "implementation_changes": "Allowed only for deterministic installed-worker dependency provisioning, package/build integration required by that provisioning, and claim-matched tests/probes.",
+    "allowed_actions": [
+      "determine and implement the smallest deterministic dependency provisioning mechanism for the existing cline_worker package",
+      "preserve the pinned package.json and package-lock.json dependency contract",
+      "ensure isolated installed runtime resolves @cline/agents without source checkout node_modules",
+      "add installed-package regression coverage that starts the actual worker",
+      "rebuild and reinstall the exact repaired wheel",
+      "rerun observable 13 from an isolated environment"
+    ]
+  },
+  "authority_reuse": [
+    "GovernedClineWorker",
+    "cline_worker/package.json",
+    "cline_worker/package-lock.json",
+    "existing Python wheel distribution",
+    "existing R6C/R6E authorities",
+    "GovernedToolOrchestrator",
+    "ToolReceipt",
+    "SessionMemoryRuntimeBridge"
+  ],
+  "forbidden": [
+    "new provider architecture",
+    "second worker implementation",
+    "runtime network npm install during an agent turn",
+    "source-tree node_modules dependency",
+    "second authorization/tool/session/completion authority",
+    "release/version/tag/publish work",
+    "observable 14 progression"
+  ]
 }
