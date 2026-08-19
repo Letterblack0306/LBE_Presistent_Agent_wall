@@ -1,27 +1,26 @@
 # R7 Installed End-to-End Acceptance Gate
 
-Status: **OPEN — OBSERVABLE 15 ACTIVE — IMPLEMENTATION LOCKED — NEXT PHASE LOCKED**
+Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE COMPLETE — RELEASE/PUBLISH STILL LOCKED**
 
 ```text
 phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_15_CLEAN_WORKTREE_LIMITATIONS_FALSIFIERS
+slice: R7_ACCEPTANCE_COMPLETE
 base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
 original_activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
 resume_after_repair: true
-status: OPEN
+status: PASS
 implementation_allowed: false
 architecture_changes_allowed: false
 next_phase_locked: true
-required_evidence_level: CLEAN_WORKTREE_PLUS_EXACT_LIMITATIONS_FALSIFIERS_PROOF
 release_path_authorized: true
 publish_allowed_now: false
 ```
 
-## Acceptance question
+## Acceptance result
 
-Can a clean installed LBE normal path perform persistent coding/audit work across separate processes and restart boundaries, preserve LBE authority while provider/model changes, revalidate after external workspace change, keep audit/investigation read-only, fail closed outside authority, and reach completion only through accepted evidence-owned validation?
+R7 installed end-to-end acceptance is complete.
 
-## Required observables
+Accepted observables:
 
 1. exact-head isolated install without source leakage — `PASS`;
 2. persistent installed session identity — `PASS`;
@@ -37,9 +36,9 @@ Can a clean installed LBE normal path perform persistent coding/audit work acros
 12. no credential/secret leakage into repo/logs/receipts/artifacts — `PASS`;
 13. focused installed/runtime regression with exact package/head/environment evidence — `PASS_AFTER_REPAIR`;
 14. source remains unchanged unless a real falsifier activates a separate repair slice — `PASS`;
-15. **ACTIVE:** clean worktree plus exact limitations/falsifiers.
+15. clean worktree plus exact limitations/falsifiers — `PASS`.
 
-## Accepted installed evidence through observable 14
+## Decisive evidence
 
 ```text
 observable 3 decisive hash:
@@ -54,56 +53,105 @@ EDAB5DB0FB2667F241AEB1BC1F90832759C085AEDD984BD6BE09561F5F9C8376
 observable 6 decisive hash:
 4B11427423FE60EFD1E77271A424390F2E91813A9A1E80E961A3C5FDF0BB78CC
 
+observable 11 decisive hash:
+6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D
+
 observable 13 decisive hash:
 A2AC0D1058E3D817DF8E35A1540D6BC89D492C25F7D2D6A3936D54C44BD9A3AE
 
 observable 14 decisive hash:
 ED2E9D5763EEB5C57B073C002D616B3DC4298C067D5EFDBE3D463088E74DD054
+
+observable 15 decisive hash:
+1EA6416387E3A1AF9F2ABEC5CFA84ED414CDBCB11793C13AAB6FE34B00BE6919
 ```
 
-Observable 6 proved that fresh installed current-workspace evidence re-read an externally changed file and returned the exact new SHA while persistent task authority remained intact.
+## Repaired Observable 13
 
-Observable 11 decisive proof: `6234EA61F2A2E8A8FE962515278B3ED8229EC5B2CD4AB92FFBAABCEAC6D2DA6D`.
+Observable 13 initially exposed a real installed-package defect: the Python wheel contained the Cline worker entry files but did not provision the locked `@cline/agents` dependency tree into the installed runtime. The bounded repair retained the existing `GovernedClineWorker`, stdio protocol, Cline `AgentRuntime`, R6C/R6E authority owners, and completion ownership while adding deterministic build-time dependency provisioning from the existing worker lockfile.
 
-Observable 12 proved credential/secret non-leakage (`PASS`): provider JSON body, runtime result, receipts, completion evidence, CLI stdout/stderr, persisted state, workspace/source/acceptance files, and SQLite raw bytes stayed clean; the configured canary appeared only in its ephemeral input and the outbound provider transport header (name `authorization`).
+The repaired wheel then proved:
 
-Observable 13 proved the repaired installed package can build a self-contained wheel containing the locked Cline worker dependency tree, install into a fresh isolated venv, resolve `@cline/agents` without source-tree dependency state, execute the governed provider/tool/final continuation, persist receipts and completion evidence, preserve LBE-only completion authority, restore session/task state in fresh processes, prevent credential leakage, and avoid unexpected workspace/source mutation. The only intermediate failure after dependency provisioning was a stale probe assertion that compared completion requirement IDs against evidence kinds; the runtime behavior matched the canonical completion contract and the harness was corrected.
+- isolated `site-packages` origin;
+- locked worker dependency tree inside the wheel;
+- installed `@cline/agents` resolution without source-tree `node_modules`;
+- governed provider/tool/final continuation;
+- executed `ToolReceipt` persistence;
+- LBE-only completion authority;
+- fresh-process session/task restoration;
+- credential non-leakage;
+- no unexpected workspace mutation;
+- canonical source unchanged.
 
-Observable 14 proved canonical `main` remained identical to `origin/main`, implementation and architecture remained locked, tracked source remained unchanged, and generated acceptance evidence remained untracked. The first Observable 14 command incorrectly invoked the implementation commit gate as a read-only validator; that was classified as a harness error and did not authorize a source change.
+The intermediate completion assertion failure after the repair was a harness defect: the probe compared `CompletionDecision.satisfied_requirement_ids` against contract `evidence_kind` values. The canonical runtime correctly returns `requirement_id` values. Only the probe was corrected.
 
-## Observable 15 predicate
+## Observable 14 result
 
-Prove final R7 acceptance closure without overstating product or release readiness.
+Observable 14 proved:
 
-Required invariants:
+- canonical branch remained `main`;
+- `HEAD == origin/main`;
+- implementation remained locked;
+- architecture changes remained locked;
+- tracked canonical source remained unchanged;
+- generated validation evidence remained untracked and separately reported.
+
+The first Observable 14 command incorrectly invoked `scripts/check-implementation-gate.py` as a read-only runtime validator. That checker is a staging/commit gate when implementation is locked. The failure was therefore classified as harness-only and did not authorize source changes.
+
+## Observable 15 result
+
+Observable 15 proved:
+
+- canonical branch remained `main`;
+- `HEAD == origin/main`;
+- tracked worktree was clean;
+- remaining untracked artifacts were enumerated and classified as generated validation evidence or standalone documentation instruction material;
+- implementation remained locked;
+- architecture changes remained locked;
+- exact limitations were present in this acceptance record;
+- publish readiness remained locked.
+
+Observed untracked categories at closure included:
 
 ```text
-canonical branch remains main
-HEAD equals origin/main
-tracked canonical worktree is clean
-no generated validation artifact is staged or tracked as product source
-all remaining untracked/generated artifacts are enumerated and classified
-implementation_allowed remains false
-architecture_changes_allowed remains false
-all known R7 harness failures remain recorded as harness failures
-all known product limitations and remaining falsifiers are stated exactly
-R7 acceptance completion does not itself imply package/release/publish readiness
-publish_allowed_now remains false until separate release/package readiness acceptance passes
+.observable13_fresh_wheel/
+.observable13_pipeline/
+.observable13_scratch/
+LBE Documentation-Only Correction Instruction.md
 ```
 
-## Exact remaining limitations at Observable 15 entry
+These are not accepted product source.
+
+## Exact remaining limitations after R7
 
 ```text
 R7 proves the accepted installed-runtime behaviors only for the bounded evidence and environments exercised by its observables.
-The repaired Python wheel now carries the locked Cline worker dependency tree; this increases wheel size and requires the package build environment to provide the declared Node runtime/npm build dependency path.
-Generated local validation directories and the standalone documentation instruction file are not accepted product source and must remain untracked or be removed before any clean-worktree claim that requires zero untracked files.
+The repaired Python wheel carries the locked Cline worker dependency tree; this increases wheel size and requires the package build environment to provide the declared Node runtime/npm build dependency path.
+Generated local validation directories and the standalone documentation instruction file are not accepted product source and remain outside canonical tracked source state.
 R7 acceptance is not release/package readiness acceptance and does not authorize versioning, tagging, or publishing.
+publish_allowed_now remains false until a separate release/package readiness acceptance passes.
 ```
 
-## Observable 15 falsifier
+## Remaining falsifiers
 
-Any tracked canonical worktree dirtiness, staged/generated evidence mistaken for source, HEAD/origin drift, omission or material understatement of known limitations/falsifiers, silent enabling of implementation/architecture changes, or claim of release/publish readiness before separate package/release acceptance is an Observable 15 falsifier.
+A later result must reopen a bounded repair/review gate rather than silently modifying accepted source if it proves any of the following:
 
-## Stop rule
+- installed package source leakage;
+- persistent session/task identity loss;
+- mutation outside governed R6C/R6E execution;
+- missing or unpersisted receipts;
+- provider/model switch changing LBE authority identity;
+- stale evidence accepted after external workspace change;
+- audit/investigation mutation;
+- out-of-authority execution that does not fail closed;
+- provider completion becoming authoritative without deterministic validation;
+- credential/secret leakage;
+- installed Cline worker dependency resolution depending on source-tree state;
+- tracked source mutation caused by acceptance execution itself;
+- release or publish readiness being claimed without separate package/release acceptance.
 
-Observable 15 is the only active acceptance slice. No implementation, architecture, version, tag, release, or publish work is authorized by this gate. A real product falsifier requires a separately activated bounded repair slice. R7 may close only after Observable 15 is classified `PASS`; package/release readiness remains a separate acceptance step.
+## Closure rule
+
+R7 is closed `PASS`.
+
+No implementation, architecture, version, tag, release, or publish work is authorized merely by this closure. The only remaining progression prerequisite recorded by this gate is a **separate release/package readiness acceptance**. That next phase remains locked until explicitly activated under its own gate.
