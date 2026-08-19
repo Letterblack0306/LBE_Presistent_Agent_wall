@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
-  "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "R7_ACCEPTANCE_COMPLETE",
-  "status": "PASS",
+  "active_plan": "docs/acceptance/RELEASE_PACKAGE_READINESS_AUDIT_GATE.md",
+  "active_phase": "RELEASE_PACKAGE_READINESS_ACCEPTANCE",
+  "active_slice": "AUDIT_CURRENT_DISTRIBUTION_CONTRACT",
+  "status": "OPEN",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -56,12 +56,18 @@
     "R7_OBSERVABLE_15": "PASS",
     "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS"
   },
-  "current_observable": {
-    "number": 15,
-    "status": "PASS",
-    "question": "Is the canonical worktree clean at the end of R7 acceptance, with generated evidence separated from source state and all remaining product limitations and falsifiers recorded exactly without overstating readiness?",
-    "required_evidence_level": "CLEAN_WORKTREE_PLUS_EXACT_LIMITATIONS_FALSIFIERS_PROOF",
-    "implementation_changes_allowed": false
+  "current_release_audit": {
+    "status": "OPEN",
+    "question": "What is the current canonical distribution contract on main, and are its package metadata, release workflows, built artifacts, isolated install behavior, and documented publication assumptions internally consistent?",
+    "required_evidence_level": "CURRENT_SOURCE_PLUS_LOCAL_BUILD_PLUS_ARTIFACT_CONTRACT",
+    "implementation_changes_allowed": false,
+    "publish_allowed": false
+  },
+  "known_release_conflict": {
+    "canonical_python_package_version": "0.2.0",
+    "publish_workflow_expected_version": "2.0.1",
+    "publish_workflow_branch": "release/python-runtime-v2.0.1",
+    "classification": "DOCUMENT_WORKFLOW_VS_CURRENT_PACKAGE_CONFLICT"
   },
   "accepted_observable_15_evidence": {
     "decisive_hash": "1EA6416387E3A1AF9F2ABEC5CFA84ED414CDBCB11793C13AAB6FE34B00BE6919",
@@ -114,13 +120,16 @@
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "separate release/package readiness acceptance"
+      "current distribution contract audit",
+      "release/package readiness acceptance"
     ]
   },
   "forbidden": [
-    "source/runtime/package implementation changes without a separately activated gate",
+    "source/runtime/package/workflow implementation changes during the audit",
     "architecture rewrite without explicit authorization",
-    "release version tag or publish work before separate release/package readiness acceptance passes",
-    "treating R7 PASS as package/release/publish readiness"
+    "release version change before the audit identifies the current version authority",
+    "release branch activation",
+    "release tag or publish work before release/package readiness acceptance passes",
+    "treating historical 2.0.1 or 2.0.2 evidence as current without exact-head proof"
   ]
 }
