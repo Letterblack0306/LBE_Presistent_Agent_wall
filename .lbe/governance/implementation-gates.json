@@ -2,8 +2,8 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md",
   "active_phase": "R7_INSTALLED_END_TO_END_ACCEPTANCE",
-  "active_slice": "OBSERVABLE_15_CLEAN_WORKTREE_LIMITATIONS_FALSIFIERS",
-  "status": "OPEN",
+  "active_slice": "R7_ACCEPTANCE_COMPLETE",
+  "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": false,
   "next_phase_locked": true,
@@ -52,23 +52,28 @@
     "R7_OBSERVABLE_11": "PASS",
     "R7_OBSERVABLE_12": "PASS",
     "R7_OBSERVABLE_13": "PASS_AFTER_REPAIR",
-    "R7_OBSERVABLE_14": "PASS"
+    "R7_OBSERVABLE_14": "PASS",
+    "R7_OBSERVABLE_15": "PASS",
+    "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS"
   },
   "current_observable": {
     "number": 15,
-    "status": "OPEN",
+    "status": "PASS",
     "question": "Is the canonical worktree clean at the end of R7 acceptance, with generated evidence separated from source state and all remaining product limitations and falsifiers recorded exactly without overstating readiness?",
     "required_evidence_level": "CLEAN_WORKTREE_PLUS_EXACT_LIMITATIONS_FALSIFIERS_PROOF",
     "implementation_changes_allowed": false
   },
-  "observable_15_falsifiers": [
-    "tracked canonical worktree is dirty",
-    "generated validation artifacts are staged or tracked as product source without explicit acceptance",
-    "HEAD differs from origin/main",
-    "remaining product limitations or known falsifiers are omitted or materially understated",
-    "release or publish readiness is claimed before separate release/package readiness acceptance",
-    "implementation or architecture changes are enabled during final acceptance closure"
-  ],
+  "accepted_observable_15_evidence": {
+    "decisive_hash": "1EA6416387E3A1AF9F2ABEC5CFA84ED414CDBCB11793C13AAB6FE34B00BE6919",
+    "canonical_main": "PASS",
+    "head_origin_identity": "PASS",
+    "tracked_worktree_clean": "PASS",
+    "untracked_artifacts_classified": "PASS",
+    "implementation_locked": "PASS",
+    "architecture_locked": "PASS",
+    "limitations_recorded": "PASS",
+    "publish_locked": "PASS"
+  },
   "accepted_observable_13_evidence": {
     "decisive_hash": "A2AC0D1058E3D817DF8E35A1540D6BC89D492C25F7D2D6A3936D54C44BD9A3AE",
     "repair_gate": "docs/acceptance/R7_OBSERVABLE13_DEPENDENCY_PROVISIONING_REPAIR_GATE.md",
@@ -109,14 +114,13 @@
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
     "remaining_prerequisites": [
-      "finish R7 observable 15",
-      "release/package readiness acceptance"
+      "separate release/package readiness acceptance"
     ]
   },
   "forbidden": [
-    "source/runtime/package implementation changes without a separately activated repair gate",
-    "architecture rewrite",
-    "release version tag or publish work",
-    "claiming release or publish readiness before observable 15 and separate release/package readiness acceptance pass"
+    "source/runtime/package implementation changes without a separately activated gate",
+    "architecture rewrite without explicit authorization",
+    "release version tag or publish work before separate release/package readiness acceptance passes",
+    "treating R7 PASS as package/release/publish readiness"
   ]
 }
