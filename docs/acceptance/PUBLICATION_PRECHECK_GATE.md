@@ -1,6 +1,6 @@
 # Publication Precheck Gate
 
-Status: **OPEN — AUDIT ONLY — PUBLISH LOCKED — IMPLEMENTATION LOCKED**
+Status: **PASS — REPOSITORY/SERVICE PRECHECK COMPLETE — PYPI TRUST BINDING ONLY PROVABLE DURING REAL PUBLISH — PUBLISH STILL LOCKED**
 
 phase: `PUBLICATION_PRECHECK`
 
@@ -16,57 +16,74 @@ required_evidence_level: `LIVE_REGISTRY_PLUS_GITHUB_PUBLISHING_CONFIGURATION`
 
 Determine whether the already-validated canonical Python package may be published without guessing about public registry state or trusted-publishing configuration.
 
-## Canonical package target under audit
+## Canonical package target
 
 - distribution: `lbe-guard-inspector`
 - canonical version authority: `pyproject.toml`
-- currently proven canonical version: `0.2.0`
+- canonical version: `0.2.0`
 - publication workflow: `.github/workflows/publish-python-runtime.yml`
 - trigger: manual `workflow_dispatch` only
 
-The version must not be changed during this precheck.
+## Decisive live evidence
 
-## Required live proof
+Publication precheck command hash:
 
-1. query PyPI directly for `lbe-guard-inspector`;
-2. classify the project namespace as absent, present-owned, present-foreign, or unresolved;
-3. if present, enumerate published versions and prove whether `0.2.0` is already used;
-4. inspect the GitHub `pypi` environment / workflow requirements available to the repository;
-5. prove that the workflow still uses OIDC trusted publishing (`id-token: write` and `pypa/gh-action-pypi-publish`);
-6. do not execute the workflow or publish anything during precheck.
+`CB87655106DEB0D947FD03546929CB9B6B0432A2707539C5A3D2B16C8B962D4D`
 
-## PASS condition
+Proven:
 
-PASS requires all of the following:
+- canonical `main` matched `origin/main`;
+- PyPI project `lbe-guard-inspector` exists;
+- published PyPI versions are `2.0.1` and `2.0.2`;
+- canonical `0.2.0` is not currently published and therefore has no version collision;
+- workflow contains `id-token: write`;
+- workflow targets GitHub environment `pypi`;
+- workflow uses `pypa/gh-action-pypi-publish@release/v1`;
+- workflow remains manual-only;
+- tracked source remained clean;
+- publication was not executed.
 
-- live PyPI namespace state is resolved;
-- canonical version availability is resolved;
-- no version collision exists for the intended publication;
-- repository/workflow trusted-publishing requirements are resolved sufficiently to execute a later explicitly authorized publish action;
-- canonical `main` and tracked source remain unchanged;
-- publication remains locked during this gate.
+Additional authenticated GitHub evidence:
 
-## Blocking classifications
+- GitHub environment `pypi` exists;
+- historical workflow runs exist, but none completed a successful publication;
+- latest historical failure produced no executed workflow steps, so it does not prove or disprove PyPI trusted-publisher binding.
 
-- `PYPI_NAMESPACE_UNRESOLVED`
-- `PYPI_NAMESPACE_FOREIGN`
-- `PYPI_VERSION_ALREADY_EXISTS`
-- `TRUSTED_PUBLISHING_UNVERIFIED`
-- `TRACKED_SOURCE_DIRTY`
-- `PACKAGE_VERSION_CONFLICT`
+## Trusted-publisher binding limitation
 
-## Forbidden
+PyPA's current trusted-publishing guidance states that trusted publishing cannot be fully tested in CI without entering the actual publishing flow. Therefore the PyPI-side repository/workflow/environment binding cannot be truthfully promoted to proven before an explicitly authorized real publication attempt.
 
-- publishing to PyPI;
-- changing `pyproject.toml` version;
-- choosing a replacement version by inference;
-- creating tags or GitHub releases;
+This is **not** classified as a package defect or repository workflow defect. Repository-side prerequisites are proven. The remaining uncertainty is an external service binding that is only exercised during publication.
+
+## Classification
+
+```text
+PUBLICATION_PRECHECK: PASS
+PYPI_NAMESPACE_STATE: PRESENT
+PYPI_EXISTING_VERSIONS: 2.0.1,2.0.2
+CANONICAL_VERSION_0.2.0_COLLISION: NONE
+GITHUB_PYPI_ENVIRONMENT: PASS
+WORKFLOW_OIDC_CONTRACT: PASS
+HISTORICAL_SUCCESSFUL_PUBLISH_RUN: NONE
+PYPI_TRUST_BINDING_PRE_PUBLISH_PROOF: NOT_POSSIBLE_WITHOUT_REAL_PUBLISH
+PUBLISH_EXECUTION: NOT_PERFORMED
+```
+
+## Forbidden after closure
+
+- publishing without separate explicit publication execution authorization;
+- changing `pyproject.toml` version by inference;
+- creating tags or GitHub releases as a side effect of this closure;
 - adding an npm publication path;
-- changing runtime/package/workflow implementation;
 - weakening trusted-publishing permissions or environment controls.
 
 ## Advancement rule
 
-If this precheck passes, record the exact target/version and trusted-publishing evidence, then require a separate explicit publication execution authorization before dispatching the publish workflow.
+The next admissible phase is a separate explicit publication execution authorization for exactly:
 
-If any blocking classification is reached, stop and resolve it through a separately authorized gate; do not publish.
+- project: `lbe-guard-inspector`
+- version: `0.2.0`
+- workflow: `.github/workflows/publish-python-runtime.yml`
+- ref: canonical `main`
+
+Until that authorization exists, `publish_allowed_now` remains `false`.
