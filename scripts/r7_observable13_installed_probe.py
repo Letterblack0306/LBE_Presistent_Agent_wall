@@ -409,7 +409,9 @@ def main() -> int:
             project_workspace_id=PROJECT_ID,
         )
         require(contract is not None, "registered completion contract missing")
+        contract_ids = [item.requirement_id for item in contract.requirements]
         contract_kinds = [item.evidence_kind for item in contract.requirements]
+        require(contract_ids == ["source-change", "focused-tests", "git-state"], f"contract ids={contract_ids}")
         require(contract_kinds == ["source_change", "focused_test", "git_status"], f"contract kinds={contract_kinds}")
         evidence_before = TaskCompletionEvidencePersistence(store).load(
             session_id=SESSION_ID,
@@ -433,7 +435,7 @@ def main() -> int:
         validated = json_stdout(validation_result, "session validate")
         captured_json.append(validated)
         completion = validated.get("completion") or {}
-        require(completion.get("satisfied_requirement_ids") == contract_kinds, f"satisfied={completion.get('satisfied_requirement_ids')}")
+        require(completion.get("satisfied_requirement_ids") == contract_ids, f"satisfied={completion.get('satisfied_requirement_ids')}")
         require(completion.get("missing_requirement_ids") == [], f"missing={completion.get('missing_requirement_ids')}")
         require(completion.get("failed_requirement_ids") == [], f"failed={completion.get('failed_requirement_ids')}")
         validated_task = validated.get("task") or {}
