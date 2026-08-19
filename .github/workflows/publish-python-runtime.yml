@@ -21,6 +21,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: lbe_guard_inspector/runtime/cline_worker/package-lock.json
+
       - name: Verify exact public runtime version
         run: |
           python - <<'PY'
