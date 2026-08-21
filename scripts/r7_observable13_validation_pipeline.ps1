@@ -82,17 +82,12 @@ try {
 import sys, zipfile
 z = zipfile.ZipFile(sys.argv[1])
 names = z.namelist()
-deps = [n for n in names if '/cline_worker/node_modules/' in n]
-agents = [n for n in names if '/cline_worker/node_modules/@cline/agents/' in n]
-worker = any(n.endswith('/cline_worker/worker.mjs') for n in names)
-agentpkg = any(n.endswith('/cline_worker/node_modules/@cline/agents/package.json') for n in names)
+deps = [n for n in names if '/cline_worker/' in n]
 schema = any(n.endswith('/memory/memory_schema.sql') for n in names)
 print(f'DEPENDENCY_FILES={len(deps)}')
-print(f'CLINE_AGENTS_FILES={len(agents)}')
-print(f'HAS_WORKER={worker}')
-print(f'HAS_AGENT_PACKAGE={agentpkg}')
+print(f'LEGACY_NODE_WORKER_FILES={len(deps)}')
 print(f'HAS_MEMORY_SCHEMA={schema}')
-if not (worker and agentpkg and schema and deps):
+if deps or not schema:
     raise SystemExit(2)
 '@
             $CheckPath = Join-Path $RunRoot 'check_wheel.py'
@@ -125,16 +120,8 @@ if not (worker and agentpkg and schema and deps):
             }
         }
 
-        Invoke-Stage 'INSTALLED_CLINE_DEPENDENCY_RESOLUTION' {
-            $WorkerRoot = Join-Path $script:Venv 'Lib\site-packages\lbe_guard_inspector\runtime\cline_worker'
-            if (-not (Test-Path (Join-Path $WorkerRoot 'worker.mjs'))) { throw 'INSTALLED_WORKER_MISSING' }
-            Push-Location $WorkerRoot
-            try {
-                node --input-type=module -e "import('@cline/agents').then(m=>{console.log('CLINE_AGENTS_RESOLUTION=PASS');console.log('AgentRuntime='+typeof m.AgentRuntime);console.log('createAgentRuntime='+typeof m.createAgentRuntime)}).catch(e=>{console.error(e);process.exit(1)})"
-            }
-            finally {
-                Pop-Location
-            }
+        Invoke-Stage 'INSTALLED_PROVIDER_RUNTIME_PROOF' {
+            & $script:Python -c "from lbe_guard_inspector.runtime.governed_coding import GovernedProviderReasoningController; print('GOVERNED_PROVIDER_RUNTIME=PASS')"
         }
 
         Invoke-Stage 'INSTALLED_CLI_SMOKE' {

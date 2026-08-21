@@ -10,8 +10,10 @@ from lbe_guard_inspector.reasoning_provider import ProviderConfig, ProviderError
 class _Transport:
     def __init__(self, response: Mapping[str, Any] | Exception) -> None:
         self.response = response
+        self.requests: list[Mapping[str, Any]] = []
 
-    def post_json(self, **_: Any) -> Mapping[str, Any]:
+    def post_json(self, **request: Any) -> Mapping[str, Any]:
+        self.requests.append(request)
         if isinstance(self.response, Exception):
             raise self.response
         return self.response
@@ -96,3 +98,23 @@ def test_unmapped_provider_tool_call_fails_without_fabricating_requires_tool_sta
         ModelEventType.ERROR,
     ]
     assert events[-1].error_code == "LBE_CALL_ID_REQUIRED"
+
+
+def test_complete_sends_only_explicitly_declared_lbe_tool_schema() -> None:
+    transport = _Transport({
+        "id": "chatcmpl-tools",
+        "choices": [{"message": {"content": "done"}, "finish_reason": "stop"}],
+    })
+    adapter = OpenAICompatibleEventAdapter(
+        config=ProviderConfig(endpoint="http://provider/v1/chat/completions", model="local-model", timeout_seconds=5),
+        transport=transport,
+    )
+
+    adapter.complete(
+        messages=({"role": "user", "content": "hello"},),
+        tools=({"type": "function", "function": {"name": "lbe_0_workspace_read", "parameters": {"type": "object"}}},),
+    )
+
+    assert transport.requests[0]["payload"]["tools"] == [
+        {"type": "function", "function": {"name": "lbe_0_workspace_read", "parameters": {"type": "object"}}}
+    ]

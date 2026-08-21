@@ -1,29 +1,30 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
-Updated: 2026-08-17
-Status: Active canonical roadmap — R7 installed end-to-end acceptance failed on installed coding composition; repair investigation required before any implementation or release progression
+Updated: 2026-08-21
+Status: Canonical roadmap — R7 installed end-to-end acceptance is PASS; publication version preparation for 2.0.3 is the active machine-gate slice
 ## Authority reconciliation (READ FIRST)
 
-Current machine-gate authority — `.lbe/governance/implementation-gates.json` and
-`docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md`:
+Current machine-gate authority — `.lbe/governance/implementation-gates.json` and its exact
+machine-declared active plan, `docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md`:
 
 ```text
-phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_13_INSTALLED_RUNTIME_REGRESSION
+phase: PUBLICATION_VERSION_PREPARATION
+slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
 status: OPEN
-observables 1-12: PASS (observable 3 PASS_AFTER_REPAIR)
-observable 13: OPEN (current active slice)
-implementation_allowed: false
+R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
+RELEASE_PACKAGE_READINESS_ACCEPTANCE: PASS
+PUBLICATION_PRECHECK: PASS
+implementation_allowed: true (version-preparation scope only)
 architecture_changes_allowed: false
 next_phase_locked: true
-base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
-HEAD: 24d6e5950b912c0889396e95d307e41bdf05d06f
+target_version: 2.0.3
+publish_allowed: false
 ```
 
-The status lines in the body below that describe "R7 FAIL / repair not yet activated" are
-**historical records** of the earlier observable-3 installed coding-composition failure and
-its repair investigation. They are not current machine-gate state. Live Git/runtime/validation
-evidence and the machine gate outrank them.
+The R7 failure and repair records retained below are **historical evidence** of the earlier
+observable-3 installed coding-composition failure. R7 is currently `PASS`, including observable
+3 and observable 13 `PASS_AFTER_REPAIR`; those records do not override the active publication
+gate. Live Git/runtime/validation evidence and the machine gate outrank this document.
 
 **Architecture correction — read before extending the LBE wall:** the reasoning controller
 became the agent. See `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and section 15.
@@ -61,26 +62,24 @@ R6D PROVEN_COMPLETE
 R6E PROVEN_COMPLETE
 R6F PROVEN_COMPLETE
 CLI PROVEN_COMPLETE
-R7  FAIL — INSTALLED NORMAL-PATH CODING COMPOSITION GAP
-repair investigation NOT YET ACTIVATED
-release/package readiness BLOCKED_BY_R7
+R7  PASS (observable 3 and observable 13 PASS_AFTER_REPAIR)
+RELEASE_PACKAGE_READINESS_ACCEPTANCE PASS
+PUBLICATION_PRECHECK PASS
+PUBLICATION_VERSION_PREPARATION OPEN — target 2.0.3
 ```
 
-Current active gate remains the failed R7 acceptance gate:
+Current active gate is publication version preparation; it authorizes only the bounded
+2.0.3 version-preparation scope and does not authorize publication:
 
 ```text
-phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: PROVE_INSTALLED_PERSISTENT_AGENT_NORMAL_PATH_OVER_ACCEPTED_AUTHORITIES
-status: FAIL
-implementation_allowed: false
+phase: PUBLICATION_VERSION_PREPARATION
+slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+status: OPEN
+implementation_allowed: true (version-preparation scope only)
 architecture_changes_allowed: false
 next_phase_locked: true
-base_sha: 69c6ae764bc217cd5795ddf8a972658223a681a0
-activation_sha: 401a4f184fcbeae5ff6e4d58be139515b9861ed2
-failure_record_head: 66e46b5886d2e71d0542ce782179722ae476d3f6
-required_evidence_level: USER_VISIBLE_RUNTIME
-release_path_authorized: true
-publish_allowed_now: false
+target_version: 2.0.3
+publish_allowed: false
 ```
 
 ## 4. Accepted phases and what they do — and do not — prove
@@ -102,11 +101,15 @@ R6F evidence-owned completion/validation
 CLI persistent control/projection surface
 ```
 
-They did not prove that the installed `lbe code` command composes all of those authorities in one real coding path. R7 is the first release-level installed composition proof and correctly found that gap.
+They did not by themselves prove that the installed `lbe code` command composes all of those
+authorities in one real coding path. R7 subsequently provided that release-level installed
+composition proof and is now `PASS`.
 
-## 5. R7 — Installed end-to-end persistent agent proof
+## 5. Historical R7 failure and repair investigation
 
-**Classification: `FAIL` — decisive observable-3 falsifier.**
+**Historical classification: `FAIL` — decisive observable-3 falsifier.** This section preserves
+the original failure evidence. It is not the current R7 state; see the R7 acceptance gate for
+the accepted `PASS_AFTER_REPAIR` records.
 
 Evidence reached:
 
@@ -434,14 +437,14 @@ This section records the architectural lesson and the proposed future correction
 See the banner at the top of this file and the machine gate:
 
 ```text
-phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-slice: OBSERVABLE_13_INSTALLED_RUNTIME_REGRESSION
+phase: PUBLICATION_VERSION_PREPARATION
+slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
 status: OPEN
-observables 1-12: PASS (observable 3 PASS_AFTER_REPAIR)
-observable 13: OPEN (current active slice)
-implementation_allowed: false
+R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
+implementation_allowed: true (version-preparation scope only)
 architecture_changes_allowed: false
 next_phase_locked: true
+publish_allowed: false
 ```
 
 ### HISTORICAL FAILURE (preserved, not current state)
@@ -450,8 +453,8 @@ The earlier observable-3 installed coding-composition failure (installed `lbe co
 `GovernedAgentGateway` → `LBERequestController` with `approved_tools=[workspace.read]` and
 `read_only=true`, never reaching the accepted R6E governed coding path) is **historical
 evidence**. It was addressed by the recorded repair investigation and observable 3 is recorded
-`PASS_AFTER_REPAIR`. Any "R7 FAIL / repair not yet activated" lines in the body above are
-historical records, not current machine-gate state.
+`PASS_AFTER_REPAIR`. Any retained "R7 FAIL / repair not yet activated" lines in the body above
+are historical records, not current machine-gate state.
 
 ### ARCHITECTURAL LESSON
 
@@ -542,3 +545,24 @@ Future architecture acceptance question (recorded as a proposed follow-on review
 > identity, persistence, receipts, and completion authority remain governed by LBE?
 
 Primary record: `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md`.
+
+## 16. Reference-informed CLI product findings (not an active gate)
+
+Public CLI references were reviewed on 2026-08-21 to make the future LBE product workflow
+concrete without importing external implementation or changing the current gate. The required
+shape is one shared LBE runtime projected into interactive, one-shot, and machine-readable CLI
+surfaces. The agent chooses from session-available governed capabilities; LBE authorizes,
+executes, persists receipts/events, and determines completion.
+
+The current functional findings are:
+
+```text
+CONFIRMED: tested installed worker cannot import its existing @cline/agents adapter dependency; lbe code fails before provider/tool execution.
+CONFIRMED: current governed coding registry exposes only workspace.read and workspace.create_candidate_text.
+CONFIRMED: the product is not yet the intended agent-directed multi-capability loop.
+UNVERIFIED: current-source exact-wheel packaging and full regression did not finish within audit limits.
+```
+
+The complete external-reference evidence, implementation backlog, and proposed future acceptance
+question are in `docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`. This section is not
+an active gate and does not authorize implementation outside the machine-declared slice.

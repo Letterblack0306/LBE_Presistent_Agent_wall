@@ -1,26 +1,25 @@
-"""Governed coding composition over existing Cline and R6E authorities.
+"""Provider-neutral governed coding over existing LBE authorities.
 
-This module is intentionally a composition layer, not a new authority. Provider
-mechanics remain in the existing Cline worker, authorization/execution remain in
-R6C/R6E, session/task persistence remains in SessionMemoryRuntimeBridge, and
-completion truth remains in CodingCompletionRuntime.
+The provider may request registered tools; LBE alone authorizes, executes, and
+records their receipts.  Session/task persistence and completion truth remain
+with their existing owners.
 """
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Mapping
-from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 from agent import Context, GovernanceError, matches_any, path_allowed
 
 from ..evidence_service import EvidenceService
+from ..openai_compatible_event_adapter import OpenAICompatibleEventAdapter
+from ..professional_provider_events import ModelEventType, NormalizedModelEvent
 from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
 from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
-from .cline_stdio_bridge import GovernedClineWorker
-from .cline_stdio_protocol import PROTOCOL_VERSION, BridgeFrame
 from .mode_controller import ModeRequest, resolve_mode
 from .tool_orchestration import (
     GovernedToolOrchestrator,
@@ -32,6 +31,7 @@ from .tool_orchestration import (
     ToolReceiptStatus,
     ToolRegistry,
     ToolRiskClass,
+    ToolRequest,
     ToolSpec,
     build_workspace_read_handler,
     workspace_read_spec,
@@ -196,8 +196,8 @@ class _ReceiptTrackingOrchestrator(GovernedToolOrchestrator):
         return receipt
 
 
-class GovernedClineReasoningController:
-    """ReasoningController adapter that composes existing governed coding owners."""
+class GovernedProviderReasoningController:
+    """Bounded provider tool loop composed over the existing LBE tool owner."""
 
     def __init__(
         self,
@@ -250,6 +250,7 @@ class GovernedClineReasoningController:
         )
         self._registry = registry
         self._orchestrator = _ReceiptTrackingOrchestrator(registry=registry)
+        self._adapter = OpenAICompatibleEventAdapter(config=provider_config)
 
     def run(self, request: LBERequest) -> LBEResponse:
         task_id = str(request.task_id or "").strip()
@@ -257,70 +258,69 @@ class GovernedClineReasoningController:
             raise ValueError("governed coding requires a task_id")
 
         turn_id = f"turn-{uuid4().hex}"
-        worker = GovernedClineWorker()
-        provider = {
-            "provider_id": self._provider_id,
-            "model_id": self._provider_config.model.strip(),
-            "base_url": _cline_base_url(self._provider_config.endpoint),
-        }
-        if self._provider_config.api_key:
-            provider["api_key"] = self._provider_config.api_key
-
-        start = BridgeFrame(
-            protocol_version=PROTOCOL_VERSION,
-            message_id=f"py-start-{uuid4().hex}",
-            message_type="runtime.start",
-            session_id=self._runtime.session_id,
-            turn_id=turn_id,
-            payload={
-                "provider": provider,
-                "allowed_tools": [
-                    _worker_tool_definition(spec) for spec in self._registry.specs()
-                ],
-                "system_prompt": (
+        messages: list[dict[str, object]] = [
+            {
+                "role": "system",
+                "content": (
                     "Operate only through the exposed LBE governed tools. "
                     "Do not claim LBE completion truth. For a requested new text "
                     "artifact, use workspace.create_candidate_text; it is create-only."
                 ),
-                "max_iterations": 8,
             },
-        )
-        execute = BridgeFrame(
-            protocol_version=PROTOCOL_VERSION,
-            message_id=f"py-turn-{uuid4().hex}",
-            message_type="turn.execute",
-            session_id=self._runtime.session_id,
-            turn_id=turn_id,
-            payload={"text": request.problem.strip()},
-        )
-
-        terminal: BridgeFrame | None = None
-        bridge_error: Exception | None = None
+            {"role": "user", "content": request.problem.strip()},
+        ]
+        provider_output = ""
+        terminal_error: OrchestrationError | None = None
         try:
-            worker.start(start)
-            terminal = worker.execute_turn(
-                execute,
-                orchestrator=self._orchestrator,
-                context=self._context,
-                timeout_seconds=max(30.0, float(self._provider_config.timeout_seconds) * 4),
-            )
-        except Exception as exc:  # fail closed at the bridge boundary
-            bridge_error = exc
-        finally:
-            if worker.is_running:
-                try:
-                    worker.shutdown(
-                        BridgeFrame(
-                            protocol_version=PROTOCOL_VERSION,
-                            message_id=f"py-shutdown-{uuid4().hex}",
-                            message_type="runtime.shutdown",
-                            session_id=self._runtime.session_id,
-                            turn_id=turn_id,
-                            payload={},
-                        )
+            for _iteration in range(8):
+                call_ids: dict[str, str] = {}
+                events = self._adapter.complete(
+                    messages=tuple(messages),
+                    provider_id=self._provider_id,
+                    lbe_call_id_for_provider_tool_call=lambda provider_call_id: call_ids.setdefault(
+                        provider_call_id, f"lbe-{turn_id}-{len(call_ids) + 1}"
+                    ),
+                    tools=tuple(_provider_tool_definition(index, spec) for index, spec in enumerate(self._registry.specs())),
+                )
+                terminal_error = _provider_event_error(events)
+                if terminal_error is not None:
+                    break
+                provider_output = _message_text(events) or provider_output
+                calls = tuple(event for event in events if event.event_type is ModelEventType.TOOL_CALL_COMPLETED)
+                if not calls:
+                    if any(event.event_type is ModelEventType.TURN_COMPLETED for event in events):
+                        break
+                    terminal_error = OrchestrationError(
+                        code="PROVIDER_TURN_INCOMPLETE",
+                        message="provider returned neither a completed turn nor an executable tool call",
                     )
-                except Exception:
-                    worker.terminate()
+                    break
+                messages.append(_assistant_tool_message(provider_output, calls))
+                for event in calls:
+                    assert event.provider_tool_call_id is not None
+                    assert event.tool_name is not None
+                    tool_id = _tool_id_for_provider_name(event.tool_name, self._registry.specs())
+                    receipt = self._orchestrator.invoke(ToolRequest(
+                        operation_id=f"{turn_id}:{event.lbe_call_id}",
+                        tool_id=tool_id,
+                        arguments=dict(event.tool_arguments or {}),
+                        context=self._context,
+                    ))
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": event.provider_tool_call_id,
+                        "content": json.dumps(_receipt_payload(receipt), ensure_ascii=False, sort_keys=True),
+                    })
+            else:
+                terminal_error = OrchestrationError(
+                    code="PROVIDER_TOOL_ITERATION_LIMIT",
+                    message="provider exceeded the bounded eight-iteration tool loop",
+                )
+        except Exception as exc:
+            terminal_error = OrchestrationError(
+                code="GOVERNED_PROVIDER_RUNTIME_ERROR",
+                message=f"{type(exc).__name__}: {exc}",
+            )
 
         receipts = self._orchestrator.observed_receipts
         receipt_payload = [_receipt_payload(receipt) for receipt in receipts]
@@ -330,67 +330,22 @@ class GovernedClineReasoningController:
             for receipt in receipts
         )
         deterministic_result = {
-            "runtime": "governed_cline",
+            "runtime": "governed_provider",
             "turn_id": turn_id,
             "provider_id": self._provider_id,
             "provider_model": self._provider_config.model.strip(),
             "governed_tool_receipts": receipt_payload,
+            "provider_output": provider_output,
+            "lbe_completion_truth": False,
         }
 
-        if bridge_error is not None:
+        if terminal_error is not None:
             return self._response(
                 task_id=task_id,
                 deterministic_result=deterministic_result,
                 outcome="ORCHESTRATION_ERROR",
                 read_only=not mutated,
-                error=OrchestrationError(
-                    code="GOVERNED_CLINE_BRIDGE_ERROR",
-                    message=f"{type(bridge_error).__name__}: {bridge_error}",
-                ),
-            )
-        assert terminal is not None
-        deterministic_result = {
-            **deterministic_result,
-            "terminal_message_type": terminal.message_type,
-            "terminal_status": terminal.payload.get("status"),
-            "provider_output": terminal.payload.get("output_text", ""),
-            "lbe_completion_truth": terminal.payload.get("lbe_completion_truth"),
-        }
-        if terminal.message_type != "turn.completed":
-            return self._response(
-                task_id=task_id,
-                deterministic_result=deterministic_result,
-                outcome="ORCHESTRATION_ERROR",
-                read_only=not mutated,
-                error=OrchestrationError(
-                    code=str(terminal.payload.get("code") or "CLINE_TURN_FAILED"),
-                    message=str(
-                        terminal.payload.get("message")
-                        or "governed Cline turn did not complete"
-                    ),
-                ),
-            )
-        if terminal.payload.get("status") != "completed":
-            return self._response(
-                task_id=task_id,
-                deterministic_result=deterministic_result,
-                outcome="ORCHESTRATION_ERROR",
-                read_only=not mutated,
-                error=OrchestrationError(
-                    code="CLINE_TURN_NOT_COMPLETED",
-                    message=f"Cline terminal status was {terminal.payload.get('status')!r}",
-                ),
-            )
-        if terminal.payload.get("lbe_completion_truth") is not False:
-            return self._response(
-                task_id=task_id,
-                deterministic_result=deterministic_result,
-                outcome="ORCHESTRATION_ERROR",
-                read_only=not mutated,
-                error=OrchestrationError(
-                    code="INVALID_COMPLETION_AUTHORITY",
-                    message="provider runtime attempted to assert LBE completion truth",
-                ),
+                error=terminal_error,
             )
         return self._response(
             task_id=task_id,
@@ -431,7 +386,7 @@ class GovernedClineReasoningController:
         )
 
 
-def _worker_tool_definition(spec: ToolSpec) -> dict[str, object]:
+def _provider_tool_definition(index: int, spec: ToolSpec) -> dict[str, object]:
     properties = {
         name: {"type": "string"}
         for name in (*spec.required_arguments, *spec.optional_arguments)
@@ -444,15 +399,17 @@ def _worker_tool_definition(spec: ToolSpec) -> dict[str, object]:
         ),
     }
     return {
-        "tool_id": spec.tool_id,
-        "description": descriptions.get(spec.tool_id, f"LBE governed tool {spec.tool_id}"),
-        "input_schema": {
-            "type": "object",
-            "properties": properties,
-            "required": list(spec.required_arguments),
-            "additionalProperties": False,
+        "type": "function",
+        "function": {
+            "name": f"lbe_{index}_{spec.tool_id.replace('.', '_')}",
+            "description": descriptions.get(spec.tool_id, f"LBE governed tool {spec.tool_id}"),
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": list(spec.required_arguments),
+                "additionalProperties": False,
+            },
         },
-        "timeout_ms": max(1, int(spec.timeout_seconds * 1000)),
     }
 
 
@@ -476,15 +433,40 @@ def _receipt_payload(receipt: ToolReceipt) -> dict[str, object]:
     }
 
 
-def _cline_base_url(endpoint: str) -> str:
-    clean = str(endpoint).strip()
-    parsed = urlsplit(clean)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError("provider endpoint must be an absolute http(s) URL")
-    if parsed.query or parsed.fragment:
-        raise ValueError("provider endpoint query/fragment is not supported for Cline runtime")
-    path = parsed.path.rstrip("/")
-    suffix = "/chat/completions"
-    if path.endswith(suffix):
-        path = path[: -len(suffix)]
-    return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+def _tool_id_for_provider_name(name: str, specs: tuple[ToolSpec, ...]) -> str:
+    for index, spec in enumerate(specs):
+        if name == f"lbe_{index}_{spec.tool_id.replace('.', '_')}":
+            return spec.tool_id
+    raise ValueError(f"provider requested an unregistered tool: {name}")
+
+
+def _assistant_tool_message(text: str, calls: tuple[NormalizedModelEvent, ...]) -> dict[str, object]:
+    return {
+        "role": "assistant",
+        "content": text or None,
+        "tool_calls": [
+            {
+                "id": event.provider_tool_call_id,
+                "type": "function",
+                "function": {
+                    "name": event.tool_name,
+                    "arguments": json.dumps(dict(event.tool_arguments or {}), ensure_ascii=False, sort_keys=True),
+                },
+            }
+            for event in calls
+        ],
+    }
+
+
+def _provider_event_error(events: tuple[NormalizedModelEvent, ...]) -> OrchestrationError | None:
+    error = next((event for event in events if event.event_type is ModelEventType.ERROR), None)
+    if error is None:
+        return None
+    return OrchestrationError(
+        code=error.error_code or "PROVIDER_RESPONSE_ERROR",
+        message="provider returned an error event",
+    )
+
+
+def _message_text(events: tuple[NormalizedModelEvent, ...]) -> str:
+    return "".join(event.text or "" for event in events if event.event_type is ModelEventType.MESSAGE_COMPLETED)

@@ -425,9 +425,9 @@ def _run_mode_command(
     if handle.descriptor.provider_id != state.provider_id:
         raise ValueError("provider adapter identity does not match persisted session provider")
     if mode is AgentMode.CODING:
-        from .runtime.governed_coding import GovernedClineReasoningController
+        from .runtime.governed_coding import GovernedProviderReasoningController
 
-        controller = GovernedClineReasoningController(
+        controller = GovernedProviderReasoningController(
             runtime=runtime,
             provider_id=state.provider_id,
             provider_config=provider_config,

@@ -86,72 +86,48 @@ def git(workspace: Path, *args: str) -> str:
     return result.stdout
 
 
-def tool_call_response() -> list[dict[str, Any]]:
-    return [
-        {
-            "id": "chatcmpl-r7-obs13-tool",
-            "object": "chat.completion.chunk",
-            "created": 1,
-            "model": MODEL,
-            "choices": [
-                {
-                    "index": 0,
-                    "delta": {
-                        "role": "assistant",
-                        "tool_calls": [
-                            {
-                                "index": 0,
-                                "id": CALL_ID,
-                                "type": "function",
-                                "function": {
-                                    "name": "lbe_0_workspace_create_candidate_text",
-                                    "arguments": json.dumps(
-                                        {"path": TARGET, "content": CONTENT},
-                                        separators=(",", ":"),
-                                    ),
-                                },
-                            }
-                        ],
+def tool_call_response() -> dict[str, Any]:
+    return {
+        "id": "chatcmpl-r7-obs13-tool",
+        "object": "chat.completion",
+        "created": 1,
+        "model": MODEL,
+        "choices": [{
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{
+                    "id": CALL_ID,
+                    "type": "function",
+                    "function": {
+                        "name": "lbe_0_workspace_create_candidate_text",
+                        "arguments": json.dumps(
+                            {"path": TARGET, "content": CONTENT},
+                            separators=(",", ":"),
+                        ),
                     },
-                    "finish_reason": None,
-                }
-            ],
-        },
-        {
-            "id": "chatcmpl-r7-obs13-tool",
-            "object": "chat.completion.chunk",
-            "created": 1,
-            "model": MODEL,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}],
-            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
-        },
-    ]
+                }],
+            },
+            "finish_reason": "tool_calls",
+        }],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+    }
 
 
-def final_response() -> list[dict[str, Any]]:
-    return [
-        {
-            "id": "chatcmpl-r7-obs13-final",
-            "object": "chat.completion.chunk",
-            "created": 1,
-            "model": MODEL,
-            "choices": [
-                {
-                    "index": 0,
-                    "delta": {"role": "assistant", "content": "Governed task turn complete; LBE must validate."},
-                    "finish_reason": None,
-                }
-            ],
-        },
-        {
-            "id": "chatcmpl-r7-obs13-final",
-            "object": "chat.completion.chunk",
-            "created": 1,
-            "model": MODEL,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
-        },
-    ]
+def final_response() -> dict[str, Any]:
+    return {
+        "id": "chatcmpl-r7-obs13-final",
+        "object": "chat.completion",
+        "created": 1,
+        "model": MODEL,
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": "Governed task turn complete; LBE must validate."},
+            "finish_reason": "stop",
+        }],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+    }
 
 
 class StubServer(ThreadingHTTPServer):
@@ -179,16 +155,10 @@ class StubHandler(BaseHTTPRequestHandler):
         if authorization == f"Bearer {self.server.canary}":
             self.server.authorization_matches += 1
         require(bool(self.server.responses), "provider received unexpected extra request")
-        chunks = self.server.responses.pop(0)
-        body = (
-            "".join(
-                f"data: {json.dumps(chunk, separators=(',', ':'))}\n\n"
-                for chunk in chunks
-            )
-            + "data: [DONE]\n\n"
-        ).encode("utf-8")
+        response = self.server.responses.pop(0)
+        body = json.dumps(response, separators=(",", ":")).encode("utf-8")
         self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Connection", "close")
         self.end_headers()

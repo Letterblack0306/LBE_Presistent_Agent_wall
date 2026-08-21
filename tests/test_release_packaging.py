@@ -54,6 +54,7 @@ def test_wheel_contains_only_runtime_modules_and_contracts(
     assert not any(name.startswith("tests/") for name in names)
     assert not any(name.startswith("state/") for name in names)
     assert not any(name.startswith("docs/") for name in names)
+    assert not any("/cline_worker/" in name for name in names)
 
 
 def test_installed_wheel_runs_both_fixed_guard_slices(tmp_path: Path) -> None:

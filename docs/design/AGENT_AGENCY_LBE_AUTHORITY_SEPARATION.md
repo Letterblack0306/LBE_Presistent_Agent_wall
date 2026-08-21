@@ -93,13 +93,26 @@ memory / context           -> resources supplied to reasoning, not replacements 
 This is recorded as a **future architecture acceptance requirement / proposed follow-on
 review**. It is not an activated machine gate and does not change current gate state.
 
+## Reference-informed CLI requirements
+
+Public CLI references reinforce the intended boundary: a terminal client is a projection over a
+shared agent runtime, not a separate agent or execution owner. Those projects are comparative
+references only and do not define an LBE provider, dependency, product identity, or code source.
+LBE therefore needs one persisted runtime/event contract that can support interactive, one-shot,
+and machine-readable CLI projections while retaining explicit approval, receipt, cancellation,
+history/resume, and deterministic completion boundaries.
+
+The current verified product gaps and the required follow-on proof sequence are recorded in
+`docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`. Those findings are planning input
+only; they do not activate a gate or authorize an architecture change.
+
 ## Proposed Unified Interactive CLI / TUI Launcher (Single-Command Entry)
 
 Currently, `lbe` exposes multiple subcommands (`lbe session create`, `lbe session continue`, `lbe tui --session-id <id>`).
 
 As a proposed future UX enhancement (post-R7 acceptance), the CLI projection layer will support a single-entry launcher (`lbe` or `lbe start`) that:
 - **Auto-initializes / resumes** workspace sessions seamlessly without requiring explicit UUID parameters.
-- **Provides an interactive full-screen terminal experience** (similar to Cline / interactive AI CLI tools) featuring:
+  - **Provides an interactive full-screen terminal experience** with a clear LBE-specific interaction model featuring:
   - Header banner with workspace path, active mode (`Plan` / `Act`), model provider, token metrics, and auto-approve toggles (`Shift+Tab`).
   - Interactive transcript panel with motion/streaming reasoning output, tool calls, and execution receipts.
   - Interactive input composer supporting `@` file mentions, `/` slash commands, and hotkeys (`Ctrl+P`).
@@ -112,3 +125,5 @@ As a proposed future UX enhancement (post-R7 acceptance), the CLI projection lay
 - `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md` — current machine-gate state.
 - `.agent/PROJECT_CONTEXT.md` — canonical agent entry point (links here).
 - `docs/design/LLM_REASONING_LAYER_ROADMAP.md` — prior reasoning-layer design record.
+- `docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md` — public CLI reference review and
+  current LBE product-gap findings.

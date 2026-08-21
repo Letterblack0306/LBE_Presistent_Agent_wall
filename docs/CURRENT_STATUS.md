@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-08-17
+Updated: 2026-08-21
 
 ## Authority
 
@@ -25,19 +25,28 @@ GPT-Knowledge method currently applied: proof-before-plan, explicit evidence cla
 ```text
 R3-R6F: PROVEN_COMPLETE
 CLI_NORMAL_PATH_ACCEPTANCE: PROVEN_COMPLETE
-R7.1-R7.12: PASS (R7.3 PASS_AFTER_REPAIR)
+R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
+RELEASE_PACKAGE_READINESS_ACCEPTANCE: PASS
+PUBLICATION_PRECHECK: PASS
 ```
 
-## Current R7 observable state
+## Current machine state
 
 ```text
-observable 12 credential/secret non-leakage: PASS
-observable 13 installed/runtime regression: OPEN
-observable 14 no source changes absent a real falsifier: NOT RUN
-observable 15 final clean worktree + limitations/falsifiers: NOT RUN
+active_plan: docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md
+active_phase: PUBLICATION_VERSION_PREPARATION
+active_slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+status: OPEN
+target_version: 2.0.3
+implementation_allowed: true (version-preparation scope only)
+architecture_changes_allowed: false
+publish_allowed: false
 ```
 
-## Observable 12 result
+R7 is closed `PASS`; observable 3 and observable 13 are `PASS_AFTER_REPAIR`. The historical
+observable records below are retained as evidence, not as the active machine state.
+
+## Historical R7 observable evidence
 
 ```text
 R7_OBSERVABLE_12=PASS
@@ -81,28 +90,33 @@ observability/harness assumption issue, not runtime product defect.
 ## Current authority boundary
 
 ```text
-active_phase: R7_INSTALLED_END_TO_END_ACCEPTANCE
-current_observable: 13
+active_phase: PUBLICATION_VERSION_PREPARATION
+active_slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
 current_status: OPEN
-implementation_allowed: false
+implementation_allowed: true (version-preparation scope only)
 architecture_changes_allowed: false
 next_phase_locked: true
-publish_allowed_now: false
+publish_allowed: false
 ```
 
 ## Remaining sequence
 
 ```text
-#13 focused installed/runtime regression
-#14 source remains unchanged absent a real falsifier
-#15 final clean worktree + limitations/falsifiers
+set canonical package version to 2.0.3
+ -> validate exact 2.0.3 wheel and installed runtime
+ -> prove PyPI 2.0.3 is absent immediately before dispatch
+ -> observe trusted-publishing workflow
+ -> verify post-publish PyPI state
 ```
 
-## Release progression
+## Architecture correction (proposed follow-on review; not an active gate)
 
-```text
-finish R7 observables 13-15
- -> R7 PASS
- -> release/package readiness acceptance
- -> only then version/tag/publish
-```
+> **LBE governs an agent's capabilities and consequences; it does not prescribe the agent's
+> reasoning procedure.**
+
+The historical `LBERequestController` / fixed `ReasoningPlan` workflow became a central
+cognitive path. It must be repositioned as a bounded/specialist investigation capability, not
+treated as the agent. Deterministic guards, R6C/R6E authorization and execution, ToolReceipt,
+provider continuation, persistence, and completion validation remain authoritative LBE
+boundaries. See `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and
+`docs/IMPLEMENTATION_PLAN.md` section 15.

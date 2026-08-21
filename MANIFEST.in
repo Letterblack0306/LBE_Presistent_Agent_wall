@@ -3,6 +3,7 @@ include LICENSE
 recursive-include lbe_guard_inspector *.py
 recursive-include rules *.py
 recursive-include schemas *.json
+prune lbe_guard_inspector/runtime/cline_worker
 prune tests
 prune build
 prune dist

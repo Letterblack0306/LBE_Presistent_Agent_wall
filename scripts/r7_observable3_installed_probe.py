@@ -345,7 +345,7 @@ def main() -> int:
         _assert(bool(receipt.get("receipt_id")), "receipt_id missing")
         _assert(bool(receipt.get("operation_id")), "operation_id missing")
         _assert(response.get("read_only") is False, "response still read_only")
-        _assert(deterministic.get("runtime") == "governed_cline", "runtime is not governed_cline")
+        _assert(deterministic.get("runtime") == "governed_provider", "runtime is not governed_provider")
         _assert(deterministic.get("lbe_completion_truth") is False, "provider asserted LBE completion truth")
         _assert(code_json.get("outcome") == "COMPLETED", f"outcome={code_json.get('outcome')}")
         _assert(code_json.get("status") == "running", f"task status={code_json.get('status')}")

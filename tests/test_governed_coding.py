@@ -5,9 +5,9 @@ from pathlib import Path
 
 import agent
 
-from lbe_guard_inspector.reasoning_provider import ProviderConfig
 from lbe_guard_inspector.runtime.governed_coding import (
-    _cline_base_url,
+    _provider_tool_definition,
+    _tool_id_for_provider_name,
     build_workspace_create_candidate_text_handler,
     workspace_create_candidate_text_spec,
 )
@@ -176,10 +176,10 @@ def test_create_candidate_text_respects_patch_limit(
     assert not (workspace / "candidate.txt").exists()
 
 
-def test_cline_base_url_reuses_openai_compatible_endpoint_root() -> None:
-    config = ProviderConfig(
-        endpoint="http://127.0.0.1:18777/v1/chat/completions",
-        model="model-a",
-        timeout_seconds=5,
-    )
-    assert _cline_base_url(config.endpoint) == "http://127.0.0.1:18777/v1"
+def test_provider_tool_schema_and_reverse_mapping_are_lbe_owned() -> None:
+    spec = workspace_create_candidate_text_spec()
+
+    definition = _provider_tool_definition(0, spec)
+
+    assert definition["function"]["name"] == "lbe_0_workspace_create_candidate_text"
+    assert _tool_id_for_provider_name(definition["function"]["name"], (spec,)) == spec.tool_id

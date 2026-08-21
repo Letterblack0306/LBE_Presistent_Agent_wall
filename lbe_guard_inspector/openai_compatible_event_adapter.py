@@ -30,13 +30,21 @@ class OpenAICompatibleEventAdapter:
         messages: tuple[Mapping[str, Any], ...],
         provider_id: str = "openai-compatible",
         lbe_call_id_for_provider_tool_call: Callable[[str], str] | None = None,
+        tools: tuple[Mapping[str, Any], ...] = (),
     ) -> tuple[NormalizedModelEvent, ...]:
         """Return truthful normalized events for one non-streaming provider call."""
 
         if not isinstance(messages, tuple) or not messages or not all(isinstance(item, Mapping) for item in messages):
             raise ValueError("messages must be a non-empty tuple of mappings")
         _required(provider_id, "provider_id")
-        payload = {"model": self._config.model.strip(), "messages": [dict(item) for item in messages]}
+        if not isinstance(tools, tuple) or not all(isinstance(item, Mapping) for item in tools):
+            raise TypeError("tools must be a tuple of mappings")
+        payload: dict[str, Any] = {
+            "model": self._config.model.strip(),
+            "messages": [dict(item) for item in messages],
+        }
+        if tools:
+            payload["tools"] = [dict(item) for item in tools]
         headers = {"Content-Type": "application/json"}
         if self._config.api_key:
             headers["Authorization"] = f"Bearer {self._config.api_key}"

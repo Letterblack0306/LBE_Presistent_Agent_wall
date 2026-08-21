@@ -288,6 +288,20 @@ This prevents narrow-context failures where a model selects one visible rule and
 - enhancement
 - investigation_item
 
+## Current CLI product findings — 2026-08-21
+
+These entries are based on current source inspection and isolated installed-runtime probes. They
+are not created from external-reference material alone.
+
+| Finding ID | Category | Status | Verified finding | Required review outcome |
+|---|---|---|---|---|
+| CLI-001 | blocker | confirmed | The tested installed worker is missing its existing `@cline/agents` adapter dependency, so `lbe code` returns `ORCHESTRATION_ERROR` before provider/tool execution and emits no ToolReceipt. This is a packaging finding, not an LBE provider choice. | Verify current-source exact-wheel dependency provisioning, then prove an isolated provider-tool-receipt-completion cycle. |
+| CLI-002 | architecture_gap | confirmed | The current coding registry exposes only `workspace.read` and `workspace.create_candidate_text`; it is a bounded slice rather than an agent-directed multi-capability product loop. | Define a future authorized capability-loop slice that preserves R6C/R6E/ToolReceipt/completion owners. |
+| CLI-003 | investigation_item | insufficient_evidence | Full regression, packaging/bridge tests, and fresh exact-wheel build did not finish within the audit time limits. | Make validation bounded and diagnosable; do not infer release readiness. |
+
+Reference context and the detailed future-work sequence are in
+`docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`.
+
 ## Review Comparison
 
 During later reviews compare:
