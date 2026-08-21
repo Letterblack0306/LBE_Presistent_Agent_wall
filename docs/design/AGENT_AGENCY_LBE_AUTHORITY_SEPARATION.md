@@ -93,6 +93,19 @@ memory / context           -> resources supplied to reasoning, not replacements 
 This is recorded as a **future architecture acceptance requirement / proposed follow-on
 review**. It is not an activated machine gate and does not change current gate state.
 
+## Proposed Unified Interactive CLI / TUI Launcher (Single-Command Entry)
+
+Currently, `lbe` exposes multiple subcommands (`lbe session create`, `lbe session continue`, `lbe tui --session-id <id>`).
+
+As a proposed future UX enhancement (post-R7 acceptance), the CLI projection layer will support a single-entry launcher (`lbe` or `lbe start`) that:
+- **Auto-initializes / resumes** workspace sessions seamlessly without requiring explicit UUID parameters.
+- **Provides an interactive full-screen terminal experience** (similar to Cline / interactive AI CLI tools) featuring:
+  - Header banner with workspace path, active mode (`Plan` / `Act`), model provider, token metrics, and auto-approve toggles (`Shift+Tab`).
+  - Interactive transcript panel with motion/streaming reasoning output, tool calls, and execution receipts.
+  - Interactive input composer supporting `@` file mentions, `/` slash commands, and hotkeys (`Ctrl+P`).
+
+> **Note:** The CLI/TUI layer remains strictly a user-facing projection layer; all underlying session management, authorization, receipts, and completion authority remain strictly governed by LBE runtime services.
+
 ## Cross-references
 
 - `docs/IMPLEMENTATION_PLAN.md` — section 15 (doc reconciliation & this proposed review).
