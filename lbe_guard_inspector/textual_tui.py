@@ -6,7 +6,7 @@ from uuid import uuid4
 from .control_protocol import ControlMethod, ControlOutcome, ControlRequest
 from .memory.operational_history import SessionOperationalHistory
 from .persistent_turn_control import PersistentTurnControl
-from .professional_transcript import replay_session_transcript
+from .terminal_projection import render_terminal_timeline
 
 
 def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, control: PersistentTurnControl):
@@ -23,15 +23,22 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
         raise ValueError(f"session not found: {session_id}")
 
     class LbeTextualApp(App[None]):
-        TITLE = "LBE Runtime"
-        CSS = "#session {height: 3;} #transcript {height: 1fr; overflow-y: auto;} #composer {dock: bottom;}"
+        TITLE = "LBE Terminal"
+        CSS = """
+        Screen { background: #0b0d12; color: #d9dee8; }
+        Header { background: #141821; color: #f2f4f8; }
+        #session { height: 3; padding: 1 2; background: #121722; color: #aebbd0; }
+        #transcript { height: 1fr; overflow-y: auto; padding: 1 2; border: tall #323b4d; }
+        #composer { dock: bottom; margin: 1 2; border: tall #8b1d2c; }
+        Footer { background: #141821; }
+        """
         BINDINGS = [Binding("ctrl+i", "interrupt", "Interrupt", priority=True), Binding("ctrl+x", "cancel", "Cancel", priority=True)]
 
         def compose(self) -> ComposeResult:
             yield Header()
             yield Static(_session_text(), id="session")
             yield Static(_transcript_text(), id="transcript")
-            yield Input(placeholder="Start a task or steer the active turn", id="composer")
+            yield Input(placeholder="Enter an objective, or steer an active turn", id="composer")
             yield Footer()
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -69,8 +76,7 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
         return f"Session {state.session_id}  |  {state.canonical_workspace_root}  |  {state.mode}  |  {state.provider_id or 'provider unknown'}/{state.provider_model or 'model unknown'}  |  {state.permission or 'permission unknown'}"
 
     def _transcript_text() -> str:
-        rows = replay_session_transcript(history=history, session_id=session_id)
-        return "No persisted runtime events." if not rows else "\n\n".join(f"[{row.sequence}] {row.kind}\n{row.text}" for row in rows)
+        return render_terminal_timeline(history=history, session_id=session_id)
 
     return LbeTextualApp()
 

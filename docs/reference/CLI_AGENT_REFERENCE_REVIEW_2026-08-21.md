@@ -47,29 +47,32 @@ completion.
 
 | ID | Finding | Evidence | Status |
 |---|---|---|---|
-| CLI-001 | The installed coding worker failed before provider execution because the tested installed environment lacked the existing `@cline/agents` adapter dependency. The result was `ORCHESTRATION_ERROR`, zero provider requests, and zero receipts. | Isolated `scripts/r7_observable13_installed_probe.py` run on 2026-08-21; direct Node import from installed `site-packages` returned `ERR_MODULE_NOT_FOUND`. | CONFIRMED for that installed artifact; this is a packaging failure, not an LBE provider selection. Current-source wheel parity remains unverified. |
-| CLI-002 | `lbe code` selects its current Node-worker coding adapter, but its concrete registry exposes only `workspace.read` and create-only `workspace.create_candidate_text`. | `lbe_guard_inspector/cli.py` and `runtime/governed_coding.py` inspection on 2026-08-21. | CONFIRMED. The internal adapter class name is not a product/provider identity. |
-| CLI-003 | The resulting product path is a bounded governed coding slice, not yet the intended agent-directed multi-capability loop. | CLI-002 plus the current fixed `ReasoningPlan`/controller architecture. | CONFIRMED architecture gap. |
-| CLI-004 | Full regression, packaging/bridge tests, and a fresh exact-wheel build did not finish within their configured audit time limits. | `python -m pytest -q` timed out at 300 seconds; packaging/bridge group timed out at 120 seconds; `pip wheel` timed out at 300 seconds without a wheel. | UNVERIFIED; do not treat the source package as release-ready. |
+| CLI-001 | The former Node-worker dependency failure is historical. The direct provider-neutral governed coding loop replaced that worker in commit `67ba749`. | Clean staged wheel audit and isolated installed R7 provider/tool-receipt/completion probe on 2026-08-21. | RESOLVED for the repaired release path. Source-root packaging remains sensitive to ignored local build residue; use clean staging/fresh clone for release proof. |
+| CLI-002 | The governed coding path currently exposes only bounded registered workspace capabilities, including read and create-only candidate text. | `lbe_guard_inspector/runtime/governed_coding.py` and CLI inspection on 2026-08-21. | CONFIRMED. This is a deliberately bounded capability slice, not a complete terminal-agent product. |
+| CLI-003 | The committed Textual TUI is a session transcript/composer surface, not the required terminal workspace. It lacks structured tool/approval/diff/evidence cells and interactive provider/session controls. | `lbe_guard_inspector/textual_tui.py`, CLI arguments, and supplied reference artifacts inspected on 2026-08-21. | CONFIRMED product gap. |
+| CLI-004 | Current uncommitted coding-TUI wiring routes coding turns through the governed gateway and projects persisted receipts, but has only focused unit/CLI coverage. | Focused suite: 24 passed on 2026-08-21. No live interactive provider/TUI receipt render was available. | PARTIALLY VERIFIED; do not claim interactive product acceptance. |
 
 ## Required follow-on work (not activated by this document)
 
-1. Restore reproducible installed-worker dependency provisioning and add a fast preflight that
-   fails clearly when the current worker adapter dependency is unavailable; do not make that
-   dependency an LBE provider default or product identity.
-2. Prove an exact-wheel install from the current source can complete a real provider-tool-receipt-
-   validation cycle in an isolated environment.
-3. Replace the fixed central reasoning workflow with a provider-directed multi-turn capability
-   loop. Keep `LBERequestController` and `ReasoningPlan` as optional specialist capabilities.
-4. Expand the registered capability contract only through existing R6C/R6E authorization,
-   ToolReceipt, operation-id, persistence, and deterministic completion owners.
-5. Define one CLI contract over persisted runtime events: interactive session start/resume,
-   objective submission, approval preview, receipt/diff rendering, interrupt/cancel, history,
-   and machine-readable non-interactive output.
-6. Prove interactive and non-interactive projections use the same runtime events and cannot
-   bypass LBE authority.
-7. Make package and full-regression validation bounded, diagnosable, and reproducible before
-   treating a version as ready.
+1. Define typed persisted runtime-event view models for tool calls, authorization decisions,
+   ToolReceipts, diffs, evidence, failures, and validated terminal results. Both `lbe code` and
+   the TUI must project those same events.
+2. Implement approval preview/actions as an LBE-controlled contract: proposal, explicit operator
+   decision, R6C authorization, R6E execution, receipt, and validation. The terminal must never
+   infer approval from a model response or execute a tool directly.
+3. Turn the supplied `docs/reference/ui/` artifacts into a Textual design reference only: retain
+   their LBE title/logo motion intent, dark hierarchy, activity stream, and tool-cell readability,
+   without treating the HTML research prototype as product UI or copying an external CLI.
+4. Add a single terminal launcher that can create or resume a persisted session, select/check the
+   configured provider and exact model, and truthfully show its state. The present TUI requires a
+   pre-existing `--session-id` and optional external `--provider-config`.
+5. Add terminal-native objective entry, session/history navigation, file references, command/help
+   affordances, interrupt behavior, and explicit unsupported-state reporting.
+6. Prove one installed interactive flow with a local test provider: objective, governed tool turn,
+   receipt/diff/evidence rendering, authorization decision, deterministic completion, and resumed
+   session. Browser/HTML rendering is separate evidence and is currently unavailable.
+7. Keep package/full-regression validation bounded, diagnosable, and reproducible before treating
+   a version as ready.
 
 ## Acceptance question for a future authorized slice
 

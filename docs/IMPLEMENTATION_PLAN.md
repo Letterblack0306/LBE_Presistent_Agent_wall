@@ -557,10 +557,11 @@ executes, persists receipts/events, and determines completion.
 The current functional findings are:
 
 ```text
-CONFIRMED: tested installed worker cannot import its existing @cline/agents adapter dependency; lbe code fails before provider/tool execution.
-CONFIRMED: current governed coding registry exposes only workspace.read and workspace.create_candidate_text.
-CONFIRMED: the product is not yet the intended agent-directed multi-capability loop.
-UNVERIFIED: current-source exact-wheel packaging and full regression did not finish within audit limits.
+RESOLVED: the historical Node-worker dependency failure was replaced by the provider-neutral governed coding loop in 67ba749.
+PROVEN: clean staged-wheel and isolated installed R7 evidence reached provider, governed ToolReceipt, and deterministic completion.
+CONFIRMED: the governed coding registry remains a bounded capability slice.
+CONFIRMED: the Textual TUI is not yet the intended complete terminal workspace.
+PARTIALLY VERIFIED: current uncommitted coding-TUI routing has focused coverage, but no installed interactive receipt/diff/approval render proof.
 ```
 
 The complete external-reference evidence, implementation backlog, and proposed future acceptance

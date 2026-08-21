@@ -145,9 +145,18 @@ def build_parser() -> argparse.ArgumentParser:
     permissions_show.add_argument("--session-id", required=True)
     permissions_show.set_defaults(handler=_permissions_show)
 
-    tui = commands.add_parser("tui", help="Open the persisted Textual session projection")
+    tui = commands.add_parser("tui", help="Open or create a persisted LBE terminal session")
     _add_database_argument(tui)
-    tui.add_argument("--session-id", required=True)
+    tui.add_argument("--session-id", help="Existing session ID; omit with --workspace to create a new terminal session")
+    tui.add_argument("--workspace", help="Workspace root for a new terminal session")
+    tui.add_argument("--project-workspace-id", help="Project workspace identity for a new terminal session")
+    tui.add_argument("--mode", choices=_MODES, help="Session mode for a new terminal session")
+    tui.add_argument("--permission", choices=("read_only", "write_allowed", "audit_only", "elevated"), default="read_only")
+    tui.add_argument("--runtime-policy", choices=("audit", "development", "strict", "permissive"), default="audit")
+    tui.add_argument("--provider", help="Provider identity for a new terminal session")
+    tui.add_argument("--model", help="Provider model for a new terminal session")
+    tui.add_argument("--profile")
+    tui.add_argument("--permission-policy")
     tui.add_argument("--provider-config", help="Explicit provider config for non-streaming turn execution")
     tui.set_defaults(handler=_tui)
 
@@ -364,12 +373,17 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
 
 def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .memory.operational_history import SessionOperationalHistory
-    from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
     from .persistent_turn_control import PersistentTurnControl
-    from .provider_turn_runtime import BackgroundProviderTurnRuntime, NonStreamingProviderTurnRuntime
+    from .provider_turn_runtime import BackgroundProviderTurnRuntime, GovernedCodingTurnRuntime, NonStreamingProviderTurnRuntime
     from .reasoning_config import load_provider_config
     from .textual_tui import run_textual_tui
 
+    if args.session_id is None:
+        missing = [name for name in ("workspace", "project_workspace_id", "mode") if not getattr(args, name, None)]
+        if missing:
+            raise ValueError("new terminal session requires " + ", ".join("--" + name.replace("_", "-") for name in missing))
+        args.session_id = f"tui-{uuid4().hex}"
+        _session_create(args)
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
     history = SessionOperationalHistory(store=store)
@@ -380,7 +394,14 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
         config = load_provider_config(args.provider_config)
         if config.model != state.provider_model:
             raise ValueError("provider config model must match persisted session model")
-        provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=NonStreamingProviderTurnRuntime(history=history, adapter=OpenAICompatibleEventAdapter(config=config), provider_id=state.provider_id))
+        if state.mode == AgentMode.CODING.value:
+            from .runtime.governed_coding import GovernedProviderReasoningController
+            runtime = _runtime_from_state(database=args.database, state=state)
+            controller = GovernedProviderReasoningController(runtime=runtime, provider_id=state.provider_id, provider_config=config)
+            provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=GovernedCodingTurnRuntime(history=history, gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)))
+        else:
+            from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
+            provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=NonStreamingProviderTurnRuntime(history=history, adapter=OpenAICompatibleEventAdapter(config=config), provider_id=state.provider_id))
     run_textual_tui(
         history=history,
         session_id=state.session_id,

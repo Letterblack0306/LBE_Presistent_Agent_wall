@@ -120,3 +120,23 @@ treated as the agent. Deterministic guards, R6C/R6E authorization and execution,
 provider continuation, persistence, and completion validation remain authoritative LBE
 boundaries. See `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and
 `docs/IMPLEMENTATION_PLAN.md` section 15.
+
+## Terminal workspace product status
+
+```text
+governed one-shot coding runtime: READY (bounded capability slice)
+installed provider/tool-receipt/completion proof: READY for the repaired R7 path
+complete interactive terminal workspace: BLOCKED by unimplemented product surfaces
+browser/HTML preview proof: UNKNOWN (no browser available in this environment)
+```
+
+The shipped Textual surface is currently a persisted session transcript and composer. It requires
+an existing session ID and, for execution, an external provider configuration. It does not yet
+provide the integrated terminal workflow required for the product: session launch/resume,
+provider/model loading and health display, structured tool/authorization/receipt/diff/evidence
+cells, approval controls, terminal-native history/navigation, or an installed interactive
+acceptance run. The copied HTML files under `docs/reference/ui/` are visual-reference artifacts;
+they are not a browser product surface and do not constitute UI proof.
+
+The detailed verified gap and implementation order are in
+`docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`.

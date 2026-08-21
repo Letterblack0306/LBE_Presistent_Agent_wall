@@ -1,7 +1,9 @@
 # LBE Guard Inspector
 
-This package provides deterministic, evidence-bound workspace inspection. It
-does not modify the audited workspace or generate repairs.
+This package provides deterministic, evidence-bound workspace inspection and a governed,
+session-persistent coding runtime. LBE, rather than a model, owns authorization, execution,
+receipts, evidence, and terminal completion. Audit and investigation routes remain read-only;
+coding actions are limited to registered capabilities and their active policy.
 
 ## Release contract
 
@@ -33,8 +35,9 @@ The package includes:
 - `POST /guard-run` — the full vertical slice: select a registered guard,
   execute it against the workspace, run validation, and produce the verdict
   from the original problem request;
-- tests proving schema enforcement, exclusion behavior, verdict mapping, and
-  the full guard vertical slice (65 passed as of current HEAD).
+- focused tests for the repaired governed coding/runtime/TUI seams; see
+  `docs/CURRENT_STATUS.md` for the current proof boundary rather than treating this README as a
+  release record.
 
 ## Files
 
@@ -94,7 +97,16 @@ lbe-guard-audit audit --workspace-root "C:\\Projects\\target-project"
 python -m pytest -q
 ```
 
-Latest run: **65 passed** (0.32 s).
+Validation is evidence-scoped. Run the smallest relevant test group first, then use the current
+acceptance records and `docs/CURRENT_STATUS.md` for release/package claims.
+
+## Terminal workspace status
+
+The current `tui` command is an early persisted-session transcript/composer projection, not a
+complete terminal IDE. It requires an existing session and does not yet supply integrated
+provider/model setup, structured approval/diff/evidence cells, or terminal-first session
+navigation. The product gap and implementation order are recorded in
+`docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`.
 
 ## Run
 

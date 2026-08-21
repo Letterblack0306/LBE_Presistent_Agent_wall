@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import threading
+from uuid import uuid4
 
-from .memory.operational_history import OperationalEvent, SessionOperationalHistory
+from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
+from .memory.operational_history import OperationalEvent, SessionOperationalHistory, TurnStatus
 from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
 from .professional_provider_events import ModelEventType, NormalizedModelEvent, ProviderProtocolFamily
 from .provider_event_history import project_provider_events
@@ -51,10 +53,71 @@ class NonStreamingProviderTurnRuntime:
         self.run(turn_id=turn_id, text=text)
 
 
+class GovernedCodingTurnRuntime:
+    """Project a TUI coding turn through the same governed gateway as ``lbe code``."""
+
+    supports_cancellation = False
+
+    def __init__(self, *, history: SessionOperationalHistory, gateway: GovernedAgentGateway) -> None:
+        self.history = history
+        self.gateway = gateway
+
+    def cancel(self, *, turn_id: str) -> None:
+        raise RuntimeError("live provider cancellation is not available for governed coding")
+
+    def start(self, *, turn_id: str, text: str) -> None:
+        self.run(turn_id=turn_id, text=text)
+
+    def run(self, *, turn_id: str, text: str) -> None:
+        turn = self.history.get_turn(turn_id=turn_id)
+        if turn is None:
+            raise ValueError("turn not found")
+        state = self.history.store.load_session_state(session_id=turn.session_id)
+        if state is None:
+            raise ValueError("session not found")
+        self.history.append_event(OperationalEvent(
+            session_id=turn.session_id, turn_id=turn_id, event_type="model.turn.started", payload={},
+            provider_id=state.provider_id, model_id=state.provider_model,
+        ))
+        try:
+            result = self.gateway.invoke(AgentRequestEnvelope(
+                request_id=f"tui-{uuid4().hex}",
+                session_id=state.session_id,
+                task_id=f"tui-task-{turn_id}",
+                project_workspace_id=state.project_workspace_id,
+                workspace_root=state.canonical_workspace_root,
+                mode=AgentMode.CODING,
+                operation_id="reasoning.inspect",
+                arguments={"problem": text, "max_results": 10},
+            ))
+            deterministic = dict(result.response.deterministic_result or {})
+            for receipt in deterministic.get("governed_tool_receipts", []):
+                if isinstance(receipt, dict):
+                    self.history.append_event(OperationalEvent(
+                        session_id=turn.session_id, turn_id=turn_id,
+                        event_type={"EXECUTED": "tool.completed", "DENIED": "tool.denied", "ESCALATED": "tool.escalated"}.get(str(receipt.get("status")), "tool.failed"),
+                        payload=receipt, tool_receipt_id=receipt.get("receipt_id"), runtime_operation_id=receipt.get("operation_id"),
+                    ))
+            output = deterministic.get("provider_output")
+            if isinstance(output, str) and output:
+                self.history.append_event(OperationalEvent(
+                    session_id=turn.session_id, turn_id=turn_id, event_type="model.message.completed", payload={"text": output},
+                    provider_id=state.provider_id, model_id=state.provider_model,
+                ))
+            if result.outcome == "COMPLETED":
+                self.history.append_event(OperationalEvent(session_id=turn.session_id, turn_id=turn_id, event_type="model.turn.completed", payload={"task_id": result.task_id, "outcome": result.outcome}))
+                self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.COMPLETED)
+                return
+            raise RuntimeError(result.response.error.message if result.response.error else result.outcome)
+        except Exception as exc:
+            self.history.append_event(OperationalEvent(session_id=turn.session_id, turn_id=turn_id, event_type="model.error", payload={"error_code": "GOVERNED_CODING_TURN_ERROR", "error_message": f"{type(exc).__name__}: {exc}"}))
+            self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.FAILED)
+
+
 class BackgroundProviderTurnRuntime:
     """One non-blocking lifecycle around the existing non-streaming runtime."""
 
-    def __init__(self, *, history: SessionOperationalHistory, foreground: NonStreamingProviderTurnRuntime) -> None:
+    def __init__(self, *, history: SessionOperationalHistory, foreground) -> None:
         self.history = history
         self.foreground = foreground
         self._lock = threading.RLock()
