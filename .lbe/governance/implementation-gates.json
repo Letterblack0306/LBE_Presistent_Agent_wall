@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md",
   "active_phase": "COMPLETE_TUI_IMPLEMENTATION",
-  "active_slice": "TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH",
+  "active_slice": "TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -128,7 +128,7 @@
     "authorization": "EXPLICIT_USER_AUTHORIZATION",
     "implementation_authority": "GITHUB",
     "local_execution_role": "EVIDENCE_ONLY_NO_PATCHES",
-    "active_slice": "TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH",
+    "active_slice": "TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS",
     "allowed_paths": [
       "lbe_guard_inspector/terminal_projection.py",
       "lbe_guard_inspector/textual_tui.py",
@@ -170,6 +170,12 @@
         "status": "PASS",
         "revision": "7bf75acc6d50915bebf5564698dda22dedd9d0c7",
         "focused_tests": "18 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH": {
+        "status": "PASS",
+        "revision": "243a363bc092d9947d17ffb77167678c02d324de",
+        "focused_tests": "39 passed",
         "diff_check": "PASS"
       }
     }
