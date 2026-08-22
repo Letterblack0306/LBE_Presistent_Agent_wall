@@ -91,19 +91,54 @@ def test_existing_persisted_failure_and_completion_render_truthfully(tmp_path: P
     asyncio.run(exercise())
 
 
-def test_slash_input_does_not_mutate_runtime_before_command_slice(tmp_path: Path) -> None:
+def test_six_commands_route_to_distinct_truthful_behavior(tmp_path: Path) -> None:
+    app, history = _app(tmp_path)
+
+    async def submit(pilot, command: str) -> str:
+        composer = app.query_one("#composer", Input)
+        composer.value = command
+        await pilot.press("enter")
+        await pilot.pause()
+        return str(app.query_one("#details", Static).render())
+
+    async def exercise() -> None:
+        async with app.run_test(size=(80, 24)) as pilot:
+            status = await submit(pilot, "/status")
+            provider = await submit(pilot, "/provider")
+            evidence = await submit(pilot, "/evidence")
+            help_text = await submit(pilot, "/help")
+            assert status.startswith("STATUS")
+            assert provider.startswith("PROVIDER")
+            assert evidence.startswith("EVIDENCE")
+            assert help_text.startswith("HELP")
+            assert len({status, provider, evidence, help_text}) == 4
+
+            composer = app.query_one("#composer", Input)
+            composer.value = "begin"
+            await pilot.press("enter")
+            composer.value = "/interrupt"
+            await pilot.press("enter")
+            composer.value = "/cancel"
+            await pilot.press("enter")
+
+    asyncio.run(exercise())
+    assert [event.event_type for event in history.events_for_session(session_id="s")] == [
+        "user.message", "turn.interrupt.requested", "turn.cancelled",
+    ]
+
+
+def test_unknown_command_does_not_create_runtime_event(tmp_path: Path) -> None:
     app, history = _app(tmp_path)
 
     async def exercise() -> None:
         async with app.run_test(size=(80, 24)) as pilot:
             composer = app.query_one("#composer", Input)
-            composer.value = "/status"
+            composer.value = "/unknown"
             await pilot.press("enter")
             assert composer.value == ""
 
     asyncio.run(exercise())
     assert history.events_for_session(session_id="s") == ()
-
 
 def test_no_color_build_keeps_ascii_text_contract(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("NO_COLOR", "1")
