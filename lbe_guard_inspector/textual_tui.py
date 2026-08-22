@@ -350,14 +350,18 @@ def build_textual_tui(
 
     def _status_text(*, width: int | None = None) -> str:
         state_text = _runtime_state_text()
-        base = f"{state_text}  {state.mode}  {_provider_label()}  session:{state.session_id}"
-        if width is None or width >= 100:
-            suffix = "  /status /provider /evidence /tools /sessions /help /interrupt /cancel"
-        elif width >= 72:
-            suffix = "  /help  Ctrl+I interrupt  Ctrl+X cancel"
+        if width is not None and 72 <= width < 100:
+            line = (
+                f"{state_text}  {state.mode}  session:{state.session_id}  "
+                "/help  Ctrl+I interrupt  Ctrl+X cancel"
+            )
         else:
-            suffix = "  /help"
-        line = base + suffix
+            base = f"{state_text}  {state.mode}  {_provider_label()}  session:{state.session_id}"
+            if width is None or width >= 100:
+                suffix = "  /status /provider /evidence /tools /sessions /help /interrupt /cancel"
+            else:
+                suffix = "  /help"
+            line = base + suffix
         if width is not None and width > 0 and len(line) > width:
             return line[:width]
         return line
