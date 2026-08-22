@@ -185,7 +185,10 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
             self.notify(f"Created session {clean_id}", severity="information")
 
         def _refresh_projection(self) -> None:
-            self._refresh_projection()
+            self.query_one("#activity", Static).update(_activity_text())
+            self.query_one("#header", Static).update(_header_text())
+            self.query_one("#objective", Static).update(_objective_text())
+            self.query_one("#status", Static).update(_status_text())
             details = self.query_one("#details", Static)
             if details.display:
                 details.update(_status_details_text())
