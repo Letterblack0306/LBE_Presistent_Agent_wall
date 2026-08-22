@@ -88,6 +88,10 @@ def build_textual_tui(
 
         def on_mount(self) -> None:
             self.query_one("#composer", Input).focus()
+            self._refresh_terminal_chrome()
+
+        def on_resize(self) -> None:
+            self._refresh_terminal_chrome()
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
             text = event.value.strip()
@@ -267,11 +271,16 @@ def build_textual_tui(
             self._refresh_projection()
             self.notify(f"Created session {clean_id}", severity="information")
 
+        def _refresh_terminal_chrome(self) -> None:
+            self.title = _terminal_title_text()
+            status = self.query_one("#status", Static)
+            status.update(_status_text(width=self.size.width))
+
         def _refresh_projection(self) -> None:
             self.query_one("#activity", Static).update(_activity_text())
             self.query_one("#header", Static).update(_header_text())
             self.query_one("#objective", Static).update(_objective_text())
-            self.query_one("#status", Static).update(_status_text())
+            self._refresh_terminal_chrome()
             details = self.query_one("#details", Static)
             if details.display:
                 details.update(_status_details_text())
@@ -300,21 +309,32 @@ def build_textual_tui(
 
         def _handle(self, request: ControlRequest) -> None:
             outcome: ControlOutcome = control.handle(request)
-            self.query_one("#activity", Static).update(_activity_text())
-            self.query_one("#header", Static).update(_header_text())
-            self.query_one("#objective", Static).update(_objective_text())
-            self.query_one("#status", Static).update(_status_text())
+            self._refresh_projection()
             self.notify(
                 outcome.reason if not outcome.accepted else f"Control {outcome.state}",
                 severity="error" if not outcome.accepted else "information",
             )
 
+    def _runtime_state_text() -> str:
+        return "ACTIVE" if history.latest_running_turn(session_id=current_session_id) is not None else "IDLE"
+
+    def _workspace_label() -> str:
+        return state.project_workspace_id or state.canonical_workspace_root.name
+
+    def _provider_label() -> str:
+        return f"{state.provider_id or 'unconfigured'}/{state.provider_model or 'unconfigured'}"
+
+    def _terminal_title_text() -> str:
+        return (
+            f"LBE | {_workspace_label()} | {state.mode} | "
+            f"session:{state.session_id} | {_runtime_state_text()}"
+        )
+
     def _header_text() -> str:
-        active = history.latest_running_turn(session_id=current_session_id)
-        runtime_state = "active" if active is not None else "idle"
-        workspace = state.project_workspace_id or state.canonical_workspace_root.name
-        provider = f"{state.provider_id or 'unconfigured'}/{state.provider_model or 'unconfigured'}"
-        return f"LBE  {workspace}  session:{state.session_id}  {state.mode}  {provider}  {runtime_state}"
+        return (
+            f"LBE  {_workspace_label()}  session:{state.session_id}  {state.mode}  "
+            f"{_provider_label()}  {_runtime_state_text().lower()}"
+        )
 
     def _objective_text() -> str:
         events = history.events_for_session(session_id=current_session_id)
@@ -327,17 +347,25 @@ def build_textual_tui(
     def _activity_text() -> str:
         return render_terminal_activity(history=history, session_id=current_session_id)
 
-    def _status_text() -> str:
-        active = history.latest_running_turn(session_id=current_session_id)
-        state_text = "ACTIVE" if active is not None else "IDLE"
-        return f"{state_text}  /status /provider /evidence /tools /integrations /detail /help /sessions /session /new /interrupt /cancel"
+    def _status_text(*, width: int | None = None) -> str:
+        state_text = _runtime_state_text()
+        base = f"{state_text}  {state.mode}  {_provider_label()}  session:{state.session_id}"
+        if width is None or width >= 100:
+            suffix = "  /status /provider /evidence /tools /sessions /help /interrupt /cancel"
+        elif width >= 72:
+            suffix = "  /help  Ctrl+I interrupt  Ctrl+X cancel"
+        else:
+            suffix = "  /help"
+        line = base + suffix
+        if width is not None and width > 0 and len(line) > width:
+            return line[:width]
+        return line
 
     def _details_text() -> str:
         return _help_text()
 
     def _status_details_text() -> str:
-        active = history.latest_running_turn(session_id=current_session_id)
-        runtime_state = "ACTIVE" if active is not None else "IDLE"
+        runtime_state = _runtime_state_text()
         return (
             f"STATUS\n"
             f"runtime={runtime_state} session={state.session_id} mode={state.mode}\n"
