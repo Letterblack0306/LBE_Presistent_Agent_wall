@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md",
   "active_phase": "COMPLETE_TUI_IMPLEMENTATION",
-  "active_slice": "TUI_SESSION_NAVIGATION_AND_RESUME",
+  "active_slice": "TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -128,7 +128,7 @@
     "authorization": "EXPLICIT_USER_AUTHORIZATION",
     "implementation_authority": "GITHUB",
     "local_execution_role": "EVIDENCE_ONLY_NO_PATCHES",
-    "active_slice": "TUI_SESSION_NAVIGATION_AND_RESUME",
+    "active_slice": "TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH",
     "allowed_paths": [
       "lbe_guard_inspector/terminal_projection.py",
       "lbe_guard_inspector/textual_tui.py",
@@ -140,7 +140,11 @@
       ".lbe/governance/implementation-gates.json",
       "lbe_guard_inspector/memory/store.py",
       "lbe_guard_inspector/session_memory_runtime.py",
-      "tests/test_memory_store.py"
+      "tests/test_memory_store.py",
+      "lbe_guard_inspector/cli.py",
+      "lbe_guard_inspector/provider_health.py",
+      "lbe_guard_inspector/reasoning_config.py",
+      "tests/test_provider_health.py"
     ],
     "publish_allowed": false,
     "completed_slices": {
@@ -160,6 +164,12 @@
         "status": "PASS",
         "revision": "00265ab3d6590a5dad716905507e05077ee9af1d",
         "focused_tests": "15 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_SESSION_NAVIGATION_AND_RESUME": {
+        "status": "PASS",
+        "revision": "7bf75acc6d50915bebf5564698dda22dedd9d0c7",
+        "focused_tests": "18 passed",
         "diff_check": "PASS"
       }
     }
