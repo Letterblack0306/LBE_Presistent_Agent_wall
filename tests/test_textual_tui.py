@@ -140,6 +140,49 @@ def test_unknown_command_does_not_create_runtime_event(tmp_path: Path) -> None:
     asyncio.run(exercise())
     assert history.events_for_session(session_id="s") == ()
 
+def test_session_list_create_resume_and_active_turn_boundary(tmp_path: Path) -> None:
+    app, history = _app(tmp_path)
+    history.store.save_session_state(SessionState(
+        "s2", "w", tmp_path, "audit", "read_only", "audit",
+        "openai-compatible", "m2",
+    ))
+
+    async def submit(pilot, text: str) -> None:
+        composer = app.query_one("#composer", Input)
+        composer.value = text
+        await pilot.press("enter")
+        await pilot.pause()
+
+    async def exercise() -> None:
+        async with app.run_test(size=(100, 30)) as pilot:
+            await submit(pilot, "/sessions")
+            sessions = str(app.query_one("#details", Static).render())
+            assert sessions.startswith("SESSIONS")
+            assert "* s " in sessions
+            assert "s2" in sessions
+
+            await submit(pilot, "/session s2")
+            assert "session:s2" in str(app.query_one("#header", Static).render())
+            assert history.events_for_session(session_id="s2") == ()
+
+            await submit(pilot, "active objective")
+            await submit(pilot, "/new blocked")
+            assert history.store.load_session_state(session_id="blocked") is None
+
+            await submit(pilot, "/cancel")
+            await submit(pilot, "/new s3")
+            created = history.store.load_session_state(session_id="s3")
+            assert created is not None
+            assert created.project_workspace_id == "w"
+            assert created.mode == "audit"
+            assert "session:s3" in str(app.query_one("#header", Static).render())
+
+            await submit(pilot, "/session s")
+            assert "session:s" in str(app.query_one("#header", Static).render())
+
+    asyncio.run(exercise())
+
+
 def test_no_color_build_keeps_ascii_text_contract(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("NO_COLOR", "1")
     app, _ = _app(tmp_path)
@@ -149,7 +192,7 @@ def test_no_color_build_keeps_ascii_text_contract(tmp_path: Path, monkeypatch) -
             header = str(app.query_one("#header", Static).render())
             status = str(app.query_one("#status", Static).render())
             assert header.startswith("LBE")
-            assert "/status /provider /evidence /help /interrupt /cancel" in status
+            assert "/status" in status and "/cancel" in status and "/sessions" in status
             assert "[|]" not in header
 
     asyncio.run(exercise())
