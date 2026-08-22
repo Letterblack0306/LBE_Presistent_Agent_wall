@@ -82,14 +82,34 @@ def test_existing_persisted_failure_and_completion_render_truthfully(tmp_path: P
         session_id="s", turn_id=turn.turn_id, event_type="model.turn.completed",
         payload={"task_id": "task-1", "outcome": "COMPLETED"},
     ))
+    events = history.events_for_session(session_id="s")
+    failure_sequence = events[-2].session_sequence
+    completion_sequence = events[-1].session_sequence
+
+    async def submit_detail(pilot, sequence: int) -> str:
+        composer = app.query_one("#composer", Input)
+        composer.value = f"/detail {sequence}"
+        await pilot.press("enter")
+        await pilot.pause()
+        return str(app.query_one("#details", Static).render())
 
     async def exercise() -> None:
-        async with app.run_test(size=(100, 30)):
+        async with app.run_test(size=(100, 30)) as pilot:
             activity = str(app.query_one("#activity", Static).render())
-            assert "RUNTIME ERROR" in activity
-            assert "unavailable" in activity
-            assert "VALIDATED RESULT" in activity
-            assert "COMPLETED" in activity
+            assert "failure" in activity
+            assert "Runtime error" in activity
+            assert "failed" in activity
+            assert "completion" in activity
+            assert "Validated result" in activity
+            assert "completed" in activity
+
+            failure_detail = await submit_detail(pilot, failure_sequence)
+            assert f"DETAIL event={failure_sequence} type=model.error" in failure_detail
+            assert "text=unavailable" in failure_detail
+
+            completion_detail = await submit_detail(pilot, completion_sequence)
+            assert f"DETAIL event={completion_sequence} type=model.turn.completed" in completion_detail
+            assert "validation=completed task=task-1 outcome=COMPLETED" in completion_detail
 
     asyncio.run(exercise())
 
