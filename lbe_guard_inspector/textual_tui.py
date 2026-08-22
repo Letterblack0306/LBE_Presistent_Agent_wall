@@ -11,8 +11,10 @@ from .persistent_turn_control import PersistentTurnControl
 from .provider_health import ProviderHealthResult, check_provider_health
 from .provider_registry import ProviderRegistry, default_provider_registry
 from .reasoning_provider import ProviderConfig
+from .runtime.tool_orchestration import ToolRegistry
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 from .terminal_projection import render_terminal_activity, render_terminal_event_detail
+from .tui_view_models import project_tui_capabilities
 
 
 def build_textual_tui(
@@ -23,6 +25,7 @@ def build_textual_tui(
     provider_config: ProviderConfig | None = None,
     provider_registry: ProviderRegistry | None = None,
     provider_health_checker: Callable[..., ProviderHealthResult] = check_provider_health,
+    tool_registry: ToolRegistry | None = None,
 ):
     """Build one stable workspace without creating a second runtime authority."""
     try:
@@ -137,6 +140,12 @@ def build_textual_tui(
                 return
             if command == "/evidence":
                 self._show_details(_evidence_details_text())
+                return
+            if command in {"/tools", "/capabilities"}:
+                self._show_details(_capabilities_text())
+                return
+            if command == "/integrations":
+                self._show_details(_integrations_text())
                 return
             if command == "/detail":
                 parts = text.split()
@@ -321,7 +330,7 @@ def build_textual_tui(
     def _status_text() -> str:
         active = history.latest_running_turn(session_id=current_session_id)
         state_text = "ACTIVE" if active is not None else "IDLE"
-        return f"{state_text}  /status /provider /evidence /detail /help /sessions /session /new /interrupt /cancel"
+        return f"{state_text}  /status /provider /evidence /tools /integrations /detail /help /sessions /session /new /interrupt /cancel"
 
     def _details_text() -> str:
         return _help_text()
@@ -354,6 +363,27 @@ def build_textual_tui(
             f"recent_receipts={recent}"
         )
 
+    def _capabilities_text() -> str:
+        if tool_registry is None:
+            return "CAPABILITIES\nunavailable: no governed tool registry configured"
+        views = project_tui_capabilities(tool_registry.specs())
+        if not views:
+            return "CAPABILITIES\nempty: no registered governed tools"
+        lines = ["CAPABILITIES"]
+        for view in views:
+            lines.append(
+                f"{view.tool_id} capability={view.capability} access={view.access_class} "
+                f"network={view.network_behavior} risk={view.risk_class} "
+                f"state={'available' if view.available else 'unavailable'}"
+            )
+        return "\n".join(lines)
+
+    def _integrations_text() -> str:
+        return (
+            "INTEGRATIONS\n"
+            "unavailable: no runtime integration registry owner is configured"
+        )
+
     def _sessions_text() -> str:
         sessions = history.store.list_session_states(
             project_workspace_id=state.project_workspace_id,
@@ -371,6 +401,7 @@ def build_textual_tui(
             "/status runtime and policy  /provider selected provider metadata\n"
             "/provider use <provider> <model>  /provider check explicit-config health\n"
             "/evidence persisted event and receipt counts  /detail [sequence] event facts\n"
+            "/tools registered governed capabilities  /integrations integration availability\n"
             "/sessions list workspace sessions\n"
             "/session <id> resume  /new <id> create  /help this reference\n"
             "/interrupt request interruption  /cancel cancel the active turn"
@@ -401,10 +432,12 @@ def run_textual_tui(
     session_id: str,
     control: PersistentTurnControl,
     provider_config: ProviderConfig | None = None,
+    tool_registry: ToolRegistry | None = None,
 ) -> None:
     build_textual_tui(
         history=history,
         session_id=session_id,
         control=control,
         provider_config=provider_config,
+        tool_registry=tool_registry,
     ).run()
