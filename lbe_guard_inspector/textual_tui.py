@@ -12,7 +12,7 @@ from .provider_health import ProviderHealthResult, check_provider_health
 from .provider_registry import ProviderRegistry, default_provider_registry
 from .reasoning_provider import ProviderConfig
 from .session_memory_runtime import SessionMemoryRuntimeBridge
-from .terminal_projection import render_terminal_timeline
+from .terminal_projection import render_terminal_activity, render_terminal_event_detail
 
 
 def build_textual_tui(
@@ -137,6 +137,18 @@ def build_textual_tui(
                 return
             if command == "/evidence":
                 self._show_details(_evidence_details_text())
+                return
+            if command == "/detail":
+                parts = text.split()
+                if len(parts) > 2 or (len(parts) == 2 and not parts[1].isdigit()):
+                    self.notify("Usage: /detail [event-sequence]", severity="warning")
+                    return
+                sequence = int(parts[1]) if len(parts) == 2 else None
+                self._show_details(render_terminal_event_detail(
+                    history=history,
+                    session_id=current_session_id,
+                    sequence=sequence,
+                ))
                 return
             if command in {"/help", "/commands"}:
                 self._show_details(_help_text())
@@ -304,12 +316,12 @@ def build_textual_tui(
         return f"> {text.strip() if isinstance(text, str) and text.strip() else '(no persisted objective text)'}"
 
     def _activity_text() -> str:
-        return render_terminal_timeline(history=history, session_id=current_session_id)
+        return render_terminal_activity(history=history, session_id=current_session_id)
 
     def _status_text() -> str:
         active = history.latest_running_turn(session_id=current_session_id)
         state_text = "ACTIVE" if active is not None else "IDLE"
-        return f"{state_text}  /status /provider /evidence /help /sessions /session /new /interrupt /cancel"
+        return f"{state_text}  /status /provider /evidence /detail /help /sessions /session /new /interrupt /cancel"
 
     def _details_text() -> str:
         return _help_text()
@@ -358,7 +370,8 @@ def build_textual_tui(
             "HELP\n"
             "/status runtime and policy  /provider selected provider metadata\n"
             "/provider use <provider> <model>  /provider check explicit-config health\n"
-            "/evidence persisted event and receipt counts  /sessions list workspace sessions\n"
+            "/evidence persisted event and receipt counts  /detail [sequence] event facts\n"
+            "/sessions list workspace sessions\n"
             "/session <id> resume  /new <id> create  /help this reference\n"
             "/interrupt request interruption  /cancel cancel the active turn"
         )
