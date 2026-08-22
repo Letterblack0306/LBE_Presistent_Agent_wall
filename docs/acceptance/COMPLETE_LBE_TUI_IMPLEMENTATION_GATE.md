@@ -4,7 +4,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 phase: `COMPLETE_TUI_IMPLEMENTATION`
 
-active slice: `TUI_OBJECTIVE_ACTIVITY_WORKSPACE`
+active slice: `TUI_COMMAND_ROUTING`
 
 required evidence level: `SOURCE_PLUS_INSTALLED_INTERACTIVE_RUNTIME_PROOF`
 
@@ -93,7 +93,7 @@ Checkpoint evidence:
 - `git diff --check`: PASS;
 - installed interactive acceptance remains pending and is not claimed by this checkpoint.
 
-### TUI_OBJECTIVE_ACTIVITY_WORKSPACE — OPEN
+### TUI_OBJECTIVE_ACTIVITY_WORKSPACE — PASS
 
 Question:
 
@@ -107,6 +107,29 @@ Required proof:
 - 80x24 and resize coverage at the source/test level;
 - ASCII-safe primary symbols and no color-only meaning;
 - focused Textual and terminal projection tests pass;
+- `git diff --check`.
+
+Checkpoint evidence:
+
+- GitHub revision: `15c41d9f781fd197ea8cc51779d285baf0068ded`;
+- focused TUI/projection tests: `14 passed`;
+- 80x24, alternate size, focus, progressive details, persisted states, and `NO_COLOR` source behavior covered;
+- `git diff --check`: PASS;
+- installed interactive acceptance remains pending.
+
+### TUI_COMMAND_ROUTING — OPEN
+
+Question:
+
+> Do `/status`, `/provider`, `/evidence`, `/help`, `/interrupt`, and `/cancel` route to distinct truthful behavior while preserving the existing runtime/control owners?
+
+Required proof:
+
+- status, provider, evidence, and help produce distinct bounded projections;
+- interrupt and cancel route through `PersistentTurnControl` during an active turn;
+- unknown commands fail truthfully without creating runtime events;
+- no command handler becomes an execution, provider, session, or evidence authority;
+- focused tests pass;
 - `git diff --check`.
 
 ## Final acceptance
