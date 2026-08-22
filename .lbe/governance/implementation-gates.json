@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md",
   "active_phase": "COMPLETE_TUI_IMPLEMENTATION",
-  "active_slice": "TUI_COMMAND_ROUTING",
+  "active_slice": "TUI_SESSION_NAVIGATION_AND_RESUME",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -128,7 +128,7 @@
     "authorization": "EXPLICIT_USER_AUTHORIZATION",
     "implementation_authority": "GITHUB",
     "local_execution_role": "EVIDENCE_ONLY_NO_PATCHES",
-    "active_slice": "TUI_COMMAND_ROUTING",
+    "active_slice": "TUI_SESSION_NAVIGATION_AND_RESUME",
     "allowed_paths": [
       "lbe_guard_inspector/terminal_projection.py",
       "lbe_guard_inspector/textual_tui.py",
@@ -137,7 +137,10 @@
       "tests/test_textual_tui.py",
       "tests/test_tui_view_models.py",
       "docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md",
-      ".lbe/governance/implementation-gates.json"
+      ".lbe/governance/implementation-gates.json",
+      "lbe_guard_inspector/memory/store.py",
+      "lbe_guard_inspector/session_memory_runtime.py",
+      "tests/test_memory_store.py"
     ],
     "publish_allowed": false,
     "completed_slices": {
@@ -151,6 +154,12 @@
         "status": "PASS",
         "revision": "15c41d9f781fd197ea8cc51779d285baf0068ded",
         "focused_tests": "14 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_COMMAND_ROUTING": {
+        "status": "PASS",
+        "revision": "00265ab3d6590a5dad716905507e05077ee9af1d",
+        "focused_tests": "15 passed",
         "diff_check": "PASS"
       }
     }
