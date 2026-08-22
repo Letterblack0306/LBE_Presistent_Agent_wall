@@ -4,7 +4,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 phase: `COMPLETE_TUI_IMPLEMENTATION`
 
-active slice: `TUI_SESSION_NAVIGATION_AND_RESUME`
+active slice: `TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH`
 
 required evidence level: `SOURCE_PLUS_INSTALLED_INTERACTIVE_RUNTIME_PROOF`
 
@@ -140,7 +140,7 @@ Checkpoint evidence:
 - `git diff --check`: PASS;
 - installed interactive command acceptance remains pending.
 
-### TUI_SESSION_NAVIGATION_AND_RESUME — OPEN
+### TUI_SESSION_NAVIGATION_AND_RESUME — PASS
 
 Finding:
 
@@ -153,6 +153,29 @@ Required proof:
 - navigation changes only the client projection target;
 - active-turn transitions fail closed;
 - focused store/session/TUI tests pass;
+- `git diff --check`.
+
+Checkpoint evidence:
+
+- GitHub revision: `7bf75acc6d50915bebf5564698dda22dedd9d0c7`;
+- focused store/session/TUI/projection tests: `18 passed`;
+- create, list, resume, projection switch, and active-turn boundary covered;
+- `git diff --check`: PASS;
+- installed interactive session acceptance remains pending.
+
+### TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH — OPEN
+
+Question:
+
+> Can provider/model selection and health be controlled from the TUI through existing provider and session owners without persisting or rendering credential values?
+
+Required proof:
+
+- registered provider/model selection delegates to `SessionMemoryRuntimeBridge.configure_session`;
+- health delegates to `check_provider_health` with explicit configuration;
+- unconfigured health is truthful and non-mutating;
+- provider config and credential values are never rendered or persisted by the TUI;
+- focused provider/session/TUI tests pass;
 - `git diff --check`.
 
 ## Final acceptance
