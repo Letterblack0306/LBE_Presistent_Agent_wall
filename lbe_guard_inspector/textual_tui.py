@@ -2,16 +2,28 @@
 from __future__ import annotations
 
 import os
+from typing import Callable
 from uuid import uuid4
 
 from .control_protocol import ControlMethod, ControlOutcome, ControlRequest
 from .memory.operational_history import SessionOperationalHistory
 from .persistent_turn_control import PersistentTurnControl
+from .provider_health import ProviderHealthResult, check_provider_health
+from .provider_registry import ProviderRegistry, default_provider_registry
+from .reasoning_provider import ProviderConfig
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 from .terminal_projection import render_terminal_timeline
 
 
-def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, control: PersistentTurnControl):
+def build_textual_tui(
+    *,
+    history: SessionOperationalHistory,
+    session_id: str,
+    control: PersistentTurnControl,
+    provider_config: ProviderConfig | None = None,
+    provider_registry: ProviderRegistry | None = None,
+    provider_health_checker: Callable[..., ProviderHealthResult] = check_provider_health,
+):
     """Build one stable workspace without creating a second runtime authority."""
     try:
         from textual.app import App, ComposeResult
@@ -25,6 +37,9 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
     state = history.store.load_session_state(session_id=current_session_id)
     if state is None:
         raise ValueError(f"session not found: {current_session_id}")
+
+    registry = provider_registry or default_provider_registry()
+    provider_health = "unknown"
 
     no_color = "NO_COLOR" in os.environ
     accent = "#d0d0d0" if no_color else "#ef4b4b"
@@ -105,7 +120,20 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
                 self._show_details(_status_details_text())
                 return
             if command == "/provider":
-                self._show_details(_provider_details_text())
+                parts = text.split()
+                if len(parts) == 1:
+                    self._show_details(_provider_details_text())
+                    return
+                if len(parts) == 2 and parts[1].lower() == "check":
+                    self._check_provider_health()
+                    return
+                if len(parts) == 4 and parts[1].lower() == "use":
+                    self._select_provider(parts[2], parts[3])
+                    return
+                self.notify(
+                    "Usage: /provider | /provider use <provider> <model> | /provider check",
+                    severity="warning",
+                )
                 return
             if command == "/evidence":
                 self._show_details(_evidence_details_text())
@@ -138,6 +166,53 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
                 return
             self.notify(f"Unsupported command: {command}. Use /help.", severity="warning")
 
+        def _select_provider(self, provider_id: str, model_id: str) -> None:
+            nonlocal state, provider_health
+            clean_provider = provider_id.strip()
+            clean_model = model_id.strip()
+            if history.latest_running_turn(session_id=current_session_id) is not None:
+                self.notify("Cancel or complete the active turn before changing provider.", severity="warning")
+                return
+            if clean_provider not in registry.provider_ids():
+                self.notify(f"Provider is not registered: {clean_provider}", severity="warning")
+                return
+            runtime = _runtime_for_state(state)
+            state = runtime.configure_session(
+                provider_id=clean_provider,
+                provider_model=clean_model,
+            )
+            provider_health = "unknown"
+            self._refresh_projection()
+            self._show_details(_provider_details_text())
+            self.notify(f"Selected provider {clean_provider}/{clean_model}", severity="information")
+
+        def _check_provider_health(self) -> None:
+            nonlocal provider_health
+            if not state.provider_id or not state.provider_model:
+                provider_health = "unconfigured"
+                self._show_details(_provider_details_text())
+                return
+            if provider_config is None:
+                provider_health = "unavailable (no explicit provider config)"
+                self._show_details(_provider_details_text())
+                return
+            if provider_config.model.strip() != state.provider_model:
+                provider_health = "unavailable (config model does not match selected model)"
+                self._show_details(_provider_details_text())
+                return
+            try:
+                result = provider_health_checker(
+                    provider_id=state.provider_id,
+                    provider_config=provider_config,
+                    provider_registry=registry,
+                )
+            except Exception as exc:
+                provider_health = f"failed ({type(exc).__name__})"
+                self._show_details(_provider_details_text())
+                return
+            provider_health = result.status
+            self._show_details(_provider_details_text())
+
         def _switch_session(self, target_session_id: str) -> None:
             nonlocal current_session_id, state
             clean_id = target_session_id.strip()
@@ -165,20 +240,7 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
             if history.store.load_session_state(session_id=clean_id) is not None:
                 self.notify(f"Session already exists: {clean_id}", severity="warning")
                 return
-            runtime = SessionMemoryRuntimeBridge(
-                database_path=history.store.database_path,
-                project_workspace_id=state.project_workspace_id,
-                workspace_root=state.canonical_workspace_root,
-                session_id=clean_id,
-                mode=state.mode,
-                permission=state.permission,
-                runtime_policy=state.runtime_policy,
-                provider_id=state.provider_id,
-                provider_model=state.provider_model,
-                active_profile_id=state.active_profile_id,
-                permission_policy_id=state.permission_policy_id,
-                evidence_policy_id=state.evidence_policy_id,
-            )
+            runtime = _runtime_for_state(state, session_id=clean_id)
             current_session_id = runtime.session_state.session_id
             state = runtime.session_state
             self._refresh_projection()
@@ -267,7 +329,7 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
             f"PROVIDER\n"
             f"id={state.provider_id or 'unconfigured'} model={state.provider_model or 'unconfigured'}\n"
             f"profile={state.active_profile_id or 'unconfigured'}\n"
-            "health=unknown (run provider health through the registered provider owner)"
+            f"health={provider_health}"
         )
 
     def _evidence_details_text() -> str:
@@ -295,13 +357,41 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
         return (
             "HELP\n"
             "/status runtime and policy  /provider selected provider metadata\n"
+            "/provider use <provider> <model>  /provider check explicit-config health\n"
             "/evidence persisted event and receipt counts  /sessions list workspace sessions\n"
             "/session <id> resume  /new <id> create  /help this reference\n"
             "/interrupt request interruption  /cancel cancel the active turn"
         )
 
+    def _runtime_for_state(source_state, *, session_id: str | None = None) -> SessionMemoryRuntimeBridge:
+        return SessionMemoryRuntimeBridge(
+            database_path=history.store.database_path,
+            project_workspace_id=source_state.project_workspace_id,
+            workspace_root=source_state.canonical_workspace_root,
+            session_id=session_id or source_state.session_id,
+            mode=source_state.mode,
+            permission=source_state.permission,
+            runtime_policy=source_state.runtime_policy,
+            provider_id=source_state.provider_id,
+            provider_model=source_state.provider_model,
+            active_profile_id=source_state.active_profile_id,
+            permission_policy_id=source_state.permission_policy_id,
+            evidence_policy_id=source_state.evidence_policy_id,
+        )
+
     return LbeTextualApp()
 
 
-def run_textual_tui(*, history: SessionOperationalHistory, session_id: str, control: PersistentTurnControl) -> None:
-    build_textual_tui(history=history, session_id=session_id, control=control).run()
+def run_textual_tui(
+    *,
+    history: SessionOperationalHistory,
+    session_id: str,
+    control: PersistentTurnControl,
+    provider_config: ProviderConfig | None = None,
+) -> None:
+    build_textual_tui(
+        history=history,
+        session_id=session_id,
+        control=control,
+        provider_config=provider_config,
+    ).run()
