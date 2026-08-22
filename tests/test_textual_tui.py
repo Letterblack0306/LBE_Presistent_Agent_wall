@@ -10,6 +10,7 @@ from lbe_guard_inspector.persistent_turn_control import PersistentTurnControl
 from lbe_guard_inspector.provider_health import ProviderHealthResult
 from lbe_guard_inspector.provider_registry import ProviderCapabilities, ProviderRegistry
 from lbe_guard_inspector.reasoning_provider import ProviderConfig
+from lbe_guard_inspector.runtime.tool_orchestration import ToolRegistry, workspace_read_spec
 from lbe_guard_inspector.textual_tui import build_textual_tui
 
 
@@ -163,6 +164,7 @@ def test_unknown_command_does_not_create_runtime_event(tmp_path: Path) -> None:
     asyncio.run(exercise())
     assert history.events_for_session(session_id="s") == ()
 
+
 def test_session_list_create_resume_and_active_turn_boundary(tmp_path: Path) -> None:
     app, history = _app(tmp_path)
     history.store.save_session_state(SessionState(
@@ -219,7 +221,6 @@ def test_no_color_build_keeps_ascii_text_contract(tmp_path: Path, monkeypatch) -
             assert "[|]" not in header
 
     asyncio.run(exercise())
-
 
 
 def test_provider_selection_and_health_delegate_without_exposing_config(tmp_path: Path) -> None:
@@ -303,7 +304,6 @@ def test_provider_health_without_explicit_config_is_truthful_and_non_mutating(tm
     assert history.events_for_session(session_id="s") == ()
 
 
-
 def test_detail_command_discloses_selected_persisted_event(tmp_path: Path) -> None:
     app, history = _app(tmp_path)
     turn = history.start_turn(session_id="s")
@@ -332,3 +332,61 @@ def test_detail_command_discloses_selected_persisted_event(tmp_path: Path) -> No
             assert "error=POLICY_DENIED" in detail
 
     asyncio.run(exercise())
+
+
+def test_capability_inspection_uses_registered_governed_tool_specs(tmp_path: Path) -> None:
+    store = WorkspaceMemoryStore(tmp_path / "state.sqlite3")
+    store.save_session_state(SessionState(
+        "cap-session", "w", tmp_path, "coding", "read_only", "development",
+        "openai-compatible", "m",
+    ))
+    history = SessionOperationalHistory(store=store)
+    tool_registry = ToolRegistry()
+    tool_registry.register(workspace_read_spec(), lambda request: None)
+    app = build_textual_tui(
+        history=history,
+        session_id="cap-session",
+        control=PersistentTurnControl(history=history),
+        tool_registry=tool_registry,
+    )
+
+    async def exercise() -> None:
+        async with app.run_test(size=(100, 30)) as pilot:
+            composer = app.query_one("#composer", Input)
+            composer.value = "/tools"
+            await pilot.press("enter")
+            await pilot.pause()
+            details = str(app.query_one("#details", Static).render())
+            assert details.startswith("CAPABILITIES")
+            assert "workspace.read capability=inspect" in details
+            assert "access=read" in details
+            assert "network=none" in details
+            assert "risk=low" in details
+            assert "state=available" in details
+
+    asyncio.run(exercise())
+    assert history.events_for_session(session_id="cap-session") == ()
+
+
+def test_capability_and_integration_unavailable_states_are_truthful(tmp_path: Path) -> None:
+    app, history = _app(tmp_path)
+
+    async def submit(pilot, text: str) -> str:
+        composer = app.query_one("#composer", Input)
+        composer.value = text
+        await pilot.press("enter")
+        await pilot.pause()
+        return str(app.query_one("#details", Static).render())
+
+    async def exercise() -> None:
+        async with app.run_test(size=(100, 30)) as pilot:
+            tools = await submit(pilot, "/tools")
+            integrations = await submit(pilot, "/integrations")
+            assert tools == "CAPABILITIES\nunavailable: no governed tool registry configured"
+            assert integrations == (
+                "INTEGRATIONS\n"
+                "unavailable: no runtime integration registry owner is configured"
+            )
+
+    asyncio.run(exercise())
+    assert history.events_for_session(session_id="s") == ()
