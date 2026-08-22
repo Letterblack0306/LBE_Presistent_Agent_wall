@@ -61,7 +61,7 @@ def test_composer_refreshes_objective_activity_and_control_state(tmp_path: Path)
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.press("b", "e", "g", "i", "n", "enter")
             assert "> begin" in str(app.query_one("#objective", Static).render())
-            assert "OBJECTIVE" in str(app.query_one("#activity", Static).render())
+            assert "objective" in str(app.query_one("#activity", Static).render())
             assert "ACTIVE" in str(app.query_one("#status", Static).render())
             await pilot.press("ctrl+i", "ctrl+x")
 
@@ -281,3 +281,34 @@ def test_provider_health_without_explicit_config_is_truthful_and_non_mutating(tm
     asyncio.run(exercise())
     assert history.store.load_session_state(session_id="s") == before
     assert history.events_for_session(session_id="s") == ()
+
+
+
+def test_detail_command_discloses_selected_persisted_event(tmp_path: Path) -> None:
+    app, history = _app(tmp_path)
+    turn = history.start_turn(session_id="s")
+    history.append_event(OperationalEvent(
+        session_id="s",
+        turn_id=turn.turn_id,
+        event_type="tool.denied",
+        payload={
+            "tool_id": "workspace.write",
+            "authorization": {"verdict": "DENY", "rationale": "read-only session"},
+            "error_code": "POLICY_DENIED",
+        },
+        runtime_operation_id="operation-denied",
+    ))
+    sequence = history.events_for_session(session_id="s")[-1].session_sequence
+
+    async def exercise() -> None:
+        async with app.run_test(size=(100, 30)) as pilot:
+            composer = app.query_one("#composer", Input)
+            composer.value = f"/detail {sequence}"
+            await pilot.press("enter")
+            await pilot.pause()
+            detail = str(app.query_one("#details", Static).render())
+            assert f"DETAIL event={sequence} type=tool.denied" in detail
+            assert "authorization=DENY rationale=read-only session" in detail
+            assert "error=POLICY_DENIED" in detail
+
+    asyncio.run(exercise())
