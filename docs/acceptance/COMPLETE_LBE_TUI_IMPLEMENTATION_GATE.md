@@ -4,7 +4,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 phase: `COMPLETE_TUI_IMPLEMENTATION`
 
-active slice: `TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS`
+active slice: `TUI_INSTALLED_INTERACTIVE_ACCEPTANCE`
 
 required evidence level: `SOURCE_PLUS_INSTALLED_INTERACTIVE_RUNTIME_PROOF`
 
@@ -28,6 +28,8 @@ The complete installed workflow must support:
 6. inspect registered capabilities and integrations without executing them directly;
 7. expose truthful unavailable, loading, empty, denied, failed, cancelled, and completed states;
 8. preserve one execution path through existing governed runtime owners.
+
+The official public Google Antigravity CLI repository is a product/interaction reference only. Verified reference patterns that are compatible with this contract include a keyboard-first terminal client, persistent history, one shared core agent engine across interfaces, shared settings/permissions, and terminal chrome that projects current agent state. LBE does not infer or copy Antigravity's internal runtime, authorization, dispatch, event-store, or persistence implementation.
 
 ## Existing owners to reuse
 
@@ -59,55 +61,21 @@ The complete installed workflow must support:
 - respect `NO_COLOR`;
 - avoid unsupported Unicode glyphs and provide ASCII-safe borders/symbols;
 - no flicker, blocking provider call on the UI thread, or uncontrolled log scrolling;
-- help must expose universal navigation, view actions, and contextual actions.
+- help must expose universal navigation, view actions, and contextual actions;
+- terminal title/status chrome may project existing persisted session/runtime/provider facts, but must not invent VCS, context-window, authorization, or execution state that LBE does not own.
 
-## Active slice
+## Completed slices
 
 ### TUI_PROJECTION_CONTRACT_AND_VIEW_MODELS — PASS
-
-Question:
-
-> Can the existing persisted runtime events and owners be projected into typed TUI states without introducing a second runtime or inventing unavailable evidence?
-
-Allowed implementation paths:
-
-- `lbe_guard_inspector/terminal_projection.py`
-- `lbe_guard_inspector/textual_tui.py`
-- a bounded TUI view-model module under `lbe_guard_inspector/`
-- focused terminal/TUI tests
-- this gate and machine-gate evidence
-
-Required proof:
-
-- owner/event mapping documented in tests;
-- typed projection for every state required by the first sequence item;
-- unknown/missing payloads render truthfully;
-- no execution, authorization, or completion decisions occur in projection code;
-- focused tests pass;
-- `git diff --check`.
 
 Checkpoint evidence:
 
 - GitHub revision: `72aa6834871cb17ee68ee74367749440c9c0e0cc`;
 - focused projection tests: `9 passed`;
 - `git diff --check`: PASS;
-- installed interactive acceptance remains pending and is not claimed by this checkpoint.
+- installed interactive acceptance remained pending at this checkpoint.
 
 ### TUI_OBJECTIVE_ACTIVITY_WORKSPACE — PASS
-
-Question:
-
-> Can the typed persisted projections be presented in one stable keyboard-first objective/activity workspace without blocking the UI thread or inventing runtime state?
-
-Required proof:
-
-- stable header, objective, activity stream, composer, command/status, and detail regions;
-- deterministic focus and progressive disclosure;
-- truthful empty, idle, active, failed, cancelled, and completed rendering;
-- 80x24 and resize coverage at the source/test level;
-- ASCII-safe primary symbols and no color-only meaning;
-- focused Textual and terminal projection tests pass;
-- `git diff --check`.
 
 Checkpoint evidence:
 
@@ -115,22 +83,9 @@ Checkpoint evidence:
 - focused TUI/projection tests: `14 passed`;
 - 80x24, alternate size, focus, progressive details, persisted states, and `NO_COLOR` source behavior covered;
 - `git diff --check`: PASS;
-- installed interactive acceptance remains pending.
+- installed interactive acceptance remained pending at this checkpoint.
 
 ### TUI_COMMAND_ROUTING — PASS
-
-Question:
-
-> Do `/status`, `/provider`, `/evidence`, `/help`, `/interrupt`, and `/cancel` route to distinct truthful behavior while preserving the existing runtime/control owners?
-
-Required proof:
-
-- status, provider, evidence, and help produce distinct bounded projections;
-- interrupt and cancel route through `PersistentTurnControl` during an active turn;
-- unknown commands fail truthfully without creating runtime events;
-- no command handler becomes an execution, provider, session, or evidence authority;
-- focused tests pass;
-- `git diff --check`.
 
 Checkpoint evidence:
 
@@ -138,22 +93,9 @@ Checkpoint evidence:
 - focused TUI/projection tests: `15 passed`;
 - all six commands exercised through the Textual input surface;
 - `git diff --check`: PASS;
-- installed interactive command acceptance remains pending.
+- installed interactive command acceptance remained pending at this checkpoint.
 
 ### TUI_SESSION_NAVIGATION_AND_RESUME — PASS
-
-Finding:
-
-The canonical `WorkspaceMemoryStore` can load one session but has no public bounded session-list operation. Session navigation must add that query to the existing store rather than query SQLite from the TUI or create a second session registry.
-
-Required proof:
-
-- bounded session listing through `WorkspaceMemoryStore`;
-- create through `SessionMemoryRuntimeBridge` and resume through persisted `SessionState`;
-- navigation changes only the client projection target;
-- active-turn transitions fail closed;
-- focused store/session/TUI tests pass;
-- `git diff --check`.
 
 Checkpoint evidence:
 
@@ -161,22 +103,9 @@ Checkpoint evidence:
 - focused store/session/TUI/projection tests: `18 passed`;
 - create, list, resume, projection switch, and active-turn boundary covered;
 - `git diff --check`: PASS;
-- installed interactive session acceptance remains pending.
+- installed interactive session acceptance remained pending at this checkpoint.
 
 ### TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH — PASS
-
-Question:
-
-> Can provider/model selection and health be controlled from the TUI through existing provider and session owners without persisting or rendering credential values?
-
-Required proof:
-
-- registered provider/model selection delegates to `SessionMemoryRuntimeBridge.configure_session`;
-- health delegates to `check_provider_health` with explicit configuration;
-- unconfigured health is truthful and non-mutating;
-- provider config and credential values are never rendered or persisted by the TUI;
-- focused provider/session/TUI tests pass;
-- `git diff --check`.
 
 Checkpoint evidence:
 
@@ -185,36 +114,60 @@ Checkpoint evidence:
 - selection delegates to the persisted session owner and health delegates to the registered provider health owner;
 - explicit provider configuration and credential values are neither rendered nor persisted by the TUI;
 - `git diff --check`: PASS;
-- installed interactive provider acceptance remains pending.
+- installed interactive provider acceptance remained pending at this checkpoint.
 
-### TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS — OPEN
+### TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS — PASS
+
+Checkpoint evidence:
+
+- GitHub revision: `ee8251a083e9614f92bb672c4604df8861ec7e94`;
+- focused tests: `24 passed`;
+- validation command hash: `7DE82A4260F536B19EECF22AB1460038D38793D6551B056060B9FC1BA0F8FB2F`;
+- `git diff --check`: PASS.
+
+### TUI_CAPABILITY_INTEGRATION_INSPECTION — PASS
+
+Checkpoint evidence:
+
+- GitHub revision: `775e595270ae391573aca9bed9b63b5d6a0f3e9e`;
+- focused tests: `38 passed`;
+- validation command hash: `59AA029B59C7D10EE98C3F8891C7FFEE659A5D07841DC59E7706083E7A705EFB`;
+- `git diff --check`: PASS.
+
+## Active slice
+
+### TUI_INSTALLED_INTERACTIVE_ACCEPTANCE — OPEN
 
 Question:
 
-> Can persisted runtime events provide bounded structured detail views for model activity, tool calls, authorization, receipts, evidence, validation, diffs, failures, and completion without projection code inventing authority?
+> From the exact installed package, can the LBE TUI operate as a truthful keyboard-first projection over the same persisted runtime while exercising real local-provider, session, command, governed-tool, interrupt/cancel, and completion behavior without creating a second authority path?
+
+Current source alignment:
+
+- terminal title now projects only LBE-owned workspace, mode, session, and runtime state;
+- status chrome now projects LBE-owned runtime/provider/session facts and adapts its command hints to terminal width;
+- terminal chrome refreshes after session/provider/control state changes and on terminal resize;
+- the TUI still delegates session, provider, control, tool, evidence, authorization, and completion ownership to existing runtime owners;
+- focused tests were updated for terminal-title state transitions, adaptive 80-column status behavior, wide status controls, session switching, and ASCII/`NO_COLOR` compatibility;
+- these source changes are **not installed-interactive proof** until executed against the installed artifact.
 
 Required proof:
 
-- activity rows and details derive only from persisted operational events and typed view models;
-- authorization verdicts, receipt identity, evidence, validation, diff metadata, failure, and completion are individually inspectable;
-- missing or malformed fields render as unknown/unavailable rather than inferred truth;
-- raw JSON is not the primary interaction surface;
-- projection code performs no execution, authorization, validation, or completion decisions;
-- focused projection/TUI tests pass;
-- `git diff --check`.
+- exact GitHub revision and clean installed artifact identified;
+- real Windows Terminal launch and render captured;
+- `/status`, `/provider`, `/evidence`, `/help`, `/interrupt`, and `/cancel` exercise distinct truthful behavior;
+- session create/resume/navigation proven;
+- provider select/check proven without credential leakage;
+- terminal title/status state tracks persisted session/runtime state and remains readable across resize/80x24;
+- one governed local-provider tool turn renders proposal, decision, receipt, evidence, diff where applicable, continuation, and deterministic completion;
+- interrupt and cancel proven during an active turn;
+- monochrome, 16-color, truecolor, and `NO_COLOR` behavior checked;
+- no unexplained runtime errors or false completion;
+- full focused and relevant regression suites pass.
 
 ## Final acceptance
 
-- exact GitHub revision and clean installed artifact identified;
-- real Windows Terminal launch and render captured;
-- all six commands exercise distinct truthful behavior;
-- session create/resume/navigation proven;
-- provider select/check proven without credential leakage;
-- one governed local-provider tool turn renders proposal, decision, receipt, evidence, diff where applicable, continuation, and deterministic completion;
-- interrupt and cancel proven during an active turn;
-- 80x24, resize, monochrome, 16-color, truecolor, and `NO_COLOR` behavior checked;
-- no unexplained runtime errors or false completion;
-- full focused and relevant regression suites pass.
+The phase may advance only when `TUI_INSTALLED_INTERACTIVE_ACCEPTANCE` is PASS and the required installed evidence above is recorded. Source changes, static screenshots, mocks, or unit tests alone are insufficient.
 
 ## Forbidden
 
