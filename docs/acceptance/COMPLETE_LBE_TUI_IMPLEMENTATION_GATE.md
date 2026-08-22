@@ -4,7 +4,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 phase: `COMPLETE_TUI_IMPLEMENTATION`
 
-active slice: `TUI_COMMAND_ROUTING`
+active slice: `TUI_SESSION_NAVIGATION_AND_RESUME`
 
 required evidence level: `SOURCE_PLUS_INSTALLED_INTERACTIVE_RUNTIME_PROOF`
 
@@ -117,7 +117,7 @@ Checkpoint evidence:
 - `git diff --check`: PASS;
 - installed interactive acceptance remains pending.
 
-### TUI_COMMAND_ROUTING — OPEN
+### TUI_COMMAND_ROUTING — PASS
 
 Question:
 
@@ -130,6 +130,29 @@ Required proof:
 - unknown commands fail truthfully without creating runtime events;
 - no command handler becomes an execution, provider, session, or evidence authority;
 - focused tests pass;
+- `git diff --check`.
+
+Checkpoint evidence:
+
+- GitHub revision: `00265ab3d6590a5dad716905507e05077ee9af1d`;
+- focused TUI/projection tests: `15 passed`;
+- all six commands exercised through the Textual input surface;
+- `git diff --check`: PASS;
+- installed interactive command acceptance remains pending.
+
+### TUI_SESSION_NAVIGATION_AND_RESUME — OPEN
+
+Finding:
+
+The canonical `WorkspaceMemoryStore` can load one session but has no public bounded session-list operation. Session navigation must add that query to the existing store rather than query SQLite from the TUI or create a second session registry.
+
+Required proof:
+
+- bounded session listing through `WorkspaceMemoryStore`;
+- create through `SessionMemoryRuntimeBridge` and resume through persisted `SessionState`;
+- navigation changes only the client projection target;
+- active-turn transitions fail closed;
+- focused store/session/TUI tests pass;
 - `git diff --check`.
 
 ## Final acceptance
