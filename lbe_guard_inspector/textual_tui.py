@@ -7,6 +7,7 @@ from uuid import uuid4
 from .control_protocol import ControlMethod, ControlOutcome, ControlRequest
 from .memory.operational_history import SessionOperationalHistory
 from .persistent_turn_control import PersistentTurnControl
+from .session_memory_runtime import SessionMemoryRuntimeBridge
 from .terminal_projection import render_terminal_timeline
 
 
@@ -20,9 +21,10 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
     except ImportError as exc:
         raise RuntimeError("Textual UI is unavailable; install lbe-guard-inspector[tui]") from exc
 
-    state = history.store.load_session_state(session_id=session_id)
+    current_session_id = session_id
+    state = history.store.load_session_state(session_id=current_session_id)
     if state is None:
-        raise ValueError(f"session not found: {session_id}")
+        raise ValueError(f"session not found: {current_session_id}")
 
     no_color = "NO_COLOR" in os.environ
     accent = "#d0d0d0" if no_color else "#ef4b4b"
@@ -77,9 +79,9 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
                 self._command(text)
                 event.input.value = ""
                 return
-            active = history.latest_running_turn(session_id=session_id)
+            active = history.latest_running_turn(session_id=current_session_id)
             method = ControlMethod.TURN_STEER if active is not None else ControlMethod.TURN_START
-            params = {"session_id": session_id, "text": text}
+            params = {"session_id": current_session_id, "text": text}
             if active is not None:
                 params["turn_id"] = active.turn_id
             self._handle(ControlRequest(f"tui-{uuid4()}", method, params))
@@ -111,6 +113,23 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
             if command in {"/help", "/commands"}:
                 self._show_details(_help_text())
                 return
+            if command == "/sessions":
+                self._show_details(_sessions_text())
+                return
+            if command == "/session":
+                parts = text.split(maxsplit=1)
+                if len(parts) != 2:
+                    self.notify("Usage: /session <session-id>", severity="warning")
+                    return
+                self._switch_session(parts[1])
+                return
+            if command == "/new":
+                parts = text.split(maxsplit=1)
+                if len(parts) != 2:
+                    self.notify("Usage: /new <session-id>", severity="warning")
+                    return
+                self._create_session(parts[1])
+                return
             if command == "/interrupt":
                 self.action_interrupt()
                 return
@@ -119,26 +138,78 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
                 return
             self.notify(f"Unsupported command: {command}. Use /help.", severity="warning")
 
+        def _switch_session(self, target_session_id: str) -> None:
+            nonlocal current_session_id, state
+            clean_id = target_session_id.strip()
+            if history.latest_running_turn(session_id=current_session_id) is not None:
+                self.notify("Cancel or complete the active turn before switching sessions.", severity="warning")
+                return
+            target = history.store.load_session_state(session_id=clean_id)
+            if target is None:
+                self.notify(f"Session not found: {clean_id}", severity="warning")
+                return
+            current_session_id = target.session_id
+            state = target
+            self._refresh_projection()
+            self.notify(f"Resumed session {clean_id}", severity="information")
+
+        def _create_session(self, requested_session_id: str) -> None:
+            nonlocal current_session_id, state
+            clean_id = requested_session_id.strip()
+            if not clean_id:
+                self.notify("Session id must not be empty.", severity="warning")
+                return
+            if history.latest_running_turn(session_id=current_session_id) is not None:
+                self.notify("Cancel or complete the active turn before creating a session.", severity="warning")
+                return
+            if history.store.load_session_state(session_id=clean_id) is not None:
+                self.notify(f"Session already exists: {clean_id}", severity="warning")
+                return
+            runtime = SessionMemoryRuntimeBridge(
+                database_path=history.store.database_path,
+                project_workspace_id=state.project_workspace_id,
+                workspace_root=state.canonical_workspace_root,
+                session_id=clean_id,
+                mode=state.mode,
+                permission=state.permission,
+                runtime_policy=state.runtime_policy,
+                provider_id=state.provider_id,
+                provider_model=state.provider_model,
+                active_profile_id=state.active_profile_id,
+                permission_policy_id=state.permission_policy_id,
+                evidence_policy_id=state.evidence_policy_id,
+            )
+            current_session_id = runtime.session_state.session_id
+            state = runtime.session_state
+            self._refresh_projection()
+            self.notify(f"Created session {clean_id}", severity="information")
+
+        def _refresh_projection(self) -> None:
+            self._refresh_projection()
+            details = self.query_one("#details", Static)
+            if details.display:
+                details.update(_status_details_text())
+
         def action_interrupt(self) -> None:
-            active = history.latest_running_turn(session_id=session_id)
+            active = history.latest_running_turn(session_id=current_session_id)
             if active is None:
                 self.notify("No active turn to interrupt", severity="warning")
                 return
             self._handle(ControlRequest(
                 f"tui-{uuid4()}",
                 ControlMethod.TURN_INTERRUPT,
-                {"session_id": session_id, "turn_id": active.turn_id},
+                {"session_id": current_session_id, "turn_id": active.turn_id},
             ))
 
         def action_cancel(self) -> None:
-            active = history.latest_running_turn(session_id=session_id)
+            active = history.latest_running_turn(session_id=current_session_id)
             if active is None:
                 self.notify("No active turn to cancel", severity="warning")
                 return
             self._handle(ControlRequest(
                 f"tui-{uuid4()}",
                 ControlMethod.TURN_CANCEL,
-                {"session_id": session_id, "turn_id": active.turn_id},
+                {"session_id": current_session_id, "turn_id": active.turn_id},
             ))
 
         def _handle(self, request: ControlRequest) -> None:
@@ -153,14 +224,14 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
             )
 
     def _header_text() -> str:
-        active = history.latest_running_turn(session_id=session_id)
+        active = history.latest_running_turn(session_id=current_session_id)
         runtime_state = "active" if active is not None else "idle"
         workspace = state.project_workspace_id or state.canonical_workspace_root.name
         provider = f"{state.provider_id or 'unconfigured'}/{state.provider_model or 'unconfigured'}"
         return f"LBE  {workspace}  session:{state.session_id}  {state.mode}  {provider}  {runtime_state}"
 
     def _objective_text() -> str:
-        events = history.events_for_session(session_id=session_id)
+        events = history.events_for_session(session_id=current_session_id)
         latest = next((event for event in reversed(events) if event.event_type == "user.message"), None)
         if latest is None:
             return "> No objective submitted"
@@ -168,18 +239,18 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
         return f"> {text.strip() if isinstance(text, str) and text.strip() else '(no persisted objective text)'}"
 
     def _activity_text() -> str:
-        return render_terminal_timeline(history=history, session_id=session_id)
+        return render_terminal_timeline(history=history, session_id=current_session_id)
 
     def _status_text() -> str:
-        active = history.latest_running_turn(session_id=session_id)
+        active = history.latest_running_turn(session_id=current_session_id)
         state_text = "ACTIVE" if active is not None else "IDLE"
-        return f"{state_text}  /status /provider /evidence /help /interrupt /cancel"
+        return f"{state_text}  /status /provider /evidence /help /sessions /session /new /interrupt /cancel"
 
     def _details_text() -> str:
         return _help_text()
 
     def _status_details_text() -> str:
-        active = history.latest_running_turn(session_id=session_id)
+        active = history.latest_running_turn(session_id=current_session_id)
         runtime_state = "ACTIVE" if active is not None else "IDLE"
         return (
             f"STATUS\n"
@@ -197,7 +268,7 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
         )
 
     def _evidence_details_text() -> str:
-        events = history.events_for_session(session_id=session_id)
+        events = history.events_for_session(session_id=current_session_id)
         receipts = tuple(event.tool_receipt_id for event in events if event.tool_receipt_id)
         recent = ", ".join(receipts[-3:]) if receipts else "none"
         return (
@@ -206,11 +277,23 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
             f"recent_receipts={recent}"
         )
 
+    def _sessions_text() -> str:
+        sessions = history.store.list_session_states(
+            project_workspace_id=state.project_workspace_id,
+            limit=50,
+        )
+        lines = ["SESSIONS"]
+        for item in sessions:
+            marker = "*" if item.session_id == current_session_id else " "
+            lines.append(f"{marker} {item.session_id}  {item.mode}  {item.updated_at}")
+        return "\n".join(lines) if len(lines) > 1 else "SESSIONS\nnone"
+
     def _help_text() -> str:
         return (
             "HELP\n"
             "/status runtime and policy  /provider selected provider metadata\n"
-            "/evidence persisted event and receipt counts  /help this reference\n"
+            "/evidence persisted event and receipt counts  /sessions list workspace sessions\n"
+            "/session <id> resume  /new <id> create  /help this reference\n"
             "/interrupt request interruption  /cancel cancel the active turn"
         )
 
