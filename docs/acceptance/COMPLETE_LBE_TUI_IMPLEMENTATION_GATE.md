@@ -4,7 +4,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 phase: `COMPLETE_TUI_IMPLEMENTATION`
 
-active slice: `TUI_PROJECTION_CONTRACT_AND_VIEW_MODELS`
+active slice: `TUI_OBJECTIVE_ACTIVITY_WORKSPACE`
 
 required evidence level: `SOURCE_PLUS_INSTALLED_INTERACTIVE_RUNTIME_PROOF`
 
@@ -63,7 +63,7 @@ The complete installed workflow must support:
 
 ## Active slice
 
-### TUI_PROJECTION_CONTRACT_AND_VIEW_MODELS — OPEN
+### TUI_PROJECTION_CONTRACT_AND_VIEW_MODELS — PASS
 
 Question:
 
@@ -84,6 +84,29 @@ Required proof:
 - unknown/missing payloads render truthfully;
 - no execution, authorization, or completion decisions occur in projection code;
 - focused tests pass;
+- `git diff --check`.
+
+Checkpoint evidence:
+
+- GitHub revision: `72aa6834871cb17ee68ee74367749440c9c0e0cc`;
+- focused projection tests: `9 passed`;
+- `git diff --check`: PASS;
+- installed interactive acceptance remains pending and is not claimed by this checkpoint.
+
+### TUI_OBJECTIVE_ACTIVITY_WORKSPACE — OPEN
+
+Question:
+
+> Can the typed persisted projections be presented in one stable keyboard-first objective/activity workspace without blocking the UI thread or inventing runtime state?
+
+Required proof:
+
+- stable header, objective, activity stream, composer, command/status, and detail regions;
+- deterministic focus and progressive disclosure;
+- truthful empty, idle, active, failed, cancelled, and completed rendering;
+- 80x24 and resize coverage at the source/test level;
+- ASCII-safe primary symbols and no color-only meaning;
+- focused Textual and terminal projection tests pass;
 - `git diff --check`.
 
 ## Final acceptance
