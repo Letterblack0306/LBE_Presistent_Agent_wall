@@ -74,7 +74,7 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
             if not text:
                 return
             if text.startswith("/"):
-                self.notify("Command routing opens in the next gated slice.", severity="warning")
+                self._command(text)
                 event.input.value = ""
                 return
             active = history.latest_running_turn(session_id=session_id)
@@ -87,8 +87,37 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
 
         def action_details(self) -> None:
             details = self.query_one("#details", Static)
-            details.update(_details_text())
-            details.display = not details.display
+            if details.display:
+                details.display = False
+            else:
+                self._show_details(_help_text())
+
+        def _show_details(self, text: str) -> None:
+            details = self.query_one("#details", Static)
+            details.update(text)
+            details.display = True
+
+        def _command(self, text: str) -> None:
+            command = text.split(maxsplit=1)[0].lower()
+            if command == "/status":
+                self._show_details(_status_details_text())
+                return
+            if command == "/provider":
+                self._show_details(_provider_details_text())
+                return
+            if command == "/evidence":
+                self._show_details(_evidence_details_text())
+                return
+            if command in {"/help", "/commands"}:
+                self._show_details(_help_text())
+                return
+            if command == "/interrupt":
+                self.action_interrupt()
+                return
+            if command == "/cancel":
+                self.action_cancel()
+                return
+            self.notify(f"Unsupported command: {command}. Use /help.", severity="warning")
 
         def action_interrupt(self) -> None:
             active = history.latest_running_turn(session_id=session_id)
@@ -144,16 +173,45 @@ def build_textual_tui(*, history: SessionOperationalHistory, session_id: str, co
     def _status_text() -> str:
         active = history.latest_running_turn(session_id=session_id)
         state_text = "ACTIVE" if active is not None else "IDLE"
-        return f"{state_text}  Ctrl+P details  Ctrl+I interrupt  Ctrl+X cancel"
+        return f"{state_text}  /status /provider /evidence /help /interrupt /cancel"
 
     def _details_text() -> str:
-        events = history.events_for_session(session_id=session_id)
-        receipts = [event.tool_receipt_id for event in events if event.tool_receipt_id]
+        return _help_text()
+
+    def _status_details_text() -> str:
+        active = history.latest_running_turn(session_id=session_id)
+        runtime_state = "ACTIVE" if active is not None else "IDLE"
         return (
-            f"SESSION: {state.session_id}  WORKSPACE: {state.canonical_workspace_root}\n"
-            f"PROVIDER: {state.provider_id or 'unconfigured'} / {state.provider_model or 'unconfigured'}\n"
-            f"POLICY: mode={state.mode} permission={state.permission or 'unknown'} profile={state.runtime_policy or 'unknown'}\n"
-            f"EVIDENCE: persisted receipts={len(receipts)}"
+            f"STATUS\n"
+            f"runtime={runtime_state} session={state.session_id} mode={state.mode}\n"
+            f"workspace={state.canonical_workspace_root}\n"
+            f"permission={state.permission or 'unknown'} policy={state.runtime_policy or 'unknown'}"
+        )
+
+    def _provider_details_text() -> str:
+        return (
+            f"PROVIDER\n"
+            f"id={state.provider_id or 'unconfigured'} model={state.provider_model or 'unconfigured'}\n"
+            f"profile={state.active_profile_id or 'unconfigured'}\n"
+            "health=unknown (run provider health through the registered provider owner)"
+        )
+
+    def _evidence_details_text() -> str:
+        events = history.events_for_session(session_id=session_id)
+        receipts = tuple(event.tool_receipt_id for event in events if event.tool_receipt_id)
+        recent = ", ".join(receipts[-3:]) if receipts else "none"
+        return (
+            f"EVIDENCE\n"
+            f"persisted_events={len(events)} persisted_receipts={len(receipts)}\n"
+            f"recent_receipts={recent}"
+        )
+
+    def _help_text() -> str:
+        return (
+            "HELP\n"
+            "/status runtime and policy  /provider selected provider metadata\n"
+            "/evidence persisted event and receipt counts  /help this reference\n"
+            "/interrupt request interruption  /cancel cancel the active turn"
         )
 
     return LbeTextualApp()
