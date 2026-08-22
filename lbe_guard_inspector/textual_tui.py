@@ -29,6 +29,7 @@ def build_textual_tui(
 ):
     """Build one stable workspace without creating a second runtime authority."""
     try:
+        from textual import events
         from textual.app import App, ComposeResult
         from textual.binding import Binding
         from textual.containers import Vertical
@@ -90,7 +91,7 @@ def build_textual_tui(
             self.query_one("#composer", Input).focus()
             self._refresh_terminal_chrome()
 
-        def on_resize(self) -> None:
+        def on_resize(self, event: events.Resize) -> None:
             self._refresh_terminal_chrome()
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
