@@ -388,6 +388,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     state = _require_session(store, args.session_id)
     history = SessionOperationalHistory(store=store)
     provider_runtime = None
+    config = None
     if args.provider_config is not None:
         if state.provider_id != "openai-compatible":
             raise ValueError("Textual non-streaming execution currently requires openai-compatible session provider")
@@ -406,6 +407,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
         history=history,
         session_id=state.session_id,
         control=PersistentTurnControl(history=history, provider_runtime=provider_runtime),
+        provider_config=config,
     )
     return {"action": "tui", "session_id": state.session_id}
 
