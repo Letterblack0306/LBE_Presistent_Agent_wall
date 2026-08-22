@@ -4,7 +4,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 phase: `COMPLETE_TUI_IMPLEMENTATION`
 
-active slice: `TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH`
+active slice: `TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS`
 
 required evidence level: `SOURCE_PLUS_INSTALLED_INTERACTIVE_RUNTIME_PROOF`
 
@@ -163,7 +163,7 @@ Checkpoint evidence:
 - `git diff --check`: PASS;
 - installed interactive session acceptance remains pending.
 
-### TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH — OPEN
+### TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH — PASS
 
 Question:
 
@@ -176,6 +176,31 @@ Required proof:
 - unconfigured health is truthful and non-mutating;
 - provider config and credential values are never rendered or persisted by the TUI;
 - focused provider/session/TUI tests pass;
+- `git diff --check`.
+
+Checkpoint evidence:
+
+- GitHub revision: `243a363bc092d9947d17ffb77167678c02d324de`;
+- focused provider/session/TUI regression tests: `39 passed`;
+- selection delegates to the persisted session owner and health delegates to the registered provider health owner;
+- explicit provider configuration and credential values are neither rendered nor persisted by the TUI;
+- `git diff --check`: PASS;
+- installed interactive provider acceptance remains pending.
+
+### TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS — OPEN
+
+Question:
+
+> Can persisted runtime events provide bounded structured detail views for model activity, tool calls, authorization, receipts, evidence, validation, diffs, failures, and completion without projection code inventing authority?
+
+Required proof:
+
+- activity rows and details derive only from persisted operational events and typed view models;
+- authorization verdicts, receipt identity, evidence, validation, diff metadata, failure, and completion are individually inspectable;
+- missing or malformed fields render as unknown/unavailable rather than inferred truth;
+- raw JSON is not the primary interaction surface;
+- projection code performs no execution, authorization, validation, or completion decisions;
+- focused projection/TUI tests pass;
 - `git diff --check`.
 
 ## Final acceptance
