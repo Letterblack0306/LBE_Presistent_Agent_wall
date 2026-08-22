@@ -42,6 +42,7 @@ def test_stable_workspace_regions_focus_and_progressive_details(tmp_path: Path) 
             assert app.size.width == 80
             assert app.size.height == 24
             assert app.focused is app.query_one("#composer", Input)
+            assert app.title == "LBE | w | coding | session:s | IDLE"
             assert "No objective submitted" in str(app.query_one("#objective", Static).render())
             details = app.query_one("#details", Static)
             assert details.display is False
@@ -64,7 +65,9 @@ def test_composer_refreshes_objective_activity_and_control_state(tmp_path: Path)
             assert "> begin" in str(app.query_one("#objective", Static).render())
             assert "objective" in str(app.query_one("#activity", Static).render())
             assert "ACTIVE" in str(app.query_one("#status", Static).render())
+            assert app.title == "LBE | w | coding | session:s | ACTIVE"
             await pilot.press("ctrl+i", "ctrl+x")
+            assert app.title == "LBE | w | coding | session:s | IDLE"
 
     asyncio.run(exercise())
     assert [event.event_type for event in history.events_for_session(session_id="s")] == [
@@ -188,6 +191,7 @@ def test_session_list_create_resume_and_active_turn_boundary(tmp_path: Path) -> 
 
             await submit(pilot, "/session s2")
             assert "session:s2" in str(app.query_one("#header", Static).render())
+            assert app.title == "LBE | w | audit | session:s2 | IDLE"
             assert history.events_for_session(session_id="s2") == ()
 
             await submit(pilot, "active objective")
@@ -201,9 +205,11 @@ def test_session_list_create_resume_and_active_turn_boundary(tmp_path: Path) -> 
             assert created.project_workspace_id == "w"
             assert created.mode == "audit"
             assert "session:s3" in str(app.query_one("#header", Static).render())
+            assert app.title == "LBE | w | audit | session:s3 | IDLE"
 
             await submit(pilot, "/session s")
             assert "session:s" in str(app.query_one("#header", Static).render())
+            assert app.title == "LBE | w | coding | session:s | IDLE"
 
     asyncio.run(exercise())
 
@@ -217,10 +223,28 @@ def test_no_color_build_keeps_ascii_text_contract(tmp_path: Path, monkeypatch) -
             header = str(app.query_one("#header", Static).render())
             status = str(app.query_one("#status", Static).render())
             assert header.startswith("LBE")
-            assert "/status" in status and "/cancel" in status and "/sessions" in status
+            assert "IDLE" in status and "/help" in status and "session:s" in status
+            assert "Ctrl+I interrupt" in status and "Ctrl+X cancel" in status
             assert "[|]" not in header
 
     asyncio.run(exercise())
+
+
+def test_wide_statusline_exposes_primary_controls(tmp_path: Path) -> None:
+    app, history = _app(tmp_path)
+
+    async def exercise() -> None:
+        async with app.run_test(size=(140, 30)):
+            status = str(app.query_one("#status", Static).render())
+            assert status.startswith("IDLE  coding  openai-compatible/m  session:s")
+            for command in (
+                "/status", "/provider", "/evidence", "/tools",
+                "/sessions", "/help", "/interrupt", "/cancel",
+            ):
+                assert command in status
+
+    asyncio.run(exercise())
+    assert history.events_for_session(session_id="s") == ()
 
 
 def test_provider_selection_and_health_delegate_without_exposing_config(tmp_path: Path) -> None:
