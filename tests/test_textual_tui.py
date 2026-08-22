@@ -43,7 +43,7 @@ def test_stable_workspace_regions_focus_and_progressive_details(tmp_path: Path) 
             assert details.display is False
             await pilot.press("ctrl+p")
             assert details.display is True
-            assert "SESSION: s" in str(details.render())
+            assert str(details.render()).startswith("HELP")
             await pilot.press("ctrl+p")
             assert details.display is False
 
@@ -149,7 +149,7 @@ def test_no_color_build_keeps_ascii_text_contract(tmp_path: Path, monkeypatch) -
             header = str(app.query_one("#header", Static).render())
             status = str(app.query_one("#status", Static).render())
             assert header.startswith("LBE")
-            assert "Ctrl+P" in status
+            assert "/status /provider /evidence /help /interrupt /cancel" in status
             assert "[|]" not in header
 
     asyncio.run(exercise())
