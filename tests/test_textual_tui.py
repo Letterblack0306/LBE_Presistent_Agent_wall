@@ -7,6 +7,9 @@ from lbe_guard_inspector.memory.models import SessionState
 from lbe_guard_inspector.memory.operational_history import OperationalEvent, SessionOperationalHistory
 from lbe_guard_inspector.memory.store import WorkspaceMemoryStore
 from lbe_guard_inspector.persistent_turn_control import PersistentTurnControl
+from lbe_guard_inspector.provider_health import ProviderHealthResult
+from lbe_guard_inspector.provider_registry import ProviderCapabilities, ProviderRegistry
+from lbe_guard_inspector.reasoning_provider import ProviderConfig
 from lbe_guard_inspector.textual_tui import build_textual_tui
 
 
@@ -196,3 +199,85 @@ def test_no_color_build_keeps_ascii_text_contract(tmp_path: Path, monkeypatch) -
             assert "[|]" not in header
 
     asyncio.run(exercise())
+
+
+
+def test_provider_selection_and_health_delegate_without_exposing_config(tmp_path: Path) -> None:
+    store = WorkspaceMemoryStore(tmp_path / "state.sqlite3")
+    store.save_session_state(SessionState(
+        "provider-session", "w", tmp_path, "coding", "read_only", "development",
+        "openai-compatible", "old-model",
+    ))
+    history = SessionOperationalHistory(store=store)
+    registry = ProviderRegistry({"test-provider": lambda config: None})
+    config = ProviderConfig(
+        endpoint="http://provider.invalid/v1",
+        model="new-model",
+        timeout_seconds=5,
+        api_key="top-secret-provider-key",
+    )
+    calls = []
+
+    def health_checker(**kwargs):
+        calls.append(kwargs)
+        return ProviderHealthResult(
+            provider_id=kwargs["provider_id"],
+            model_id=kwargs["provider_config"].model,
+            status="READY",
+            capabilities=ProviderCapabilities(structured_output=True),
+        )
+
+    app = build_textual_tui(
+        history=history,
+        session_id="provider-session",
+        control=PersistentTurnControl(history=history),
+        provider_config=config,
+        provider_registry=registry,
+        provider_health_checker=health_checker,
+    )
+
+    async def submit(pilot, text: str) -> str:
+        composer = app.query_one("#composer", Input)
+        composer.value = text
+        await pilot.press("enter")
+        await pilot.pause()
+        return str(app.query_one("#details", Static).render())
+
+    async def exercise() -> None:
+        async with app.run_test(size=(100, 30)) as pilot:
+            selected = await submit(pilot, "/provider use test-provider new-model")
+            assert "id=test-provider model=new-model" in selected
+            persisted = history.store.load_session_state(session_id="provider-session")
+            assert persisted is not None
+            assert persisted.provider_id == "test-provider"
+            assert persisted.provider_model == "new-model"
+
+            checked = await submit(pilot, "/provider check")
+            assert "health=READY" in checked
+            assert "top-secret-provider-key" not in checked
+            assert "provider.invalid" not in checked
+
+    asyncio.run(exercise())
+    assert len(calls) == 1
+    assert calls[0]["provider_id"] == "test-provider"
+    assert calls[0]["provider_config"] is config
+    assert calls[0]["provider_registry"] is registry
+    assert history.events_for_session(session_id="provider-session") == ()
+
+
+def test_provider_health_without_explicit_config_is_truthful_and_non_mutating(tmp_path: Path) -> None:
+    app, history = _app(tmp_path)
+    before = history.store.load_session_state(session_id="s")
+
+    async def exercise() -> None:
+        async with app.run_test(size=(80, 24)) as pilot:
+            composer = app.query_one("#composer", Input)
+            composer.value = "/provider check"
+            await pilot.press("enter")
+            await pilot.pause()
+            details = str(app.query_one("#details", Static).render())
+            assert "health=unavailable (no explicit provider config)" in details
+
+    asyncio.run(exercise())
+    assert history.store.load_session_state(session_id="s") == before
+    assert history.events_for_session(session_id="s") == ()
