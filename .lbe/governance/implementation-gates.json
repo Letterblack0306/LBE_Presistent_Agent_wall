@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md",
   "active_phase": "COMPLETE_TUI_IMPLEMENTATION",
-  "active_slice": "TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS",
+  "active_slice": "TUI_CAPABILITY_INTEGRATION_INSPECTION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -128,7 +128,7 @@
     "authorization": "EXPLICIT_USER_AUTHORIZATION",
     "implementation_authority": "GITHUB",
     "local_execution_role": "EVIDENCE_ONLY_NO_PATCHES",
-    "active_slice": "TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS",
+    "active_slice": "TUI_CAPABILITY_INTEGRATION_INSPECTION",
     "allowed_paths": [
       "lbe_guard_inspector/terminal_projection.py",
       "lbe_guard_inspector/textual_tui.py",
@@ -177,6 +177,13 @@
         "revision": "243a363bc092d9947d17ffb77167678c02d324de",
         "focused_tests": "39 passed",
         "diff_check": "PASS"
+      },
+      "TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS": {
+        "status": "PASS",
+        "revision": "ee8251a083e9614f92bb672c4604df8861ec7e94",
+        "focused_tests": "24 passed",
+        "diff_check": "PASS",
+        "validation_command_hash": "7DE82A4260F536B19EECF22AB1460038D38793D6551B056060B9FC1BA0F8FB2F"
       }
     }
   }
