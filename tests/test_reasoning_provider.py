@@ -109,6 +109,7 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     assert call["headers"]["Authorization"] == "Bearer secret"
     assert call["payload"]["model"] == "local-model"
     assert call["payload"]["temperature"] == 0
+    assert call["payload"]["max_tokens"] == 512
     response_format = call["payload"]["response_format"]
     assert response_format["type"] == "json_schema"
     assert response_format["json_schema"]["name"] == "lbe_planning_response"
@@ -163,6 +164,7 @@ def test_explanation_call_is_separate_and_typed():
 
     assert result.explanation == "The deterministic guard passed."
     call = transport.calls[0]
+    assert call["payload"]["max_tokens"] == 512
     user_payload = json.loads(call["payload"]["messages"][1]["content"])
     assert user_payload["stage"] == "explanation"
     assert user_payload["output_contract"] == {"explanation": "non-empty string"}
