@@ -20,6 +20,9 @@ from .reasoning_contracts import (
 )
 
 
+_REASONING_MAX_TOKENS = 512
+
+
 @dataclass(frozen=True)
 class ProviderConfig:
     endpoint: str
@@ -167,6 +170,7 @@ class OpenAICompatibleReasoningBackend:
                 },
             ],
             "temperature": 0,
+            "max_tokens": _REASONING_MAX_TOKENS,
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
