@@ -144,7 +144,9 @@
       "lbe_guard_inspector/cli.py",
       "lbe_guard_inspector/provider_health.py",
       "lbe_guard_inspector/reasoning_config.py",
-      "tests/test_provider_health.py"
+      "tests/test_provider_health.py",
+      "lbe_guard_inspector/reasoning_provider.py",
+      "tests/test_reasoning_provider.py"
     ],
     "publish_allowed": false,
     "completed_slices": {
