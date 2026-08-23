@@ -29,7 +29,7 @@ The complete installed workflow must support:
 7. expose truthful unavailable, loading, empty, denied, failed, cancelled, and completed states;
 8. preserve one execution path through existing governed runtime owners.
 
-The official public Google Antigravity CLI repository is a product/interaction reference only. Verified reference patterns that are compatible with this contract include a keyboard-first terminal client, persistent history, one shared core agent engine across interfaces, shared settings/permissions, and terminal chrome that projects current agent state. LBE does not infer or copy Antigravity's internal runtime, authorization, dispatch, event-store, or persistence implementation.
+Standing interaction/reference baseline: `https://github.com/google-antigravity/antigravity-cli`. The official public Google Antigravity CLI repository is a product/interaction reference only. Verified reference patterns that are compatible with this contract include a keyboard-first terminal client, persistent history, one shared core agent engine across interfaces, shared settings/permissions, and terminal chrome that projects current agent state. LBE does not infer or copy Antigravity's internal runtime, authorization, dispatch, event-store, or persistence implementation.
 
 ## Existing owners to reuse
 
@@ -62,7 +62,8 @@ The official public Google Antigravity CLI repository is a product/interaction r
 - avoid unsupported Unicode glyphs and provide ASCII-safe borders/symbols;
 - no flicker, blocking provider call on the UI thread, or uncontrolled log scrolling;
 - help must expose universal navigation, view actions, and contextual actions;
-- terminal title/status chrome may project existing persisted session/runtime/provider facts, but must not invent VCS, context-window, authorization, or execution state that LBE does not own.
+- terminal title/status chrome may project existing persisted session/runtime/provider facts, but must not invent VCS, context-window, authorization, or execution state that LBE does not own;
+- LBE reference HTML surfaces must carry the canonical LBE mark as inline SVG, without an external raster-logo dependency.
 
 ## Completed slices
 
