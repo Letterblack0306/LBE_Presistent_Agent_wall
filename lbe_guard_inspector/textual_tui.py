@@ -61,10 +61,12 @@ def build_textual_tui(
         #columns {{ height: 1; padding: 0 1; color: {muted}; background: #0b0c15; }}
         #activity {{ height: 1fr; min-height: 4; padding: 0 1; color: #e9e9ef; background: #000000; overflow-y: auto; }}
         #composer {{ height: 3; margin: 0; border-top: solid {accent}; border-bottom: none; background: #000000; color: #e9e9ef; }}
+        #composer_hint {{ height: 1; padding: 0 1; color: {muted}; background: #000000; }}
         #status {{ height: 1; padding: 0 1; color: {muted}; background: #0b0c15; }}
-        #details {{ height: auto; max-height: 7; padding: 0 1; color: #e9e9ef; background: #0b0c15; }}
+        #details {{ height: auto; max-height: 8; padding: 0 1; color: #e9e9ef; background: #0b0c15; }}
         """
         BINDINGS = [
+            Binding("ctrl+k", "palette", "Commands", priority=True),
             Binding("ctrl+p", "details", "Details", priority=True),
             Binding("ctrl+h", "details", "Details", priority=True),
             Binding("ctrl+i", "interrupt", "Interrupt", priority=True),
@@ -79,9 +81,10 @@ def build_textual_tui(
                 yield Static("event      target                                     receipt        state", id="columns")
                 yield Static(_activity_text(), id="activity")
                 yield Input(
-                    placeholder="Enter an objective, steer an active turn, or type /help",
+                    placeholder="Message LBE. / commands  @ context  # skills  + attach",
                     id="composer",
                 )
+                yield Static(_composer_hint_text(""), id="composer_hint")
                 yield Static(_status_text(), id="status")
                 details = Static(_details_text(), id="details")
                 details.display = False
@@ -94,6 +97,9 @@ def build_textual_tui(
         def on_resize(self, event: events.Resize) -> None:
             self._refresh_terminal_chrome()
 
+        def on_input_changed(self, event: Input.Changed) -> None:
+            self.query_one("#composer_hint", Static).update(_composer_hint_text(event.value))
+
         def on_input_submitted(self, event: Input.Submitted) -> None:
             text = event.value.strip()
             if not text:
@@ -101,6 +107,7 @@ def build_textual_tui(
             if text.startswith("/"):
                 self._command(text)
                 event.input.value = ""
+                self.query_one("#composer_hint", Static).update(_composer_hint_text(""))
                 return
             active = history.latest_running_turn(session_id=current_session_id)
             method = ControlMethod.TURN_STEER if active is not None else ControlMethod.TURN_START
@@ -109,6 +116,10 @@ def build_textual_tui(
                 params["turn_id"] = active.turn_id
             self._handle(ControlRequest(f"tui-{uuid4()}", method, params))
             event.input.value = ""
+            self.query_one("#composer_hint", Static).update(_composer_hint_text(""))
+
+        def action_palette(self) -> None:
+            self._show_details(_command_palette_text())
 
         def action_details(self) -> None:
             details = self.query_one("#details", Static)
@@ -126,6 +137,9 @@ def build_textual_tui(
             command = text.split(maxsplit=1)[0].lower()
             if command == "/status":
                 self._show_details(_status_details_text())
+                return
+            if command == "/settings":
+                self._show_details(_settings_text())
                 return
             if command == "/provider":
                 parts = text.split()
@@ -151,6 +165,18 @@ def build_textual_tui(
                 return
             if command == "/integrations":
                 self._show_details(_integrations_text())
+                return
+            if command == "/mcp":
+                self._show_details(_mcp_text())
+                return
+            if command == "/skills":
+                self._show_details(_skills_text())
+                return
+            if command in {"/attach", "/attachments"}:
+                self._show_details(_attachments_text())
+                return
+            if command in {"/mentions", "/context"}:
+                self._show_details(_mentions_text())
                 return
             if command == "/detail":
                 parts = text.split()
@@ -203,10 +229,7 @@ def build_textual_tui(
                 self.notify(f"Provider is not registered: {clean_provider}", severity="warning")
                 return
             runtime = _runtime_for_state(state)
-            state = runtime.configure_session(
-                provider_id=clean_provider,
-                provider_model=clean_model,
-            )
+            state = runtime.configure_session(provider_id=clean_provider, provider_model=clean_model)
             provider_health = "unknown"
             self._refresh_projection()
             self._show_details(_provider_details_text())
@@ -274,8 +297,7 @@ def build_textual_tui(
 
         def _refresh_terminal_chrome(self) -> None:
             self.title = _terminal_title_text()
-            status = self.query_one("#status", Static)
-            status.update(_status_text(width=self.size.width))
+            self.query_one("#status", Static).update(_status_text(width=self.size.width))
 
         def _refresh_projection(self) -> None:
             self.query_one("#activity", Static).update(_activity_text())
@@ -326,10 +348,7 @@ def build_textual_tui(
         return f"{state.provider_id or 'unconfigured'}/{state.provider_model or 'unconfigured'}"
 
     def _terminal_title_text() -> str:
-        return (
-            f"LBE | {_workspace_label()} | {state.mode} | "
-            f"session:{state.session_id} | {_runtime_state_text()}"
-        )
+        return f"LBE | {_workspace_label()} | {state.mode} | session:{state.session_id} | {_runtime_state_text()}"
 
     def _header_text() -> str:
         return (
@@ -351,36 +370,52 @@ def build_textual_tui(
     def _status_text(*, width: int | None = None) -> str:
         state_text = _runtime_state_text()
         if width is not None and 72 <= width < 100:
-            line = (
-                f"{state_text}  {state.mode}  session:{state.session_id}  "
-                "/help  Ctrl+I interrupt  Ctrl+X cancel"
-            )
+            line = f"{state_text}  {state.mode}  session:{state.session_id}  /help  Ctrl+I interrupt  Ctrl+X cancel"
         else:
             base = f"{state_text}  {state.mode}  {_provider_label()}  session:{state.session_id}"
-            if width is None or width >= 100:
-                suffix = "  /status /provider /evidence /tools /sessions /help /interrupt /cancel"
-            else:
-                suffix = "  /help"
+            suffix = (
+                "  /status /provider /settings /tools /sessions /help /interrupt /cancel"
+                if width is None or width >= 100 else "  /help"
+            )
             line = base + suffix
-        if width is not None and width > 0 and len(line) > width:
-            return line[:width]
-        return line
+        return line[:width] if width is not None and width > 0 and len(line) > width else line
+
+    def _composer_hint_text(value: str) -> str:
+        stripped = value.lstrip()
+        if stripped.startswith("/"):
+            return "/ commands: status provider settings tools mcp skills sessions evidence attach help"
+        if stripped.startswith("@"):
+            return "@ context mention: session/tool/file syntax is reserved; runtime resolution must be owned, never guessed"
+        if stripped.startswith("#"):
+            return "# skill/profile selector: reserved; /skills reports whether a runtime skill owner is available"
+        if stripped.startswith("+"):
+            return "+ attachment shortcut: reserved; /attach reports whether a runtime attachment owner is available"
+        return "/ commands   @ context   # skills   + attach   Ctrl+K palette"
 
     def _details_text() -> str:
         return _help_text()
 
     def _status_details_text() -> str:
-        runtime_state = _runtime_state_text()
         return (
-            f"STATUS\n"
-            f"runtime={runtime_state} session={state.session_id} mode={state.mode}\n"
+            "STATUS\n"
+            f"runtime={_runtime_state_text()} session={state.session_id} mode={state.mode}\n"
             f"workspace={state.canonical_workspace_root}\n"
             f"permission={state.permission or 'unknown'} policy={state.runtime_policy or 'unknown'}"
         )
 
+    def _settings_text() -> str:
+        return (
+            "SETTINGS\n"
+            f"mode={state.mode} permission={state.permission or 'unknown'} runtime_policy={state.runtime_policy or 'unknown'}\n"
+            f"provider={_provider_label()} profile={state.active_profile_id or 'unconfigured'}\n"
+            f"permission_policy={state.permission_policy_id or 'unconfigured'} "
+            f"evidence_policy={state.evidence_policy_id or 'unconfigured'}\n"
+            "changes must delegate to the owning runtime command; this view is read-only"
+        )
+
     def _provider_details_text() -> str:
         return (
-            f"PROVIDER\n"
+            "PROVIDER\n"
             f"id={state.provider_id or 'unconfigured'} model={state.provider_model or 'unconfigured'}\n"
             f"profile={state.active_profile_id or 'unconfigured'}\n"
             f"health={provider_health}"
@@ -390,11 +425,7 @@ def build_textual_tui(
         events = history.events_for_session(session_id=current_session_id)
         receipts = tuple(event.tool_receipt_id for event in events if event.tool_receipt_id)
         recent = ", ".join(receipts[-3:]) if receipts else "none"
-        return (
-            f"EVIDENCE\n"
-            f"persisted_events={len(events)} persisted_receipts={len(receipts)}\n"
-            f"recent_receipts={recent}"
-        )
+        return f"EVIDENCE\npersisted_events={len(events)} persisted_receipts={len(receipts)}\nrecent_receipts={recent}"
 
     def _capabilities_text() -> str:
         if tool_registry is None:
@@ -412,31 +443,53 @@ def build_textual_tui(
         return "\n".join(lines)
 
     def _integrations_text() -> str:
+        return "INTEGRATIONS\nunavailable: no runtime integration registry owner is configured"
+
+    def _mcp_text() -> str:
+        return "MCP\nunavailable: no runtime MCP registry owner is configured"
+
+    def _skills_text() -> str:
+        return "SKILLS\nunavailable: no runtime skill registry owner is configured"
+
+    def _attachments_text() -> str:
         return (
-            "INTEGRATIONS\n"
-            "unavailable: no runtime integration registry owner is configured"
+            "ATTACHMENTS\n"
+            "unavailable: no runtime attachment/context owner is configured; the TUI will not read files directly"
+        )
+
+    def _mentions_text() -> str:
+        return (
+            "CONTEXT MENTIONS\n"
+            "@ is reserved for runtime-owned context references (session, tool, file, or other registered sources)\n"
+            "unavailable: no generic mention resolver owner is configured"
         )
 
     def _sessions_text() -> str:
-        sessions = history.store.list_session_states(
-            project_workspace_id=state.project_workspace_id,
-            limit=50,
-        )
+        sessions = history.store.list_session_states(project_workspace_id=state.project_workspace_id, limit=50)
         lines = ["SESSIONS"]
         for item in sessions:
             marker = "*" if item.session_id == current_session_id else " "
             lines.append(f"{marker} {item.session_id}  {item.mode}  {item.updated_at}")
         return "\n".join(lines) if len(lines) > 1 else "SESSIONS\nnone"
 
+    def _command_palette_text() -> str:
+        return (
+            "COMMAND PALETTE\n"
+            "/status /provider /settings /evidence /tools /mcp /skills /sessions /detail /attach /help\n"
+            "@ context references   # skill/profile selectors   + attachments\n"
+            "Ctrl+I interrupt   Ctrl+X cancel   Ctrl+P details"
+        )
+
     def _help_text() -> str:
         return (
             "HELP\n"
-            "/status runtime and policy  /provider selected provider metadata\n"
-            "/provider use <provider> <model>  /provider check explicit-config health\n"
+            "/status runtime and policy  /settings persisted session settings\n"
+            "/provider selected provider metadata  /provider use <provider> <model>  /provider check\n"
             "/evidence persisted event and receipt counts  /detail [sequence] event facts\n"
-            "/tools registered governed capabilities  /integrations integration availability\n"
-            "/sessions list workspace sessions\n"
-            "/session <id> resume  /new <id> create  /help this reference\n"
+            "/tools governed capabilities  /integrations integrations  /mcp MCP availability  /skills skill availability\n"
+            "/sessions list  /session <id> resume  /new <id> create\n"
+            "/attach attachment availability  /mentions context-reference contract\n"
+            "prefixes: / commands  @ context  # skills  + attachments  Ctrl+K palette\n"
             "/interrupt request interruption  /cancel cancel the active turn"
         )
 
