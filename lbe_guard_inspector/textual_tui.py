@@ -374,7 +374,7 @@ def build_textual_tui(
         else:
             base = f"{state_text}  {state.mode}  {_provider_label()}  session:{state.session_id}"
             suffix = (
-                "  /status /provider /settings /tools /sessions /help /interrupt /cancel"
+                "  /status /provider /settings /evidence /tools /sessions /help /interrupt /cancel"
                 if width is None or width >= 100 else "  /help"
             )
             line = base + suffix
