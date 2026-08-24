@@ -22,7 +22,53 @@ execution, operation identity, receipts, persistence, validation, and completion
 |---|---|---|
 | [Cline CLI](https://github.com/cline/cline/tree/main/apps/cli) — reference only | One shared agent core supports interactive TUI, one-shot, and structured JSON projections; it exposes Plan/Act, session history, tool approvals, and health tooling. | LBE needs one runtime contract with multiple projections. This is a product-pattern comparison, not an adoption of Cline as a provider or implementation. |
 | [OpenAI Codex](https://github.com/openai/codex) | A local terminal coding-agent product with separate installation, configuration, and non-interactive documentation surfaces. | LBE needs a reliable installed command and a documented interactive/non-interactive contract before its CLI can be treated as product-ready. |
-| [Google Antigravity CLI](https://github.com/google-antigravity/antigravity-cli) | A terminal-first interface shares one agent engine and settings with other surfaces; its public changelog emphasizes resumable conversations, permissions, diffs, MCP management, cancellation, and one execution path. | LBE should retain one authoritative execution path and project the same persisted sessions/events into its CLI/TUI. |
+| [Google Antigravity CLI](https://github.com/google-antigravity/antigravity-cli) — official public repository | The official README documents a terminal TUI with multi-step reasoning, multi-file editing, tool calling, persistent history, keyboard-first and SSH/remote workflows, a shared core agent engine with Antigravity 2.0, shared settings/permissions, session export, and system-keyring authentication. | LBE may use these as product/UX reference patterns: one runtime projected through multiple clients, persistent sessions, visible settings/permissions, keyboard-first operation, and host credential storage. They do not define LBE execution authority or internal implementation. |
+
+## Antigravity evidence boundary
+
+The canonical Antigravity CLI reference for this review is the official public repository:
+
+```text
+https://github.com/google-antigravity/antigravity-cli
+```
+
+The public repository currently exposes product documentation, a changelog, demo media, and
+examples such as status-line and title integrations. The following claims are supported directly
+by its official README and may be used as product-reference evidence:
+
+```text
+PROVEN FROM OFFICIAL PUBLIC REPOSITORY
+- terminal user interface
+- multi-step reasoning
+- multi-file editing
+- tool calling
+- persistent history
+- keyboard-first operation
+- SSH/remote-session use
+- shared core agent engine across CLI and Antigravity 2.0
+- shared settings and permissions
+- session export from CLI to GUI
+- system-keyring authentication with sign-in fallback
+```
+
+The public repository does not expose enough core runtime source to establish the following, so
+these must not be inferred or copied into LBE as implementation facts:
+
+```text
+NOT PROVEN FROM THE PUBLIC REPOSITORY
+- internal agent-loop classes or call graph
+- permission/authorization algorithm
+- execution ownership implementation
+- session persistence schema
+- internal event/store schemas
+- tool-dispatch implementation
+- cancellation internals
+- exact core-agent source architecture
+```
+
+Antigravity therefore remains a **product and interaction reference**, not an implementation or
+authority source. LBE must preserve its own persisted runtime, R6C/R6E authorization and governed
+execution, ToolReceipt/evidence, and deterministic completion ownership.
 
 ## Reference-informed product workflow
 

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .memory.operational_history import OperationalEvent, SessionOperationalHistory
+from .tui_view_models import TuiEventView, project_tui_events
 
 
 @dataclass(frozen=True)
@@ -81,3 +82,121 @@ def _fields(values: tuple[tuple[str, Any], ...]) -> str:
         rendered = value if isinstance(value, str) else json.dumps(value, sort_keys=True, ensure_ascii=False)
         parts.append(f"{name}: {rendered}")
     return "\n".join(parts) if parts else "(no persisted details)"
+
+
+
+@dataclass(frozen=True)
+class TerminalActivityRow:
+    """One compact activity row derived from a typed persisted event view."""
+
+    sequence: int
+    kind: str
+    target: str
+    receipt: str
+    state: str
+
+
+def project_terminal_activity(
+    *,
+    history: SessionOperationalHistory,
+    session_id: str,
+) -> tuple[TerminalActivityRow, ...]:
+    views = project_tui_events(history.events_for_session(session_id=session_id))
+    return tuple(
+        TerminalActivityRow(
+            sequence=view.sequence,
+            kind=view.kind.value,
+            target=view.title,
+            receipt=(
+                view.receipt.receipt_id
+                if view.receipt is not None and view.receipt.receipt_id is not None
+                else "-"
+            ),
+            state=view.state.value,
+        )
+        for view in views
+    )
+
+
+def render_terminal_activity(*, history: SessionOperationalHistory, session_id: str) -> str:
+    """Render a stable summary; structured details remain progressively disclosed."""
+    rows = project_terminal_activity(history=history, session_id=session_id)
+    if not rows:
+        return "No persisted runtime events."
+    return "\n".join(
+        f"{row.sequence:04d}  {row.kind[:10]:10} {row.target[:40]:40} "
+        f"{row.receipt[:14]:14} {row.state}"
+        for row in rows
+    )
+
+
+def render_terminal_event_detail(
+    *,
+    history: SessionOperationalHistory,
+    session_id: str,
+    sequence: int | None = None,
+) -> str:
+    """Render bounded detail for one persisted event without inferring missing facts."""
+    views = project_tui_events(history.events_for_session(session_id=session_id))
+    if not views:
+        return "DETAIL\nunavailable: no persisted runtime events"
+    view = views[-1] if sequence is None else next(
+        (item for item in views if item.sequence == sequence),
+        None,
+    )
+    if view is None:
+        return f"DETAIL\nunavailable: event sequence {sequence} not found"
+    return _render_typed_detail(view)
+
+
+def _render_typed_detail(view: TuiEventView) -> str:
+    lines = [
+        f"DETAIL event={view.sequence} type={view.event_type}",
+        f"kind={view.kind.value} state={view.state.value} title={view.title}",
+    ]
+    if view.text is not None:
+        lines.append(f"text={view.text}")
+    if view.provider_id is not None or view.model_id is not None:
+        lines.append(
+            f"provider={view.provider_id or 'unknown'} model={view.model_id or 'unknown'}"
+        )
+    if view.validation is not None:
+        lines.append(
+            "validation="
+            f"{view.validation.state.value} task={view.validation.task_id or 'unknown'} "
+            f"outcome={view.validation.outcome or 'unknown'}"
+        )
+    receipt = view.receipt
+    if receipt is not None:
+        lines.append(
+            f"receipt={receipt.receipt_id or 'unavailable'} "
+            f"operation={receipt.operation_id or 'unavailable'} "
+            f"tool={receipt.tool_id or 'unknown'}"
+        )
+        if receipt.authorization is None:
+            lines.append("authorization=unavailable")
+        else:
+            lines.append(
+                f"authorization={receipt.authorization.verdict} "
+                f"rationale={receipt.authorization.rationale or 'unavailable'}"
+            )
+        lines.append(f"evidence_count={receipt.evidence.count}")
+        for index, item in enumerate(receipt.evidence.items[:3], start=1):
+            lines.append(f"evidence_{index}={_bounded_mapping(item)}")
+        lines.append(
+            f"diff={'available' if receipt.diff.available else 'unavailable'} "
+            f"summary={receipt.diff.summary or 'unavailable'}"
+        )
+        if receipt.output is not None:
+            lines.append(f"output={_bounded_mapping(receipt.output)}")
+        if receipt.error_code is not None or receipt.error_message is not None:
+            lines.append(
+                f"error={receipt.error_code or 'unknown'} "
+                f"message={receipt.error_message or 'unavailable'}"
+            )
+    return "\n".join(lines)
+
+
+def _bounded_mapping(value: Any, *, limit: int = 240) -> str:
+    rendered = json.dumps(value, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+    return rendered if len(rendered) <= limit else rendered[: limit - 3] + "..."

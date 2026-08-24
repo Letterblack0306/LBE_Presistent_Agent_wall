@@ -328,6 +328,37 @@ class WorkspaceMemoryStore:
             updated_at=str(row["updated_at"]),
         )
 
+    def list_session_states(
+        self,
+        *,
+        project_workspace_id: str | None = None,
+        limit: int = 100,
+    ) -> tuple[SessionState, ...]:
+        """Return bounded persisted sessions without exposing SQLite to clients."""
+        bounded_limit = max(1, min(int(limit), 500))
+        params: list[Any] = []
+        where = ""
+        if project_workspace_id is not None:
+            clean_workspace = str(project_workspace_id).strip()
+            if not clean_workspace:
+                raise ValueError("project_workspace_id must not be empty")
+            where = " WHERE project_workspace_id=?"
+            params.append(clean_workspace)
+        params.append(bounded_limit)
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT session_id FROM session_state"
+                + where
+                + " ORDER BY updated_at DESC, session_id ASC LIMIT ?",
+                params,
+            ).fetchall()
+        states = []
+        for row in rows:
+            state = self.load_session_state(session_id=str(row["session_id"]))
+            if state is not None:
+                states.append(state)
+        return tuple(states)
+
     def save_session_task(self, state: TaskState) -> None:
         with self._connect() as connection:
             connection.execute(

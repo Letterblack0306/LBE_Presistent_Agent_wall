@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "active_plan": "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md",
-  "active_phase": "PUBLICATION_VERSION_PREPARATION",
-  "active_slice": "SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3",
+  "active_plan": "docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md",
+  "active_phase": "COMPLETE_TUI_IMPLEMENTATION",
+  "active_slice": "TUI_INSTALLED_INTERACTIVE_ACCEPTANCE",
   "status": "OPEN",
   "implementation_allowed": true,
-  "architecture_changes_allowed": false,
+  "architecture_changes_allowed": true,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
   "blocking_statuses": [
@@ -62,7 +62,10 @@
     "distribution": "lbe-guard-inspector",
     "previous_canonical_version": "0.2.0",
     "pypi_project_present": true,
-    "pypi_existing_versions": ["2.0.1", "2.0.2"],
+    "pypi_existing_versions": [
+      "2.0.1",
+      "2.0.2"
+    ],
     "github_pypi_environment": "PASS",
     "workflow_oidc_contract": "PASS",
     "trusted_publisher_binding": "PROVEN_BY_USER_SUPPLIED_PYPI_CONFIGURATION",
@@ -72,7 +75,7 @@
     "publish_allowed": false
   },
   "version_preparation": {
-    "status": "OPEN",
+    "status": "PAUSED_NOT_CLOSED",
     "distribution": "lbe-guard-inspector",
     "from_version": "0.2.0",
     "target_version": "2.0.3",
@@ -86,7 +89,7 @@
     "publish_allowed": false
   },
   "publication_execution": {
-    "status": "AUTHORIZED_PENDING_VERSION_PREPARATION_AND_VALIDATION",
+    "status": "PAUSED_NOT_CLOSED",
     "repository": "Letterblack0306/LBE_Presistent_Agent_wall",
     "ref": "main",
     "distribution": "lbe-guard-inspector",
@@ -105,7 +108,8 @@
       "prove PyPI 2.0.3 is absent immediately before dispatch",
       "successful live trusted-publishing workflow execution",
       "post-publish PyPI verification"
-    ]
+    ],
+    "paused_by": "COMPLETE_TUI_IMPLEMENTATION"
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",
@@ -114,6 +118,82 @@
     "adding an npm publication path",
     "API-token fallback without a separate authorized security decision",
     "blind retry after publication failure",
-    "runtime or architecture changes outside the bounded version-preparation scope"
-  ]
+    "runtime or architecture changes outside the bounded version-preparation scope",
+    "patching source through LoopTool",
+    "TUI changes outside the active slice",
+    "publication while COMPLETE_TUI_IMPLEMENTATION is active"
+  ],
+  "complete_tui_implementation": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_AUTHORIZATION",
+    "implementation_authority": "GITHUB",
+    "local_execution_role": "EVIDENCE_ONLY_NO_PATCHES",
+    "active_slice": "TUI_INSTALLED_INTERACTIVE_ACCEPTANCE",
+    "allowed_paths": [
+      "lbe_guard_inspector/terminal_projection.py",
+      "lbe_guard_inspector/textual_tui.py",
+      "lbe_guard_inspector/tui_view_models.py",
+      "tests/test_terminal_projection.py",
+      "tests/test_textual_tui.py",
+      "tests/test_tui_view_models.py",
+      "docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md",
+      ".lbe/governance/implementation-gates.json",
+      "lbe_guard_inspector/memory/store.py",
+      "lbe_guard_inspector/session_memory_runtime.py",
+      "tests/test_memory_store.py",
+      "lbe_guard_inspector/cli.py",
+      "lbe_guard_inspector/provider_health.py",
+      "lbe_guard_inspector/reasoning_config.py",
+      "tests/test_provider_health.py",
+      "lbe_guard_inspector/reasoning_provider.py",
+      "tests/test_reasoning_provider.py"
+    ],
+    "publish_allowed": false,
+    "completed_slices": {
+      "TUI_PROJECTION_CONTRACT_AND_VIEW_MODELS": {
+        "status": "PASS",
+        "revision": "72aa6834871cb17ee68ee74367749440c9c0e0cc",
+        "focused_tests": "9 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_OBJECTIVE_ACTIVITY_WORKSPACE": {
+        "status": "PASS",
+        "revision": "15c41d9f781fd197ea8cc51779d285baf0068ded",
+        "focused_tests": "14 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_COMMAND_ROUTING": {
+        "status": "PASS",
+        "revision": "00265ab3d6590a5dad716905507e05077ee9af1d",
+        "focused_tests": "15 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_SESSION_NAVIGATION_AND_RESUME": {
+        "status": "PASS",
+        "revision": "7bf75acc6d50915bebf5564698dda22dedd9d0c7",
+        "focused_tests": "18 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_PROVIDER_MODEL_CONFIGURATION_AND_HEALTH": {
+        "status": "PASS",
+        "revision": "243a363bc092d9947d17ffb77167678c02d324de",
+        "focused_tests": "39 passed",
+        "diff_check": "PASS"
+      },
+      "TUI_STRUCTURED_ACTIVITY_AND_DETAIL_VIEWS": {
+        "status": "PASS",
+        "revision": "ee8251a083e9614f92bb672c4604df8861ec7e94",
+        "focused_tests": "24 passed",
+        "diff_check": "PASS",
+        "validation_command_hash": "7DE82A4260F536B19EECF22AB1460038D38793D6551B056060B9FC1BA0F8FB2F"
+      },
+      "TUI_CAPABILITY_INTEGRATION_INSPECTION": {
+        "status": "PASS",
+        "revision": "775e595270ae391573aca9bed9b63b5d6a0f3e9e",
+        "focused_tests": "38 passed",
+        "diff_check": "PASS",
+        "validation_command_hash": "59AA029B59C7D10EE98C3F8891C7FFEE659A5D07841DC59E7706083E7A705EFB"
+      }
+    }
+  }
 }
