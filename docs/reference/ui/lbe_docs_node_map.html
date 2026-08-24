@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LBE Docs — Canonical Spine · Learning / Execution Overlay · Node Contracts</title>
+<style>
+  :root{ --bg:#0a0d12; --grid:#151a22; --txt:#d8dee6; --dim:#7a8694;
+    --green:#3ddc84; --amber:#e8b339; --yellow:#d9c94a; --blue:#5b9dff; --red:#ff6b7a;
+    --spine:#7fd6ff; --panel:#0f141c; --edge:#1d2430; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--txt); font-family:"Segoe UI",system-ui,sans-serif; overflow:hidden;}
+  #layout{display:flex; height:100vh;}
+  #mapwrap{flex:1; overflow:auto; position:relative;}
+  .canvas{position:relative; width:1420px; height:1560px;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:40px 40px;}
+  .canvas::before{content:""; position:absolute; inset:0; background:radial-gradient(ellipse at 50% 0%,rgba(60,90,140,.12),transparent 60%); pointer-events:none;}
+  /* stage bands — clarified, not altered */
+  .band{position:absolute; border-radius:14px; pointer-events:none;}
+  .band .bl{position:absolute; top:10px; left:14px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; opacity:.9;}
+  .band .bd{position:absolute; top:26px; left:14px; font-size:10px; color:var(--dim); max-width:88%;}
+  .band.foundation{left:24px; top:70px; width:1010px; height:370px; background:rgba(61,220,132,.05); border:1px dashed rgba(61,220,132,.26);}
+  .band.foundation .bl{color:var(--green);}
+  .band.runtime{left:24px; top:460px; width:1010px; height:340px; background:rgba(232,179,57,.05); border:1px dashed rgba(232,179,57,.26);}
+  .band.runtime .bl{color:var(--amber);}
+  .band.governance{left:24px; top:820px; width:1010px; height:700px; background:rgba(91,157,255,.05); border:1px dashed rgba(91,157,255,.26);}
+  .band.governance .bl{color:var(--blue);}
+  .band.delivery{left:1060px; top:70px; width:340px; height:1450px; background:rgba(255,107,122,.05); border:1px dashed rgba(255,107,122,.26);}
+  .band.delivery .bl{color:var(--red);}
+  .band.delivery .bd{writing-mode:vertical-rl; transform:rotate(180deg); top:60px; left:auto; right:12px;}
+
+  /* top controls */
+  .topbar{position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:7; display:flex; gap:10px; align-items:center;}
+  .toggle{display:flex; background:rgba(10,13,18,.9); border:1px solid var(--edge); border-radius:20px; overflow:hidden;}
+  .toggle button{border:none; background:transparent; color:var(--dim); padding:7px 16px; cursor:pointer; font-size:11px; letter-spacing:.04em;}
+  .toggle button.on{background:#173241; color:var(--spine); font-weight:700;}
+  .hint{background:rgba(10,13,18,.85); border:1px solid var(--edge); border-radius:20px; padding:7px 14px; font-size:11px; color:var(--dim); letter-spacing:.03em; max-width:520px;}
+  .hint b{color:var(--spine);}
+
+  svg.edges{position:absolute; inset:0; width:100%; height:100%; pointer-events:none;}
+  .node{position:absolute; width:230px; padding:10px 13px; border-radius:12px; background:rgba(14,18,26,.96);
+    border:1.5px solid var(--c,#888); cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; z-index:2;}
+  .node:hover{transform:translateY(-3px); box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent); z-index:5;}
+  .node.active{outline:2px solid var(--c); box-shadow:0 0 26px color-mix(in srgb,var(--c) 60%,transparent);}
+  .node.spine{border-width:3px; border-color:var(--spine); background:linear-gradient(180deg,rgba(28,44,60,.97),rgba(16,26,36,.97));
+    box-shadow:0 0 14px rgba(127,214,255,.25), inset 0 0 18px rgba(127,214,255,.06);}
+  .node .tag{font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--c); margin-bottom:4px;}
+  .node.spine .tag{color:var(--spine); font-weight:700;}
+  .node h3{font-size:12.5px; font-weight:600; line-height:1.25; color:var(--c); margin-bottom:3px;}
+  .node.spine h3{color:#eaf6ff; font-size:13px;}
+  .node p{font-size:9.5px; line-height:1.35; color:var(--dim);}
+  .node.spine p{color:#b8d4e6;}
+  .badge{display:inline-block; font-size:8px; letter-spacing:.08em; text-transform:uppercase; background:#3a4658; color:#c6d2e0; border-radius:4px; padding:1px 5px; margin-bottom:4px; font-weight:700;}
+  .node.spine .badge{background:#7fd6ff; color:#06222f;}
+  .badge.delivery{background:var(--red); color:#2a070a;}
+  .badge.exec{background:var(--amber); color:#2a1c00;}
+  .met{margin-top:6px; border-top:1px dashed #243040; padding-top:5px; font-size:8.5px; color:var(--dim); line-height:1.4;}
+  .met .row b{color:#c6d2e0; font-weight:600;}
+  .met .row{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  #panel{width:480px; min-width:320px; border-left:1px solid var(--edge); background:#0d1117; display:flex; flex-direction:column;}
+  #panel header{padding:14px 18px 10px; border-bottom:1px solid var(--edge);}
+  #panel header .ptag{font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--blue);}
+  #panel header h2{font-size:15px; margin-top:3px; color:var(--spine);}
+  #panel header .path{font-size:9.5px; color:var(--dim); margin-top:3px; word-break:break-all;}
+  #scroll{flex:1; overflow:auto;}
+  #contract{padding:14px 18px; border-bottom:1px solid var(--edge);}
+  #contract .why{font-size:12px; line-height:1.45; color:#c3ccd8; background:#111a24; border-left:3px solid var(--spine); padding:8px 10px; border-radius:0 8px 8px 0; margin-bottom:10px;}
+  #contract .why b{color:var(--spine);}
+  .ckey{font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); margin:9px 0 3px;}
+  .cgrid{display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; margin-bottom:6px;}
+  .cgrid div{background:#111824; border:1px solid #1d2938; border-radius:7px; padding:5px 7px;}
+  .cgrid .k{font-size:8px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em;}
+  .cgrid .v{font-size:10.5px; color:#c3ccd8; line-height:1.3; margin-top:1px;}
+  .cgrid .v b{color:var(--txt);}
+  .cseclist ul{margin:0 0 0 16px; font-size:11px; color:#c3ccd8;}
+  .cseclist li{margin:2px 0;}
+  .cval{font-size:11px; color:#c3ccd8; line-height:1.4;}
+  .next{margin-top:12px; background:#14202c; border:1px solid #24404f; border-radius:8px; padding:8px 10px;}
+  .next .k{font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:.06em;}
+  .next .btns{display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;}
+  .next button{background:#182a38; border:1px solid #2c4a5e; color:#a8d4ee; border-radius:6px; padding:3px 8px; cursor:pointer; font-size:10px;}
+  .next button:hover{background:#1f3648;}
+  #content{padding:16px 20px; font-size:12.5px; line-height:1.6;}
+  #content h1{font-size:17px; color:var(--blue); margin-bottom:10px;}
+  #content h2{font-size:13.5px; color:var(--green); margin:14px 0 5px;}
+  #content h3{font-size:12.5px; color:var(--amber); margin:10px 0 3px;}
+  #content p{margin:5px 0; color:#c3ccd8;}
+  #content ul,#content ol{margin:5px 0 5px 18px; color:#c3ccd8;}
+  #content li{margin:2px 0;}
+  #content code{background:#161c26; padding:1px 5px; border-radius:4px; font-size:11px; color:#e8b339;}
+  #content pre{background:#10151d; border:1px solid var(--edge); border-radius:8px; padding:10px 12px; margin:7px 0; overflow:auto;}
+  #content pre code{background:none; color:#9fd6a8;}
+  .empty{color:var(--dim); font-style:italic;}
+  .legend{position:absolute; top:52px; left:30px; z-index:6; font-size:10px; color:var(--dim);
+    background:rgba(10,13,18,.8); padding:6px 10px; border-radius:8px; border:1px solid var(--edge);}
+  .legend span{display:flex; align-items:center; gap:5px; margin:2px 0;}
+  .legend i{display:inline-block; width:16px; height:2px; background:#7fd6ff;}
+  .legend .ref{background:#4a5568; background-image:repeating-linear-gradient(90deg,#4a5568 0 4px,transparent 4px 7px);}
+  .legend .ret{background:transparent; border-top:2px dotted #ff6b7a;}
+  #err{color:var(--red); font-size:12px; padding:10px 18px; display:none;}
+</style>
+</head>
+<body>
+<div id="layout">
+  <div id="mapwrap"><div class="canvas" id="canvas">
+    <div class="topbar">
+      <div class="hint" id="hint"></div>
+      <div class="toggle">
+        <button id="btnL" class="on" onclick="setMode('learning')">Learning order</button>
+        <button id="btnE" onclick="setMode('execution')">Execution order</button>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i></i> FLOW — spine (reading / execution)</span>
+      <span><i class="ref"></i> REFERENCE — conceptual branch for a stage</span>
+      <span><i class="ret"></i> RETURN — implementation lane / continue</span>
+    </div>
+    <div class="band foundation"><div class="bl">Stage 1 · Foundation</div><div class="bd">What LBE is & where to start</div></div>
+    <div class="band runtime"><div class="bl">Stage 2 · Runtime Build</div><div class="bd">How the runtime is constructed</div></div>
+    <div class="band governance"><div class="bl">Stage 3 · Agent Governance</div><div class="bd">How the agent is governed & controlled</div></div>
+    <div class="band delivery"><div class="bl">Stage 4 · Delivery (implementation lane)</div><div class="bd">Roadmap · acceptance · examples · vertical slice · migration</div></div>
+    <svg class="edges" id="edges"></svg>
+  </div></div>
+  <div id="panel">
+    <header>
+      <div class="ptag" id="ptag">doc viewer</div>
+      <h2 id="ptitle">Follow the spine</h2>
+      <div class="path" id="ppath">Click any node for its contract and content.</div>
+    </header>
+    <div id="err"></div>
+    <div id="scroll">
+      <div id="contract"></div>
+      <div id="content"><p class="empty">No document selected yet.</p></div>
+    </div>
+  </div>
+</div>
+<script>
+const COLOR = { foundation:"var(--green)", runtime:"var(--amber)", governance:"var(--blue)", delivery:"var(--red)", spine:"var(--spine)" };
+const NW = 230, NH = 150;
+let MODE = "learning";
+const canvas = document.getElementById("canvas");
+
+const LEARN_SEQ = ["readme","lifecycle","vision","arch","pipeline"];
+const EXEC_SEQ  = ["lifecycle","vision","arch","pipeline","readme"];
+const EXEC_PHASE = { lifecycle:"boot", vision:"understand", arch:"plan", pipeline:"execute·validate·persist", readme:"continue" };
+const L_EDGES = [["readme","lifecycle"],["lifecycle","vision"],["vision","arch"],["arch","pipeline"]];
+const L_LABELS = ["start here","operational flow","product frame","boundary → runtime"];
+const E_EDGES = [["lifecycle","vision"],["vision","arch"],["arch","pipeline"],["pipeline","readme"]];
+const E_LABELS = ["boot → understand","understand → plan","plan → execute","persist → continue"];
+
+// meta for the card strip
+const SPINE = [
+ {id:"readme",  x:760,y:120, stage:"foundation", title:"README", sub:"Start here", src:"../../README.md",
+  owner:"docs", consumes:"— (entry point)", produces:"routing · learning spine"},
+ {id:"lifecycle",x:760,y:290, stage:"foundation", title:"LBE Agent Lifecycle", sub:"Operational flow", src:"../../LBE_AGENT_LIFECYCLE.md",
+  owner:"LBE", consumes:"README · authority design", produces:"complete turn flow"},
+ {id:"vision", x:760,y:470, stage:"runtime", title:"Vision", sub:"What it becomes", src:"../docs/01_VISION.md",
+  owner:"product", consumes:"lifecycle · plan §1", produces:"platform framing"},
+ {id:"arch", x:760,y:630, stage:"runtime", title:"Architecture", sub:"Ownership boundary", src:"../docs/02_ARCHITECTURE.md",
+  owner:"LBE Core", consumes:"vision · authority separation", produces:"ownership boundary"},
+ {id:"pipeline", x:760,y:860, stage:"governance", title:"Runtime Pipeline", sub:"End-to-end flow", src:"../docs/03_RUNTIME_PIPELINE.md",
+  owner:"LBE runtime", consumes:"architecture · lifecycle", produces:"11 runtime states"},
+];
+const BRANCH = [
+ {id:"gallery",x:140,y:150,stage:"foundation",title:"LBE Gallery",sub:"Indexed knowledge",src:"../docs/08_LBE_GALLERY.md",anchor:"lifecycle",owner:"K&W layer",consumes:"verified records",produces:"evidence context"},
+ {id:"projdet",x:140,y:470,stage:"runtime",title:"Project Detector",sub:"Identity resolution",src:"../docs/04_PROJECT_DETECTOR.md",anchor:"vision",owner:"K&W layer",consumes:"workspace",produces:"workspace identity"},
+ {id:"tools",x:140,y:640,stage:"runtime",title:"Tool Registry",sub:"Typed capabilities",src:"../docs/05_TOOL_REGISTRY.md",anchor:"arch",owner:"LBE governed",consumes:"capabilities",produces:"typed tool catalog"},
+ {id:"selector",x:140,y:810,stage:"governance",title:"Guard Selector",sub:"Request selection",src:"../docs/06_GUARD_SELECTOR.md",anchor:"pipeline",owner:"agent",consumes:"problem·evidence",produces:"guard_request"},
+ {id:"rules",x:140,y:980,stage:"governance",title:"Rules & Guards",sub:"Promotion path",src:"../docs/07_RULES_AND_GUARDS.md",anchor:"pipeline",owner:"LBE",consumes:"verified findings",produces:"workspace/global rules"},
+ {id:"reason",x:140,y:1160,stage:"governance",title:"Reasoning Layer",sub:"Small agent",src:"../docs/13_REASONING_LAYER.md",anchor:"pipeline",owner:"agent",consumes:"guards·evidence",produces:"selection & explanation"},
+ {id:"retr",x:460,y:540,stage:"runtime",title:"Retrieval & Inspection",sub:"History, not truth",src:"../docs/09_RETRIEVAL_AND_INSPECTION.md",anchor:"vision",owner:"K&W layer",consumes:"index",produces:"ranked evidence"},
+ {id:"wsinspect",x:460,y:710,stage:"runtime",title:"Workspace Inspection",sub:"Bounded reads",src:"../docs/10_WORKSPACE_INSPECTION.md",anchor:"arch",owner:"K&W layer",consumes:"workspace files",produces:"current facts"},
+ {id:"validate",x:460,y:880,stage:"governance",title:"Validation & Verdicts",sub:"Deterministic truth",src:"../docs/11_VALIDATION_AND_VERDICTS.md",anchor:"pipeline",owner:"LBE",consumes:"guard output",produces:"verdict"},
+ {id:"gov",x:460,y:1050,stage:"governance",title:"Governance",sub:"Read-only default",src:"../docs/12_GOVERNANCE.md",anchor:"pipeline",owner:"LBE Core",consumes:"policy",produces:"authorized scope"},
+ {id:"memory",x:460,y:1220,stage:"governance",title:"Memory & Checkpoints",sub:"Write-gated",src:"../docs/14_MEMORY_AND_CHECKPOINTS.md",anchor:"pipeline",owner:"LBE",consumes:"verified proof",produces:"protected checkpoints"},
+ {id:"execmodes",x:460,y:1370,stage:"governance",title:"Execution Modes",sub:"Inspect-first",src:"../docs/15_EXECUTION_MODES.md",anchor:"pipeline",owner:"LBE / product",consumes:"modes",produces:"inspect/explain/propose"},
+];
+const DELIVERY = [
+ {id:"roadmap",x:1140,y:150,title:"Roadmap",sub:"Phases 0-9",src:"../docs/16_ROADMAP.md",anchor:"pipeline",owner:"product",consumes:"all docs",produces:"phase order"},
+ {id:"accept",x:1140,y:320,title:"Acceptance Criteria",sub:"Per-area proof",src:"../docs/17_ACCEPTANCE_CRITERIA.md",anchor:"pipeline",owner:"LBE",consumes:"requirements",produces:"acceptance tests"},
+ {id:"examples",x:1140,y:490,title:"Worked Examples",sub:"End-to-end flows",src:"../docs/18_WORKED_EXAMPLES.md",anchor:"pipeline",owner:"product",consumes:"flows",produces:"reference scenarios"},
+ {id:"slice",x:1140,y:660,title:"Vertical Slice",sub:"First capability (done)",src:"../docs/19_IMPLEMENTATION_VERTICAL_SLICE.md",anchor:"pipeline",owner:"product",consumes:"vertical path",produces:"implemented slice"},
+ {id:"migrate",x:1140,y:830,title:"Migration",sub:"Blueprint reframe",src:"../docs/20_MIGRATION_FROM_OLD_BLUEPRINT.md",anchor:"pipeline",owner:"product",consumes:"old blueprint",produces:"focused inspector"},
+];
+
+// full contracts per node (the defined contract, not a notes field)
+const CONTRACTS = {
+ readme:{ purpose:"Single entry point, documentation routing, and the four-doc learning spine for LBE.",
+   why:"A newcomer needs one place that says what LBE is and where to go; it prevents guessing the path.",
+   status:"Live · canonical", references:["IMPLEMENTATION_PLAN §1","CURRENT_STATUS.md","implementation-gates.json"],
+   related:["lifecycle","CURRENT_IMPLEMENTATION_GATE"],
+   decisions:["Lead with 'What is LBE', not structure","Enforce a single learning spine (one true path)"],
+   alternatives:["Leading with the gate/routing (rejected: hides the product)","Multiple parallel entry docs (rejected: one-fact-one-owner)"],
+   constraints:["One fact has one live owner","reference/ is non-authoritative","Never a substitute for the machine gate"],
+   boundaries:["README owns routing only; authority lives in implementation-gates.json","acceptance/ and history/ are immutable evidence"],
+   reuse:"Reuse existing library conventions; do not duplicate subjects elsewhere",
+   next:["lifecycle","CURRENT_STATUS","vision"] },
+ lifecycle:{ purpose:"The complete end-to-end operational flow of an LBE agent turn, with an owner per step.",
+   why:"Answers directly: who reasons, who authorizes, who executes, and who decides a task is done.",
+   status:"Live · canonical", references:["AGENT_AGENCY_LBE_AUTHORITY_SEPARATION","IMPLEMENTATION_PLAN §15"],
+   related:["AGENT_LIFECYCLE_PHASES (product frame)","pipeline","vision"],
+   decisions:["State the central invariant first","Tag every step with its owner","Keep one owner per fact"],
+   alternatives:["No flow doc (rejected: the spine needed an operational middle)","Flow as a gate (rejected: flow is description, not authority)"],
+   constraints:["Must not restate this flow elsewhere — link here","Capabilities hang off the lifecycle, never beside it"],
+   boundaries:["LBE owns authority/persistence/completion; agent owns reasoning","CLI/TUI/API are projection layers, never duplicate owners"],
+   reuse:"Reuse the accepted authority boundary; do not create parallel owners",
+   next:["vision","AGENT_LIFECYCLE_PHASES","pipeline"] },
+ vision:{ purpose:"Platform direction: a persistent, provider-neutral LBE runtime; Guard Inspector as its first capability.",
+   why:"Frames the product as a platform so docs don't narrow to a single app.",
+   status:"Reference (historical) — platform framing governs in IMPLEMENTATION_PLAN §1",
+   references:["IMPLEMENTATION_PLAN §1","01_VISION.md","LBE_RUNTIME_VISION_DOCTRINE_DRIVEN_ENGINEERING.md"],
+   related:["arch","lifecycle","slice"],
+   decisions:["Guard Inspector = first capability, not the whole product","Evidence-first, read-only default, deterministic verdicts"],
+   alternatives:["Product defined as a single app (rejected: too narrow for a persistent runtime)"],
+   constraints:["Current truth outranks memory","LBE owns authority; the provider owns reasoning"],
+   boundaries:["Agent selects/explains; LBE authorizes/validates","Verdsicts come from guards, never model opinion"],
+   reuse:"Reuse the platform invariant; the reference doc stays historical",
+   next:["arch","lifecycle","LBE_RUNTIME_VISION"] },
+ arch:{ purpose:"Ownership boundary and component contracts separating agent agency from LBE authority.",
+   why:"Defines who owns what so no parallel authority owner is ever created.",
+   status:"Accepted (design/) + historical reference (02_ARCHITECTURE)",
+   references:["AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md","02_ARCHITECTURE.md","CURRENT_STATUS (architecture correction)"],
+   related:["lifecycle","tools","gov"],
+   decisions:["Reposition LBERequestController as a capability, not the agent","R6C/R6E/ToolReceipt stay authoritative"],
+   alternatives:["Wholesale Cline adoption (rejected: duplicates authority)","Discard Guard Inspector (rejected: reposition, not discard)"],
+   constraints:["No second authority owner for any protected category","CLI/TUI/API are projection, not authority"],
+   boundaries:["LBE Core owns authorization/execution/persistence/completion","Provider owns reasoning and continuation (receipt-backed)"],
+   reuse:"Wrap Cline mechanics behind an LBE-owned adapter; deny native mutation paths",
+   next:["pipeline","gov","CLINE_CORE_REUSE_BOUNDARY_MATRIX"] },
+ pipeline:{ purpose:"The end-to-end runtime states a task flows through (intake → … → completion).",
+   why:"Shows the actual runtime flow so a reader sees how execution, validation, and persistence happen.",
+   status:"Reference (historical) — aligned with LBE_AGENT_LIFECYCLE",
+   references:["03_RUNTIME_PIPELINE.md","LBE_AGENT_LIFECYCLE.md"],
+   related:["validate","execmodes","selector","gov"],
+   decisions:["One runtime across CLI/TUI/API","Capabilities hang off the pipeline states"],
+   alternatives:["Separate per-surface pipelines (rejected: one shared runtime)"],
+   constraints:["Stop with INSUFFICIENT_EVIDENCE on ambiguity/missing validation","Retrieval is history, never truth"],
+   boundaries:["LBE validates; agent interprets","Governance review sits before execution"],
+   reuse:"Reuse the operational flow; the pipeline is the execution view of the lifecycle",
+   next:["gov","validate","execmodes"] },
+ gallery:{ purpose:"Indexed knowledge store with authority metadata.", why:"Supplies evidence context; never decides or proves.",
+   status:"Reference", references:["08_LBE_GALLERY.md"], related:["rules","retr"],
+   decisions:["Context only; search preserves authority metadata"], alternatives:["Treat index as truth (rejected)"],
+   constraints:["No verdicts, no authority"], boundaries:["Gallery supplies context"], reuse:"Reuse the index as retrieval infrastructure", next:["rules"] },
+ projdet:{ purpose:"Resolve the correct workspace identity.", why:"Prevents file/workspace ambiguity before any work.",
+   status:"Reference", references:["04_PROJECT_DETECTOR.md"], related:["wsinspect"],
+   decisions:["Never select by basename alone — path+hash+classification"], alternatives:["Basename matching (rejected: ambiguity)"],
+   constraints:["Cannot escape configured root"], boundaries:["K&W layer owns resolution"], reuse:"Reuse resolution mechanics", next:["wsinspect"] },
+ tools:{ purpose:"Typed catalog of real capabilities.", why:"The agent must never guess which tools exist.",
+   status:"Reference", references:["05_TOOL_REGISTRY.md"], related:["gov","selector"],
+   decisions:["Every tool has schema, risk, read/write class"], alternatives:["Free-form tool list (rejected)"],
+   constraints:["Only registered, governed tools may execute"], boundaries:["LBE governs dispatch"], reuse:"Wrap existing tool surfaces", next:["gov"] },
+ selector:{ purpose:"Translate a problem + evidence into explicit guard requests.", why:"The agent selects; guards decide.",
+   status:"Reference", references:["06_GUARD_SELECTOR.md"], related:["rules","validate"],
+   decisions:["Prefer exact trigger and profile guards; never run everything"], alternatives:["Keyword-only selection (rejected)"],
+   constraints:["Do not select on similar keywords alone"], boundaries:["Selector produces requests, not truth"], reuse:"Reuse guard metadata", next:["validate"] },
+ rules:{ purpose:"Rule → guard → workspace profile → global guard promotion path.", why:"Models cannot silently create policy.",
+   status:"Reference", references:["07_RULES_AND_GUARDS.md"], related:["gov","validate"],
+   decisions:["Equivalence-checked; promotion requires review + approval"], alternatives:["Single finding becomes global guard (rejected)"],
+   constraints:["Exact scope and provenance required"], boundaries:["LBE owns rule authority"], reuse:"Reuse guard implementations", next:["gov"] },
+ reason:{ purpose:"Small reasoning agent that classifies, selects, explains.", why:"Reasoning stays with the agent, never guards.",
+   status:"Reference", references:["13_REASONING_LAYER.md"], related:["selector","validate"],
+   decisions:["Model selects; guards decide; LBE authorizes"], alternatives:["Model issues verdicts (rejected)"],
+   constraints:["Never PASS/FAIL without guard output; never authorize writes"], boundaries:["Agent reasons; LBE governs"], reuse:"Reuse a small instruction model", next:["validate"] },
+ retr:{ purpose:"Ranked, deduplicated retrieval of indexed knowledge and current workspace facts.", why:"History is evidence, never current truth.",
+   status:"Reference", references:["09_RETRIEVAL_AND_INSPECTION.md"], related:["gallery","validate"],
+   decisions:["Search is read-only; preserve provenance and conflicts"], alternatives:["Corpus-wide scanning (rejected)"],
+   constraints:["Workspace verdicts need current inspection, not history alone"], boundaries:["Retrieval supplies context"], reuse:"Reuse the SQLite index", next:["validate"] },
+ wsinspect:{ purpose:"Bounded read operations inside the workspace root.", why:"Current facts come only from the resolved workspace.",
+   status:"Reference", references:["10_WORKSPACE_INSPECTION.md"], related:["projdet"],
+   decisions:["Writes disabled by default; exact diff before any change"], alternatives:["Unbounded scanning (rejected)"],
+   constraints:["Reject traversal outside root"], boundaries:["K&W layer inspects; LBE authorizes writes"], reuse:"Reuse read tooling", next:["gov"] },
+ validate:{ purpose:"Deterministic validation and verdicts.", why:"A verdict must reference guard output and evidence, never inference.",
+   status:"Reference", references:["11_VALIDATION_AND_VERDICTS.md"], related:["pipeline","rules"],
+   decisions:["Fast-fail order; missing validation never becomes PASS"], alternatives:["Model-derived verdicts (rejected)"],
+   constraints:["Guard owns PASS/FAIL/INSUFFICIENT_EVIDENCE/NOT_APPLICABLE"], boundaries:["LBE owns validation truth"], reuse:"Reuse deterministic guards", next:["pipeline"] },
+ gov:{ purpose:"Read-only default and LBE authority over authorization.", why:"Execution authority must be deterministic and governed.",
+   status:"Reference", references:["12_GOVERNANCE.md"], related:["tools","rules"],
+   decisions:["Only allowed command classes auto-execute; secrets redacted"], alternatives:["Open authorization (rejected)"],
+   constraints:["No success claim without evidence"], boundaries:["LBE Core owns authority"], reuse:"Reuse governance contract", next:["pipeline"] },
+ memory:{ purpose:"Memory types and protected checkpoints.", why:"Verified state must stay visible but quiet until a conflict trigger.",
+   status:"Reference", references:["14_MEMORY_AND_CHECKPOINTS.md"], related:["lifecycle","gov"],
+   decisions:["Write-gated promotion; protected attention model"], alternatives:["Unrestricted memory promotion (rejected)"],
+   constraints:["Reactivation only on evidence-backed triggers"], boundaries:["LBE owns persistence"], reuse:"Reuse persistence owners", next:["lifecycle"] },
+ execmodes:{ purpose:"Execution modes: inspect, explain, propose-rule, apply-profile, repair.", why:"Tasks start read-only; writes need explicit approval.",
+   status:"Reference", references:["15_EXECUTION_MODES.md"], related:["pipeline","gov"],
+   decisions:["Default to inspect mode"], alternatives:["Repair by default (rejected: deferred until reliability proven)"],
+   constraints:["Repair requires identity+guard+scope+authorization+validation"], boundaries:["Modes are surfaces; LBE governs writes"], reuse:"Reuse mode machinery", next:["pipeline"] },
+ roadmap:{ purpose:"Phased build order (0–9).", why:"Shows the sequence of capability delivery.", status:"Implementation lane",
+   references:["16_ROADMAP.md"], related:["slice","accept"], decisions:["One vertical slice first"], alternatives:["Parallel build (rejected)"],
+   constraints:["Do not start the next phase until current passes"], boundaries:["Product plans; gates authorize"], reuse:"Reuse phased delivery", next:["slice"] },
+ accept:{ purpose:"Per-area acceptance criteria.", why:"Defines what must be proven for each area.", status:"Implementation lane",
+   references:["17_ACCEPTANCE_CRITERIA.md"], related:["validate","slice"], decisions:["Evidence-bound acceptance"], alternatives:["None"],
+   constraints:["Proof must match the claimed level"], boundaries:["Acceptance is evidence, not authority"], reuse:"Reuse validation", next:["slice"] },
+ examples:{ purpose:"End-to-end worked flows.", why:"Concrete reference scenarios for real problems.", status:"Implementation lane",
+   references:["18_WORKED_EXAMPLES.md"], related:["slice"], decisions:["CEP callback as the vertical slice case"], alternatives:["Synthetic examples (rejected)"],
+   constraints:["Reference only"], boundaries:["Not proof"], reuse:"Reuse patterns", next:["slice"] },
+ slice:{ purpose:"First implemented capability: the Guard Inspector vertical slice.", why:"Proves the read-only path end-to-end.", status:"Implemented (48 tests)",
+   references:["19_IMPLEMENTATION_VERTICAL_SLICE.md"], related:["vision","examples"], decisions:["Deterministic, read-only guard_result"], alternatives:["None"],
+   constraints:["Same inputs ⇒ same guard result"], boundaries:["Slice is a capability on the platform"], reuse:"Reuse evidence/guard services", next:["roadmap"] },
+ migrate:{ purpose:"Reframe from a broad maintenance agent to a focused Guard Inspector.", why:"Records what remains valid and what was deferred.", status:"Reference (historical)",
+   references:["20_MIGRATION_FROM_OLD_BLUEPRINT.md"], related:["vision","roadmap"], decisions:["Defer autonomous repair and global rules"], alternatives:["Broader agent (rejected)"],
+   constraints:["Deferred capabilities stay deferred"], boundaries:["Focused inspector; LBE governs"], reuse:"Reuse remaining valid patterns", next:["roadmap"] },
+};
+
+const ALL = {}; SPINE.forEach(d=>ALL[d.id]=d); BRANCH.forEach(d=>ALL[d.id]=d); DELIVERY.forEach(d=>ALL[d.id]=d);
+const ELEM = {};
+
+function nodeEl(d, isSpine){
+  const el = document.createElement("div");
+  el.className = "node" + (isSpine?" spine":"");
+  el.style.setProperty("--c", COLOR[isSpine?"spine":d.stage] || "#888");
+  el.style.left = d.x+"px"; el.style.top = d.y+"px";
+  const badge = isSpine ? '<span class="badge">spine</span>'
+    : (d.stage==="delivery" ? '<span class="badge delivery">implementation</span>' : '<span class="badge">'+d.stage+'</span>');
+  el.innerHTML = '<div class="tag">'+(isSpine?d.id:d.stage)+'</div>'+badge
+    + '<h3>'+d.title+'</h3><p>'+d.sub+'</p>'
+    + '<div class="met"><div class="row"><b>owner:</b> '+d.owner+'</div>'
+    + '<div class="row"><b>↳ consumes:</b> '+d.consumes+'</div>'
+    + '<div class="row"><b>→ produces:</b> '+d.produces+'</div></div>';
+  el.onclick = ()=>openDoc(d, el);
+  return el;
+}
+function centerOf(d){ return [d.x+NW/2, d.y+NH/2]; }
+
+function buildSVG(){
+  const svg = document.getElementById("edges");
+  svg.innerHTML = '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7fd6ff"/></marker></defs>'
+    + '<g id="g-spine"></g><g id="g-branch" fill="none"></g><g id="g-return" fill="none"></g>';
+}
+function path(d){ return 'M'+d[0][0]+','+d[0][1]+' C'+((d[0][0]+d[1][0])/2)+','+d[0][1]+' '+((d[0][0]+d[1][0])/2)+','+d[1][1]+' '+d[1][0]+','+d[1][1]; }
+function drawBranch(){
+  const g = document.getElementById("g-branch");
+  BRANCH.forEach(b=>{
+    const a = centerOf(ALL[b.anchor]), c = centerOf(b);
+    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d", path([c,a]));
+    p.setAttribute("stroke","#4a5568"); p.setAttribute("stroke-width","1.2");
+    p.setAttribute("stroke-dasharray","5 4"); p.setAttribute("opacity","0.6");
+    g.appendChild(p);
+  });
+}
+function drawReturn(){
+  const g = document.getElementById("g-return");
+  DELIVERY.forEach(b=>{
+    const a = centerOf(ALL.pipeline), c = centerOf(b);
+    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d", path([c,a]));
+    p.setAttribute("stroke","#ff6b7a"); p.setAttribute("stroke-width","1.3");
+    p.setAttribute("stroke-dasharray","2 4"); p.setAttribute("opacity","0.6");
+    g.appendChild(p);
+  });
+}
+function drawSpine(mode){
+  const g = document.getElementById("g-spine");
+  g.innerHTML = "";
+  const edges = mode==="learning"?L_EDGES:E_EDGES;
+  const labels = mode==="learning"?L_LABELS:E_LABELS;
+  edges.forEach((pair,i)=>{
+    const A = centerOf(ALL[pair[0]]), B = centerOf(ALL[pair[1]]);
+    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d", path([A,B]));
+    p.setAttribute("stroke","#7fd6ff"); p.setAttribute("stroke-width","3"); p.setAttribute("opacity","0.95");
+    p.setAttribute("marker-end","url(#arr)");
+    g.appendChild(p);
+    const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",(A[0]+B[0])/2); t.setAttribute("y",(A[1]+B[1])/2 - 10);
+    t.setAttribute("fill","#9fd3ee"); t.setAttribute("font-size","9"); t.setAttribute("text-anchor","middle");
+    t.setAttribute("font-weight","700"); t.textContent = labels[i];
+    g.appendChild(t);
+  });
+}
+function setMode(m){
+  MODE = m;
+  document.getElementById("btnL").classList.toggle("on", m==="learning");
+  document.getElementById("btnE").classList.toggle("on", m==="execution");
+  const hint = document.getElementById("hint");
+  if(m==="learning"){
+    hint.innerHTML = '<b>Spine (canonical):</b> README → Lifecycle → Vision → Architecture → Runtime. Branches explore each stage.';
+    SPINE.forEach(d=>{ const el=ELEM[d.id]; const b=el.querySelector(".badge"); if(b&&b.textContent==="exec"){b.textContent="spine";b.classList.remove("exec");} });
+  }else{
+    hint.innerHTML = '<b>Execution:</b> same nodes, runtime flow — boot → understand → plan → execute/validate/persist → continue.';
+    SPINE.forEach(d=>{ const el=ELEM[d.id]; const b=el.querySelector(".badge"); if(b){b.textContent=EXEC_PHASE[d.id];b.classList.add("exec");} });
+  }
+  drawSpine(m);
+}
+
+// ---------- contract + content rendering ----------
+function mdToHtml(md){
+  const esc = s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  let h = esc(md);
+  h = h.replace(/```([\s\S]*?)```/g,(m,c)=>"<pre><code>"+c.trim()+"</code></pre>");
+  h = h.replace(/^###### (.*)$/gm,"<h3>$1</h3>").replace(/^##### (.*)$/gm,"<h3>$1</h3>")
+       .replace(/^#### (.*)$/gm,"<h3>$1</h3>").replace(/^### (.*)$/gm,"<h3>$1</h3>")
+       .replace(/^## (.*)$/gm,"<h2>$1</h2>").replace(/^# (.*)$/gm,"<h1>$1</h1>");
+  h = h.replace(/`([^`\n]+)`/g,"<code>$1</code>");
+  h = h.replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
+  h = h.replace(/^(?:- (.*)\n?)+/gm,m=>"<ul>"+m.trim().split("\n").map(l=>"<li>"+l.replace(/^- /,"")+"</li>").join("")+"</ul>");
+  h = h.replace(/^(?:\d+\. (.*)\n?)+/gm,m=>"<ol>"+m.trim().split("\n").map(l=>"<li>"+l.replace(/^\d+\. /,"")+"</li>").join("")+"</ol>");
+  h = h.split(/\n{2,}/).map(b=>/^<(h\d|ul|ol|pre|div)/.test(b.trim())?b:"<p>"+b.replace(/\n/g,"<br>")+"</p>").join("");
+  return h;
+}
+function list(arr){ return arr && arr.length ? "<ul>"+arr.map(x=>"<li>"+x+"</li>").join("")+"</ul>" : "<div class='cval'>—</div>"; }
+function keyRow(k,v){ return "<div><div class='k'>"+k+"</div><div class='v'>"+v+"</div></div>"; }
+function renderContract(d){
+  const c = CONTRACTS[d.id] || {};
+  const box = document.getElementById("contract");
+  box.innerHTML =
+    '<div class="why"><b>Why this exists:</b> '+(c.why||"—")+'</div>'
+    + '<div class="ckey">Definition</div><div class="cgrid">'
+    + keyRow("Purpose", c.purpose||"—")
+    + keyRow("Owner", d.owner)
+    + keyRow("Stage", d.stage||"delivery")
+    + keyRow("Status", c.status||"—")
+    + keyRow("Consumes", d.consumes||"—")
+    + keyRow("Produces", d.produces||"—")
+    + '</div>'
+    + '<div class="ckey">References</div><div class="cseclist">'+list(c.references)+'</div>'
+    + '<div class="ckey">Related</div><div class="cseclist">'+list(c.related)+'</div>'
+    + '<div class="ckey">Design decisions</div><div class="cseclist">'+list(c.decisions)+'</div>'
+    + '<div class="ckey">Alternatives considered</div><div class="cseclist">'+list(c.alternatives)+'</div>'
+    + '<div class="ckey">Constraints</div><div class="cseclist">'+list(c.constraints)+'</div>'
+    + '<div class="ckey">Ownership boundaries</div><div class="cseclist">'+list(c.boundaries)+'</div>'
+    + '<div class="ckey">Reuse strategy</div><div class="cval">'+(c.reuse||"—")+'</div>'
+    + '<div class="next"><div class="k">What to read next</div><div class="btns">'
+    + (c.next||[]).map(id=>"<button data-next='"+id+"'>"+(ALL[id]?ALL[id].title:id)+"</button>").join("")
+    + '</div></div>';
+  box.querySelectorAll("button[data-next]").forEach(b=>{
+    b.onclick = ()=>{ const id=b.getAttribute("data-next"); if(ELEM[id]){ openDoc(ALL[id], ELEM[id]); } };
+  });
+}
+async function openDoc(d, el){
+  document.querySelectorAll(".node.active").forEach(n=>n.classList.remove("active"));
+  el.classList.add("active");
+  const ptag = document.getElementById("ptag");
+  ptag.textContent = (d.id in EXEC_PHASE && MODE==="execution") ? ("execution · "+EXEC_PHASE[d.id])
+    : (SPINE.some(s=>s.id===d.id) ? "spine" : "branch · "+d.stage);
+  document.getElementById("ptitle").textContent = d.title + " — " + d.sub;
+  document.getElementById("ppath").textContent = d.src;
+  renderContract(d);
+  const c = document.getElementById("content"), err = document.getElementById("err");
+  err.style.display="none"; c.innerHTML = '<p class="empty">Loading…</p>';
+  try{
+    const r = await fetch(d.src);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const md = await r.text();
+    c.innerHTML = mdToHtml(md);
+    const h1 = c.querySelector("h1"); if(h1){ document.getElementById("ptitle").textContent = d.title; h1.remove(); }
+  }catch(e){
+    err.style.display="block";
+    err.textContent = "Could not load "+d.src+" ("+e.message+"). Serve over HTTP, not file://.  python -m http.server 8080  →  http://localhost:8080/docs/reference/ui/lbe_docs_node_map.html";
+  }
+}
+
+// init
+SPINE.forEach(d=>{ const el=nodeEl(d,true); canvas.appendChild(el); ELEM[d.id]=el; });
+BRANCH.forEach(d=>{ const el=nodeEl(d,false); canvas.appendChild(el); ELEM[d.id]=el; });
+DELIVERY.forEach(d=>{ const el=nodeEl(d,false); canvas.appendChild(el); ELEM[d.id]=el; });
+buildSVG(); drawBranch(); drawReturn(); setMode("learning");
+</script>
+</body>
+</html>

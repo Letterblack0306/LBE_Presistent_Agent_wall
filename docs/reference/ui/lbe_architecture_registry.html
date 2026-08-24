@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LBE Architecture Registry — Active Docs · Single Spine · Status Model</title>
+<style>
+:root{ --bg:#0a0d12; --txt:#d8dee6; --dim:#7a8694; --panel:#0f141c; --edge:#1d2430;
+  --green:#3ddc84; --amber:#e8b339; --cyan:#7fd6ff; --red:#ff6b7a; }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,sans-serif;}
+.rulebar{padding:9px 20px;background:#0b0f15;border-bottom:1px solid var(--edge);font-size:12px;color:var(--txt);}
+.rulebar .r{margin:2px 0;} .rulebar b{color:var(--cyan);}
+.layout{display:flex;height:calc(100vh - 78px);}
+aside{width:350px;min-width:310px;border-right:1px solid var(--edge);background:#0c1017;overflow:auto;padding:14px 12px;}
+aside h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:16px 4px 6px;}
+aside h3:first-child{margin-top:4px;}
+.entry{border:1px solid var(--edge);border-left:3px solid #4a5568;border-radius:8px;padding:8px 10px;margin:5px 4px;cursor:pointer;background:var(--panel);}
+.entry .t{font-weight:600;font-size:12px;} .entry .d{font-size:9.5px;color:var(--dim);margin-top:2px;}
+.entry:hover{border-color:#2c3c4e;}
+.entry.sel{border-color:var(--cyan);background:#12202e;border-left:3px solid var(--cyan);}
+.entry.spine{border-left:3px solid var(--cyan);}
+.entry.reg{border-left:3px solid var(--greenbelt,var(--amber));}
+.entry.ref .flag{color:var(--red);font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;}
+.entry .arr{color:var(--cyan);font-size:9px;margin:3px 0 0 6px;display:block;}
+.prevnext{display:flex;gap:6px;margin:5px 4px;}
+.prevnext .e{flex:1;border:1px solid var(--edge);border-left:3px solid var(--cyan);border-radius:8px;background:var(--panel);padding:7px 9px;cursor:pointer;font-size:10.5px;color:var(--dim);}
+.prevnext .e b{color:var(--txt);display:block;font-size:11.5px;}
+.prevnext .e:hover{border-color:#2c3c4e;}
+main{flex:1;display:flex;min-width:0;}
+#contract{flex:0 0 400px;min-width:320px;border-right:1px solid var(--edge);overflow:auto;padding:18px;background:#0d1117;}
+#content{flex:1;overflow:auto;padding:22px 26px;font-size:12.5px;line-height:1.6;}
+.ptag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);}
+h2.title{font-size:17px;color:var(--cyan);margin:2px 0 4px;}
+.src{font-size:9.5px;color:var(--dim);word-break:break-all;margin-bottom:8px;}
+.badge{display:inline-block;font-size:9px;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:5px;margin-right:4px;}
+.badge.spine{background:#0e2a3a;color:var(--cyan);} .badge.reg{background:#0e2a1a;color:var(--green);} .badge.ref{background:#2a1212;color:var(--red);}
+.purpose{font-size:12px;line-height:1.5;color:#c3ccd8;background:#111a24;border-left:3px solid var(--cyan);padding:9px 11px;border-radius:0 8px 8px 0;margin:8px 0;}
+.purpose b{color:var(--cyan);}
+.why{margin-top:6px;background:#14202c;border:1px solid #24404f;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#cfe0ed;}
+.why b{color:var(--cyan);}
+.ck{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin:13px 0 3px;}
+.cv{font-size:11.5px;color:#c3ccd8;line-height:1.5;}
+.cv.row{display:flex;justify-content:space-between;background:#111824;border:1px solid #1d2938;border-radius:7px;padding:5px 8px;margin:3px 0;}
+.cv.row .k{color:var(--dim);text-transform:uppercase;font-size:8.5px;letter-spacing:.04em;}
+.cv.row .v{color:var(--txt);text-align:right;}
+ul.list{margin:4px 0 4px 18px;} ul.list li{color:#c3ccd8;font-size:11.5px;margin:2px 0;}
+.strow{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:4px 0;}
+.strow .s{padding:4px 7px;border:1px solid var(--edge);border-radius:6px;background:#10151d;}
+.strow .s .k{font-size:8.5px;text-transform:uppercase;color:var(--dim);}
+.strow .s .v{font-size:10.5px;font-weight:700;}
+.strow .s.yes .v{color:var(--green);} .strow .s.no .v{color:#4a5568;}
+.navblk{margin-top:12px;background:#14202c;border:1px solid #24404f;border-radius:8px;padding:8px 10px;}
+.navblk .k{font-size:9px;text-transform:uppercase;color:var(--dim);}
+.navblk .b{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.navblk button{background:#182a38;border:1px solid #2c4a5e;color:#a8d4ee;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:10px;}
+.navblk button:hover{background:#1f3648;}
+#report{margin-top:14px;font-size:10.5px;line-height:1.5;}
+#report b{color:var(--txt);} .ok{color:var(--green);} .bad{color:var(--red);} .warn{color:var(--amber);}
+#content .empty{color:var(--dim);font-style:italic;}
+#content h1{font-size:17px;color:#5b9dff;margin-bottom:10px;}
+#content h2{font-size:13.5px;color:var(--green);margin:14px 0 5px;}
+#content p{margin:5px 0;color:#c3ccd8;}
+#content ul,#content ol{margin:5px 0 5px 18px;color:#c3ccd8;}
+#content li{margin:2px 0;}
+#content code{background:#161c26;padding:1px 5px;border-radius:4px;color:#e8b339;font-size:11px;}
+#content pre{background:#10151d;border:1px solid var(--edge);border-radius:8px;padding:10px 12px;overflow:auto;}
+#content pre code{background:none;color:#9fd6a8;}
+.report{margin:2px 0;font-size:10.5px;} .report.ok{color:var(--green);} .report.bad{color:var(--red);} .report.warn{color:var(--amber);}
+.jsondump{margin:8px 0 0;}
+.jsondump summary{cursor:pointer;color:var(--dim);font-size:11px;}
+.jsondump pre{max-height:400px;overflow:auto;padding:10px;font-size:10.5px;color:#9fd6a8;background:#0b1016;border:1px solid var(--edge);border-radius:8px;margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="rulebar">
+  <div class="r"><b>Registry contract:</b> Only documents registered below are part of the active LBE architecture. Any markdown not listed here is <b>non-canonical</b> by default.</div>
+  <div class="r"><b>Classification tiers:</b> <b>REGISTERED</b>=participates in the active architecture &nbsp;·&nbsp; <b>REFERENCE</b>=may inform it (01–20 blueprint, reuse matrix) &nbsp;·&nbsp; <b>HISTORICAL</b>=evidence of a previous state &nbsp;·&nbsp; <b>UNREGISTERED</b>=cannot be used as current architectural authority.</div>
+  <div class="r"><b>Scope:</b> This is the canonical <b>documentation/navigation</b> registry. It <b>does not supersede</b> <code>.lbe/governance/implementation-gates.json</code>, active acceptance gates, current source, or runtime evidence. It routes readers and agents to documentation; it does not authorize or replace implementation-governance authority.</div>
+  <div class="r"><b>Navigation</b> is via this registry only — never by browsing the file system. <b>Status</b> is per-doc across six levels; no artifact may be claimed done without stating which levels are reached.</div>
+</div>
+<div class="layout">
+  <aside id="reg">
+    <h3>Single spine (canonical)</h3>
+    <div id="spinebox"></div>
+    <div class="prevnext" id="spineprev"></div>
+    <h3>Registered supporting</h3>
+    <div id="regbox"></div>
+    <h3>Reference — informs, not canonical</h3>
+    <div style="font-size:9.5px;color:var(--dim);line-height:1.4;padding:6px 8px;border:1px solid var(--edge);border-radius:8px;margin:6px 4px;background:#0a0e14;"><b>REFERENCE tier:</b> visible · referenceable · inspectable, but <b>NOT part of the active architecture</b>. The <b>Cline Reuse Matrix</b> is a candidate to become <b>REGISTERED</b> once its scope is no longer Cline-specific.</div>
+    <div id="refbox"></div>
+  </aside>
+  <main>
+    <div id="contract"></div>
+    <div id="content"><p class="empty">Select a registered document to view its contract and content.</p></div>
+  </main>
+</div>
+<script>
+var STATUS_KEYS=["documentation","architecture","registration","implementation","validation","production"];
+function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+// ---------- REGISTRY DATA ----------
+const SPINE=[
+ {id:"readme",title:"README",cat:"spine",src:"../../README.md",show:"docs/README.md",owner:"LBE docs / entry",stage:"Foundation",
+  purpose:"Project entry point: what LBE is, the four-document learning spine, and documentation routing.",
+  why:"A first-time reader or agent needs one, authoritative place to start.",
+  inputs:["project intent","collection map"],outputs:["routing","learning spine","collection map"],
+  related:["lifecycle","status"],next:["lifecycle"],
+  st:[1,1,1,1,1,1]},
+ {id:"lifecycle",title:"LBE Agent Lifecycle",src:"../docs/LBE_AGENT_LIFECYCLE.md",show:"docs/LBE_AGENT_LIFECYCLE.md",owner:"LBE (flow authority)",stage:"Foundation",
+  purpose:"The complete end-to-end operational flow of an agent turn, with an explicit owner per step.",
+  why:"Answers directly who reasons, who authorizes, who executes, and who decides a task is done.",
+  inputs:["authority separation","plan §1/§15"],outputs:["operational turn flow"],
+  related:["architecture","vision","runtime"],next:["vision"],
+  st:[1,1,1,1,1,1]},
+ {id:"vision",title:"Vision / Product Goal",src:"../../docs/IMPLEMENTATION_PLAN.md",show:"docs/IMPLEMENTATION_PLAN.md (§1)",
+  owner:"product / platform",stage:"Runtime",
+  purpose:"Build a persistent, provider-neutral LBE runtime where the agent reasons and LBE owns authority; Guard Inspector is the first capability.",
+  why:"Keeps the product framed as a platform, not a single app.",
+  inputs:["lifecycle","requirements"],outputs:["product goal","invariants","roadmap"],
+  related:["architecture","lifecycle"],next:["architecture"],
+  st:[1,1,1,1,1,1]},
+ {id:"architecture",title:"Architecture / Authority",src:"../../docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",show:"docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
+  owner:"LBE Core",stage:"Runtime",
+  purpose:"Accepted ownership boundary separating agent agency (reasoning) from LBE authority (execution); capabilities sit on top, never beside.",
+  why:"No parallel authority owner is ever created.",
+  inputs:["vision","lifecycle"],outputs:["ownership boundary"],
+  related:["runtime","lifecycle","validator"],next:["runtime"],
+  st:[1,1,1,1,1,1]},
+ {id:"runtime",title:"Runtime / Phases",src:"../../docs/design/AGENT_LIFECYCLE_PHASES.md",show:"docs/design/AGENT_LIFECYCLE_PHASES.md",
+  owner:"LBE runtime",stage:"Governance",
+  purpose:"The single product lifecycle (boot-understand-plan-execute-validate-persist-continue), an owner per phase, IDE surface mapping, and a reuse/wrap/own guide.",
+  why:"One operational story for the whole product; nothing reinvents the flow.",
+  inputs:["architecture","lifecycle"],outputs:["phases","surfaces","reuse guide"],
+  related:["surface","architecture","lifecycle"],next:["readme"],
+  st:[1,1,1,1,1,1]}
+];
+const SUPPORT=[
+ {id:"status",title:"Current Status",src:"../../docs/CURRENT_STATUS.md",show:"docs/CURRENT_STATUS.md",owner:"ops",stage:"Governance",
+  purpose:"Present-tense snapshot of product, gate, and proof state.",
+  why:"A common pointer to authoritative current facts.",
+  inputs:["gate","evidence"],outputs:["state snapshot"],related:["readme","gate"],next:["readme"],
+  st:[1,1,1,1,1,1]},
+ {id:"surface",title:"Product Surface Spec",src:"../../docs/design/lbe_product_surface_spec.json",show:"docs/design/lbe_product_surface_spec.json",owner:"product contract",stage:"Governance",
+  purpose:"Machine-legible contract: lifecycle, panels, an owner per panel, talks-to, next-step, and per-panel states and transitions.",
+  why:"Agents need a stable, disciplined model to diff against instead of re-reading a rendered page.",
+  inputs:["runtime"],outputs:["panels","state machines"],related:["runtime"],next:["runtime"],
+  st:[1,1,1,1,1,0]},
+ {id:"gate",title:"Implementation Gate",src:"../../../.lbe/governance/implementation-gates.json",show:".lbe/governance/implementation-gates.json",owner:"governance",stage:"Governance",
+  purpose:"Machine gate: active phase, slice, status, and the blocking statuses that stop implementation.",
+  why:"Declares what may be implemented right now.",
+  inputs:["evidence"],outputs:["authorization"],related:["status","readme"],next:["readme"],
+  st:[1,1,1,1,1,1]}
+];
+const REFS=[
+ {id:"v01",title:"01 Vision (Guard Inspector)",src:"../docs/01_VISION.md",show:"docs/reference/docs/01_VISION.md"},
+ {id:"a02",title:"02 Architecture",src:"../docs/02_ARCHITECTURE.md",show:"docs/reference/docs/02_ARCHITECTURE.md"},
+ {id:"r03",title:"03 Runtime Pipeline",src:"../docs/03_RUNTIME_PIPELINE.md",show:"docs/reference/docs/03_RUNTIME_PIPELINE.md"},
+ {id:"p04",title:"04 Project Detector",src:"../docs/04_PROJECT_DETECTOR.md",show:"docs/reference/docs/04_PROJECT_DETECTOR.md"},
+ {id:"t05",title:"05 Tool Registry",src:"../docs/05_TOOL_REGISTRY.md",show:"docs/reference/docs/05_TOOL_REGISTRY.md"},
+ {id:"g06",title:"06 Guard Selector",src:"../docs/06_GUARD_SELECTOR.md",show:"docs/reference/docs/06_GUARD_SELECTOR.md"},
+ {id:"rg07",title:"07 Rules & Guards",src:"../docs/07_RULES_AND_GUARDS.md",show:"docs/reference/docs/07_RULES_AND_GUARDS.md"},
+ {id:"lb08",title:"08 LBE Gallery",src:"../docs/08_LBE_GALLERY.md",show:"docs/reference/docs/08_LBE_GALLERY.md"},
+ {id:"re09",title:"09 Retrieval & Inspection",src:"../docs/09_RETRIEVAL_AND_INSPECTION.md",show:"docs/reference/docs/09_RETRIEVAL_AND_INSPECTION.md"},
+ {id:"wi10",title:"10 Workspace Inspection",src:"../docs/10_WORKSPACE_INSPECTION.md",show:"docs/reference/docs/10_WORKSPACE_INSPECTION.md"},
+ {id:"vv11",title:"11 Validation & Verdicts",src:"../docs/11_VALIDATION_AND_VERDICTS.md",show:"docs/reference/docs/11_VALIDATION_AND_VERDICTS.md"},
+ {id:"gv12",title:"12 Governance",src:"../docs/12_GOVERNANCE.md",show:"docs/reference/docs/12_GOVERNANCE.md"},
+ {id:"rl13",title:"13 Reasoning Layer",src:"../docs/13_REASONING_LAYER.md",show:"docs/reference/docs/13_REASONING_LAYER.md"},
+ {id:"mc14",title:"14 Memory & Checkpoints",src:"../docs/14_MEMORY_AND_CHECKPOINTS.md",show:"docs/reference/docs/14_MEMORY_AND_CHECKPOINTS.md"},
+ {id:"em15",title:"15 Execution Modes",src:"../docs/15_EXECUTION_MODES.md",show:"docs/reference/docs/15_EXECUTION_MODES.md"},
+ {id:"rd16",title:"16 Roadmap",src:"../docs/16_ROADMAP.md",show:"docs/reference/docs/16_ROADMAP.md"},
+ {id:"ac17",title:"17 Acceptance Criteria",src:"../docs/17_ACCEPTANCE_CRITERIA.md",show:"docs/reference/docs/17_ACCEPTANCE_CRITERIA.md"},
+ {id:"ex18",title:"18 Worked Examples",src:"../docs/18_WORKED_EXAMPLES.md",show:"docs/reference/docs/18_WORKED_EXAMPLES.md"},
+ {id:"vs19",title:"19 Vertical Slice",src:"../docs/19_IMPLEMENTATION_VERTICAL_SLICE.md",show:"docs/reference/docs/19_IMPLEMENTATION_VERTICAL_SLICE.md"},
+ {id:"mf20",title:"20 Migration",src:"../docs/20_MIGRATION_FROM_OLD_BLUEPRINT.md",show:"docs/reference/docs/20_MIGRATION_FROM_OLD_BLUEPRINT.md"},
+ {id:"reuse",title:"Cline Reuse Matrix",src:"../../docs/research/CLINE_CORE_REUSE_BOUNDARY_MATRIX.md",show:"docs/research/CLINE_CORE_REUSE_BOUNDARY_MATRIX.md"}
+];
+const ALL={}; SPINE.forEach(d=>ALL[d.id]=d); SUPPORT.forEach(d=>ALL[d.id]=d); REFS.forEach(d=>ALL[d.id]=d);
+const SPINE_SEQ=["readme","lifecycle","vision","architecture","runtime"];
+const REGISTERED=[...SPINE,...SUPPORT];
+const $=id=>document.getElementById(id);
+
+// ---------- validation (registry as a gate) ----------
+function validateRegistry(){
+  const out=[];
+  // 1. single spine order enforced
+  const seqOk = SPINE_SEQ.every((id,i)=>SPINE[i] && SPINE[i].id===id);
+  if(seqOk) out.push({c:"ok",t:"Spine enforces single sequence: README -> Lifecycle -> Vision -> Architecture -> Runtime ("+SPINE_SEQ.join(" -> ")+")."});
+  else out.push({c:"bad",t:"SPINE ORDER BROKEN — registry sequence does not match the canonical path."});
+  // 2. each spine next-link must continue the sequence (or loop to readme)
+  SPINE_SEQ.forEach((id,i)=>{
+    const d=ALL[id], expected = (i===SPINE_SEQ.length-1) ? "readme" : SPINE_SEQ[i+1];
+    if(!d) return;
+    if(!(d.next||[]).includes(expected)) out.push({c:"bad",t:"["+d.title+"] next must be '"+expected+"' (spine unwarrant)."});
+    else out.push({c:"ok",t:"["+d.title+"] next -> "+expected+" ok."});
+  });
+  // 3. every registered doc must declare the full contract fields
+  const REQ=["purpose","owner","stage","inputs","outputs","related","next"];
+  REGISTERED.forEach(d=>{
+    const miss=REQ.filter(k=>!d[k]||(Array.isArray(d[k])&&d[k].length===0));
+    if(miss.length) out.push({c:"bad",t:"["+d.id+"] CONTRACT INCOMPLETE — missing: "+miss.join(", ")+"."});
+    else out.push({c:"ok",t:"["+d.id+"] declares purpose/owner/stage/inputs/outputs/related/next."});
+  });
+  // 4. reference docs are correctly flagged non-registered
+  out.push({c:"ok",t:"Reference section holds "+REFS.length+" docs flagged NOT REGISTERED (non-canonical unless registered)."});
+  return out;
+}
+
+// ---------- rendering ----------
+function chipRow(d){
+  let html="<div class='strow'>";
+  STATUS_KEYS.forEach(k=>{
+    const on=!!(d.st&&d.st[STATUS_KEYS.indexOf(k)]);
+    html+="<div class='s "+(on?"yes":"no")+"'><div class='k'>"+k+"</div><div class='v'>"+(on?"reached":"pending")+"</div></div>";
+  });
+  return html+"</div>";
+}
+function entryEl(d,cls,quiet){
+  const e=document.createElement("div");
+  e.className="entry "+cls;
+  e.dataset.id=d.id;
+  let flag=cls==="ref"?"<div class='flag'>not registered — non-canonical</div>":"";
+  e.innerHTML="<div class='t'>"+(cls==="spine"?"⬤ ":cls==="reg"?"◈ ":"▫ ")+esc(d.title)+"</div>"+(quiet?"":"<div class='d'>"+(d.show||"")+"</div>")+flag;
+  e.onclick=()=>openDoc(d.id, cls==="ref");
+  return e;
+}
+function buildNav(){
+  SPINE.forEach((d,i)=>{ $("spinebox").appendChild(entryEl(d,"spine")); });
+  // forward/back spine navigation
+  const pv=$("spineprev"); pv.innerHTML="";
+  const prevBtn=document.createElement("div"); prevBtn.className="e"; prevBtn.textContent="◀ "+ (ALL[SPINE_SEQ[3]].title);
+  prevBtn.onclick=()=>openDoc(SPINE_SEQ[3],false);
+  const fwdBtn=document.createElement("div"); fwdBtn.className="e"; fwdBtn.textContent=(ALL[SPINE_SEQ[1]].title)+" ▶";
+  fwdBtn.onclick=()=>openDoc(SPINE_SEQ[1],false);
+  pv.appendChild(prevBtn); pv.appendChild(fwdBtn);
+  SUPPORT.forEach(d=>$("regbox").appendChild(entryEl(d,"reg")));
+  REFS.forEach(d=>$("refbox").appendChild(entryEl(d,"ref",true)));
+}
+function titleOf(id){ return ALL[id]?ALL[id].title:id; }
+function renderContract(d,isRef){
+  const b=$("contract");
+  if(isRef){
+    b.innerHTML="<div class='ptag'>reference</div><h2 class='title'>"+esc(d.title)+"</h2>"
+      +"<div class='badge ref'>NOT REGISTERED</div><div class='src'>"+esc(d.show)+"</div>"
+      +"<div class='purpose'><b>Not part of the active architecture.</b> This document is <b>non-canonical by default</b> until it is registered below (in the registry model) and becomes visible here.</div>"
+      +"<div class='ck'>Status (by default)</div>"+chipRow({st:[1,1,0,0,0,0]})
+      +"<div class='ck'>How to register</div><div class='cv'>To make this active, add it to the registry as a <b>REGISTERED</b> node with a full purpose / owner / stage / inputs / outputs / related / next contract; then it becomes part of the active architecture and its status can progress across the six levels.</div>";
+    return;
+  }
+  const on = STATUS_KEYS.filter((k,i)=>d.st&&d.st[i]).length;
+  b.innerHTML=
+    "<div class='ptag'>"+(SPINE_SEQ.includes(d.id)?"canonical spine":"registered")+"</div>"
+    +"<h2 class='title'>"+esc(d.title)+"</h2>"
+    +"<div class='src'>"+esc(d.show)+"</div>"
+    +"<div class='purpose'><b>Purpose:</b> "+esc(d.purpose)+"</div>"
+    +"<div class='why'><b>Why this exists:</b> "+esc(d.why)+"</div>"
+    +"<div class='ck'>Registration status (levels reached: "+on+"/6)</div>"+chipRow(d)
+    +"<div class='ck'>Contract</div>"
+    +"<div class='cv row'><span class='k'>owner</span><span class='v'>"+esc(d.owner)+"</span></div>"
+    +"<div class='cv row'><span class='k'>stage</span><span class='v'>"+esc(d.stage)+"</span></div>"
+    +"<div class='cv row'><span class='k'>consume</span><span class='v'>"+(d.inputs||[]).join(", ")+"</span></div>"
+    +"<div class='cv row'><span class='k'>produce</span><span class='v'>"+(d.outputs||[]).join(", ")+"</span></div>"
+    +"<div class='ck'>Related</div><ul class='list'>"+(d.related||[]).map(r=>"<li>"+titleOf(r)+"</li>").join("")+"</ul>"
+    +"<div class='next'>what next</div>"
+    +"<div class='navblk'><div class='k'>What to read next</div><div class='b'>"
+    +(d.next||[]).map(n=>"<button data-next='"+n+"'>"+titleOf(n)+"</button>").join("")+"</div></div>";
+  b.querySelectorAll("button[data-next]").forEach(btn=>{
+    btn.onclick=()=>openDoc(btn.getAttribute("data-next"),false);
+  });
+}
+
+function md(inn){
+  let h=esc(inn);
+  h=h.replace(/```([\s\S]*?)```/g,(m,c)=>"<pre><code>"+c.trim()+"</code></pre>");
+  h=h.replace(/^# (.*)$/gm,"<h1>$1</h1>").replace(/^## (.*)$/gm,"<h2>$1</h2>")
+     .replace(/^### (.*)$/gm,"<h3>$1</h3>");
+  h=h.replace(/`([^`\n]+)`/g,"<code>$1</code>");
+  h=h.replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
+  h=h.replace(/^(?:- (.*)\n?)+/gm,m=>"<ul>"+m.trim().split("\n").map(l=>"<li>"+l.replace(/^- /,"")+"</li>").join("")+"</ul>");
+  h=h.split(/\n{2,}/).map(b=>/^<(h\d|ul|ol|pre)/.test(b.trim())?b:"<p>"+b.replace(/\n/g,"<br>")+"</p>").join("");
+  return h;
+}
+async function openDoc(id,isRef){
+  const d=ALL[id]; if(!d){return;}
+  document.querySelectorAll(".entry").forEach(n=>n.classList.remove("sel"));
+  try{ const el=document.querySelector('[data-id="'+id+'"]'); if(el) el.classList.add("sel"); }catch(e){}
+  renderContract(d,isRef);
+  const c=$("content");
+  c.innerHTML='<p class="empty">Loading…</p>';
+  try{
+    const r=await fetch(d.src);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const txt=await r.text();
+    if(d.show&&d.show.endsWith(".json")){ c.innerHTML="<h1>"+esc(d.title)+"</h1><pre><code>"+esc(txt)+"</code></pre>"; }
+    else c.innerHTML=md(txt);
+  }catch(e){
+    c.innerHTML='<p class="bad">Could not load "'+esc(d.src)+'" ('+esc(e.message)+'). The registry is authoritative for navigation; serve this page over HTTP (not file://) to fetch content.</p>';
+  }
+}
+
+// init
+REGISTERED.forEach((d,i)=>{ d._order=i; });
+buildNav();
+openDoc("readme",false);
+printReport();
+function printReport(){
+  const r=document.createElement("div"); r.id="report";
+  r.innerHTML="<div class='ck'>Registry gate result</div>";
+  validateRegistry().forEach(v=>{ r.innerHTML+="<div class='report "+v.c+"'>"+(v.c==="ok"?"✔ ":v.c==="warn"?"⚠ ":"✘ ")+v.t+"</div>"; });
+  $("contract").appendChild(r);
+}
+</script>
+</body>
+</html>
