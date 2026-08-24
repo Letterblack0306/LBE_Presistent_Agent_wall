@@ -1,23 +1,23 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
-Updated: 2026-08-21
-Status: Canonical roadmap — R7 installed end-to-end acceptance is PASS; publication version preparation for 2.0.3 is the active machine-gate slice
+Updated: 2026-08-22
+Status: Canonical roadmap — R7 installed end-to-end acceptance is PASS; the complete LBE agent runtime doctrine-to-provider context bridge is the active machine-gate slice and 2.0.3 preparation is paused
 ## Authority reconciliation (READ FIRST)
 
 Current machine-gate authority — `.lbe/governance/implementation-gates.json` and its exact
-machine-declared active plan, `docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md`:
+machine-declared active plan, `docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md`:
 
 ```text
-phase: PUBLICATION_VERSION_PREPARATION
-slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
+slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
 status: OPEN
 R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
 RELEASE_PACKAGE_READINESS_ACCEPTANCE: PASS
 PUBLICATION_PRECHECK: PASS
-implementation_allowed: true (version-preparation scope only)
-architecture_changes_allowed: false
+implementation_allowed: true (terminal-workspace foundation scope only)
+architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
-target_version: 2.0.3
+target_version: 2.0.3 (publication preparation paused)
 publish_allowed: false
 ```
 
@@ -25,6 +25,15 @@ The R7 failure and repair records retained below are **historical evidence** of 
 observable-3 installed coding-composition failure. R7 is currently `PASS`, including observable
 3 and observable 13 `PASS_AFTER_REPAIR`; those records do not override the active publication
 gate. Live Git/runtime/validation evidence and the machine gate outrank this document.
+
+## Documentation roles — prevent plan/status drift
+
+`docs/CURRENT_STATUS.md` is the concise current-state snapshot. This document owns the ordered
+product and implementation sequence. The machine gate and its active acceptance plan own
+authorization. `docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md` owns the current
+terminal-product gap review, while GPT-Knowledge retains only a reference/mirror of these facts.
+Do not create another current-status or roadmap document; update the owner above when a fact or
+sequence changes.
 
 **Architecture correction — read before extending the LBE wall:** the reasoning controller
 became the agent. See `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and section 15.
@@ -65,20 +74,21 @@ CLI PROVEN_COMPLETE
 R7  PASS (observable 3 and observable 13 PASS_AFTER_REPAIR)
 RELEASE_PACKAGE_READINESS_ACCEPTANCE PASS
 PUBLICATION_PRECHECK PASS
-PUBLICATION_VERSION_PREPARATION OPEN — target 2.0.3
+COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION OPEN
+PUBLICATION_VERSION_PREPARATION PAUSED — target 2.0.3 retained
 ```
 
-Current active gate is publication version preparation; it authorizes only the bounded
-2.0.3 version-preparation scope and does not authorize publication:
+Current active gate is the complete LBE agent runtime gate; it authorizes only the bounded
+doctrine-to-provider context bridge and does not authorize publication:
 
 ```text
-phase: PUBLICATION_VERSION_PREPARATION
-slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
+slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
 status: OPEN
-implementation_allowed: true (version-preparation scope only)
-architecture_changes_allowed: false
+implementation_allowed: true (active complete-runtime slice only)
+architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
-target_version: 2.0.3
+target_version: 2.0.3 (publication preparation paused)
 publish_allowed: false
 ```
 
@@ -437,12 +447,12 @@ This section records the architectural lesson and the proposed future correction
 See the banner at the top of this file and the machine gate:
 
 ```text
-phase: PUBLICATION_VERSION_PREPARATION
-slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
+slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
 status: OPEN
 R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
-implementation_allowed: true (version-preparation scope only)
-architecture_changes_allowed: false
+implementation_allowed: true (terminal-workspace foundation scope only)
+architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publish_allowed: false
 ```
@@ -561,7 +571,7 @@ RESOLVED: the historical Node-worker dependency failure was replaced by the prov
 PROVEN: clean staged-wheel and isolated installed R7 evidence reached provider, governed ToolReceipt, and deterministic completion.
 CONFIRMED: the governed coding registry remains a bounded capability slice.
 CONFIRMED: the Textual TUI is not yet the intended complete terminal workspace.
-PARTIALLY VERIFIED: current uncommitted coding-TUI routing has focused coverage, but no installed interactive receipt/diff/approval render proof.
+PARTIALLY VERIFIED: current uncommitted coding-TUI routing has focused coverage, but no installed interactive receipt/diff/evidence render proof.
 ```
 
 The complete external-reference evidence, implementation backlog, and proposed future acceptance

@@ -16,22 +16,22 @@ human gate:
   docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
 
 active phase:
-  LBE_RUNTIME_ROADMAP_RECONCILIATION
+  COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
 
 active slice:
-  CLASSIFY_IMPLEMENTED_VS_ACCEPTED_RUNTIME_CAPABILITIES
+  DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
 
-implementation_allowed: false
+implementation_allowed: true (active complete-runtime slice only)
 next_phase_locked: true
 ```
 
 The active plan is:
 
 ```text
-docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_GATE.md
+docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 ```
 
-and the current reconciliation evidence record is:
+The roadmap reconciliation and P16 records below are historical evidence only:
 
 ```text
 docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_CHECKPOINT.md

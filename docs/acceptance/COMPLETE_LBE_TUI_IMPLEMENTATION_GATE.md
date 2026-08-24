@@ -1,6 +1,12 @@
 # Complete LBE TUI Implementation Gate
 
-Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
+Status: **SUPERSEDED — RETAINED HISTORICAL TUI ACCEPTANCE RECORD**
+
+This gate is preserved as historical evidence. It is not the active authorization. The machine
+selected active plan is `docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md`, with phase
+`COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION` and slice `DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE`.
+The terminal-workspace foundation and TUI records remain non-active until a future machine-gate
+change explicitly selects them.
 
 phase: `COMPLETE_TUI_IMPLEMENTATION`
 

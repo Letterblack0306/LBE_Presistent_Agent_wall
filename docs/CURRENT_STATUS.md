@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-08-21
+Updated: 2026-08-22
 
 ## Authority
 
@@ -33,13 +33,13 @@ PUBLICATION_PRECHECK: PASS
 ## Current machine state
 
 ```text
-active_plan: docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md
-active_phase: PUBLICATION_VERSION_PREPARATION
-active_slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+active_plan: docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
+active_phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
+active_slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
 status: OPEN
-target_version: 2.0.3
-implementation_allowed: true (version-preparation scope only)
-architecture_changes_allowed: false
+target_version: 2.0.3 (publication preparation paused)
+implementation_allowed: true (active complete-runtime slice only)
+architecture_changes_allowed: true (explicit user authorization)
 publish_allowed: false
 ```
 
@@ -90,11 +90,11 @@ observability/harness assumption issue, not runtime product defect.
 ## Current authority boundary
 
 ```text
-active_phase: PUBLICATION_VERSION_PREPARATION
-active_slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+active_phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
+active_slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
 current_status: OPEN
-implementation_allowed: true (version-preparation scope only)
-architecture_changes_allowed: false
+implementation_allowed: true (active complete-runtime slice only)
+architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publish_allowed: false
 ```
@@ -102,11 +102,10 @@ publish_allowed: false
 ## Remaining sequence
 
 ```text
-set canonical package version to 2.0.3
- -> validate exact 2.0.3 wheel and installed runtime
- -> prove PyPI 2.0.3 is absent immediately before dispatch
- -> observe trusted-publishing workflow
- -> verify post-publish PyPI state
+complete doctrine-to-provider context bridge
+ -> record focused configuration/provider/profile/persistence evidence
+ -> advance the complete-runtime gate only on PASS
+ -> reactivate the paused 2.0.3 preparation gate when product work is accepted
 ```
 
 ## Architecture correction (proposed follow-on review; not an active gate)
@@ -121,7 +120,7 @@ provider continuation, persistence, and completion validation remain authoritati
 boundaries. See `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and
 `docs/IMPLEMENTATION_PLAN.md` section 15.
 
-## Terminal workspace product status
+## Terminal workspace product status (non-active product gap)
 
 ```text
 governed one-shot coding runtime: READY (bounded capability slice)
@@ -130,13 +129,44 @@ complete interactive terminal workspace: BLOCKED by unimplemented product surfac
 browser/HTML preview proof: UNKNOWN (no browser available in this environment)
 ```
 
-The shipped Textual surface is currently a persisted session transcript and composer. It requires
-an existing session ID and, for execution, an external provider configuration. It does not yet
-provide the integrated terminal workflow required for the product: session launch/resume,
-provider/model loading and health display, structured tool/authorization/receipt/diff/evidence
-cells, approval controls, terminal-native history/navigation, or an installed interactive
-acceptance run. The copied HTML files under `docs/reference/ui/` are visual-reference artifacts;
-they are not a browser product surface and do not constitute UI proof.
+The current source has a compact LBE Core-derived identity header, persisted objective, fixed-column
+event stream (`verb / target / delta / receipt / state`), composer, and command/details surface
+over existing persisted session and control owners. It can create a new persisted session when the
+workspace, workspace identity, and mode are supplied; execution still requires an external provider
+configuration. It does not yet provide the integrated terminal workflow required for the product:
+usable provider/model settings and health, session navigation, provider/model loading, structured
+diff/evidence views, integrations/settings views, or an installed interactive acceptance run. The
+copied HTML files under `docs/reference/ui/` are visual-reference artifacts; they are not a browser
+product surface and do not constitute UI proof.
 
 The detailed verified gap and implementation order are in
 `docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`.
+
+## Authorization position — 2026-08-21
+
+Ordinary policy-covered capabilities are agent-native and execute through the existing R6C/R6E
+boundary without a conversational approval queue. The terminal renders the observed receipt,
+evidence, diff, failure, or blocked result. A separate explicit decision is reserved only for a
+defined high-risk authority expansion (for example destructive work, policy widening, a new
+capability class, or scope conflict); it must not become the default workflow for edits.
+
+GPT-Knowledge was checked at `Letterblack0306/GPT-Knowledge` on 2026-08-21. Its
+`ai-agents/lbe-cli-control-plane-provider-boundary.md` and
+`ui-engineering/inline-agent-runtime-toolcall-truth-ui.md` establish this product direction;
+the current LBE repository remains the implementation authority.
+
+## Documentation alignment rule — 2026-08-21
+
+The current product direction is maintained together in this status document,
+`docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md`, and
+`docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`. Before changing the terminal or
+runtime workflow, reconcile those documents against the live machine gate and the GPT-Knowledge
+references above. Records under `docs/acceptance/` preserve historical gate and validation
+evidence; they are not rewritten to imply a newer product decision.
+
+Cross-repository mirror check: GPT-Knowledge retains reusable architecture/UI references and a
+short project-state mirror only. Its project status, R7 routing, and plan-canvas records must
+link back to this repository's machine gate instead of duplicating acceptance chronology or
+claiming publication. The 2026-08-22 reconciliation records the doctrine-to-provider context
+bridge as `OPEN`, publication preparation as paused, R7 as `PASS`, and terminal-workspace
+foundation records as superseded evidence rather than active authorization.

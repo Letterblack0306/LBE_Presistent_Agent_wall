@@ -1,27 +1,28 @@
 # Current Implementation Gate
 
-Status: **OPEN — PUBLICATION VERSION PREPARATION FOR 2.0.3 — PUBLISH LOCKED**
+Status: **OPEN — COMPLETE LBE AGENT RUNTIME — PUBLICATION PAUSED**
 
 This file is the human-readable projection of `.lbe/governance/implementation-gates.json`.
 The machine-declared active plan is
-`docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md`; live Git/runtime/validation
+`docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md`; live Git/runtime/validation
 evidence and the machine gate outrank this summary.
 
 ## CURRENT MACHINE STATE (authoritative)
 
 ```text
-phase: PUBLICATION_VERSION_PREPARATION
-slice: SET_AND_VALIDATE_CANONICAL_VERSION_2_0_3
+phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
+slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
 status: OPEN
-target_version: 2.0.3
-implementation_allowed: true (version-preparation scope only)
-architecture_changes_allowed: false
+target_version: 2.0.3 (publication paused)
+implementation_allowed: true (active complete-runtime slice only)
+architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publish_allowed: false
 ```
 
-Only the exact version-preparation paths declared by the machine gate are authorized. No runtime,
-provider, authorization, tool, memory, completion, or architecture change is authorized.
+Only the exact paths and scope declared by the machine gate are authorized. The active slice is
+the doctrine-to-provider context bridge; it does not authorize a second runtime, provider,
+execution, authorization, or completion owner.
 
 ## Accepted baseline
 
@@ -34,18 +35,17 @@ RELEASE_PACKAGE_READINESS_ACCEPTANCE: PASS
 PUBLICATION_PRECHECK: PASS
 ```
 
-## Required proof before publication can be unlocked
+## Current proof required before this slice can pass
 
 ```text
-canonical pyproject.toml version is 2.0.3
- -> exact 2.0.3 artifact and installed runtime validation
- -> PyPI 2.0.3 absence immediately before dispatch
- -> successful trusted-publishing workflow execution
- -> post-publish PyPI verification
+focused Textual/client handler tests
+ -> persisted event/receipt projection tests
+ -> manual local TUI launch from current source
+ -> git diff --check
 ```
 
-`publish_allowed` remains false until the active gate's requirements are satisfied and the
-machine state advances.
+`publish_allowed` remains false. Version 2.0.3 preparation is paused and must be reactivated by
+a future machine-gate change after the active complete-runtime slice passes.
 
 ## HISTORICAL FAILURE (preserved, not current state)
 
