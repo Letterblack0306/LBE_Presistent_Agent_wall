@@ -110,7 +110,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--plan",
-        default="acceptance/post_fix_acceptance_plan.json",
+        default="docs/history/legacy-acceptance/post_fix_acceptance_plan.json",
         help="Path to the acceptance plan JSON.",
     )
     parser.add_argument(
