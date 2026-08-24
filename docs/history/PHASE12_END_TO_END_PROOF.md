@@ -50,6 +50,6 @@ Before merge, delete branch `feat/end-to-end-proof` or reset it to `feat/session
 After merge, revert the Phase 12 commits. The rollback removes only:
 
 - `tests/test_end_to_end_proof.py`
-- `docs/PHASE12_END_TO_END_PROOF.md`
+- `docs/history/PHASE12_END_TO_END_PROOF.md`
 
 No schema migration, persistent production data migration, runtime endpoint, or execution-policy rollback is required.

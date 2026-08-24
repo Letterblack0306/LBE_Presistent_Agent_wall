@@ -138,7 +138,7 @@ runtime.
 ## Module Registry priority
 
 The next implementation priority is the live Module Registry defined in
-`docs/PRIORITY_MODULE_REGISTRY.md` and sequenced in
+`docs/contracts/PRIORITY_MODULE_REGISTRY.md` and sequenced in
 `docs/IMPLEMENTATION_PLAN.md`.
 
 The registry complements memory rather than replacing it:

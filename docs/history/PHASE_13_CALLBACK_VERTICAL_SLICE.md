@@ -145,7 +145,7 @@ git status --short --branch
 - `tests/test_cep_callback_guard.py`
 - `docs/CURRENT_STATUS.md`
 - `docs/IMPLEMENTATION_PLAN.md`
-- `docs/PHASE_13_CALLBACK_VERTICAL_SLICE.md`
+- `docs/history/PHASE_13_CALLBACK_VERTICAL_SLICE.md`
 
 ## Non-regression requirements
 
