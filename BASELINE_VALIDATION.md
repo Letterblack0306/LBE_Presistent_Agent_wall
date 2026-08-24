@@ -1,6 +1,6 @@
 # Agent.py Baseline Validation — 2026-07-24 *(Historical Baseline)*
 
-> **⚠ This document is a historical baseline from July 24–25, 2026. It is preserved for reference only. See `VALIDATION_CURRENT.md` for the current validation report. Do not use this document as evidence of current pass/fail status.**
+> **⚠ This document is a historical baseline from July 24–25, 2026. It is preserved for reference only. See `docs/history/VALIDATION_2026-07-25.md` for the current validation report. Do not use this document as evidence of current pass/fail status.**
 
 ## Baseline Snapshot
 

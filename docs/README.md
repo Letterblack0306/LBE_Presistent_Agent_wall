@@ -28,7 +28,7 @@ Read these four in order to understand how someone learns and uses LBE:
 4. **[Architecture](design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md)** — the ownership boundary
    and the accepted separation of agent agency from LBE authority.
 
-> Note: `docs/reference/docs/01_VISION.md` and `02_ARCHITECTURE.md` describe the **Guard
+> Note: `docs/history/reference-legacy/docs/01_VISION.md` and `docs/history/reference-legacy/docs/02_ARCHITECTURE.md` describe the **Guard
 > Inspector** as the first capability of this platform (its first vertical slice). Treat them as
 > the capability's design; the platform framing above (Vision/Architecture in the spine) governs.
 
