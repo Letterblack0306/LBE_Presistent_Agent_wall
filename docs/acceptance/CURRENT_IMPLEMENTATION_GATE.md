@@ -17,7 +17,7 @@ target_version: 2.0.3 (publication paused)
 implementation_allowed: true (active complete-runtime slice only)
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
-publish_allowed: false
+publication_controls: false (nested publication governance records)
 ```
 
 Only the exact paths and scope declared by the machine gate are authorized. The active slice is

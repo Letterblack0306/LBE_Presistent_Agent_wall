@@ -16,7 +16,7 @@ status: OPEN
 implementation_allowed: true (active complete-runtime slice only)
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
-publish_allowed: false
+publication_controls: false (nested publication governance records)
 ```
 
 ## Live owners

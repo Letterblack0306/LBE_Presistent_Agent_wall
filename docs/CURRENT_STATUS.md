@@ -40,7 +40,7 @@ status: OPEN
 target_version: 2.0.3 (publication preparation paused)
 implementation_allowed: true (active complete-runtime slice only)
 architecture_changes_allowed: true (explicit user authorization)
-publish_allowed: false
+publication_controls: false (nested publication governance records)
 ```
 
 R7 is closed `PASS`; observable 3 and observable 13 are `PASS_AFTER_REPAIR`. The historical
@@ -96,7 +96,7 @@ current_status: OPEN
 implementation_allowed: true (active complete-runtime slice only)
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
-publish_allowed: false
+publication_controls: false (nested publication governance records)
 ```
 
 ## Remaining sequence
