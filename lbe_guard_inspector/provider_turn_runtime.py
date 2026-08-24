@@ -9,13 +9,15 @@ from .memory.operational_history import OperationalEvent, SessionOperationalHist
 from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
 from .professional_provider_events import ModelEventType, NormalizedModelEvent, ProviderProtocolFamily
 from .provider_event_history import project_provider_events
+from .runtime.agent_guidance import AgentGuidance
 
 
 class NonStreamingProviderTurnRuntime:
-    def __init__(self, *, history: SessionOperationalHistory, adapter: OpenAICompatibleEventAdapter, provider_id: str = "openai-compatible") -> None:
+    def __init__(self, *, history: SessionOperationalHistory, adapter: OpenAICompatibleEventAdapter, provider_id: str = "openai-compatible", guidance: AgentGuidance | None = None) -> None:
         self.history = history
         self.adapter = adapter
         self.provider_id = provider_id
+        self.guidance = guidance
         self._cancel_lock = threading.Lock()
         self._cancelled_turns: set[str] = set()
 
@@ -37,7 +39,24 @@ class NonStreamingProviderTurnRuntime:
 
     def run(self, *, turn_id: str, text: str) -> None:
         try:
-            events = self.adapter.complete(messages=({"role": "user", "content": text},), provider_id=self.provider_id)
+            turn = self.history.get_turn(turn_id=turn_id)
+            if turn is None:
+                raise ValueError("turn not found")
+            messages: tuple[dict[str, str], ...]
+            if self.guidance is None:
+                messages = ({"role": "user", "content": text},)
+            else:
+                self.history.append_event(OperationalEvent(
+                    session_id=turn.session_id,
+                    turn_id=turn_id,
+                    event_type="runtime.guidance.loaded",
+                    payload=self.guidance.audit_payload(),
+                ))
+                messages = (
+                    {"role": "system", "content": self.guidance.prompt},
+                    {"role": "user", "content": text},
+                )
+            events = self.adapter.complete(messages=messages, provider_id=self.provider_id)
             if self.was_cancelled(turn_id=turn_id):
                 return
             project_provider_events(history=self.history, turn_id=turn_id, events=events)
@@ -91,6 +110,14 @@ class GovernedCodingTurnRuntime:
                 arguments={"problem": text, "max_results": 10},
             ))
             deterministic = dict(result.response.deterministic_result or {})
+            guidance = deterministic.get("agent_guidance")
+            if isinstance(guidance, dict):
+                self.history.append_event(OperationalEvent(
+                    session_id=turn.session_id,
+                    turn_id=turn_id,
+                    event_type="runtime.guidance.loaded",
+                    payload=dict(guidance),
+                ))
             for receipt in deterministic.get("governed_tool_receipts", []):
                 if isinstance(receipt, dict):
                     self.history.append_event(OperationalEvent(

@@ -376,6 +376,8 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .persistent_turn_control import PersistentTurnControl
     from .provider_turn_runtime import BackgroundProviderTurnRuntime, GovernedCodingTurnRuntime, NonStreamingProviderTurnRuntime
     from .reasoning_config import load_provider_config
+    from .runtime.agent_guidance import build_agent_guidance
+    from .runtime.mode_controller import ModeRequest, resolve_mode
     from .textual_tui import run_textual_tui
 
     if args.session_id is None:
@@ -402,7 +404,23 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
             provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=GovernedCodingTurnRuntime(history=history, gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)))
         else:
             from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
-            provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=NonStreamingProviderTurnRuntime(history=history, adapter=OpenAICompatibleEventAdapter(config=config), provider_id=state.provider_id))
+            mode_decision = resolve_mode(ModeRequest(
+                intent={"audit": "inspect_workspace", "investigation": "investigate_issue"}.get(state.mode, "inspect_workspace"),
+                permission=state.permission,
+                workspace_root=str(state.canonical_workspace_root),
+                runtime_policy=state.runtime_policy,
+            ))
+            guidance = build_agent_guidance(
+                mode_decision=mode_decision,
+                workspace_root=state.canonical_workspace_root,
+                tools=(),
+            )
+            provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=NonStreamingProviderTurnRuntime(
+                history=history,
+                adapter=OpenAICompatibleEventAdapter(config=config),
+                provider_id=state.provider_id,
+                guidance=guidance,
+            ))
     run_textual_tui(
         history=history,
         session_id=state.session_id,

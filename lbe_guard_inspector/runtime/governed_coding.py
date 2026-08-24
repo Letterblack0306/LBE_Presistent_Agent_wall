@@ -21,6 +21,7 @@ from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
 from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
 from .mode_controller import ModeRequest, resolve_mode
+from .agent_guidance import AgentGuidance, build_agent_guidance
 from .tool_orchestration import (
     GovernedToolOrchestrator,
     ToolAccessClass,
@@ -249,6 +250,11 @@ class GovernedProviderReasoningController:
             build_workspace_create_candidate_text_handler(),
         )
         self._registry = registry
+        self._guidance: AgentGuidance = build_agent_guidance(
+            mode_decision=decision,
+            workspace_root=runtime.workspace_root,
+            tools=registry.specs(),
+        )
         self._orchestrator = _ReceiptTrackingOrchestrator(registry=registry)
         self._adapter = OpenAICompatibleEventAdapter(config=provider_config)
 
@@ -261,11 +267,7 @@ class GovernedProviderReasoningController:
         messages: list[dict[str, object]] = [
             {
                 "role": "system",
-                "content": (
-                    "Operate only through the exposed LBE governed tools. "
-                    "Do not claim LBE completion truth. For a requested new text "
-                    "artifact, use workspace.create_candidate_text; it is create-only."
-                ),
+                "content": self._guidance.prompt,
             },
             {"role": "user", "content": request.problem.strip()},
         ]
@@ -336,6 +338,7 @@ class GovernedProviderReasoningController:
             "provider_model": self._provider_config.model.strip(),
             "governed_tool_receipts": receipt_payload,
             "provider_output": provider_output,
+            "agent_guidance": self._guidance.audit_payload(),
             "lbe_completion_truth": False,
         }
 
