@@ -35,7 +35,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECK
 
 ```text
 INTENT_ID: LBE-INTENT-MANDATORY-GOVERNED-MUTATION-DISPATCH-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Make LBE governed dispatch mandatory for the existing agent coding mutation path, covering bounded workspace text mutation, registered process execution, and main-only Git mutation while keeping arbitrary native mutation tools unavailable.
 WHY: The LBE product requires providers to reason and request capabilities while LBE alone owns authorization, execution, receipts, and evidence. Direct filesystem, shell, or Git mutation exposure would bypass the product wall.
 AFFECTED_STRUCTURE: lbe_guard_inspector/, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
@@ -50,6 +50,26 @@ MACHINE_SLICE: MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH
 SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md
+```
+
+## INTENT LBE-INTENT-GOVERNED-EXTERNAL-CAPABILITY-REGISTRATION-001
+
+```text
+INTENT_ID: LBE-INTENT-GOVERNED-EXTERNAL-CAPABILITY-REGISTRATION-001
+STATUS: ACTIVE
+REQUEST: Add one LBE-owned registration contract for MCP, plugin, subagent, network, and hosted-service capabilities so integrations can be exposed to providers only through existing ToolRegistry/R6C/R6E dispatch.
+WHY: Current source has no runtime MCP/plugin/subagent owner and no generic agent-facing network/hosted-service owner. External integrations must become registered governed capabilities rather than direct provider tools or parallel executors.
+AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
+EXISTING_OWNER: ToolRegistry; GovernedToolOrchestrator; R6C authorization resolver; ToolRequest/ToolReceipt; GovernedProviderReasoningController; provider continuation; canonical session/workspace/completion owners. Existing provider HTTP and local callback transports remain transport-specific and are not promoted into generic external authority.
+DESIRED_RESULT: Preconfigured external adapters are classified by kind, registered as ToolSpec/ToolHandler pairs, projected to the provider only through LBE-generated tool definitions, authorized before execution, and returned as correlated ToolReceipt evidence. Agent-controlled endpoint/executable/shell transport selection is rejected.
+NON_GOALS: No generic arbitrary HTTP client, no raw endpoint tool, no shell transport, no second executor, no second authorization/receipt/session/completion owner, no direct MCP/plugin/subagent authority, no publication, no TUI redesign.
+REUSE_DECISION: REUSE ToolRegistry, ToolSpec, ToolExecutionContext, R6C, R6E, provider tool projection and receipt continuation. ADD only the missing external capability registration metadata/validation layer and optional controller injection seam.
+AUTHORITY_IMPACT: No new execution authority; this constrains future external integrations to the existing LBE execution wall.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: five external kinds classified, pre-registration required, raw transport arguments denied, network metadata enforced, provider-only LBE projection, authorization-before-adapter execution, correlated receipts, unregistered fail-closed, no duplicate authority owner
+MACHINE_SLICE: GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION
+SUPERSEDES: none
+RESULT: IN_PROGRESS
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001
