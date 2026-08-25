@@ -136,7 +136,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_C
 
 ```text
 INTENT_ID: LBE-INTENT-RECOVERY-COMPLETION-PROMOTION-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Complete the normal governed coding lifecycle by composing existing R5 bounded recovery, trusted completion-evidence producers, R6F deterministic completion, and validated memory promotion so provider completion remains provisional until LBE proof is ready.
 WHY: The normal coding gateway already establishes an immutable completion contract and produces trusted source_change/focused_test/git_status evidence, but it stops before calling the existing completion gate. Recovery and completion are proven separately; the product still needs one owner-composed lifecycle that automatically finalizes deterministic proof and promotes only validated completion truth.
 AFFECTED_STRUCTURE: lbe_guard_inspector/agent_integration.py, lbe_guard_inspector/runtime/completion_runtime.py, lbe_guard_inspector/runtime/completion_evidence_producers.py, lbe_guard_inspector/session_memory_runtime.py, lbe_guard_inspector/memory/, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
@@ -151,6 +151,26 @@ MACHINE_SLICE: RECOVERY_COMPLETION_PROMOTION_INTEGRATION
 SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md
+```
+
+## INTENT LBE-INTENT-INSTALLED-PACKAGE-END-TO-END-ACCEPTANCE-001
+
+```text
+INTENT_ID: LBE-INTENT-INSTALLED-PACKAGE-END-TO-END-ACCEPTANCE-001
+STATUS: ACTIVE
+REQUEST: Prove the complete LBE runtime from an isolated installed distribution, not from repository-source imports, exercising the normal product entry, persisted session/provider path, governed capability dispatch, evidence, recovery, and deterministic completion.
+WHY: All complete-runtime source slices are proven; the remaining product requirement is proof that the packaged and installed artifact composes those owners correctly as the product.
+AFFECTED_STRUCTURE: lbe_guard_inspector/,tests/,scripts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXISTING_OWNER: product_entry and CLI entry point; SessionMemoryRuntimeBridge/WorkspaceMemoryStore; provider registry/config/health; GovernedAgentGateway; R6C authorization; R6E GovernedToolOrchestrator/ToolRegistry/ToolReceipt; CompletionEvidenceProducers; CodingCompletionRuntime; R5 recovery; MemoryPromoter; Textual LBE interface.
+DESIRED_RESULT: A freshly built isolated installed LBE distribution can create/restore a session, use an explicitly configured provider, execute governed capabilities only through LBE, produce correlated evidence and receipts, deterministically validate completion, and survive runtime reconstruction without importing canonical runtime code from the source tree.
+NON_GOALS: No TUI redesign, no session-lifecycle-unification patch, no Cline integration, no lbe-tui activation, no lbe-core mutation, no release/tag/publication, no version change unless an already-proven packaging defect blocks the installed proof.
+REUSE_DECISION: ACCEPTANCE ONLY. Reuse all existing LBE runtime, provider, session, authorization, dispatch, receipt, evidence, recovery, completion, promotion, and Textual owners; add no authority.
+AUTHORITY_IMPACT: NONE. Acceptance only; no new runtime/provider/session/execution/completion authority.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,scripts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: isolated build and wheel hash, installed entrypoint/import isolation, persisted session create/restore, provider/model identity, installed registry fail-closed behavior, governed capability receipt/evidence, deterministic completion and verified promotion, recovery reconstruction, installed interface smoke, focused installed tests, full regression.
+MACHINE_SLICE: INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
+SUPERSEDES: none
+RESULT: IN_PROGRESS
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001

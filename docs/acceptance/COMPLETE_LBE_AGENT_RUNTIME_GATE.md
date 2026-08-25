@@ -6,8 +6,8 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: RECOVERY_COMPLETION_PROMOTION_INTEGRATION
-slice_result: PASS
+slice: INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
+slice_result: OPEN / IMPLEMENTED_VALIDATION_PENDING
 status: OPEN
 implementation_allowed: true
 architecture_changes_allowed: true (explicit user authorization)
@@ -136,6 +136,16 @@ New code may compose these owners but may not create another evaluator or promot
 - focused recovery/completion/gateway regression passes;
 - full suite passes;
 - `git diff --check` and protected reference preservation pass.
+
+## Active slice — INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
+
+The remaining complete-runtime requirement is installed-artifact proof. Build
+and install the canonical package into an isolated acceptance environment and
+prove entrypoint/import isolation, session/provider persistence, installed
+capability projection, governed execution receipts/evidence, deterministic
+completion and verified promotion, recovery reconstruction, and installed
+Textual projection. This slice adds no runtime authority and does not activate
+the preserved lifecycle patch or the untracked `lbe-tui/` reference.
 
 ## Current remaining product sequence
 

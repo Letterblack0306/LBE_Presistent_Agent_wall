@@ -42,8 +42,8 @@ Publication/version progression remains paused while complete-runtime product wo
 ```text
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 active_phase        = COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-active_slice        = RECOVERY_COMPLETION_PROMOTION_INTEGRATION
-active_slice_result = PASS
+active_slice        = INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
+active_slice_result = OPEN / IMPLEMENTED_VALIDATION_PENDING
 top_level_status    = OPEN
 next_phase_locked   = true
 publication         = PAUSED
@@ -51,11 +51,11 @@ publication         = PAUSED
 
 ## Latest completed checkpoint
 
-`LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES = PASS`
+`RECOVERY_COMPLETION_PROMOTION_INTEGRATION = PASS`
 
 Validated implementation HEAD:
 
-`6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f`
+`cc3a72885721d7f07b560f67590f4bdb86d0a03f`
 
 Checkpoint:
 
@@ -72,7 +72,22 @@ HEAD = 6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f
 local exception = ?? lbe-tui/ (reference-only, untouched)
 ```
 
-## Active product work — recovery, deterministic completion and proof promotion
+## Active product work — installed-package end-to-end acceptance
+
+The recovery/completion/proof-promotion slice is canonically PASS. The active
+slice now validates a freshly built isolated installed distribution rather
+than repository-source imports.
+
+Required proof includes installed entrypoint and import isolation, persisted
+session/provider restoration, installed capability projection and fail-closed
+behavior, governed execution receipts/evidence, deterministic completion and
+verified promotion, recovery reconstruction, installed Textual smoke, and
+focused/full regression.
+
+The preserved session/provider lifecycle patch remains outside this intent and
+must not be reapplied during installed acceptance.
+
+## Completed product work — recovery, deterministic completion and proof promotion
 
 The normal coding gateway previously established an immutable LBE completion contract and produced trusted `source_change`, `focused_test`, and `git_status` evidence, but stopped before invoking the already-existing deterministic completion gate. Provider `COMPLETED` therefore remained `RUNNING / AWAITING_VALIDATION` until a separate manual validation command.
 
