@@ -57,7 +57,8 @@
     "WORKSPACE_HYGIENE_GOVERNED_DELETION": "PASS",
     "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH": "PASS",
     "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION": "PASS",
-    "FIRST_RUN_LIVE_SESSION_ENTRY": "PASS"
+    "FIRST_RUN_LIVE_SESSION_ENTRY": "PASS",
+    "INSTALLED_CAPABILITY_REGISTRY_DISCOVERY": "PASS"
   },
   "release_package_readiness": {
     "status": "PASS",
@@ -161,11 +162,13 @@
     "completion_checkpoint": "docs/acceptance/FIRST_RUN_LIVE_SESSION_ENTRY_CHECKPOINT.md"
   },
   "installed_capability_registry_discovery": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
     "scope": ["installed_integration_inventory", "mcp_plugin_subagent_network_hosted_configuration", "configuration_provenance", "availability_projection", "safe_external_registration_materialization", "credential_non_persistence", "cli_terminal_projection"],
     "required_evidence": ["persisted_installed_registry_schema", "five_kind_configuration_classification", "invalid_and_duplicate_configuration_denied", "plaintext_credentials_not_persisted", "unavailable_integrations_projected_without_execution", "configured_entries_materialize_to_external_registration", "provider_transport_arguments_hidden", "r6c_r6e_execution_path_reused", "focused_registry_tests", "full_regression"],
-    "publish_allowed": false
+    "validation": {"implementation_commit": "151136089b63fd9470d3a581a6ad6419cf567595", "looptool_command_hash": "F76DA642DAA71A9CCE6385710D4122AD30699A9B7B4B711578B2461B21D62E90", "focused_tests": "71 passed", "full_tests": "760 passed", "head_alignment": "PASS", "protected_reference": "lbe-tui/ remained untracked and untouched"},
+    "publish_allowed": false,
+    "completion_checkpoint": "docs/acceptance/INSTALLED_CAPABILITY_REGISTRY_DISCOVERY_CHECKPOINT.md"
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",
