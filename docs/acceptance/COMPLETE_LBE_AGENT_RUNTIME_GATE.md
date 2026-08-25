@@ -6,7 +6,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
 status: OPEN
 implementation_allowed: true (active complete-runtime slice only)
 architecture_changes_allowed: true (explicit user authorization)
@@ -51,22 +51,69 @@ and a persisted user-state non-leakage assertion. The user-state record holds
 only provider metadata and a credential ID. The explicit `lbe provider migrate`
 path never discovers legacy files and never emits a source path or secret.
 
-Current active slice: `DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE`.
+### DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE — PASS
 
-### DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE — IN PROGRESS
+Canonical implementation is commit
+`0098e9c86614643e8364dd941e4f23e0295994d7` (`runtime: bridge doctrine
+context into provider turns`). Clean-projection acceptance on 2026-08-25 used
+an exact `git archive` of that commit with archive SHA-256
+`98C125984A2DEBD4B28C6752756EF8435CD99681F02CB7B4A8A6EAB139722A8C`.
+Focused doctrine/provider/runtime tests passed `11 passed`; the canonical
+CLI/TUI/provider regression set passed `41 passed`; canonical `diff-tree
+--check` passed. LoopTool command hash:
+`4F96CC80BA93C2D68F53D2375E3501FDAB5334A60D15E88A79F312F68C776766`.
+See `docs/acceptance/DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE_CHECKPOINT.md`.
 
-Source and focused runtime proof now cover both provider paths. The governed
-coding controller already injects `ENGINEERING`; the non-streaming Audit and
-Investigation TUI path now resolves the persisted mode and injects bounded
-`AUDIT` or `INVESTIGATION` guidance. Only safe doctrine/provenance metadata is
-persisted in runtime events; project instructions remain provider-only.
+The complete runtime gate remains OPEN: installed runtime/TUI acceptance, live
+governed mutation proof, non-bypassability, deterministic completion, and the
+remaining capability/evidence loop are not implied by this slice PASS.
 
-Focused validation: `14 passed` for provider/runtime/guidance tests and
-`34 passed` for CLI/TUI/provider-state tests. A live local
-`qwen/qwen3-coder-30b` comparison used the same workspace and objective under
-Coding and Audit and produced distinct doctrine-aligned responses. The full
-installed TUI acceptance, governed tool-call behavior with live tools, and
-completion of this gate remain pending; no cloud fallback was used.
+Current active slice: `WORKSPACE_HYGIENE_GOVERNED_DELETION`.
+
+### WORKSPACE_HYGIENE_GOVERNED_DELETION — IN PROGRESS
+
+Explicit user authorization permits a bounded workspace-hygiene capability
+inside this complete-runtime gate. This slice must reuse the existing workspace
+identity, R6C/R6E authorization, `GovernedToolOrchestrator`, `ToolReceipt`,
+evidence, persistence, and completion owners rather than introduce a parallel
+filesystem authority or unrestricted shell deletion path.
+
+Required behavior:
+
+```text
+canonical workspace identity
+  -> inventory / reachability classification
+  -> deletion proposal
+  -> workspace containment + protected-path validation
+  -> existing LBE permission decision
+  -> approved workspace-scoped deletion adapter
+  -> receipt/evidence
+  -> post-action validation
+```
+
+Required safety/acceptance proof:
+
+- a disposable test path inside the active canonical workspace can be deleted;
+- an outside-workspace path is denied;
+- protected/current-authority material is denied;
+- traversal, symlink, alternate-path, and equivalent escape attempts fail
+  closed;
+- authorization occurs before adapter execution;
+- the direct adapter is not exposed as a bypass to the reasoning provider;
+- success and failure both produce correlated receipt/evidence truth;
+- cleanup does not absorb or destroy unresolved user-owned work.
+
+Workspace hygiene classifications include at least `CANONICAL_LIVE`,
+`ACTIVE_WORK`, `REQUIRED_RUNTIME`, `REQUIRED_BUILD`,
+`GENERATED_REGENERABLE`, `CACHE`, `TEMPORARY`, `OS_METADATA`, `HISTORICAL`,
+`REFERENCE_ONLY`, `SUPERSEDED`, `DUPLICATE`, `DEAD_CODE`,
+`ABANDONED_AGENT_WORK`, `UNKNOWN`, and `PROTECTED_USER_WORK`.
+
+`UNKNOWN` is not authority and must be investigated rather than silently
+promoted into provider context. Proven disposable/cache/generated material may
+be permanently removed without archive/quarantine copies once bounded deletion
+authority is proven. Protected or genuinely unresolved user work must remain
+preserved.
 
 ## Core baseline and integration finding
 
