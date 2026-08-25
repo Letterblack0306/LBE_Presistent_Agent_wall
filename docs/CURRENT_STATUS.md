@@ -31,6 +31,7 @@ PUBLICATION_PRECHECK               = PASS
 DOCTRINE_TO_PROVIDER_CONTEXT       = PASS
 WORKSPACE_HYGIENE                  = PASS
 MANDATORY_GOVERNED_MUTATION        = PASS
+GOVERNED_EXTERNAL_CAPABILITY_REG   = PASS
 ```
 
 ## Current machine state
@@ -38,79 +39,114 @@ MANDATORY_GOVERNED_MUTATION        = PASS
 ```text
 active_plan        = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 active_phase       = COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-active_slice       = MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH
-active_slice_result= PASS
+active_slice       = FIRST_RUN_LIVE_SESSION_ENTRY
+active_slice_result= OPEN / IMPLEMENTED_VALIDATION_PENDING
 top_level_status   = OPEN
 next_phase_locked  = true
-next_product_slice = NOT YET ACTIVATED
 publication        = PAUSED
 ```
 
-The selected intent remains machine-active while this PASS slice is registered so the fail-closed implementation checker continues to have a valid active intent/slice binding. `RESULT: PASS` and the acceptance checkpoint are the completion truth for the slice. A successor intent/slice must be atomically bound before unrelated product mutation resumes.
+## Latest completed checkpoint
 
-## Latest product checkpoint
+`GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION = PASS`
 
-Canonical implementation commit:
+Canonical implementation HEAD:
 
-`47885891848ec9a535a4e09694d3129b320da91a`
+`02c761ab5ee969edd1c24fed65a6a2d343d20927`
 
 Checkpoint:
 
-`docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md`
+`docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION_CHECKPOINT.md`
 
-Local LoopTool proof:
+LoopTool proof:
 
 ```text
-COMMAND HASH = D0DA7CA90B549E0C51FC2E65C7B68A30ECF7542710CE9CC1AF006D91FCA7F725
+COMMAND HASH = E474AAD3D03DEC376BF69944FFA3F56251052D534D46369B27547A7E9F563859
 MACHINE_BINDING = PASS
-focused regression = 80 passed
-full regression = 713 passed
-HEAD = 47885891848ec9a535a4e09694d3129b320da91a
+focused regression = 58 passed
+full regression = 732 passed
+HEAD = 02c761ab5ee969edd1c24fed65a6a2d343d20927
 branch = main...origin/main
 local exception = ?? lbe-tui/
 ```
 
 `lbe-tui/` remained untracked/reference-only and untouched.
 
-## Proven governed mutation boundary
+## Active product work — first-run/live-session entry
 
-The current provider-facing coding path now proves:
+The runtime now has a product-level `lbe start` entry implementation pending local acceptance.
+
+The implementation composes existing owners rather than adding another runtime:
+
+```text
+lbe start
+ -> existing or new persisted SessionMemoryRuntimeBridge / WorkspaceMemoryStore identity
+ -> existing provider/model validation and provider config contract
+ -> existing _tui composition
+ -> existing SessionOperationalHistory / PersistentTurnControl
+ -> existing governed or read-only provider turn runtime
+ -> existing Textual LBE interface
+```
+
+New package entry wrapper:
+
+`lbe_guard_inspector/product_entry.py`
+
+Package script now resolves:
+
+```text
+lbe = lbe_guard_inspector.product_entry:main
+```
+
+All non-`start` commands delegate to the previous `lbe_guard_inspector.cli:main` path.
+
+Required local proof remains:
+
+- new `lbe start` creates one persisted session;
+- existing `lbe start --session-id ...` restores the same identity;
+- persisted identity cannot be silently overwritten during restore;
+- provider/model pair and provider-config model mismatches fail closed;
+- no provider fallback;
+- existing TUI/runtime owner reuse;
+- focused product-entry/CLI tests pass;
+- full regression passes;
+- package entry point and diff checks pass;
+- protected local references remain untouched.
+
+## Proven governed capability wall
+
+Provider-facing mutation and external integration surfaces now follow:
 
 ```text
 agent/provider proposes capability
- -> LBE-generated registered tool only
+ -> LBE-generated pre-registered tool only
  -> R6C authorization before execution
- -> R6E approved handler
+ -> R6E approved handler/adapter
  -> ToolReceipt/evidence
  -> provider continuation
 ```
 
-Bounded production capabilities proven in this slice:
-
-- workspace text creation/write with containment and stale-write checks;
-- explicit registered process execution without arbitrary shell exposure;
-- Git mutation restricted to the primary `main` workspace;
-- Git staging/commit restricted to paths mutated through governed LBE tools during the current reasoning turn;
-- correlated success/failure receipts;
-- audit/investigation read-only preservation.
-
-## Remaining complete-runtime work
-
-The complete-runtime gate is still OPEN. The current PASS does not prove the remaining integrated mutation classes or final product acceptance.
-
-Canonical remaining sequence:
+External capability kinds registered by contract:
 
 ```text
-remaining governed integration dispatch
-  (MCP/plugin, subagent, network, hosted-service)
- -> first-run/live persisted session flow
- -> capability registry expansion
- -> remaining LBE interface/control/evidence surfaces
+MCP
+plugin
+subagent
+network
+hosted service
+```
+
+The provider cannot select raw endpoints, URLs, transports, executables, argv, commands, or shells through that contract.
+
+## Remaining complete-runtime sequence after current slice
+
+```text
+first-run/live persisted session entry
+ -> capability registry expansion with concrete installed integration discovery/configuration
+ -> remaining LBE interface controls/evidence/diff/settings/session surfaces
  -> recovery + deterministic completion + TEMP/promotion integration
  -> installed-package acceptance
 ```
-
-The next product slice must first identify and reuse the existing owner for the selected capability class, then bind one exact intent/slice in the machine gate. Do not infer the next active task from historical/reference documents.
 
 ## Product identity
 
