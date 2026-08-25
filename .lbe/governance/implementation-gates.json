@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
   "active_phase": "COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION",
-  "active_slice": "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH",
+  "active_slice": "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -43,8 +43,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-MANDATORY-GOVERNED-MUTATION-DISPATCH-001",
-    "owner": "LBE runtime orchestration, authorization, provider continuation, Git/workspace capability, and validation owners",
+    "intent_id": "LBE-INTENT-GOVERNED-EXTERNAL-CAPABILITY-REGISTRATION-001",
+    "owner": "LBE ToolRegistry, R6C authorization, R6E orchestration/receipts, provider continuation, and integration adapter owners",
     "index_revision": "F559045AF6DF6BE6DC3DACFE022357549668079A0A072FC61340630F67EA16D3"
   },
   "accepted_baseline": {
@@ -98,30 +98,13 @@
     "from_version": "0.2.0",
     "target_version": "2.0.3",
     "authorization": "EXPLICIT_USER_AUTHORIZATION",
-    "allowed_paths": [
-      "pyproject.toml",
-      ".lbe/governance/implementation-gates.json",
-      "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md",
-      "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md"
-    ],
+    "allowed_paths": ["pyproject.toml", ".lbe/governance/implementation-gates.json", "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md", "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md"],
     "publish_allowed": false
   },
   "terminal_workspace_foundation": {
     "status": "SUPERSEDED_BY_COMPLETE_RUNTIME_GATE",
     "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-22",
-    "allowed_paths": [
-      "lbe_guard_inspector/textual_tui.py",
-      "lbe_guard_inspector/terminal_projection.py",
-      "lbe_guard_inspector/cli.py",
-      "tests/test_textual_tui.py",
-      "tests/test_terminal_projection.py",
-      "tests/test_cli.py",
-      "docs/acceptance/TERMINAL_WORKSPACE_FOUNDATION_GATE.md",
-      "docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md",
-      "docs/CURRENT_STATUS.md",
-      "docs/IMPLEMENTATION_PLAN.md",
-      ".lbe/governance/implementation-gates.json"
-    ],
+    "allowed_paths": ["lbe_guard_inspector/textual_tui.py", "lbe_guard_inspector/terminal_projection.py", "lbe_guard_inspector/cli.py", "tests/test_textual_tui.py", "tests/test_terminal_projection.py", "tests/test_cli.py", "docs/acceptance/TERMINAL_WORKSPACE_FOUNDATION_GATE.md", "docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md", "docs/CURRENT_STATUS.md", "docs/IMPLEMENTATION_PLAN.md", ".lbe/governance/implementation-gates.json"],
     "required_evidence": ["focused_ui_handler_tests", "real_local_tui_launch", "persisted_event_projection"],
     "publish_allowed": false
   },
@@ -139,18 +122,12 @@
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
-    "remaining_prerequisites": [
-      "set canonical pyproject.toml version to 2.0.3",
-      "validate exact 2.0.3 wheel and installed runtime",
-      "prove PyPI 2.0.3 is absent immediately before dispatch",
-      "successful live trusted-publishing workflow execution",
-      "post-publish PyPI verification"
-    ]
+    "remaining_prerequisites": ["set canonical pyproject.toml version to 2.0.3", "validate exact 2.0.3 wheel and installed runtime", "prove PyPI 2.0.3 is absent immediately before dispatch", "successful live trusted-publishing workflow execution", "post-publish PyPI verification"]
   },
   "complete_lbe_agent_runtime": {
     "status": "OPEN",
     "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
-    "active_slice": "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH",
+    "active_slice": "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION",
     "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
     "required_evidence": ["focused_configuration_tests", "credential_non_leakage_scan", "provider_profile_lifecycle", "persisted_owner_reuse"],
     "publish_allowed": false
@@ -158,53 +135,16 @@
   "workspace_hygiene_governed_deletion": {
     "status": "PASS",
     "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
-    "scope": [
-      "workspace_identity",
-      "path_containment",
-      "disposable_classification_enforcement",
-      "protected_path_denial",
-      "governed_deletion_adapter",
-      "receipt_evidence_emission",
-      "post_cleanup_validation"
-    ],
-    "required_evidence": [
-      "inside_workspace_disposable_delete_pass",
-      "outside_workspace_delete_denied",
-      "protected_path_delete_denied",
-      "path_escape_denied",
-      "authorization_before_execution",
-      "direct_adapter_bypass_unavailable",
-      "success_and_failure_receipts",
-      "protected_user_work_preserved"
-    ],
+    "scope": ["workspace_identity", "path_containment", "disposable_classification_enforcement", "protected_path_denial", "governed_deletion_adapter", "receipt_evidence_emission", "post_cleanup_validation"],
+    "required_evidence": ["inside_workspace_disposable_delete_pass", "outside_workspace_delete_denied", "protected_path_delete_denied", "path_escape_denied", "authorization_before_execution", "direct_adapter_bypass_unavailable", "success_and_failure_receipts", "protected_user_work_preserved"],
     "publish_allowed": false,
     "completion_checkpoint": "docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md"
   },
   "mandatory_governed_agent_mutation_dispatch": {
     "status": "PASS",
     "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
-    "scope": [
-      "provider_tool_exposure",
-      "workspace_text_mutation",
-      "registered_process_execution",
-      "git_main_only_mutation",
-      "direct_mutation_bypass_denial",
-      "authorization_before_execution",
-      "receipt_evidence_emission"
-    ],
-    "required_evidence": [
-      "provider_receives_only_lbe_generated_tool_definitions",
-      "workspace_write_is_contained_and_governed",
-      "stale_overwrite_is_denied",
-      "arbitrary_shell_tool_is_unavailable",
-      "registered_process_command_is_bounded",
-      "git_mutation_requires_primary_main_workspace",
-      "git_staging_is_limited_to_current_governed_mutation_paths",
-      "authorization_occurs_before_execution",
-      "success_and_failure_emit_correlated_tool_receipts",
-      "audit_and_investigation_paths_remain_read_only",
-      "no_parallel_executor_authorization_receipt_or_session_owner"
-    ],
+    "scope": ["provider_tool_exposure", "workspace_text_mutation", "registered_process_execution", "git_main_only_mutation", "direct_mutation_bypass_denial", "authorization_before_execution", "receipt_evidence_emission"],
+    "required_evidence": ["provider_receives_only_lbe_generated_tool_definitions", "workspace_write_is_contained_and_governed", "stale_overwrite_is_denied", "arbitrary_shell_tool_is_unavailable", "registered_process_command_is_bounded", "git_mutation_requires_primary_main_workspace", "git_staging_is_limited_to_current_governed_mutation_paths", "authorization_occurs_before_execution", "success_and_failure_emit_correlated_tool_receipts", "audit_and_investigation_paths_remain_read_only", "no_parallel_executor_authorization_receipt_or_session_owner"],
     "validation": {
       "implementation_commit": "47885891848ec9a535a4e09694d3129b320da91a",
       "looptool_command_hash": "D0DA7CA90B549E0C51FC2E65C7B68A30ECF7542710CE9CC1AF006D91FCA7F725",
@@ -216,6 +156,13 @@
     "publish_allowed": false,
     "completion_checkpoint": "docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md"
   },
+  "governed_external_capability_registration": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+    "scope": ["external_capability_registration", "mcp_plugin_registration", "subagent_registration_contract", "network_service_registration_contract", "hosted_service_registration_contract", "provider_tool_projection", "r6c_r6e_dispatch_reuse", "direct_transport_bypass_denial"],
+    "required_evidence": ["all_external_tools_are_pre_registered", "provider_receives_only_lbe_generated_external_tool_definitions", "raw_endpoint_and_shell_transport_arguments_denied", "network_and_hosted_service_registration_requires_network_metadata", "mcp_plugin_subagent_network_hosted_kinds_are_classified", "authorization_precedes_adapter_execution", "external_execution_returns_correlated_tool_receipt", "unregistered_external_tool_fails_closed", "no_second_executor_authorization_session_or_completion_owner"],
+    "publish_allowed": false
+  },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",
     "publishing any version other than 2.0.3",
@@ -223,6 +170,7 @@
     "adding an npm publication path",
     "API-token fallback without a separate authorized security decision",
     "blind retry after publication failure",
-    "runtime or architecture changes outside the complete LBE agent runtime gate"
+    "runtime or architecture changes outside the complete LBE agent runtime gate",
+    "direct agent exposure of arbitrary external endpoints, shell commands, executables, or service transports"
   ]
 }
