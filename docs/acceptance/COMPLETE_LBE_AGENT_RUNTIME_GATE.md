@@ -6,17 +6,16 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH
-slice_result: PASS
+slice: FIRST_RUN_LIVE_SESSION_ENTRY
+slice_result: OPEN / IMPLEMENTED_VALIDATION_PENDING
 status: OPEN
 implementation_allowed: true
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publication_controls: false (nested publication governance records)
-next_product_slice: NOT YET ACTIVATED
 ```
 
-The machine gate at `.lbe/governance/implementation-gates.json` is the execution authority. This document is the human-readable gate projection and must not independently select a new slice.
+The machine gate at `.lbe/governance/implementation-gates.json` is the execution authority. This document is the human-readable gate projection.
 
 ## Scope
 
@@ -37,12 +36,12 @@ open LBE
 
 ## Existing owners to reuse
 
-- `SessionMemoryRuntimeBridge`, `SessionOperationalHistory`, and recovery owners for session/task/checkpoint persistence;
+- `SessionMemoryRuntimeBridge`, `WorkspaceMemoryStore`, `SessionOperationalHistory`, and recovery owners for session/task/checkpoint persistence;
 - R6C authorization and R6E `GovernedToolOrchestrator` / `ToolRegistry` / `ToolReceipt` for governed capability dispatch;
-- provider registry and provider turn runtime for reasoning continuation;
-- terminal projection and Textual client for terminal rendering and controls.
+- provider registry/configuration/health and provider turn runtime for reasoning continuation;
+- CLI thin control plane plus terminal projection/Textual client for entry and presentation.
 
-No parallel session, authorization, executor, receipt, evidence, or completion owner may be introduced.
+No parallel session, provider, authorization, executor, receipt, evidence, or completion owner may be introduced.
 
 ## Completed slice checkpoints
 
@@ -66,50 +65,82 @@ Checkpoint: `docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md`.
 
 ### MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH — PASS
 
-Canonical implementation commit:
+Canonical implementation commit: `47885891848ec9a535a4e09694d3129b320da91a`.
 
-`47885891848ec9a535a4e09694d3129b320da91a`
-
-This bounded slice proves the provider-facing coding path for filesystem/text mutation, registered process execution, and Git mutation is governed through existing LBE owners:
-
-- provider receives only LBE-generated registered tool definitions;
-- bounded workspace write uses workspace containment and stale-write identity;
-- arbitrary native shell exposure is unavailable;
-- process execution is restricted to an LBE-owned registered command catalog;
-- Git mutation is restricted to the primary `main` workspace;
-- Git staging/commit is limited to paths mutated through governed LBE tools in the current reasoning turn;
-- authorization occurs before handler execution;
-- success and failure produce correlated receipts/evidence;
-- audit/investigation read-only behavior is preserved;
-- no second authority owner is introduced.
-
-LoopTool validation:
+LoopTool acceptance:
 
 ```text
 COMMAND HASH = D0DA7CA90B549E0C51FC2E65C7B68A30ECF7542710CE9CC1AF006D91FCA7F725
-MACHINE_BINDING = PASS
 focused regression = 80 passed
 full regression = 713 passed
-HEAD = 47885891848ec9a535a4e09694d3129b320da91a
-local exception = ?? lbe-tui/ (reference-only, untouched)
 ```
 
 Checkpoint: `docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md`.
 
-This PASS does **not** imply completion of the remaining integrated capability classes such as MCP/plugin, subagent, network, or hosted-service operations.
+### GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION — PASS
+
+Canonical implementation HEAD: `02c761ab5ee969edd1c24fed65a6a2d343d20927`.
+
+This slice adds one registration contract for MCP, plugin, subagent, network, and hosted-service capabilities behind the existing LBE execution wall. Raw provider-controlled endpoint, URL, executable, argv, command, shell, and transport selection is rejected. Network/hosted registrations require explicit network metadata. Authorization remains R6C-before-R6E-adapter execution and receipts remain canonical.
+
+LoopTool acceptance:
+
+```text
+COMMAND HASH = E474AAD3D03DEC376BF69944FFA3F56251052D534D46369B27547A7E9F563859
+MACHINE_BINDING = PASS
+focused regression = 58 passed
+full regression = 732 passed
+HEAD = 02c761ab5ee969edd1c24fed65a6a2d343d20927
+local exception = ?? lbe-tui/ (reference-only, untouched)
+```
+
+Checkpoint: `docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION_CHECKPOINT.md`.
+
+## Active slice — FIRST_RUN_LIVE_SESSION_ENTRY
+
+The product now needs one normal entry path over already-proven owners instead of forcing users to manually compose session creation/restoration and terminal entry.
+
+Required behavior:
+
+```text
+lbe start
+  -> if --session-id exists: restore persisted identity unchanged
+  -> otherwise require explicit workspace + project workspace identity + mode
+  -> optionally bind explicit provider/model/profile inputs through existing validation
+  -> use existing session creation/persistence owner
+  -> validate provider config against persisted provider/model when execution is requested
+  -> enter existing Textual/provider-turn runtime
+```
+
+Implementation direction:
+
+- `lbe_guard_inspector.product_entry:main` becomes the package entry wrapper;
+- every non-`start` command delegates to the historical `lbe_guard_inspector.cli:main` unchanged;
+- `lbe start` composes the existing `_tui`, `_session_create`, `WorkspaceMemoryStore`, `SessionMemoryRuntimeBridge`, provider validation/config, provider-turn runtime, and Textual client;
+- restoring an existing session may not silently replace persisted workspace/provider/profile/policy identity;
+- no provider/model fallback is permitted;
+- no second session/provider/TUI/runtime owner is introduced.
+
+Required acceptance evidence:
+
+- new start creates exactly one persisted session;
+- existing start restores the same persisted session identity;
+- provider/model pair validation is fail-closed;
+- provider configuration model mismatch is denied;
+- no silent provider fallback;
+- existing TUI and provider-turn owners are reused;
+- legacy CLI commands still delegate unchanged;
+- focused start/CLI tests and full suite pass;
+- package entry point resolves to the product entry wrapper;
+- `git diff --check` and protected-reference preservation pass.
 
 ## Current remaining product sequence
 
-The complete-runtime gate remains OPEN. The remaining product work must be selected one bounded machine slice at a time from the following canonical sequence:
+After this slice passes, continue one bounded machine slice at a time:
 
-1. trace/reuse existing capability owners rather than create parallel owners;
-2. finish mandatory governed dispatch for the remaining integrated mutation classes: MCP/plugin, subagent, network, and hosted-service operations;
-3. first-run setup and live session entry over persisted owners;
-4. capability registry expansion behind governed dispatch;
-5. terminal controls and detailed evidence/diff/settings/session surfaces where not already proven;
-6. recovery, deterministic completion, TEMP proof/promotion integration, and installed-package acceptance.
-
-The next slice is intentionally not activated by this checkpoint alone. It must be bound in `.lbe/governance/implementation-gates.json` to an active intent after its existing owners and exact mutation scope are identified.
+1. capability registry expansion with concrete installed integration discovery/configuration behind governed dispatch;
+2. remaining LBE interface controls and detailed evidence/diff/settings/session surfaces where not already proven;
+3. recovery, deterministic completion, TEMP proof/promotion integration, and installed-package acceptance.
 
 ## Invariants
 
@@ -122,20 +153,9 @@ The next slice is intentionally not activated by this checkpoint alone. It must 
 - Decision identity, operation identity, receipt, and rollback evidence remain correlated from proposal through completion.
 - Pre-action authorization, execution evidence, and post-action repository promotion remain separate control layers.
 
-## Complete-runtime PASS evidence still required
-
-- focused tests for each remaining capability/integration slice;
-- persisted receipts/events/evidence/recovery proof;
-- installed local runtime acceptance;
-- at least one valid local-provider and one cloud-provider proof where required by the final gate;
-- direct-bypass adversarial proof for integrated capabilities;
-- transaction/rollback and tamper/adversarial evidence appropriate to the selected assurance profile;
-- package-output and state secret scan;
-- `git diff --check`.
-
 ## Exclusions
 
 - publication, tagging, or GitHub release before the publication gate is explicitly reactivated;
 - provider API-token fallback without separate authorization;
-- parallel session, authorization, executor, receipt, or completion systems;
+- parallel session, provider, authorization, executor, receipt, or completion systems;
 - treating `lbe-tui/` or `lbe-core/` reference material as canonical runtime authority.
