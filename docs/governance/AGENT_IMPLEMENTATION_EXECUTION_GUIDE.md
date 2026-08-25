@@ -55,6 +55,28 @@ GitHub API/ref updates used to bypass local hooks
 
 Historical branches/worktrees may be inspected read-only.
 
+## Workspace-hygiene projection exception
+
+The primary worktree remains the only implementation and delivery authority. If
+the primary worktree contains protected dirty user work, workspace-hygiene
+inventory, document classification, documentation-only link repair, and bounded
+hygiene validation may run from a clean isolated projection of fetched
+`origin/main`.
+
+This projection is not a secondary implementation worktree and does not create a
+second runtime authority. It must:
+
+- start from verified `origin/main`;
+- leave the primary worktree and its protected dirty paths untouched;
+- avoid absorbing, staging, or rewriting protected user work;
+- make no runtime or architecture change;
+- label any resulting commit as a hygiene/documentation projection; and
+- verify the pushed `origin/main` commit and remote alignment.
+
+This exception is limited to the workspace-hygiene objective. It does not relax
+the primary-worktree-only rule for implementation, runtime changes, architecture
+changes, or general product delivery.
+
 ---
 
 # 2. Files that declare authority

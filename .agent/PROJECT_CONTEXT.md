@@ -18,6 +18,16 @@ push destination: refs/heads/main
 
 No implementation branch. No implementation worktree. No detached-HEAD implementation. No alternate remote push.
 
+The primary worktree remains the only implementation and delivery authority. When
+that worktree contains protected dirty user work, a clean isolated projection of
+canonical `origin/main` may be used only for workspace-hygiene inventory,
+document classification, documentation-only link repair, and bounded hygiene
+validation. Such a projection is not an implementation worktree: it must not
+absorb protected files, create a competing implementation authority, or change
+runtime/architecture behavior. Any commit or push made from it must be labeled
+as a hygiene/documentation projection and remotely verified. The primary
+worktree identity remains unchanged.
+
 Tracked enforcement:
 
 - `.lbe/governance/workspace-lock.json`
