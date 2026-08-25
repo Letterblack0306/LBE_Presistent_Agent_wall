@@ -9,6 +9,7 @@ second session, provider, credential, tool, or completion authority.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from typing import Sequence
 
@@ -46,6 +47,10 @@ def _build_start_parser() -> argparse.ArgumentParser:
         "--provider-config",
         help="Explicit provider configuration used by the existing live turn runtime",
     )
+    parser.add_argument(
+        "--capability-registry",
+        help="Installed capability registry JSON projected read-only in the live LBE interface",
+    )
     return parser
 
 
@@ -63,6 +68,7 @@ def _build_capabilities_parser() -> argparse.ArgumentParser:
 def _start(argv: Sequence[str]) -> int:
     parser = _build_start_parser()
     args = parser.parse_args(list(argv))
+    previous_registry = os.environ.get("LBE_CAPABILITY_REGISTRY")
     try:
         if args.session_id is None:
             missing = [
@@ -95,13 +101,25 @@ def _start(argv: Sequence[str]) -> int:
                     + ", ".join(supplied)
                 )
 
+        if args.capability_registry is not None:
+            registry_store = InstalledCapabilityRegistryStore(args.capability_registry)
+            registry_store.load()
+            os.environ["LBE_CAPABILITY_REGISTRY"] = str(registry_store.path)
+        else:
+            os.environ.pop("LBE_CAPABILITY_REGISTRY", None)
+
         payload = _cli._tui(args)
-    except (ValueError, TypeError, FileNotFoundError, RuntimeError) as exc:
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
         _cli._emit(
             {"ok": False, "error": type(exc).__name__, "message": str(exc)},
             args.format,
         )
         return 2
+    finally:
+        if previous_registry is None:
+            os.environ.pop("LBE_CAPABILITY_REGISTRY", None)
+        else:
+            os.environ["LBE_CAPABILITY_REGISTRY"] = previous_registry
 
     _cli._emit({"ok": True, **payload, "entry": "start"}, args.format)
     return 0
@@ -111,12 +129,13 @@ def _capabilities(argv: Sequence[str]) -> int:
     parser = _build_capabilities_parser()
     args = parser.parse_args(list(argv))
     try:
-        registry = InstalledCapabilityRegistryStore(args.registry).load()
+        store = InstalledCapabilityRegistryStore(args.registry)
+        registry = store.load()
         statuses = registry.statuses({})
         payload = {
             "action": f"capabilities.{args.action}",
             "schema_version": registry.schema_version,
-            "registry": str(InstalledCapabilityRegistryStore(args.registry).path),
+            "registry": str(store.path),
             "count": len(registry.records),
             "integrations": [status.public_payload() for status in statuses],
             "execution_attempted": False,
