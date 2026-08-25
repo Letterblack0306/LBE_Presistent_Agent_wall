@@ -94,7 +94,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/FIRST_RUN_LIVE_SESSION_ENTRY_CHECKPOINT.m
 
 ```text
 INTENT_ID: LBE-INTENT-INSTALLED-CAPABILITY-REGISTRY-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Add one persisted, LBE-owned installed capability registry that discovers and configures concrete MCP/plugin/service/subagent adapters, then converts only validated configured entries into the already-proven governed external-capability registration contract.
 WHY: The generic external registration contract is proven, but the product still lacks a concrete installed/configured integration inventory. Users need LBE to know which integrations exist and which governed capabilities are actually available without exposing raw transport configuration to the reasoning provider.
 AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/, lbe_guard_inspector/cli.py, lbe_guard_inspector/textual_tui.py, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
@@ -109,6 +109,26 @@ MACHINE_SLICE: INSTALLED_CAPABILITY_REGISTRY_DISCOVERY
 SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/INSTALLED_CAPABILITY_REGISTRY_DISCOVERY_CHECKPOINT.md
+```
+
+## INTENT LBE-INTENT-INTERFACE-CONTROL-EVIDENCE-SURFACES-001
+
+```text
+INTENT_ID: LBE-INTENT-INTERFACE-CONTROL-EVIDENCE-SURFACES-001
+STATUS: ACTIVE
+REQUEST: Complete the remaining LBE-owned terminal projection and control surfaces by connecting installed integration/MCP state to the existing Textual client and proving settings, provider, session, evidence, receipt/diff detail, interrupt, and cancel surfaces remain backed by existing runtime owners.
+WHY: The LBE interface already owns keyboard-first session/provider/evidence/control projection, but `/integrations` and `/mcp` remain hard-coded unavailable placeholders even though the installed capability registry is now proven. Product truth must be projected without creating new execution authority.
+AFFECTED_STRUCTURE: lbe_guard_inspector/textual_tui.py, lbe_guard_inspector/tui_view_models.py, lbe_guard_inspector/terminal_projection.py, lbe_guard_inspector/product_entry.py, lbe_guard_inspector/cli.py, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
+EXISTING_OWNER: Textual LBE client; terminal projection; TUI view models; SessionOperationalHistory; PersistentTurnControl; persisted session/provider/settings owners; installed capability registry and existing ToolRegistry projection seam.
+DESIRED_RESULT: The live LBE interface truthfully shows installed integration/MCP availability from LBE-owned registry data, keeps settings/provider/session/evidence/diff/control projections owner-backed, and never authorizes or executes integrations merely by displaying them.
+NON_GOALS: No UI redesign, no new terminal framework, no new integration executor, no direct TUI filesystem/network/service execution, no second session/provider/authorization/receipt/completion owner, no publication, no lbe-core/lbe-tui mutation.
+REUSE_DECISION: REUSE build_textual_tui/run_textual_tui, ToolRegistry projection seam, installed capability registry metadata, terminal event/detail projections, SessionOperationalHistory, PersistentTurnControl, provider and session owners. ADAPT only bounded projection inputs and truthful rendering/tests.
+AUTHORITY_IMPACT: No authority expansion. The interface remains projection/control only.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: installed registry projects without execution, integrations command truthfully lists installed state, MCP command filters MCP state, settings/provider remain read-only or owner-delegated, session switching/new session reuse persistence owner, receipt/evidence/diff detail identity preserved, interrupt/cancel route through PersistentTurnControl, no duplicate authority owner, focused TUI regression, full regression
+MACHINE_SLICE: LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES
+SUPERSEDES: none
+RESULT: IN_PROGRESS
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001
