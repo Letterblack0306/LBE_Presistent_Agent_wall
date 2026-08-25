@@ -106,6 +106,42 @@ The current verified product gaps and the required follow-on proof sequence are 
 `docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`. Those findings are planning input
 only; they do not activate a gate or authorize an architecture change.
 
+## Accepted product direction: Cline-style interaction behind LBE
+
+The accepted product direction is an LBE interface with a Cline-style interaction model and
+selectively reused Cline AgentRuntime mechanics behind an LBE governance adapter. This direction
+does not make Cline, a client surface, or a reference implementation the product authority.
+
+The ownership boundary is fixed:
+
+```text
+Cline-style interaction model
+        -> selectively adapted AgentRuntime continuation/event mechanics
+        -> LBE governance adapter
+        -> LBE canonical runtime authority
+        -> LBE-owned CLI/TUI/React or hybrid projection
+```
+
+LBE remains the sole owner of workspace identity, authorization, governed execution,
+operation/receipt identity, evidence, persistence, and completion truth. The provider/agent owns
+reasoning and tool selection within the registered LBE capability boundary. Native overlapping
+mutation or execution paths must not become independently executable.
+
+The following are UX/reference inputs only; they are not competing product foundations and do not
+authorize implementation:
+
+| Reference input | Classification | Allowed use |
+|---|---|---|
+| Current Python TUI | Existing temporary/current projection owner | Inspect projection and event-rendering mechanics |
+| `lbe-tui/` Go demo | User-provided local reference | Inspect layout, streaming, tool-call display, and keyboard-flow ideas |
+| `lbe-core` TUI/product-direction material | Separate-repository reference | Inspect local-first terminal UX and branding patterns |
+| Cline CLI/TUI interaction mechanics | Accepted reuse/adaptation evidence | Reuse interaction and continuation mechanics behind LBE |
+
+No future UI decision is a choice between these references. When a UI slice is activated, the
+question is which useful UX mechanics can be incorporated into the already-selected Cline-style
+LBE interface while preserving LBE authority. UI implementation requires a separately activated
+intent, indexed owner, bounded mutation paths, and machine-gate authorization.
+
 ## Proposed Unified Interactive CLI / TUI Launcher (Single-Command Entry)
 
 Currently, `lbe` exposes multiple subcommands (`lbe session create`, `lbe session continue`, `lbe tui --session-id <id>`).
