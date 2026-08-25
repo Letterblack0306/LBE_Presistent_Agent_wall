@@ -24,6 +24,7 @@ must map to one row before it may be changed.
 | `tools/` | Deterministic validation and acceptance utilities | LBE validation owner | `docs/acceptance/STAGE_2_FINAL_CHECKPOINT.md` | Validation/tooling intent required |
 | `examples/` | Non-authoritative examples and reference material | Reference owner | `docs/reference/README.md` | No runtime authority |
 | `lbe-core/` | Embedded independent LBE Core repository retained for reuse research | Separate Git repository authority | `lbe-core/LBE_Core_Engine/INDEX.md` | Read-only from parent; no parent mutation authority |
+| `unused-in-repo/` | Preserved material proven not to participate in the live repository | Workspace-hygiene preservation owner | `unused-in-repo/MANIFEST.md` | Move only after complete non-use proof; never use as live authority |
 | `README.md` | Product and installation entrypoint | Product documentation | `docs/README.md` | Product-doc intent only |
 | `PROJECT_INDEX.md` | Root structural authority registry | LBE governance | `docs/governance/PROJECT_INTENT_LEDGER.md` | Protected; update before new structure |
 | `pyproject.toml` | Package metadata and version authority | Release governance | Active publication gates | Publication intent only |

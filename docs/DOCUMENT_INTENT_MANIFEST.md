@@ -20,6 +20,7 @@ the active acceptance gate, source code, or runtime evidence.
 | `REFERENCE` | Research or external/product reference | Keep but exclude from authority |
 | `HISTORY` | Closed evidence or prior implementation record | Preserve; do not treat as current |
 | `TEMPLATE` | Reusable recording template | Keep for governed records |
+| `UNUSED_BUT_PRESERVED` | Material proven not to participate in the live repository but retained for recovery/review | Preserve only under `unused-in-repo/`; never treat as live authority |
 
 An entry being unreferenced does not make it invalid. It must be classified before relocation or
 removal. Every entry below has an explicit role and disposition.
@@ -44,6 +45,13 @@ removal. Every entry below has an explicit role and disposition.
 | `MIGRATION.md` | `REFERENCE` | Legacy-state migration and rollback instructions; keep for migration use. |
 | `PROJECT_INDEX.md` | `GOVERNANCE` | Root structural authority index; every implementation area must have an owner and mutation boundary before change. |
 | `README.md` | `ROUTER` | Product overview and installation/usage entrypoint; keep concise and non-authoritative for mutable state. |
+
+## Preserved unused-material registry
+
+| Path | Class | Intent / disposition |
+|---|---|---|
+| `unused-in-repo/README.md` | `ROUTER` | Explains the bounded preservation surface; not a live project authority. |
+| `unused-in-repo/MANIFEST.md` | `UNUSED_BUT_PRESERVED` | Records proof, ownership, original location, restoration notes, and move evidence for each preserved item. |
 
 ## Live documentation owners
 

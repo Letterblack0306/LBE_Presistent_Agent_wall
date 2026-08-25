@@ -14,7 +14,7 @@ STATUS: ACTIVE
 REQUEST: Govern workspace document hygiene and bounded disposable deletion.
 WHY: Prevent unexplained, stale, duplicate, generated, or abandoned workspace material from being
 treated as current project authority.
-AFFECTED_STRUCTURE: docs/, scripts/, .lbe/, .agent/, lbe_guard_inspector/, tests/
+AFFECTED_STRUCTURE: docs/, scripts/, .lbe/, .agent/, lbe_guard_inspector/, tests/, unused-in-repo/
 EXISTING_OWNER: LBE governance, documentation, runtime orchestration, and validation owners.
 DESIRED_RESULT: Every material document has an owner, intent, reachability classification, and safe
 disposition; disposable deletion is governed and receipt-backed.
@@ -23,7 +23,7 @@ no publication, no provider/UI architecture change.
 REUSE_DECISION: Reuse existing machine gate, tool orchestrator, receipt, evidence, and documentation
 owners.
 AUTHORITY_IMPACT: Strengthens pre-mutation checks without creating a second authority owner.
-EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/,scripts/check-implementation-gate.py,.lbe/governance/,.agent/,lbe_guard_inspector/,tests/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/,scripts/check-implementation-gate.py,.lbe/governance/,.agent/,lbe_guard_inspector/,tests/,unused-in-repo/
 REQUIRED_EVIDENCE: index/ledger match, staged-scope match, focused tests, diff check, protected-work preservation
 MACHINE_SLICE: WORKSPACE_HYGIENE_GOVERNED_DELETION
 SUPERSEDES: none

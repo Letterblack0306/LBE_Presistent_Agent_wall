@@ -110,6 +110,27 @@ abandoned, it must be removed or moved out of live surfaces with its references 
 material must be explicitly marked and tracked for resolution; it must not silently become current
 context or permanent workspace clutter.
 
+### Preserved unused material
+
+Material proven not to participate in the current repository may be moved to the canonical
+[`unused-in-repo/`](../unused-in-repo/) preservation surface only after the complete non-use checks
+recorded in its [manifest](../unused-in-repo/MANIFEST.md) are satisfied. This is preservation, not
+deletion, and the directory is not a source, runtime, governance, acceptance, or documentation
+authority.
+
+Future lookup order is:
+
+```text
+canonical project
+    -> unused-in-repo/ manifest
+    -> historical/reference repositories
+    -> deeper filesystem discovery only when still unresolved
+```
+
+The following are excluded from this quarantine unless independently reclassified: `lbe-tui/`,
+`lbe-core/`, `state/`, `.lbe/memory/`, local configuration, backups, Git metadata, embedded
+repositories, runtime/database/state material, protected user work, and deliberate local references.
+
 Before an implementation or documentation task is complete, the workspace reconciliation must
 show every material Markdown path and its disposition. A clean Git index alone is insufficient.
 
