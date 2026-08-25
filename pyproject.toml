@@ -21,7 +21,7 @@ tui = [
 ]
 
 [project.scripts]
-lbe = "lbe_guard_inspector.cli:main"
+lbe = "lbe_guard_inspector.product_entry:main"
 lbe-guard-inspector = "server:main"
 lbe-guard-inspector-evidence = "lbe_guard_inspector.server:main"
 lbe-guard-audit = "audit_controller:main"
