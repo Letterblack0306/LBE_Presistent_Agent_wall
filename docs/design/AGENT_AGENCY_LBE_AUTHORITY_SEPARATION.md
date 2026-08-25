@@ -106,17 +106,18 @@ The current verified product gaps and the required follow-on proof sequence are 
 `docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`. Those findings are planning input
 only; they do not activate a gate or authorize an architecture change.
 
-## Accepted product direction: Cline-style interaction behind LBE
+## Accepted product direction: LBE interface and interaction model
 
-The accepted product direction is an LBE interface with a Cline-style interaction model and
-selectively reused Cline AgentRuntime mechanics behind an LBE governance adapter. This direction
-does not make Cline, a client surface, or a reference implementation the product authority.
+The accepted product direction is the LBE interface. Selected interaction and AgentRuntime
+mechanics may be reused or adapted from Cline behind an LBE-owned governance boundary. Cline is a
+reuse source, not part of the product or interface identity.
 
 The ownership boundary is fixed:
 
 ```text
-Cline-style interaction model
-        -> selectively adapted AgentRuntime continuation/event mechanics
+LBE interface
+        -> interaction / continuation mechanics
+        -> selectively reused or adapted proven mechanics
         -> LBE governance adapter
         -> LBE canonical runtime authority
         -> LBE-owned CLI/TUI/React or hybrid projection
@@ -138,9 +139,9 @@ authorize implementation:
 | Cline CLI/TUI interaction mechanics | Accepted reuse/adaptation evidence | Reuse interaction and continuation mechanics behind LBE |
 
 No future UI decision is a choice between these references. When a UI slice is activated, the
-question is which useful UX mechanics can be incorporated into the already-selected Cline-style
-LBE interface while preserving LBE authority. UI implementation requires a separately activated
-intent, indexed owner, bounded mutation paths, and machine-gate authorization.
+question is which useful UX mechanics from the approved reference inputs should be incorporated
+into the LBE interface while preserving LBE authority. UI implementation requires a separately
+activated intent, indexed owner, bounded mutation paths, and machine-gate authorization.
 
 ## Proposed Unified Interactive CLI / TUI Launcher (Single-Command Entry)
 
