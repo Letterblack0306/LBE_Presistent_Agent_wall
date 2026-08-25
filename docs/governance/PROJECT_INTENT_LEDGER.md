@@ -107,7 +107,8 @@ EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/govern
 REQUIRED_EVIDENCE: persisted installed-registry schema, five-kind configuration classification, invalid/duplicate configuration denial, no plaintext credential persistence, unavailable integration projection, safe conversion to ExternalCapabilityRegistration, provider transport arguments remain hidden, existing R6C/R6E path reused, focused tests, full regression
 MACHINE_SLICE: INSTALLED_CAPABILITY_REGISTRY_DISCOVERY
 SUPERSEDES: none
-RESULT: IN_PROGRESS
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/INSTALLED_CAPABILITY_REGISTRY_DISCOVERY_CHECKPOINT.md
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001
@@ -118,13 +119,18 @@ STATUS: ACCEPTED_PRODUCT_DIRECTION
 REQUEST: Use Cline AgentRuntime interaction and continuation mechanics behind an LBE-owned governance adapter.
 WHY: Reuse the mature agent loop without creating a second LBE authority/runtime.
 AFFECTED_STRUCTURE: lbe_guard_inspector/, docs/design/, docs/research/, .cline/
-EXISTING_OWNER: LBE workspace/session identity, authorization, dispatch, receipts, evidence, persistence, validation, and completion owners.
-DESIRED_RESULT: Cline mechanics are adapted behind LBE authority; native Cline mutation/execution is not canonical.
-NON_GOALS: No direct Cline mutation authority, no second session authority, no React runtime before the adapter boundary is proven.
-REUSE_DECISION: REUSE continuation/event/tool mechanics; ADAPT provider and presentation mechanics; REJECT native overlapping mutation/execution.
+EXISTING_OWNER: LBE workspace/session identity, authorization, dispatch, receipts, evidence,
+persistence, validation, and completion owners.
+DESIRED_RESULT: Cline mechanics are adapted behind LBE authority; native Cline mutation/execution is
+not canonical.
+NON_GOALS: No direct Cline mutation authority, no second session authority, no React runtime before
+the adapter boundary is proven.
+REUSE_DECISION: REUSE continuation/event/tool mechanics; ADAPT provider and presentation mechanics;
+REJECT native overlapping mutation/execution.
 AUTHORITY_IMPACT: LBE authority remains unchanged.
 EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,docs/design/,docs/research/,.cline/
-REQUIRED_EVIDENCE: deny-before-execute, allow-exactly-once, receipt-backed continuation, event mapping, native mutation disabled, canonical LBE session ownership
+REQUIRED_EVIDENCE: deny-before-execute, allow-exactly-once, receipt-backed continuation, event mapping,
+native mutation disabled, canonical LBE session ownership
 MACHINE_SLICE: FUTURE_SLICE_NOT_ACTIVE
 SUPERSEDES: none
 RESULT: NOT_ACTIVE
@@ -139,4 +145,5 @@ NO INDEX ENTRY -> NO CHANGE
 NO MACHINE-GATE MATCH -> NO CHANGE
 ```
 
-Completed intents must update `RESULT` and retain the evidence/commit reference. Proposed intents remain non-authorizing until explicitly bound to the machine gate.
+Completed intents must update `RESULT` and retain the evidence/commit reference. Proposed intents
+remain non-authorizing until explicitly bound to the machine gate.
