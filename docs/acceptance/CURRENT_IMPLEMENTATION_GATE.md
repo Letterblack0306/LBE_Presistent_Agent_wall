@@ -18,6 +18,7 @@ implementation_allowed: true (active workspace-hygiene slice only)
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publication_controls: false (nested publication governance records)
+workspace_hygiene_result: PASS (bounded slice complete; no next slice activated)
 ```
 
 Only the exact paths and scope declared by the machine gate are authorized. The active slice is
@@ -35,13 +36,16 @@ RELEASE_PACKAGE_READINESS_ACCEPTANCE: PASS
 PUBLICATION_PRECHECK: PASS
 ```
 
-## Current proof required before this slice can pass
+## Workspace-hygiene slice result
 
 ```text
-focused Textual/client handler tests
- -> persisted event/receipt projection tests
- -> manual local TUI launch from current source
- -> git diff --check
+focused governed deletion and mode tests: PASS — 52 passed
+ -> nine approved disposable targets deleted through workspace.delete
+ -> zero approved disposable targets remain outside protected exclusions
+ -> fourteen historical snapshots preserved and excluded from this slice
+
+The complete-runtime gate remains OPEN with `next_phase_locked=true`. No subsequent product slice
+is activated by this checkpoint.
 ```
 
 `publish_allowed` remains false. Version 2.0.3 preparation is paused and must be reactivated by

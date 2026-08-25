@@ -18,6 +18,7 @@ must map to one row before it may be changed.
 | `.agent/` | Agent routing, templates, and evidence instructions | Agent governance | `.agent/PROJECT_CONTEXT.md` | Routing/intent update required |
 | `.cline/` | Cline rules and governed-slice skills | Agent governance | `.cline/rules/00-lbe-workspace-and-progression.md` | Preserve tool-consumed paths |
 | `docs/` | Canonical documentation, contracts, design, gates, reference, and history | Documentation owner + machine gate | `docs/README.md` | Classify and update intent manifest |
+| `docs/acceptance/` | Active gate records and bounded acceptance checkpoints | Machine gate + acceptance owners | `docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md` | Active intent and machine-selected slice only |
 | `.githooks/` | Commit and push enforcement | Repository governance | `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md` | Hook change requires governance intent |
 | `schemas/` | Machine-readable contract/reference schemas | Contract owner | `docs/contracts/` | Contract intent required |
 | `rules/` | Active audit and rule implementation | LBE audit/rule owner | `docs/AUDIT_FINDING_REVIEW_REGISTER.md` | Active implementation intent plus affected rule owner |

@@ -45,7 +45,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-WORKSPACE-HYGIENE-001",
     "owner": "LBE governance, documentation, runtime orchestration, and validation owners",
-    "index_revision": "48C9DA731C4B0415FD824FE80D3C1270EB98980D8424C8712443F69F78112557"
+    "index_revision": "F559045AF6DF6BE6DC3DACFE022357549668079A0A072FC61340630F67EA16D3"
   },
   "accepted_baseline": {
     "R3": "PROVEN_COMPLETE",
@@ -154,7 +154,7 @@
     "publish_allowed": false
   },
   "workspace_hygiene_governed_deletion": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
     "scope": [
       "workspace_identity",
@@ -175,7 +175,8 @@
       "success_and_failure_receipts",
       "protected_user_work_preserved"
     ],
-    "publish_allowed": false
+    "publish_allowed": false,
+    "completion_checkpoint": "docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md"
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",

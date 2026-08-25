@@ -66,6 +66,8 @@ removal. Every entry below has an explicit role and disposition.
 
 ## Acceptance and gate records
 
+| `docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md` | `ACCEPTANCE_AUTHORITY` | PASS checkpoint for bounded governed disposable deletion; preserved snapshots remain outside this slice. |
+
 | Path | Class | Intent / disposition |
 |---|---|---|
 | `docs/acceptance/CLINE_CORE_REUSE_BOUNDARY_AUDIT_CHECKPOINT.md` | `ACCEPTANCE_HISTORY` | Closed Cline source-reuse audit proof; preserve as historical evidence. |

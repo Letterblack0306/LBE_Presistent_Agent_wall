@@ -70,7 +70,7 @@ remaining capability/evidence loop are not implied by this slice PASS.
 
 Current active slice: `WORKSPACE_HYGIENE_GOVERNED_DELETION`.
 
-### WORKSPACE_HYGIENE_GOVERNED_DELETION — IN PROGRESS
+### WORKSPACE_HYGIENE_GOVERNED_DELETION — PASS
 
 Explicit user authorization permits a bounded workspace-hygiene capability
 inside this complete-runtime gate. This slice must reuse the existing workspace
@@ -102,6 +102,14 @@ Required safety/acceptance proof:
 - the direct adapter is not exposed as a bypass to the reasoning provider;
 - success and failure both produce correlated receipt/evidence truth;
 - cleanup does not absorb or destroy unresolved user-owned work.
+
+The bounded slice passed. The focused governed orchestration and mode regression set passed `52
+tests`; nine approved disposable targets were deleted through `workspace.delete` with receipts;
+and zero approved disposable targets remain outside protected exclusions. The fourteen ignored
+historical snapshot/backup artifacts remain preserved and are excluded from this slice; their
+separate retention review is non-blocking.
+
+See `docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md`.
 
 Workspace hygiene classifications include at least `CANONICAL_LIVE`,
 `ACTIVE_WORK`, `REQUIRED_RUNTIME`, `REQUIRED_BUILD`,

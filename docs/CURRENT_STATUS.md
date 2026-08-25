@@ -41,6 +41,7 @@ target_version: 2.0.3 (publication preparation paused)
 implementation_allowed: true (active workspace-hygiene slice only)
 architecture_changes_allowed: true (explicit user authorization)
 publication_controls: false (nested publication governance records)
+workspace_hygiene_result: PASS (bounded deletion slice; next product slice not activated)
 ```
 
 R7 is closed `PASS`; observable 3 and observable 13 are `PASS_AFTER_REPAIR`. The historical
@@ -103,9 +104,9 @@ publication_controls: false (nested publication governance records)
 
 ```text
 complete governed workspace-hygiene deletion capability
- -> validate bounded deletion, receipts, containment, and protected-scope behavior
- -> advance the complete-runtime gate only on PASS
- -> reactivate the paused 2.0.3 preparation gate when product work is accepted
+ -> PASS: bounded deletion, receipts, containment, and protected-scope behavior
+ -> select and machine-bind the next explicit product slice
+ -> reactivate the paused 2.0.3 preparation gate only when product work is accepted
 ```
 
 ## Architecture correction (proposed follow-on review; not an active gate)
