@@ -64,6 +64,46 @@ Read these four in order to understand how someone learns and uses LBE:
 | [`contracts/`](contracts/) | Current technical registries used by the implementation. | Maintain as named contracts, not as status reports. |
 | [`history/`](history/) | Closed phase records retained for evidence. | Immutable except for link repair or an explicit correction note. |
 
+## Workspace document visibility and hygiene
+
+Document organization is part of the LBE product boundary. A Markdown file is not made valid by
+existing on disk, and it is not made irrelevant merely by living in a nested directory.
+
+Every material Markdown file under the canonical workspace must be:
+
+1. **owned** by one canonical subject or authority;
+2. **classified** as live, supporting, acceptance, contract, design, reference, instruction,
+   historical, generated, temporary, quarantined, or invalid;
+3. **discoverable** from this documentation entrypoint or from the runtime/governance surface that
+   is required to consume it;
+4. **reachable** from current product, build, runtime, governance, active documentation, explicit
+   history, or protected user work; and
+5. **given one disposition**: keep, repair, archive, quarantine, or remove.
+
+Nested folders are storage and ownership boundaries, not a way to hide documents. Required paths
+such as `.agent/`, `.cline/`, `docs/acceptance/`, and `docs/history/` may remain nested when a
+runtime, governance contract, or historical provenance depends on their path. Their contents must
+still be listed, classified, and navigable from the appropriate entrypoint.
+
+The hygiene invariant is:
+
+```text
+ZERO UNEXPLAINED MARKDOWN FILES
+ZERO ORPHANED CURRENT-STATE CLAIMS
+ZERO UNCLASSIFIED DOCUMENT DIRECTORIES
+ZERO INVALID OR ABANDONED DOCUMENTS LEFT IN LIVE SURFACES
+```
+
+An unreferenced document is a cleanup candidate, not an automatic deletion order. It must first be
+checked for runtime/tooling reachability, historical evidence value, protected ownership, and
+duplicate authority. Once it is proven invalid, obsolete, duplicate, generated, temporary, or
+abandoned, it must be removed or moved out of live surfaces with its references repaired. Unknown
+material must be explicitly marked and tracked for resolution; it must not silently become current
+context or permanent workspace clutter.
+
+Before an implementation or documentation task is complete, the workspace reconciliation must
+show every material Markdown path and its disposition. A clean Git index alone is insufficient.
+
 ## Design entry points
 
 - [Runtime vision: doctrine-driven engineering](design/LBE_RUNTIME_VISION_DOCTRINE_DRIVEN_ENGINEERING.md)
