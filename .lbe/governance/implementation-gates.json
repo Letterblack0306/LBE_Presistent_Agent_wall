@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
   "active_phase": "COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION",
-  "active_slice": "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION",
+  "active_slice": "FIRST_RUN_LIVE_SESSION_ENTRY",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -43,8 +43,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-GOVERNED-EXTERNAL-CAPABILITY-REGISTRATION-001",
-    "owner": "LBE ToolRegistry, R6C authorization, R6E orchestration/receipts, provider continuation, and integration adapter owners",
+    "intent_id": "LBE-INTENT-FIRST-RUN-LIVE-SESSION-ENTRY-001",
+    "owner": "CLI thin control plane, persisted session/runtime owners, provider configuration/health owners, provider-turn runtime, and Textual projection owners",
     "index_revision": "F559045AF6DF6BE6DC3DACFE022357549668079A0A072FC61340630F67EA16D3"
   },
   "accepted_baseline": {
@@ -64,7 +64,8 @@
     "PUBLICATION_PRECHECK": "PASS",
     "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE": "PASS",
     "WORKSPACE_HYGIENE_GOVERNED_DELETION": "PASS",
-    "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH": "PASS"
+    "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH": "PASS",
+    "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION": "PASS"
   },
   "release_package_readiness": {
     "status": "PASS",
@@ -98,13 +99,30 @@
     "from_version": "0.2.0",
     "target_version": "2.0.3",
     "authorization": "EXPLICIT_USER_AUTHORIZATION",
-    "allowed_paths": ["pyproject.toml", ".lbe/governance/implementation-gates.json", "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md", "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md"],
+    "allowed_paths": [
+      "pyproject.toml",
+      ".lbe/governance/implementation-gates.json",
+      "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md",
+      "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md"
+    ],
     "publish_allowed": false
   },
   "terminal_workspace_foundation": {
     "status": "SUPERSEDED_BY_COMPLETE_RUNTIME_GATE",
     "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-22",
-    "allowed_paths": ["lbe_guard_inspector/textual_tui.py", "lbe_guard_inspector/terminal_projection.py", "lbe_guard_inspector/cli.py", "tests/test_textual_tui.py", "tests/test_terminal_projection.py", "tests/test_cli.py", "docs/acceptance/TERMINAL_WORKSPACE_FOUNDATION_GATE.md", "docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md", "docs/CURRENT_STATUS.md", "docs/IMPLEMENTATION_PLAN.md", ".lbe/governance/implementation-gates.json"],
+    "allowed_paths": [
+      "lbe_guard_inspector/textual_tui.py",
+      "lbe_guard_inspector/terminal_projection.py",
+      "lbe_guard_inspector/cli.py",
+      "tests/test_textual_tui.py",
+      "tests/test_terminal_projection.py",
+      "tests/test_cli.py",
+      "docs/acceptance/TERMINAL_WORKSPACE_FOUNDATION_GATE.md",
+      "docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md",
+      "docs/CURRENT_STATUS.md",
+      "docs/IMPLEMENTATION_PLAN.md",
+      ".lbe/governance/implementation-gates.json"
+    ],
     "required_evidence": ["focused_ui_handler_tests", "real_local_tui_launch", "persisted_event_projection"],
     "publish_allowed": false
   },
@@ -122,12 +140,18 @@
   "release_progression": {
     "user_authorized_release_path": true,
     "publish_allowed_now": false,
-    "remaining_prerequisites": ["set canonical pyproject.toml version to 2.0.3", "validate exact 2.0.3 wheel and installed runtime", "prove PyPI 2.0.3 is absent immediately before dispatch", "successful live trusted-publishing workflow execution", "post-publish PyPI verification"]
+    "remaining_prerequisites": [
+      "set canonical pyproject.toml version to 2.0.3",
+      "validate exact 2.0.3 wheel and installed runtime",
+      "prove PyPI 2.0.3 is absent immediately before dispatch",
+      "successful live trusted-publishing workflow execution",
+      "post-publish PyPI verification"
+    ]
   },
   "complete_lbe_agent_runtime": {
     "status": "OPEN",
     "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
-    "active_slice": "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION",
+    "active_slice": "FIRST_RUN_LIVE_SESSION_ENTRY",
     "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
     "required_evidence": ["focused_configuration_tests", "credential_non_leakage_scan", "provider_profile_lifecycle", "persisted_owner_reuse"],
     "publish_allowed": false
@@ -157,10 +181,26 @@
     "completion_checkpoint": "docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md"
   },
   "governed_external_capability_registration": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
     "scope": ["external_capability_registration", "mcp_plugin_registration", "subagent_registration_contract", "network_service_registration_contract", "hosted_service_registration_contract", "provider_tool_projection", "r6c_r6e_dispatch_reuse", "direct_transport_bypass_denial"],
     "required_evidence": ["all_external_tools_are_pre_registered", "provider_receives_only_lbe_generated_external_tool_definitions", "raw_endpoint_and_shell_transport_arguments_denied", "network_and_hosted_service_registration_requires_network_metadata", "mcp_plugin_subagent_network_hosted_kinds_are_classified", "authorization_precedes_adapter_execution", "external_execution_returns_correlated_tool_receipt", "unregistered_external_tool_fails_closed", "no_second_executor_authorization_session_or_completion_owner"],
+    "validation": {
+      "implementation_commit": "02c761ab5ee969edd1c24fed65a6a2d343d20927",
+      "looptool_command_hash": "E474AAD3D03DEC376BF69944FFA3F56251052D534D46369B27547A7E9F563859",
+      "focused_tests": "58 passed",
+      "full_tests": "732 passed",
+      "head_alignment": "PASS",
+      "protected_reference": "lbe-tui/ remained untracked and untouched"
+    },
+    "publish_allowed": false,
+    "completion_checkpoint": "docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION_CHECKPOINT.md"
+  },
+  "first_run_live_session_entry": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+    "scope": ["product_start_command", "new_session_creation", "existing_session_restore", "provider_model_consistency", "provider_config_consistency", "live_tui_entry", "persisted_owner_reuse"],
+    "required_evidence": ["new_start_creates_one_persisted_session", "existing_start_restores_same_session_identity", "provider_model_pair_is_validated", "provider_config_mismatch_fails_closed", "no_silent_provider_fallback", "live_entry_reuses_existing_tui_and_turn_runtime", "no_duplicate_session_or_provider_owner", "focused_cli_tests", "full_regression"],
     "publish_allowed": false
   },
   "forbidden": [
@@ -171,6 +211,7 @@
     "API-token fallback without a separate authorized security decision",
     "blind retry after publication failure",
     "runtime or architecture changes outside the complete LBE agent runtime gate",
-    "direct agent exposure of arbitrary external endpoints, shell commands, executables, or service transports"
+    "direct agent exposure of arbitrary external endpoints, shell commands, executables, or service transports",
+    "creating a second session, provider, terminal, or completion authority for first-run flow"
   ]
 }
