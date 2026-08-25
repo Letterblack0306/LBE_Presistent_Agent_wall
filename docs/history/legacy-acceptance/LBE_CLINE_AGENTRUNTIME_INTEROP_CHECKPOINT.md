@@ -49,8 +49,8 @@ architecture_change:
 
 files_changed:
   - .lbe/governance/implementation-gates.json
-  - docs/acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_GATE.md
-  - docs/acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_CHECKPOINT.md
+  - docs/history/legacy-acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_GATE.md
+  - docs/history/legacy-acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_CHECKPOINT.md
 
 required_evidence_level: INTEGRATION
 

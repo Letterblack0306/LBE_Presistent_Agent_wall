@@ -50,8 +50,8 @@ a future machine-gate change after the active complete-runtime slice passes.
 ## HISTORICAL FAILURE (preserved, not current state)
 
 The earlier R7 observable-3 installed coding-composition failure is retained in
-`docs/acceptance/R7_REPAIR_INVESTIGATION_GATE.md`,
-`docs/acceptance/R7_REPAIR_IMPLEMENTATION_GATE.md`, and
+`docs/history/legacy-acceptance/R7_REPAIR_INVESTIGATION_GATE.md`,
+`docs/history/legacy-acceptance/R7_REPAIR_IMPLEMENTATION_GATE.md`, and
 `docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md`. It does not mark current R7 as
 failed: R7 is `PASS`, with observables 3 and 13 recorded `PASS_AFTER_REPAIR`.
 

@@ -49,7 +49,7 @@ architecture_change:
 
 files_changed:
   - .lbe/governance/implementation-gates.json
-  - docs/acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_GATE.md
+  - docs/history/legacy-acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_GATE.md
   - lbe_guard_inspector/runtime/cline_worker/package.json
   - lbe_guard_inspector/runtime/cline_worker/package-lock.json
   - docs/acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_CHECKPOINT.md

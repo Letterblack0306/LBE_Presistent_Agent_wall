@@ -181,7 +181,7 @@ Canonical R7 records:
 
 ```text
 docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md
-docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
+docs/history/legacy-acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md
 ```
 
 ## 6. Current owner map after full plan re-review

@@ -114,24 +114,24 @@ historical records remain evidence and are not current authorization.
 | `docs/acceptance/CLINE_CORE_REUSE_BOUNDARY_AUDIT_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
 | `docs/acceptance/COMPLETE_LBE_TUI_IMPLEMENTATION_GATE.md` | superseded acceptance record / same path | KEEP; catalog as superseded | not active authorization |
 | `docs/acceptance/CURRENT_AGENT_EXECUTION_GATE.md` | historical/superseded acceptance record / same path | KEEP; catalog as superseded | filename must not imply current authority |
-| `docs/acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
-| `docs/acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
+| `docs/history/legacy-acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
+| `docs/history/legacy-acceptance/LBE_CLINE_AGENTRUNTIME_INTEROP_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
 | `docs/acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
-| `docs/acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
+| `docs/history/legacy-acceptance/LBE_CLINE_DEPENDENCY_SECURITY_RESOLUTION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
 | `docs/acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_ARCHITECTURE_GATE.md` | historical/design acceptance record / same path | KEEP; catalog as historical | not active architecture authority |
-| `docs/acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_IMPLEMENTATION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
-| `docs/acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_IMPLEMENTATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
+| `docs/history/legacy-acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_IMPLEMENTATION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
+| `docs/history/legacy-acceptance/LBE_CLINE_GOVERNED_NODE_STDIO_IMPLEMENTATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
 | `docs/acceptance/LBE_CLINE_PROVIDER_CONTINUATION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
-| `docs/acceptance/LBE_CLINE_PROVIDER_CONTINUATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
+| `docs/history/legacy-acceptance/LBE_CLINE_PROVIDER_CONTINUATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
 | `docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
-| `docs/acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
+| `docs/history/legacy-acceptance/LBE_RUNTIME_ROADMAP_RECONCILIATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | gate evidence |
 | `docs/acceptance/P16_CANCELLATION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | checkpoint evidence |
 | `docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
-| `docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
+| `docs/history/legacy-acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R4_CHECKPOINT_RESUME_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
-| `docs/acceptance/R4_CHECKPOINT_RESUME_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
+| `docs/history/legacy-acceptance/R4_CHECKPOINT_RESUME_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
-| `docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
+| `docs/history/legacy-acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R6A_PROVIDER_ABSTRACTION_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R6B_TYPED_MODE_POLICY_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
@@ -144,13 +144,13 @@ historical records remain evidence and are not current authorization.
 | `docs/acceptance/R6E_GOVERNED_TOOL_ORCHESTRATION_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R6F_COMPLETION_VALIDATION_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R6F_COMPLETION_VALIDATION_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
-| `docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
+| `docs/history/legacy-acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R7_INSTALLED_END_TO_END_ACCEPTANCE_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | accepted baseline evidence |
 | `docs/acceptance/R7_OBSERVABLE13_DEPENDENCY_PROVISIONING_REPAIR_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | repair evidence |
 | `docs/acceptance/R7_REPAIR_IMPLEMENTATION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | repair evidence |
-| `docs/acceptance/R7_REPAIR_IMPLEMENTATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | repair evidence |
+| `docs/history/legacy-acceptance/R7_REPAIR_IMPLEMENTATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | repair evidence |
 | `docs/acceptance/R7_REPAIR_INVESTIGATION_CHECKPOINT.md` | historical acceptance record / same path | KEEP; catalog as closed | repair evidence |
-| `docs/acceptance/R7_REPAIR_INVESTIGATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | repair evidence |
+| `docs/history/legacy-acceptance/R7_REPAIR_INVESTIGATION_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | repair evidence |
 | `docs/acceptance/RELEASE_PACKAGE_CONTRACT_REPAIR_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | package evidence |
 | `docs/acceptance/RELEASE_PACKAGE_READINESS_AUDIT_GATE.md` | historical acceptance record / same path | KEEP; catalog as closed | package evidence |
 

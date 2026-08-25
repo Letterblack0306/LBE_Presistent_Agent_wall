@@ -129,7 +129,7 @@ changed files since R3 base:
   .lbe/governance/implementation-gates.json
   docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
   docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_CHECKPOINT.md
-  docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_GATE.md
+  docs/history/legacy-acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_GATE.md
 
 runtime/test implementation changed: NO
 git diff --check: PASS

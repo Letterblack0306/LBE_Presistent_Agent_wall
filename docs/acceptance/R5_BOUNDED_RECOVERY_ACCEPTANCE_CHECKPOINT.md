@@ -121,7 +121,7 @@ Diff scope from the R4 closure base to the R5 acceptance head contained only:
 .lbe/governance/implementation-gates.json
 docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
 docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_CHECKPOINT.md
-docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_GATE.md
+docs/history/legacy-acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_GATE.md
 ```
 
 No `lbe_guard_inspector/` or `tests/` implementation source changed during R5 acceptance.
