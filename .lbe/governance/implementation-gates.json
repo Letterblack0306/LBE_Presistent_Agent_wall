@@ -63,7 +63,8 @@
     "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS",
     "PUBLICATION_PRECHECK": "PASS",
     "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE": "PASS",
-    "WORKSPACE_HYGIENE_GOVERNED_DELETION": "PASS"
+    "WORKSPACE_HYGIENE_GOVERNED_DELETION": "PASS",
+    "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH": "PASS"
   },
   "release_package_readiness": {
     "status": "PASS",
@@ -180,7 +181,7 @@
     "completion_checkpoint": "docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md"
   },
   "mandatory_governed_agent_mutation_dispatch": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
     "scope": [
       "provider_tool_exposure",
@@ -204,7 +205,16 @@
       "audit_and_investigation_paths_remain_read_only",
       "no_parallel_executor_authorization_receipt_or_session_owner"
     ],
-    "publish_allowed": false
+    "validation": {
+      "implementation_commit": "47885891848ec9a535a4e09694d3129b320da91a",
+      "looptool_command_hash": "D0DA7CA90B549E0C51FC2E65C7B68A30ECF7542710CE9CC1AF006D91FCA7F725",
+      "focused_tests": "80 passed",
+      "full_tests": "713 passed",
+      "head_alignment": "PASS",
+      "protected_reference": "lbe-tui/ remained untracked and untouched"
+    },
+    "publish_allowed": false,
+    "completion_checkpoint": "docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md"
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",
