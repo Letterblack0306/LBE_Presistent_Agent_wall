@@ -41,9 +41,9 @@ Publication/version progression remains paused while complete-runtime product wo
 
 ```text
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
-active_phase        = COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-active_slice        = INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
-active_slice_result = PASS
+active_phase        = SESSION_APPLICATION_CONTRACT_UNIFICATION
+active_slice        = SESSION_APPLICATION_CONTRACT_UNIFICATION
+active_slice_result = OPEN / IMPLEMENTATION_AUTHORIZED
 top_level_status    = OPEN
 next_phase_locked   = true
 publication         = PAUSED
@@ -51,12 +51,12 @@ publication         = PAUSED
 
 ## Latest completed checkpoint
 
-`INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE = PASS`
+`COMPLETE_LBE_AGENT_RUNTIME = PASS`
 
 The installed package acceptance checkpoint is canonical at
 `docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md`.
-The complete runtime gate is PASS. Publication remains paused and no next
-product slice is active.
+The complete runtime gate is PASS. The active product slice is now the
+session/application contract unification intent; publication remains paused.
 
 Validated implementation HEAD:
 
@@ -77,11 +77,11 @@ HEAD = 6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f
 local exception = ?? lbe-tui/ (reference-only, untouched)
 ```
 
-## Active product work — installed-package end-to-end acceptance
+## Active product work — session/application contract unification
 
-The recovery/completion/proof-promotion slice is canonically PASS. The active
-slice now validates a freshly built isolated installed distribution rather
-than repository-source imports.
+The recovery/completion/proof-promotion and installed-package slices are
+canonically PASS. The active slice unifies the preserved CLI/Textual
+session/provider lifecycle behind one shared application-service contract.
 
 Required proof includes installed entrypoint and import isolation, persisted
 session/provider restoration, installed capability projection and fail-closed
@@ -89,8 +89,9 @@ behavior, governed execution receipts/evidence, deterministic completion and
 verified promotion, recovery reconstruction, installed Textual smoke, and
 focused/full regression.
 
-The preserved session/provider lifecycle patch remains outside this intent and
-must not be reapplied during installed acceptance.
+The preserved session/provider lifecycle patch is now authorized for hash
+verification, reconciliation, and bounded reapplication under the active
+intent.
 
 ## Completed product work — recovery, deterministic completion and proof promotion
 

@@ -5,10 +5,10 @@ Status: **PASS — COMPLETE RUNTIME PROVEN — PUBLICATION PAUSED**
 ## Machine-selected state
 
 ```text
-phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
-slice_result: PASS
-status: PASS
+phase: SESSION_APPLICATION_CONTRACT_UNIFICATION
+slice: SESSION_APPLICATION_CONTRACT_UNIFICATION
+slice_result: OPEN / IMPLEMENTATION_AUTHORIZED
+status: OPEN
 implementation_allowed: true
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
@@ -150,6 +150,17 @@ the preserved lifecycle patch or the untracked `lbe-tui/` reference.
 The acceptance is recorded in
 `docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md`.
 The complete runtime gate is now PASS; publication remains separately locked.
+
+## Active product slice — SESSION_APPLICATION_CONTRACT_UNIFICATION
+
+The next authorized product slice unifies CLI and Textual session/provider
+lifecycle operations behind one shared `LbeSessionService` contract. It must
+reuse `SessionMemoryRuntimeBridge`, `WorkspaceMemoryStore`, `ProviderRegistry`,
+and `PersistentTurnControl`; it must not introduce a second session, provider,
+persistence, execution, authorization, receipt, or completion authority.
+
+The preserved four-file patch is an input to this intent only after exact
+hash verification and reconciliation against current `main`.
 
 ## Current remaining product sequence
 

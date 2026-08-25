@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
-  "active_phase": "COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION",
-  "active_slice": "INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE",
+  "active_phase": "SESSION_APPLICATION_CONTRACT_UNIFICATION",
+  "active_slice": "SESSION_APPLICATION_CONTRACT_UNIFICATION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -34,8 +34,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-INSTALLED-PACKAGE-END-TO-END-ACCEPTANCE-001",
-    "owner": "product_entry / CLI entry point; SessionMemoryRuntimeBridge / WorkspaceMemoryStore; provider registry/config/health; GovernedAgentGateway; R6C/R6E governed execution; CompletionEvidenceProducers; CodingCompletionRuntime; R5 recovery; MemoryPromoter; Textual LBE interface",
+    "intent_id": "LBE-INTENT-SESSION-APPLICATION-CONTRACT-UNIFICATION-001",
+    "owner": "SessionMemoryRuntimeBridge / WorkspaceMemoryStore; ProviderRegistry; PersistentTurnControl; CLI control plane; Textual LBE interface",
     "index_revision": "565DD1BEF2E6F0F0D5B9AE659B8B832118188188BD8109D8F482B3A997810739"
   },
   "accepted_baseline": {
@@ -122,7 +122,7 @@
   "complete_lbe_agent_runtime": {
     "status": "PASS",
     "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
-    "active_slice": "INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE",
+    "active_slice": "COMPLETED",
     "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
     "required_evidence": ["focused_configuration_tests", "credential_non_leakage_scan", "provider_profile_lifecycle", "persisted_owner_reuse"],
     "publish_allowed": false
@@ -223,6 +223,14 @@
       "focused_installed_tests",
       "full_regression"
     ],
+    "publish_allowed": false,
+    "active_slice": "COMPLETED"
+  },
+  "session_application_contract_unification": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+    "scope": ["shared_session_lifecycle_service", "cli_session_provider_lifecycle", "textual_session_provider_lifecycle", "persisted_owner_reuse", "provider_registry_reuse", "persistent_turn_control_reuse"],
+    "required_evidence": ["preserved_patch_hash_match", "shared_session_service_used_by_cli_and_textual", "session_identity_persists_across_restart", "provider_model_identity_persists", "no_duplicate_session_provider_authority", "focused_lifecycle_cli_textual_provider_tests", "full_regression", "fresh_installed_regression"],
     "publish_allowed": false
   },
   "forbidden": [
