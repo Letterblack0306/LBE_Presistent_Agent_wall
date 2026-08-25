@@ -3,6 +3,10 @@
 This is the single entry point for LBE documentation. Start here, then follow the four-document
 learning spine, then the active gate for authority.
 
+The complete per-file intent inventory is [DOCUMENT_INTENT_MANIFEST.md](DOCUMENT_INTENT_MANIFEST.md).
+Every material Markdown file must have an entry there before it can be treated as understood,
+current, historical, protected, or disposable.
+
 ## What is LBE
 
 LBE is a **persistent, provider-neutral runtime**: the agent/provider reasons, while LBE owns
