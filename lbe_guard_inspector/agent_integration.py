@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from .memory import TaskStatus
 from .reasoning_contracts import LBEResponse
-from .runtime.completion_runtime import CodingCompletionRuntime
+from .recovery import FailureClass, RecoveryStoppedError, RetryPolicy
+from .runtime.completion_promotion import CompletionProofPromotion
+from .runtime.completion_runtime import CodingCompletionRuntime, CodingReasoningResult
 from .runtime.completion_evidence_producers import CompletionEvidenceProducers
 from .runtime.mode_controller import ModeDecision, ModeRequest, resolve_mode
 from .runtime.task_completion_policy import (
@@ -93,6 +95,16 @@ class GovernedAgentGateway:
         AgentMode.INVESTIGATION: "diagnose_failure",
     }
     _CODING_TASK_CLASS = "coding_fix"
+    _SINGLE_ATTEMPT_POLICY = RetryPolicy(max_attempts=1)
+    _VALIDATION_RETRY_POLICY = RetryPolicy(
+        max_attempts=2,
+        retryable_failure_classes=frozenset({
+            FailureClass.TIMEOUT,
+            FailureClass.TEMPORARY_TOOL_FAILURE,
+        }),
+        delay_seconds=0.0,
+        require_idempotent=True,
+    )
 
     def __init__(
         self,
@@ -140,36 +152,13 @@ class GovernedAgentGateway:
             )
 
         if request.mode is AgentMode.CODING:
-            completion_runtime = CodingCompletionRuntime(runtime=self._runtime)
-            self._establish_coding_contract(
+            response, state, product_outcome = self._invoke_coding(
                 request=request,
                 mode_decision=mode_decision,
-                completion_runtime=completion_runtime,
-            )
-            producers = CompletionEvidenceProducers(runtime=self._runtime)
-            task_baseline = producers.capture_workspace_snapshot()
-            result = completion_runtime.run_reasoning(
-                controller=self._reasoning_controller,
                 problem=problem,
-                task_id=request.task_id,
                 reference_context=reference_context,
                 max_results=max_results,
             )
-            producers.produce_source_change(
-                task_id=request.task_id,
-                operation_id=request.operation_id,
-                baseline=task_baseline,
-            )
-            producers.produce_focused_test(
-                task_id=request.task_id,
-                operation_id=request.operation_id,
-            )
-            producers.produce_git_status(
-                task_id=request.task_id,
-                operation_id=request.operation_id,
-            )
-            response = result.response
-            state = result.task_state
         else:
             response = self._runtime.run_reasoning(
                 controller=self._reasoning_controller,
@@ -184,6 +173,7 @@ class GovernedAgentGateway:
                     "runtime_state_missing",
                     "reasoning completed without persisted task lifecycle state",
                 )
+            product_outcome = response.outcome
         return AgentResultEnvelope(
             request_id=request.request_id,
             session_id=request.session_id,
@@ -192,9 +182,132 @@ class GovernedAgentGateway:
             mode=request.mode,
             mode_decision=mode_decision,
             status=state.status,
-            outcome=response.outcome,
+            outcome=product_outcome,
             response=response,
         )
+
+    def _invoke_coding(
+        self,
+        *,
+        request: AgentRequestEnvelope,
+        mode_decision: ModeDecision,
+        problem: str,
+        reference_context: tuple[Mapping[str, Any], ...],
+        max_results: int,
+    ) -> tuple[LBEResponse, Any, str]:
+        completion_runtime = CodingCompletionRuntime(runtime=self._runtime)
+        self._establish_coding_contract(
+            request=request,
+            mode_decision=mode_decision,
+            completion_runtime=completion_runtime,
+        )
+        producers = CompletionEvidenceProducers(runtime=self._runtime)
+        task_baseline = producers.capture_workspace_snapshot()
+        reasoning_operation_id = self._recovery_operation_id(request, "reasoning")
+        try:
+            result: CodingReasoningResult = self._runtime.run_recoverable(
+                task_id=request.task_id,
+                operation_id=reasoning_operation_id,
+                operation=lambda: completion_runtime.run_reasoning(
+                    controller=self._reasoning_controller,
+                    problem=problem,
+                    task_id=request.task_id,
+                    reference_context=reference_context,
+                    max_results=max_results,
+                ),
+                policy=self._SINGLE_ATTEMPT_POLICY,
+                idempotent=False,
+            )
+        except RecoveryStoppedError as exc:
+            raise AgentIntegrationError("duplicate_operation", str(exc)) from exc
+
+        response = result.response
+        state = result.task_state
+        if response.outcome != "COMPLETED":
+            return response, state, response.outcome
+
+        proof = CompletionProofPromotion(runtime=self._runtime)
+        proof.record_provisional(
+            task_id=request.task_id,
+            operation_id=request.operation_id,
+            provider_outcome=response.outcome,
+        )
+
+        try:
+            self._run_validation_with_recovery(
+                request=request,
+                label="source_change",
+                operation=lambda: producers.produce_source_change(
+                    task_id=request.task_id,
+                    operation_id=request.operation_id,
+                    baseline=task_baseline,
+                ),
+            )
+            self._run_validation_with_recovery(
+                request=request,
+                label="focused_test",
+                operation=lambda: producers.produce_focused_test(
+                    task_id=request.task_id,
+                    operation_id=request.operation_id,
+                ),
+            )
+            self._run_validation_with_recovery(
+                request=request,
+                label="git_status",
+                operation=lambda: producers.produce_git_status(
+                    task_id=request.task_id,
+                    operation_id=request.operation_id,
+                ),
+            )
+        except Exception as exc:
+            state = self._runtime.record_task_status(
+                task_id=request.task_id,
+                status=TaskStatus.BLOCKED,
+                last_outcome="VALIDATION_RECOVERY_FAILED",
+            )
+            raise AgentIntegrationError(
+                "validation_recovery_failed",
+                f"trusted completion evidence production failed: {type(exc).__name__}: {exc}",
+            ) from exc
+
+        contract = completion_runtime.load_contract(task_id=request.task_id)
+        if contract is None:
+            raise AgentIntegrationError(
+                "completion_contract_missing",
+                "persisted completion contract disappeared before finalization",
+            )
+        decision, state = completion_runtime.finalize(
+            task_id=request.task_id,
+            contract=contract,
+            evidence=completion_runtime.load_evidence(task_id=request.task_id),
+            claimed_complete=True,
+        )
+        if state.status is TaskStatus.COMPLETED:
+            proof.promote_ready(
+                task_id=request.task_id,
+                operation_id=request.operation_id,
+                decision=decision,
+            )
+        return response, state, state.last_outcome or response.outcome
+
+    def _run_validation_with_recovery(
+        self,
+        *,
+        request: AgentRequestEnvelope,
+        label: str,
+        operation: Callable[[], Any],
+    ) -> Any:
+        return self._runtime.run_recoverable(
+            task_id=request.task_id,
+            operation_id=self._recovery_operation_id(request, f"validation:{label}"),
+            operation=operation,
+            policy=self._VALIDATION_RETRY_POLICY,
+            idempotent=True,
+        )
+
+    @staticmethod
+    def _recovery_operation_id(request: AgentRequestEnvelope, suffix: str) -> str:
+        return f"{request.operation_id}:{request.request_id}:{suffix}"
 
     def resolve_runtime_mode(self, request: AgentRequestEnvelope) -> ModeDecision:
         """Resolve R6B from persisted policy and bounded request identity.
