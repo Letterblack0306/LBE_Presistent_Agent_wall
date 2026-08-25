@@ -11,6 +11,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Iterable
 
+from ..reasoning_provider import ProviderConfig
+from ..session_memory_runtime import SessionMemoryRuntimeBridge
+from .agent_guidance import build_agent_guidance
+from .governed_coding import GovernedProviderReasoningController
 from .tool_orchestration import (
     ToolAccessClass,
     ToolHandler,
@@ -114,13 +118,6 @@ class ExternalCapabilityRegistration:
                     f"{self.kind.value} registration requires network_behavior=REQUIRED"
                 )
 
-        # MCP and plugins may be in-process, stdio-backed, or local/network-backed;
-        # the adapter registration owns that transport choice outside provider input.
-        if self.kind is ExternalCapabilityKind.SUBAGENT and self.network_behavior is ToolNetworkBehavior.REQUIRED:
-            # A subagent may use a networked provider internally, but its canonical
-            # runtime identity remains parent-scoped. REQUIRED is allowed and explicit.
-            pass
-
     @property
     def capability(self) -> str:
         return "modify" if self.access_class is ToolAccessClass.WRITE else "inspect"
@@ -186,3 +183,45 @@ def external_capability_descriptions(
     registrations: Iterable[ExternalCapabilityRegistration],
 ) -> dict[str, str]:
     return {item.tool_id: item.description for item in registrations}
+
+
+class GovernedExternalCapabilityController(GovernedProviderReasoningController):
+    """Existing governed provider loop with pre-registered external adapters.
+
+    This is an integration seam, not a second runtime or executor. It inherits
+    the canonical provider loop and registers adapters into the controller's
+    existing ToolRegistry before any provider turn executes.
+    """
+
+    def __init__(
+        self,
+        *,
+        runtime: SessionMemoryRuntimeBridge,
+        provider_id: str,
+        provider_config: ProviderConfig,
+        external_capabilities: Iterable[ExternalCapabilityRegistration],
+    ) -> None:
+        super().__init__(
+            runtime=runtime,
+            provider_id=provider_id,
+            provider_config=provider_config,
+        )
+        self._external_capabilities = register_external_capabilities(
+            self._registry,
+            external_capabilities,
+        )
+        # The base controller already owns guidance projection. Rebuild that
+        # projection after registration so the provider sees only the final
+        # governed registry, never adapter transport details.
+        self._guidance = build_agent_guidance(
+            mode_decision=self._context.mode_decision,
+            workspace_root=self._runtime.workspace_root,
+            tools=self._registry.specs(),
+        )
+
+    @property
+    def external_capabilities(self) -> tuple[ExternalCapabilityRegistration, ...]:
+        return self._external_capabilities
+
+    def external_capability_audit_payload(self) -> tuple[dict[str, object], ...]:
+        return tuple(item.audit_payload() for item in self._external_capabilities)
