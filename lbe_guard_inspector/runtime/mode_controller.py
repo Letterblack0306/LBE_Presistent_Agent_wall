@@ -138,6 +138,7 @@ def _resolve_capabilities(mode: Mode, allowed_behaviors: tuple[str, ...]) -> tup
             "test_candidate",
             "validate_proposal",
             "promote_after_validation",
+            "modify",
         ),
         "finding_review_required": (
             "record_finding",

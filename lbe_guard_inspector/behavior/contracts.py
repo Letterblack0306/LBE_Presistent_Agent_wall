@@ -151,6 +151,7 @@ BEHAVIOR_CONTRACTS: dict[str, BehaviorContract] = {
             "test_candidate",
             "validate_proposal",
             "promote_after_validation",
+            "modify",
         ),
         forbidden_actions=(
             "bypass_validation",

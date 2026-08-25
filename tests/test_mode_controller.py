@@ -207,6 +207,7 @@ def test_coding_mode_has_write_capabilities() -> None:
     )
     assert "propose" in d.capabilities
     assert "test_candidate" in d.capabilities
+    assert "modify" in d.capabilities
 
 
 def test_audit_mode_has_inspect_capabilities() -> None:

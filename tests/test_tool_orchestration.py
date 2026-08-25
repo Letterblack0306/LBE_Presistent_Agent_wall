@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,8 @@ from lbe_guard_inspector.runtime.tool_orchestration import (
     ToolRiskClass,
     ToolSpec,
     build_workspace_read_handler,
+    build_workspace_delete_handler,
+    workspace_delete_spec,
     workspace_read_spec,
 )
 
@@ -233,3 +236,160 @@ def test_workspace_read_handler_rejects_path_escape_before_evidence_read(tmp_pat
     assert receipt.status is ToolReceiptStatus.FAILED
     assert receipt.error_code == "TOOL_EXECUTION_FAILED"
     assert service.calls == []
+
+
+def _delete_orchestrator() -> GovernedToolOrchestrator:
+    registry = ToolRegistry()
+    registry.register(workspace_delete_spec(), build_workspace_delete_handler())
+    return GovernedToolOrchestrator(registry=registry)
+
+
+def _delete_request(tmp_path: Path, path: str, *, operation_id: str = "delete-1", **arguments) -> ToolRequest:
+    destructive_authorized = arguments.pop("destructive_authorized", True)
+    return ToolRequest(
+        operation_id=operation_id,
+        tool_id="workspace.delete",
+        arguments={"path": path, **arguments},
+        context=_context(
+            tmp_path,
+            "modify",
+            destructive=True,
+            destructive_authorized=destructive_authorized,
+        ),
+    )
+
+
+def test_workspace_delete_spec_uses_existing_modify_vocabulary() -> None:
+    spec = workspace_delete_spec()
+    assert spec.tool_id == "workspace.delete"
+    assert spec.capability == "modify"
+    assert spec.access_class is ToolAccessClass.WRITE
+    assert spec.network_behavior is ToolNetworkBehavior.NONE
+    assert spec.risk_class is ToolRiskClass.HIGH
+    assert spec.required_arguments == ("path", "classification", "expected_type")
+
+
+def test_workspace_delete_removes_file_and_records_hash_evidence(tmp_path: Path) -> None:
+    target = tmp_path / "generated.pyc"
+    target.write_bytes(b"generated")
+    digest = hashlib.sha256(b"generated").hexdigest()
+    receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path,
+        "generated.pyc",
+        classification="GENERATED_REGENERABLE",
+        expected_type="file",
+        expected_sha256=digest,
+    ))
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert receipt.output["deleted"] is True
+    assert receipt.evidence[0]["before_sha256"] == digest
+    assert receipt.evidence[0]["after_exists"] is False
+    assert not target.exists()
+
+
+def test_workspace_delete_removes_disposable_directory(tmp_path: Path) -> None:
+    target = tmp_path / ".pytest_cache"
+    target.mkdir()
+    (target / "cache").write_text("generated", encoding="utf-8")
+    receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, ".pytest_cache", classification="CACHE", expected_type="directory"
+    ))
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert not target.exists()
+
+
+def test_workspace_delete_requires_destructive_authority(tmp_path: Path) -> None:
+    target = tmp_path / "temp.txt"
+    target.write_text("keep", encoding="utf-8")
+    receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, "temp.txt", classification="TEMPORARY", expected_type="file", destructive_authorized=False
+    ))
+    assert receipt.status is ToolReceiptStatus.ESCALATED
+    assert receipt.error_code == "AUTHORIZATION_REQUIRED"
+    assert target.exists()
+
+
+@pytest.mark.parametrize("path", ["../outside.txt", "C:/outside.txt"])
+def test_workspace_delete_rejects_escape_paths(tmp_path: Path, path: str) -> None:
+    receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, path, classification="TEMPORARY", expected_type="file"
+    ))
+    assert receipt.status is ToolReceiptStatus.FAILED
+
+
+def test_workspace_delete_rejects_symlink_escape(tmp_path: Path) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}-outside"
+    outside.mkdir()
+    (outside / "secret.txt").write_text("protected", encoding="utf-8")
+    link = tmp_path / "linked-cache"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("symlink creation is unavailable on this Windows host")
+    receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, "linked-cache", classification="CACHE", expected_type="directory"
+    ))
+    assert receipt.status is ToolReceiptStatus.FAILED
+    assert link.exists()
+    assert (outside / "secret.txt").exists()
+
+
+def test_workspace_delete_rejects_root_and_protected_classification(tmp_path: Path) -> None:
+    root_receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, ".", classification="CACHE", expected_type="directory"
+    ))
+    assert root_receipt.status is ToolReceiptStatus.FAILED
+    target = tmp_path / "important.txt"
+    target.write_text("keep", encoding="utf-8")
+    protected_receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, "important.txt", classification="PROTECTED_USER_WORK", expected_type="file"
+    ))
+    assert protected_receipt.status is ToolReceiptStatus.FAILED
+    assert target.exists()
+
+
+def test_workspace_delete_rejects_type_and_hash_mismatch(tmp_path: Path) -> None:
+    target = tmp_path / "generated.pyc"
+    target.write_bytes(b"generated")
+    type_receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, "generated.pyc", classification="GENERATED_REGENERABLE", expected_type="directory"
+    ))
+    assert type_receipt.status is ToolReceiptStatus.FAILED
+    hash_receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, "generated.pyc", classification="GENERATED_REGENERABLE", expected_type="file", expected_sha256="0" * 64
+    ))
+    assert hash_receipt.status is ToolReceiptStatus.FAILED
+    assert target.exists()
+
+
+def test_workspace_delete_physical_failure_is_failed_receipt(tmp_path: Path, monkeypatch) -> None:
+    target = tmp_path / "generated.pyc"
+    target.write_bytes(b"generated")
+    monkeypatch.setattr(Path, "unlink", lambda self: (_ for _ in ()).throw(OSError("blocked")))
+    receipt = _delete_orchestrator().invoke(_delete_request(
+        tmp_path, "generated.pyc", classification="GENERATED_REGENERABLE", expected_type="file"
+    ))
+    assert receipt.status is ToolReceiptStatus.FAILED
+    assert target.exists()
+
+
+def test_workspace_delete_duplicate_operation_is_idempotent(tmp_path: Path) -> None:
+    target = tmp_path / "generated.pyc"
+    target.write_bytes(b"generated")
+    request = _delete_request(tmp_path, "generated.pyc", classification="GENERATED_REGENERABLE", expected_type="file")
+    orchestrator = _delete_orchestrator()
+    first = orchestrator.invoke(request)
+    second = orchestrator.invoke(request)
+    assert first.status is ToolReceiptStatus.EXECUTED
+    assert second is first
+
+
+def test_unregistered_equivalent_delete_tool_cannot_execute(tmp_path: Path) -> None:
+    target = tmp_path / "generated.pyc"
+    target.write_bytes(b"keep")
+    request = _delete_request(tmp_path, "generated.pyc", classification="CACHE", expected_type="file")
+    request = ToolRequest(operation_id=request.operation_id, tool_id="filesystem.delete", arguments=request.arguments, context=request.context)
+    receipt = GovernedToolOrchestrator(registry=ToolRegistry()).invoke(request)
+    assert receipt.status is ToolReceiptStatus.FAILED
+    assert receipt.error_code == "UNREGISTERED_TOOL"
+    assert target.exists()

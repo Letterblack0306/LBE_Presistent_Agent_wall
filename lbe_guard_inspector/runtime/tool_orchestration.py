@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol
+import hashlib
+import shutil
 import uuid
 
 from ..evidence_service import EvidenceService
@@ -320,6 +322,132 @@ def build_workspace_read_handler(evidence_service: EvidenceService) -> ToolHandl
         )
 
     return handler
+
+
+_DELETABLE_CLASSIFICATIONS = frozenset({
+    "GENERATED_REGENERABLE",
+    "CACHE",
+    "TEMPORARY",
+    "OS_METADATA",
+})
+_PROTECTED_TOP_LEVEL = frozenset({".git", ".lbe", ".github"})
+
+
+def workspace_delete_spec() -> ToolSpec:
+    return ToolSpec(
+        tool_id="workspace.delete",
+        capability="modify",
+        required_arguments=("path", "classification", "expected_type"),
+        optional_arguments=("expected_sha256",),
+        access_class=ToolAccessClass.WRITE,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.HIGH,
+        timeout_seconds=30.0,
+        retry_policy="none",
+        preconditions=(
+            "relative workspace path",
+            "approved disposable classification",
+            "active workspace scope",
+            "expected type or hash matches",
+            "protected authority paths excluded",
+        ),
+        expected_evidence=("deletion receipt", "before state or hash", "target absent"),
+        failure_modes=(
+            "invalid classification",
+            "workspace escape",
+            "symlink escape",
+            "protected path",
+            "type mismatch",
+            "hash mismatch",
+            "deletion failure",
+        ),
+    )
+
+
+def build_workspace_delete_handler() -> ToolHandler:
+    """Delete only already-classified disposable material inside the workspace."""
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        classification = str(request.arguments["classification"]).strip().upper()
+        if classification not in _DELETABLE_CLASSIFICATIONS:
+            raise ValueError("path classification is not approved for deletion")
+
+        expected_type = str(request.arguments["expected_type"]).strip().lower()
+        if expected_type not in {"file", "directory"}:
+            raise ValueError("expected_type must be file or directory")
+
+        raw_path = request.arguments["path"]
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise ValueError("path must be a non-empty relative path")
+        relative = Path(raw_path.replace("\\", "/").strip())
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("path must stay within the active workspace")
+        if not relative.parts or relative.parts[0] in _PROTECTED_TOP_LEVEL:
+            raise PermissionError("protected workspace authority path cannot be deleted")
+
+        root = Path(request.context.workspace_root).resolve()
+        candidate = root / relative
+        if candidate == root:
+            raise PermissionError("workspace root cannot be deleted")
+        resolved = candidate.resolve(strict=False)
+        try:
+            resolved.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("path escapes the active workspace") from exc
+        if candidate.exists() and candidate.is_symlink():
+            raise PermissionError("symlink deletion is not allowed")
+        if not candidate.exists():
+            raise FileNotFoundError(f"disposable path does not exist: {relative.as_posix()}")
+        actual_type = "directory" if candidate.is_dir() else "file" if candidate.is_file() else "other"
+        if actual_type != expected_type:
+            raise ValueError("expected_type does not match target")
+
+        before_sha256 = _workspace_file_sha256(candidate) if actual_type == "file" else None
+        expected_sha256 = request.arguments.get("expected_sha256")
+        if expected_sha256 is not None and expected_sha256 != before_sha256:
+            raise ValueError("expected_sha256 does not match target")
+
+        if actual_type == "directory":
+            shutil.rmtree(candidate)
+        else:
+            candidate.unlink()
+        if candidate.exists() or candidate.is_symlink():
+            raise OSError("target remains after deletion")
+
+        return ToolExecutionResult(
+            output={
+                "path": relative.as_posix(),
+                "classification": classification,
+                "expected_type": expected_type,
+                "deleted": True,
+            },
+            evidence=(
+                {
+                    "ref": f"workspace:{request.context.workspace_id}:{relative.as_posix()}",
+                    "source_type": "workspace",
+                    "workspace_id": request.context.workspace_id,
+                    "path": str(candidate),
+                    "classification": classification,
+                    "before_sha256": before_sha256,
+                    "after_exists": False,
+                    "verified": True,
+                    "metadata": {
+                        "operation_id": request.operation_id,
+                        "tool_id": request.tool_id,
+                    },
+                },
+            ),
+        )
+
+    return handler
+
+
+def _workspace_file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _validate_arguments(spec: ToolSpec, arguments: Mapping[str, Any]) -> str | None:
