@@ -1,173 +1,128 @@
 # Current Status
 
-Updated: 2026-08-22
+Updated: 2026-08-25
 
 ## Authority
 
-Live installed/runtime evidence, current Git/workspace state, `.lbe/governance/implementation-gates.json`, and project-owned acceptance checkpoints outrank this summary.
+Current Git/workspace/runtime evidence, `.lbe/governance/implementation-gates.json`, and project-owned acceptance checkpoints outrank this summary.
 
 Repository: `Letterblack0306/LBE_Presistent_Agent_wall`
+
 Canonical branch: `main`
+
 Canonical local workspace: `C:\Agents-Memory-Tool-v6-integration`
 
 ## Engineering route
 
 ```text
-GPT-Knowledge -> methodology/routing/reference
+GPT-Knowledge -> methodology/routing/projection
 GitHub -> canonical remote source/docs/gates/checkpoints/patches
-LoopTool/local -> test/debug/runtime execution evidence only
+LoopTool/local -> test/debug/runtime execution evidence
 ```
-
-GPT-Knowledge method currently applied: proof-before-plan, explicit evidence classes, live runtime proof for security/integration claims, receipts over narrative, and provider credential configuration separated from evidence/state.
 
 ## Accepted baseline
 
 ```text
-R3-R6F: PROVEN_COMPLETE
-CLI_NORMAL_PATH_ACCEPTANCE: PROVEN_COMPLETE
-R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
-RELEASE_PACKAGE_READINESS_ACCEPTANCE: PASS
-PUBLICATION_PRECHECK: PASS
+R3-R6F                              = PROVEN_COMPLETE
+CLI_NORMAL_PATH_ACCEPTANCE          = PROVEN_COMPLETE
+R7_INSTALLED_END_TO_END_ACCEPTANCE = PASS
+RELEASE_PACKAGE_READINESS          = PASS
+PUBLICATION_PRECHECK               = PASS
+DOCTRINE_TO_PROVIDER_CONTEXT       = PASS
+WORKSPACE_HYGIENE                  = PASS
+MANDATORY_GOVERNED_MUTATION        = PASS
 ```
 
 ## Current machine state
 
 ```text
-active_plan: docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
-active_phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-active_slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
-status: OPEN
-target_version: 2.0.3 (publication preparation paused)
-implementation_allowed: true (active workspace-hygiene slice only)
-architecture_changes_allowed: true (explicit user authorization)
-publication_controls: false (nested publication governance records)
-workspace_hygiene_result: PASS (bounded deletion slice; next product slice not activated)
+active_plan        = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
+active_phase       = COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
+active_slice       = MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH
+active_slice_result= PASS
+top_level_status   = OPEN
+next_phase_locked  = true
+next_product_slice = NOT YET ACTIVATED
+publication        = PAUSED
 ```
 
-R7 is closed `PASS`; observable 3 and observable 13 are `PASS_AFTER_REPAIR`. The historical
-observable records below are retained as evidence, not as the active machine state.
+The selected intent remains machine-active while this PASS slice is registered so the fail-closed implementation checker continues to have a valid active intent/slice binding. `RESULT: PASS` and the acceptance checkpoint are the completion truth for the slice. A successor intent/slice must be atomically bound before unrelated product mutation resumes.
 
-## Historical R7 observable evidence
+## Latest product checkpoint
+
+Canonical implementation commit:
+
+`47885891848ec9a535a4e09694d3129b320da91a`
+
+Checkpoint:
+
+`docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md`
+
+Local LoopTool proof:
 
 ```text
-R7_OBSERVABLE_12=PASS
-
-Verified:
-- provider JSON body clean
-- runtime result clean
-- receipts clean
-- completion evidence clean
-- CLI stdout/stderr clean
-- persisted state clean
-- workspace files clean
-- source and acceptance artifacts clean
-- SQLite raw bytes clean
-- no credential/secret leakage
-
-Allowed secret loci:
-- ephemeral credential input
-- outbound Authorization header only
-
-Observed transport:
-- header name: authorization
-- credential transport header present: PASS
+COMMAND HASH = D0DA7CA90B549E0C51FC2E65C7B68A30ECF7542710CE9CC1AF006D91FCA7F725
+MACHINE_BINDING = PASS
+focused regression = 80 passed
+full regression = 713 passed
+HEAD = 47885891848ec9a535a4e09694d3129b320da91a
+branch = main...origin/main
+local exception = ?? lbe-tui/
 ```
 
-Initial OBS12 failure classification:
+`lbe-tui/` remained untracked/reference-only and untouched.
+
+## Proven governed mutation boundary
+
+The current provider-facing coding path now proves:
 
 ```text
-Failure:
-provider authorization header match assertion returned 0
-
-Investigation result:
-- Runtime transport was present.
-- Diagnostic confirmed lowercase header representation (`authorization`).
-- Product leakage behavior was not falsified.
-
-Classification:
-observability/harness assumption issue, not runtime product defect.
+agent/provider proposes capability
+ -> LBE-generated registered tool only
+ -> R6C authorization before execution
+ -> R6E approved handler
+ -> ToolReceipt/evidence
+ -> provider continuation
 ```
 
-## Current authority boundary
+Bounded production capabilities proven in this slice:
+
+- workspace text creation/write with containment and stale-write checks;
+- explicit registered process execution without arbitrary shell exposure;
+- Git mutation restricted to the primary `main` workspace;
+- Git staging/commit restricted to paths mutated through governed LBE tools during the current reasoning turn;
+- correlated success/failure receipts;
+- audit/investigation read-only preservation.
+
+## Remaining complete-runtime work
+
+The complete-runtime gate is still OPEN. The current PASS does not prove the remaining integrated mutation classes or final product acceptance.
+
+Canonical remaining sequence:
 
 ```text
-active_phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-active_slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
-current_status: OPEN
-implementation_allowed: true (active workspace-hygiene slice only)
-architecture_changes_allowed: true (explicit user authorization)
-next_phase_locked: true
-publication_controls: false (nested publication governance records)
+remaining governed integration dispatch
+  (MCP/plugin, subagent, network, hosted-service)
+ -> first-run/live persisted session flow
+ -> capability registry expansion
+ -> remaining LBE interface/control/evidence surfaces
+ -> recovery + deterministic completion + TEMP/promotion integration
+ -> installed-package acceptance
 ```
 
-## Remaining sequence
+The next product slice must first identify and reuse the existing owner for the selected capability class, then bind one exact intent/slice in the machine gate. Do not infer the next active task from historical/reference documents.
+
+## Product identity
 
 ```text
-complete governed workspace-hygiene deletion capability
- -> PASS: bounded deletion, receipts, containment, and protected-scope behavior
- -> select and machine-bind the next explicit product slice
- -> reactivate the paused 2.0.3 preparation gate only when product work is accepted
+PRODUCT           = LBE
+INTERFACE         = LBE interface / LBE-owned interface
+RUNTIME AUTHORITY = LBE
+CLINE             = optional mechanics/reuse source only
 ```
 
-## Architecture correction (proposed follow-on review; not an active gate)
+Cline, `lbe-tui/`, and `lbe-core/` are not competing product/runtime authorities.
 
-> **LBE governs an agent's capabilities and consequences; it does not prescribe the agent's
-> reasoning procedure.**
+## Publication
 
-The historical `LBERequestController` / fixed `ReasoningPlan` workflow became a central
-cognitive path. It must be repositioned as a bounded/specialist investigation capability, not
-treated as the agent. Deterministic guards, R6C/R6E authorization and execution, ToolReceipt,
-provider continuation, persistence, and completion validation remain authoritative LBE
-boundaries. See `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and
-`docs/IMPLEMENTATION_PLAN.md` section 15.
-
-## Terminal workspace product status (non-active product gap)
-
-```text
-governed one-shot coding runtime: READY (bounded capability slice)
-installed provider/tool-receipt/completion proof: READY for the repaired R7 path
-complete interactive terminal workspace: BLOCKED by unimplemented product surfaces
-browser/HTML preview proof: UNKNOWN (no browser available in this environment)
-```
-
-The current source has a compact LBE Core-derived identity header, persisted objective, fixed-column
-event stream (`verb / target / delta / receipt / state`), composer, and command/details surface
-over existing persisted session and control owners. It can create a new persisted session when the
-workspace, workspace identity, and mode are supplied; execution still requires an external provider
-configuration. It does not yet provide the integrated terminal workflow required for the product:
-usable provider/model settings and health, session navigation, provider/model loading, structured
-diff/evidence views, integrations/settings views, or an installed interactive acceptance run. The
-copied HTML files under `docs/reference/ui/` are visual-reference artifacts; they are not a browser
-product surface and do not constitute UI proof.
-
-The detailed verified gap and implementation order are in
-`docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`.
-
-## Authorization position — 2026-08-21
-
-Ordinary policy-covered capabilities are agent-native and execute through the existing R6C/R6E
-boundary without a conversational approval queue. The terminal renders the observed receipt,
-evidence, diff, failure, or blocked result. A separate explicit decision is reserved only for a
-defined high-risk authority expansion (for example destructive work, policy widening, a new
-capability class, or scope conflict); it must not become the default workflow for edits.
-
-GPT-Knowledge was checked at `Letterblack0306/GPT-Knowledge` on 2026-08-21. Its
-`ai-agents/lbe-cli-control-plane-provider-boundary.md` and
-`ui-engineering/inline-agent-runtime-toolcall-truth-ui.md` establish this product direction;
-the current LBE repository remains the implementation authority.
-
-## Documentation alignment rule — 2026-08-21
-
-The current product direction is maintained together in this status document,
-`docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md`, and
-`docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md`. Before changing the terminal or
-runtime workflow, reconcile those documents against the live machine gate and the GPT-Knowledge
-references above. Records under `docs/acceptance/` preserve historical gate and validation
-evidence; they are not rewritten to imply a newer product decision.
-
-Cross-repository mirror check: GPT-Knowledge retains reusable architecture/UI references and a
-short project-state mirror only. Its project status, R7 routing, and plan-canvas records must
-link back to this repository's machine gate instead of duplicating acceptance chronology or
-claiming publication. The 2026-08-22 reconciliation records the doctrine-to-provider context
-bridge as `OPEN`, publication preparation as paused, R7 as `PASS`, and terminal-workspace
-foundation records as superseded evidence rather than active authorization.
+Publication/version progression remains paused while complete-runtime product work is active. No publication, tag, or release is authorized by the current runtime slice.
