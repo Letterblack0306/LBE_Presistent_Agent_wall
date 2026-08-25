@@ -58,7 +58,8 @@
     "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH": "PASS",
     "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION": "PASS",
     "FIRST_RUN_LIVE_SESSION_ENTRY": "PASS",
-    "INSTALLED_CAPABILITY_REGISTRY_DISCOVERY": "PASS"
+    "INSTALLED_CAPABILITY_REGISTRY_DISCOVERY": "PASS",
+    "LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES": "PASS"
   },
   "release_package_readiness": {
     "status": "PASS",
@@ -171,11 +172,13 @@
     "completion_checkpoint": "docs/acceptance/INSTALLED_CAPABILITY_REGISTRY_DISCOVERY_CHECKPOINT.md"
   },
   "lbe_interface_control_evidence_surfaces": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
     "scope": ["terminal_capability_projection", "installed_integration_projection", "mcp_projection", "provider_settings_projection", "session_navigation", "evidence_receipt_detail_projection", "diff_projection", "interrupt_cancel_controls"],
     "required_evidence": ["existing_textual_client_reused", "installed_registry_projects_without_execution", "integrations_command_not_hardcoded_unavailable_when_registry_present", "mcp_command_filters_mcp_entries_truthfully", "settings_and_provider_views_remain_owner_backed", "session_navigation_reuses_persisted_session_owner", "detail_view_preserves_receipt_evidence_and_diff_identity", "interrupt_cancel_use_persistent_turn_control", "no_second_runtime_or_execution_owner", "focused_tui_tests", "full_regression"],
-    "publish_allowed": false
+    "validation": {"implementation_commit": "9ca27a1498afa017ec0c5a449d80882ca0958a73", "looptool_command_hash": "334C15A0913D56BE5D6EC6057BA5B66909B06C72F745FA92A5D3281837821C04", "focused_tests": "53 passed", "full_tests": "763 passed", "head_alignment": "PASS", "protected_reference": "lbe-tui/ remained untracked and untouched"},
+    "publish_allowed": false,
+    "completion_checkpoint": "docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_CHECKPOINT.md"
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",
