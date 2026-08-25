@@ -36,7 +36,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-INSTALLED-PACKAGE-END-TO-END-ACCEPTANCE-001",
     "owner": "product_entry / CLI entry point; SessionMemoryRuntimeBridge / WorkspaceMemoryStore; provider registry/config/health; GovernedAgentGateway; R6C/R6E governed execution; CompletionEvidenceProducers; CodingCompletionRuntime; R5 recovery; MemoryPromoter; Textual LBE interface",
-    "index_revision": "80DE85102540F08CF8752D8646FF99F14C66DAA3D9B01621569321794DCA64FF"
+    "index_revision": "565DD1BEF2E6F0F0D5B9AE659B8B832118188188BD8109D8F482B3A997810739"
   },
   "accepted_baseline": {
     "R3": "PROVEN_COMPLETE",
@@ -120,7 +120,7 @@
     "remaining_prerequisites": ["set canonical pyproject.toml version to 2.0.3", "validate exact 2.0.3 wheel and installed runtime", "prove PyPI 2.0.3 is absent immediately before dispatch", "successful live trusted-publishing workflow execution", "post-publish PyPI verification"]
   },
   "complete_lbe_agent_runtime": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
     "active_slice": "INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE",
     "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
@@ -198,7 +198,7 @@
     "completion_checkpoint": "docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md"
   },
   "installed_package_end_to_end_acceptance": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
     "scope": [
       "isolated_wheel_and_sdist_build",

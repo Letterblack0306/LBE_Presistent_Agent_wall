@@ -43,7 +43,7 @@ Publication/version progression remains paused while complete-runtime product wo
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 active_phase        = COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
 active_slice        = INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
-active_slice_result = OPEN / IMPLEMENTED_VALIDATION_PENDING
+active_slice_result = PASS
 top_level_status    = OPEN
 next_phase_locked   = true
 publication         = PAUSED
@@ -51,7 +51,12 @@ publication         = PAUSED
 
 ## Latest completed checkpoint
 
-`RECOVERY_COMPLETION_PROMOTION_INTEGRATION = PASS`
+`INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE = PASS`
+
+The installed package acceptance checkpoint is canonical at
+`docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md`.
+The complete runtime gate is PASS. Publication remains paused and no next
+product slice is active.
 
 Validated implementation HEAD:
 

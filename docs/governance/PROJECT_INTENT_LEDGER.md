@@ -157,7 +157,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.
 
 ```text
 INTENT_ID: LBE-INTENT-INSTALLED-PACKAGE-END-TO-END-ACCEPTANCE-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Prove the complete LBE runtime from an isolated installed distribution, not from repository-source imports, exercising the normal product entry, persisted session/provider path, governed capability dispatch, evidence, recovery, and deterministic completion.
 WHY: All complete-runtime source slices are proven; the remaining product requirement is proof that the packaged and installed artifact composes those owners correctly as the product.
 AFFECTED_STRUCTURE: lbe_guard_inspector/,tests/,scripts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
@@ -166,11 +166,12 @@ DESIRED_RESULT: A freshly built isolated installed LBE distribution can create/r
 NON_GOALS: No TUI redesign, no session-lifecycle-unification patch, no Cline integration, no lbe-tui activation, no lbe-core mutation, no release/tag/publication, no version change unless an already-proven packaging defect blocks the installed proof.
 REUSE_DECISION: ACCEPTANCE ONLY. Reuse all existing LBE runtime, provider, session, authorization, dispatch, receipt, evidence, recovery, completion, promotion, and Textual owners; add no authority.
 AUTHORITY_IMPACT: NONE. Acceptance only; no new runtime/provider/session/execution/completion authority.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,scripts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/DOCUMENT_INTENT_MANIFEST.md,lbe_guard_inspector/,tests/,scripts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
 REQUIRED_EVIDENCE: isolated build and wheel hash, installed entrypoint/import isolation, persisted session create/restore, provider/model identity, installed registry fail-closed behavior, governed capability receipt/evidence, deterministic completion and verified promotion, recovery reconstruction, installed interface smoke, focused installed tests, full regression.
 MACHINE_SLICE: INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
 SUPERSEDES: none
-RESULT: IN_PROGRESS
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001
