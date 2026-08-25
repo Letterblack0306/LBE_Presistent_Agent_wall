@@ -16,8 +16,8 @@ must map to one row before it may be changed.
 | `scripts/` | Gate checks and validation tooling | LBE governance/validation | `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md` | Governance intent required |
 | `.github/` | CI and release workflow governance | Release/repository governance | `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md` | Explicit release or governance intent |
 | `.lbe/` | Machine governance, receipts, and protected runtime state | Machine governance | `.lbe/governance/implementation-gates.json` | Protected; explicit governance intent |
-| `.agent/` | Agent routing, templates, and evidence instructions | Agent governance | `.agent/PROJECT_CONTEXT.md` | Routing/intent update required |
-| `.cline/` | Cline rules and governed-slice skills | Agent governance | `.cline/rules/00-lbe-workspace-and-progression.md` | Preserve tool-consumed paths |
+| `.agent/` | Retired local agent-routing material | Historical/local control surface | `docs/README.md` and `.lbe/governance/implementation-gates.json` | Do not treat deleted routing aliases as live authority |
+| `.cline/` | Retired local Cline control material | Historical/local control surface | `docs/README.md` and `.lbe/governance/implementation-gates.json` | Do not treat deleted routing aliases as live authority |
 | `docs/` | Canonical documentation, contracts, design, gates, reference, and history | Documentation owner + machine gate | `docs/README.md` | Classify and update intent manifest |
 | `docs/acceptance/` | Active gate records and bounded acceptance checkpoints | Machine gate + acceptance owners | `docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md` | Active intent and machine-selected slice only |
 | `docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md` | PASS checkpoint for recovery, deterministic completion, and proof promotion | Recovery/completion acceptance owner | `.lbe/governance/implementation-gates.json` | Active recovery intent only; immutable after canonicalization |

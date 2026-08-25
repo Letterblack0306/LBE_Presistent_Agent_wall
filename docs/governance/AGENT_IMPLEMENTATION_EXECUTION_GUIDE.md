@@ -100,22 +100,20 @@ Fail-closed structural validation of the machine gate.
 
 ## Agent routing authority
 
-### `.agent/PROJECT_CONTEXT.md`
-First-read project context and current known baseline.
-
-### `.cline/rules/00-lbe-workspace-and-progression.md`
-Always-on Cline instructions.
-
-### `.cline/skills/lbe-phase-execution/SKILL.md`
-Exact procedure for executing one slice.
+Current routing begins at `PROJECT_INDEX.md` and `docs/README.md`, then follows
+the machine authority in `.lbe/governance/implementation-gates.json`, the
+governance ledger, and the active acceptance record. The former `.agent/` and
+`.cline/` routing aliases are retired and are not live authority surfaces.
 
 ## Acceptance authority
 
 ### `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md`
 Human-readable active slice contract and completed checkpoint history.
 
-### `.agent/IMPLEMENTATION_CHECKPOINT_TEMPLATE.md`
-Required format for recording every new slice.
+### Checkpoint format
+Use the applicable acceptance checkpoint structure and preserve the required
+fields enforced by the machine gate; the former `.agent/` template path is
+retired.
 
 ## Architecture/plan authority
 
@@ -266,7 +264,7 @@ Confirm implementation, tests, unsupported-capability truthfulness, and no accid
 
 ## G11 — Checkpoint record
 
-Use `.agent/IMPLEMENTATION_CHECKPOINT_TEMPLATE.md`.
+Use the applicable checkpoint structure under `docs/acceptance/`.
 
 **BLOCK if:** required fields/evidence are absent.
 
@@ -480,7 +478,8 @@ powershell -ExecutionPolicy Bypass -File scripts/enable-workspace-lock.ps1
 python scripts/check-implementation-gate.py
 ```
 
-Then the agent reads `.agent/PROJECT_CONTEXT.md` and performs only the active slice.
+Then the agent reads `PROJECT_INDEX.md`, `docs/README.md`, and the machine gate,
+and performs only the active slice.
 
 If the worktree contains unrelated user changes, stop before pull if the pull would overwrite/conflict. Preserve user state; never auto-stash/reset/clean.
 

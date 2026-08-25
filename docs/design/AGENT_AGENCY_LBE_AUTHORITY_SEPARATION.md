@@ -160,7 +160,8 @@ As a proposed future UX enhancement (post-R7 acceptance), the CLI projection lay
 
 - `docs/IMPLEMENTATION_PLAN.md` — section 15 (doc reconciliation & this proposed review).
 - `docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md` — current machine-gate state.
-- `.agent/PROJECT_CONTEXT.md` — canonical agent entry point (links here).
+- `PROJECT_INDEX.md` and `docs/README.md` — canonical documentation routing
+  surfaces (links here); the former agent-context alias is retired.
 - `docs/design/LLM_REASONING_LAYER_ROADMAP.md` — prior reasoning-layer design record.
 - `docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md` — public CLI reference review and
   current LBE product-gap findings.

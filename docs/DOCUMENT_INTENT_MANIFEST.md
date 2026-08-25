@@ -25,17 +25,11 @@ the active acceptance gate, source code, or runtime evidence.
 An entry being unreferenced does not make it invalid. It must be classified before relocation or
 removal. Every entry below has an explicit role and disposition.
 
-## Agent and Cline control surfaces
+## Retired agent and Cline control surfaces
 
 | Path | Class | Intent / disposition |
 |---|---|---|
-| `.agent/CLINE_REUSE_AUDIT_INSTRUCTIONS.md` | `GOVERNANCE` | Instructions for the Cline reuse-boundary audit; keep as agent audit procedure. |
-| `.agent/IMPLEMENTATION_CHECKPOINT_TEMPLATE.md` | `TEMPLATE` | Template for recording implementation checkpoint state; keep and reuse. |
-| `.agent/PROJECT_CONTEXT.md` | `ROUTER` | First-read project routing and authority precedence; keep as the agent entrypoint. |
-| `.cline/README.md` | `ROUTER` | Cline-specific project-control entrypoint; keep at its tool-consumed path. |
-| `.cline/rules/00-lbe-workspace-and-progression.md` | `GOVERNANCE` | Always-on workspace and progression rules for Cline; keep at its runtime path. |
-| `.cline/rules/01-cline-runtime-reuse-boundary.md` | `GOVERNANCE` | Always-on rule preventing Cline from replacing LBE authority; keep at its runtime path. |
-| `.cline/skills/lbe-phase-execution/SKILL.md` | `GOVERNANCE` | Procedure for executing one governed LBE slice; keep at its skill path. |
+The former `.agent/` and `.cline/` routing files were retired as obsolete local aliases. Current authority is owned by `PROJECT_INDEX.md`, `docs/README.md`, the governance ledger, and `.lbe/governance/implementation-gates.json`. Historical acceptance records may mention those paths to describe their former state; those records are not rewritten.
 
 ## Root operational documents
 
