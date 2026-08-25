@@ -41,10 +41,10 @@ Publication/version progression remains paused while complete-runtime product wo
 
 ```text
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
-active_phase        = SESSION_APPLICATION_CONTRACT_UNIFICATION
-active_slice        = SESSION_APPLICATION_CONTRACT_UNIFICATION
-active_slice_result = PASS
-top_level_status    = OPEN
+active_phase        = COMPLETE_LBE_AGENT_RUNTIME
+active_slice        = NONE
+active_slice_result = CLOSED
+top_level_status    = CLOSED
 next_phase_locked   = true
 publication         = PAUSED
 ```
@@ -55,8 +55,8 @@ publication         = PAUSED
 
 The installed package acceptance checkpoint is canonical at
 `docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md`.
-The complete runtime gate is PASS. The active product slice is now the
-session/application contract unification intent; publication remains paused.
+The complete runtime and session/application contract gates are PASS. There
+is no active product slice; a future slice requires a new intent binding.
 
 Validated implementation HEAD:
 
@@ -77,11 +77,12 @@ HEAD = 6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f
 local exception = ?? lbe-tui/ (reference-only, untouched)
 ```
 
-## Active product work — session/application contract unification
+## Completed product work — session/application contract unification
 
-The recovery/completion/proof-promotion and installed-package slices are
-canonically PASS. The active slice unifies the preserved CLI/Textual
-session/provider lifecycle behind one shared application-service contract.
+The recovery/completion/proof-promotion, installed-package, and
+session/application contract slices are canonically PASS. The preserved
+CLI/Textual lifecycle is unified behind one shared application-service
+contract.
 
 Required proof includes installed entrypoint and import isolation, persisted
 session/provider restoration, installed capability projection and fail-closed

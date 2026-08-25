@@ -1,15 +1,15 @@
 # Complete LBE Agent Runtime Gate
 
-Status: **PASS — COMPLETE RUNTIME PROVEN — PUBLICATION PAUSED**
+Status: **CLOSED — COMPLETE RUNTIME AND SESSION CONTRACT PROVEN — PUBLICATION PAUSED**
 
 ## Machine-selected state
 
 ```text
-phase: SESSION_APPLICATION_CONTRACT_UNIFICATION
-slice: SESSION_APPLICATION_CONTRACT_UNIFICATION
-slice_result: PASS
-status: OPEN
-implementation_allowed: true
+phase: COMPLETE_LBE_AGENT_RUNTIME
+slice: NONE
+slice_result: CLOSED
+status: CLOSED
+implementation_allowed: false
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publication_controls: false (nested publication governance records)
@@ -162,6 +162,18 @@ persistence, execution, authorization, receipt, or completion authority.
 The preserved four-file patch was hash-verified, reconciled against current
 `main`, applied, tested, and recorded in
 `docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md`.
+
+## Closure state
+
+```text
+COMPLETE_LBE_AGENT_RUNTIME = PASS
+SESSION_APPLICATION_CONTRACT_UNIFICATION = PASS
+ACTIVE_SLICE = NONE
+NEXT_PRODUCT_SLICE = NOT_ACTIVATED
+PUBLICATION = LOCKED / NOT AUTHORIZED
+```
+
+The machine gate is closed until a new product intent is explicitly bound.
 
 ## Current remaining product sequence
 

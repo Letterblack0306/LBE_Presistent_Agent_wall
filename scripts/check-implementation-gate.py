@@ -157,10 +157,34 @@ def main() -> None:
 
     if not data.get("active_plan"):
         fail("active_plan is not declared")
+    status = str(data.get("status", "")).upper()
     if not data.get("active_phase") or not data.get("active_slice"):
         fail("active phase/slice is not declared")
-    if data.get("status") != "OPEN":
-        fail(f"current gate status is {data.get('status')!r}, expected 'OPEN'")
+
+    if status in {"PASS", "CLOSED"}:
+        active = data.get("active_intent") or {}
+        intent_id = str(active.get("intent_id", "")).strip()
+        ledger_path = ROOT / str((data.get("intent_and_structure_governance") or {}).get("intent_ledger", ""))
+        if not intent_id or not ledger_path.is_file():
+            fail("BLOCKED_CLOSURE: completed gate must retain a registered active_intent and intent ledger")
+        block = _intent_block(ledger_path.read_text(encoding="utf-8"), intent_id)
+        if not block:
+            fail(f"BLOCKED_CLOSURE: completed intent {intent_id} is not registered")
+        if _field(block, "STATUS") != "COMPLETED" or _field(block, "RESULT") != "PASS":
+            fail(f"BLOCKED_CLOSURE: intent {intent_id} must be COMPLETED with RESULT PASS")
+        checkpoint = _field(block, "COMPLETION_CHECKPOINT")
+        if not checkpoint or not (ROOT / checkpoint).is_file():
+            fail(f"BLOCKED_CLOSURE: completion checkpoint is missing for {intent_id}")
+        if str(data.get("active_slice", "")).upper() not in {"NONE", "COMPLETED"}:
+            fail("BLOCKED_CLOSURE: closed gate must not retain an executable active slice")
+        print(
+            "LBE IMPLEMENTATION GATE: PASS — closed gate; "
+            f"last_intent={intent_id} checkpoint={checkpoint}"
+        )
+        return
+
+    if status != "OPEN":
+        fail(f"current gate status is {data.get('status')!r}, expected 'OPEN', 'PASS', or 'CLOSED'")
 
     staged = _staged_paths()
     if data.get("intent_and_structure_governance", {}).get("intent_required_before_mutation") is True:
