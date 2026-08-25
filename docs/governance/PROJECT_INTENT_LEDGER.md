@@ -12,16 +12,12 @@ in `PROJECT_INDEX.md`.
 INTENT_ID: LBE-INTENT-WORKSPACE-HYGIENE-001
 STATUS: COMPLETED
 REQUEST: Govern workspace document hygiene and bounded disposable deletion.
-WHY: Prevent unexplained, stale, duplicate, generated, or abandoned workspace material from being
-treated as current project authority.
+WHY: Prevent unexplained, stale, duplicate, generated, or abandoned workspace material from being treated as current project authority.
 AFFECTED_STRUCTURE: docs/, scripts/, .lbe/, .agent/, lbe_guard_inspector/, tests/, unused-in-repo/
 EXISTING_OWNER: LBE governance, documentation, runtime orchestration, and validation owners.
-DESIRED_RESULT: Every material document has an owner, intent, reachability classification, and safe
-disposition; disposable deletion is governed and receipt-backed.
-NON_GOALS: No new execution system, no unrestricted deletion, no destruction of unknown user work,
-no publication, no provider/UI architecture change.
-REUSE_DECISION: Reuse existing machine gate, tool orchestrator, receipt, evidence, and documentation
-owners.
+DESIRED_RESULT: Every material document has an owner, intent, reachability classification, and safe disposition; disposable deletion is governed and receipt-backed.
+NON_GOALS: No new execution system, no unrestricted deletion, no destruction of unknown user work, no publication, no provider/UI architecture change.
+REUSE_DECISION: Reuse existing machine gate, tool orchestrator, receipt, evidence, and documentation owners.
 AUTHORITY_IMPACT: Strengthens pre-mutation checks without creating a second authority owner.
 EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/,scripts/check-implementation-gate.py,.lbe/governance/,.agent/,lbe_guard_inspector/,tests/,unused-in-repo/
 REQUIRED_EVIDENCE: index/ledger match, staged-scope match, focused tests, diff check, protected-work preservation
@@ -56,7 +52,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATC
 
 ```text
 INTENT_ID: LBE-INTENT-GOVERNED-EXTERNAL-CAPABILITY-REGISTRATION-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Add one LBE-owned registration contract for MCP, plugin, subagent, network, and hosted-service capabilities so integrations can be exposed to providers only through existing ToolRegistry/R6C/R6E dispatch.
 WHY: Current source has no runtime MCP/plugin/subagent owner and no generic agent-facing network/hosted-service owner. External integrations must become registered governed capabilities rather than direct provider tools or parallel executors.
 AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
@@ -69,6 +65,27 @@ EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,tests/,docs/acceptance/,doc
 REQUIRED_EVIDENCE: five external kinds classified, pre-registration required, raw transport arguments denied, network metadata enforced, provider-only LBE projection, authorization-before-adapter execution, correlated receipts, unregistered fail-closed, no duplicate authority owner
 MACHINE_SLICE: GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION
 SUPERSEDES: none
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION_CHECKPOINT.md
+```
+
+## INTENT LBE-INTENT-FIRST-RUN-LIVE-SESSION-ENTRY-001
+
+```text
+INTENT_ID: LBE-INTENT-FIRST-RUN-LIVE-SESSION-ENTRY-001
+STATUS: ACTIVE
+REQUEST: Provide one product-level first-run/live-session entry path that creates or restores a persisted LBE session using the existing workspace, provider/profile, policy, session, provider-turn, and terminal owners.
+WHY: The runtime pieces are proven individually, but users should enter the LBE product through one bounded start path instead of manually composing session-create, provider selection, and TUI/runtime wiring.
+AFFECTED_STRUCTURE: lbe_guard_inspector/cli.py, lbe_guard_inspector/session_memory_runtime.py, lbe_guard_inspector/textual_tui.py, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
+EXISTING_OWNER: CLI thin control plane; SessionMemoryRuntimeBridge and WorkspaceMemoryStore persisted session owners; provider registry/profile/config/health owners; BackgroundProviderTurnRuntime and GovernedAgentGateway; Textual LBE projection/control client.
+DESIRED_RESULT: `lbe start` deterministically restores an existing session or creates one new persisted session from explicit workspace/mode/provider/model/profile inputs, validates provider identity/config where execution is requested, then enters the existing live TUI/runtime without introducing a second session or provider authority.
+NON_GOALS: No new session database, no new credential store, no new provider registry, no provider fallback, no direct external execution bypass, no TUI redesign, no publication, no lbe-core/lbe-tui mutation.
+REUSE_DECISION: REUSE `_session_create`, `_runtime_from_state`, WorkspaceMemoryStore, SessionMemoryRuntimeBridge, existing provider validation/configuration, `_tui`, provider turn runtimes, PersistentTurnControl, and Textual projection. ADD only a product-level start resolver/CLI surface and focused acceptance tests.
+AUTHORITY_IMPACT: No authority expansion; this composes existing owners into one entry path.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: create-new persisted session, restore-existing persisted session, explicit provider/model consistency, provider-config mismatch denial, no silent provider fallback, stable session identity, existing TUI/runtime owner reuse, no duplicate session/provider authority, full regression
+MACHINE_SLICE: FIRST_RUN_LIVE_SESSION_ENTRY
+SUPERSEDES: none
 RESULT: IN_PROGRESS
 ```
 
@@ -80,18 +97,13 @@ STATUS: ACCEPTED_PRODUCT_DIRECTION
 REQUEST: Use Cline AgentRuntime interaction and continuation mechanics behind an LBE-owned governance adapter.
 WHY: Reuse the mature agent loop without creating a second LBE authority/runtime.
 AFFECTED_STRUCTURE: lbe_guard_inspector/, docs/design/, docs/research/, .cline/
-EXISTING_OWNER: LBE workspace/session identity, authorization, dispatch, receipts, evidence,
-persistence, validation, and completion owners.
-DESIRED_RESULT: Cline mechanics are adapted behind LBE authority; native Cline mutation/execution is
-not canonical.
-NON_GOALS: No direct Cline mutation authority, no second session authority, no React runtime before
-the adapter boundary is proven.
-REUSE_DECISION: REUSE continuation/event/tool mechanics; ADAPT provider and presentation mechanics;
-REJECT native overlapping mutation/execution.
+EXISTING_OWNER: LBE workspace/session identity, authorization, dispatch, receipts, evidence, persistence, validation, and completion owners.
+DESIRED_RESULT: Cline mechanics are adapted behind LBE authority; native Cline mutation/execution is not canonical.
+NON_GOALS: No direct Cline mutation authority, no second session authority, no React runtime before the adapter boundary is proven.
+REUSE_DECISION: REUSE continuation/event/tool mechanics; ADAPT provider and presentation mechanics; REJECT native overlapping mutation/execution.
 AUTHORITY_IMPACT: LBE authority remains unchanged.
 EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,docs/design/,docs/research/,.cline/
-REQUIRED_EVIDENCE: deny-before-execute, allow-exactly-once, receipt-backed continuation, event mapping,
-native mutation disabled, canonical LBE session ownership
+REQUIRED_EVIDENCE: deny-before-execute, allow-exactly-once, receipt-backed continuation, event mapping, native mutation disabled, canonical LBE session ownership
 MACHINE_SLICE: FUTURE_SLICE_NOT_ACTIVE
 SUPERSEDES: none
 RESULT: NOT_ACTIVE
@@ -106,5 +118,4 @@ NO INDEX ENTRY -> NO CHANGE
 NO MACHINE-GATE MATCH -> NO CHANGE
 ```
 
-Completed intents must update `RESULT` and retain the evidence/commit reference. Proposed intents
-remain non-authorizing until explicitly bound to the machine gate.
+Completed intents must update `RESULT` and retain the evidence/commit reference. Proposed intents remain non-authorizing until explicitly bound to the machine gate.
