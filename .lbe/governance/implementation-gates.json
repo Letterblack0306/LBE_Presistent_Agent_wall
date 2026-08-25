@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
   "active_phase": "COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION",
-  "active_slice": "INSTALLED_CAPABILITY_REGISTRY_DISCOVERY",
+  "active_slice": "LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -34,8 +34,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-INSTALLED-CAPABILITY-REGISTRY-001",
-    "owner": "External capability registration, ToolRegistry/R6C/R6E, persisted configuration/session, CLI, and terminal capability projection owners",
+    "intent_id": "LBE-INTENT-INTERFACE-CONTROL-EVIDENCE-SURFACES-001",
+    "owner": "Textual LBE client, terminal projection, TUI view models, persisted operational history, PersistentTurnControl, session/provider owners, and installed capability registry projection",
     "index_revision": "F559045AF6DF6BE6DC3DACFE022357549668079A0A072FC61340630F67EA16D3"
   },
   "accepted_baseline": {
@@ -121,7 +121,7 @@
   "complete_lbe_agent_runtime": {
     "status": "OPEN",
     "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
-    "active_slice": "INSTALLED_CAPABILITY_REGISTRY_DISCOVERY",
+    "active_slice": "LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES",
     "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
     "required_evidence": ["focused_configuration_tests", "credential_non_leakage_scan", "provider_profile_lifecycle", "persisted_owner_reuse"],
     "publish_allowed": false
@@ -170,6 +170,13 @@
     "publish_allowed": false,
     "completion_checkpoint": "docs/acceptance/INSTALLED_CAPABILITY_REGISTRY_DISCOVERY_CHECKPOINT.md"
   },
+  "lbe_interface_control_evidence_surfaces": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+    "scope": ["terminal_capability_projection", "installed_integration_projection", "mcp_projection", "provider_settings_projection", "session_navigation", "evidence_receipt_detail_projection", "diff_projection", "interrupt_cancel_controls"],
+    "required_evidence": ["existing_textual_client_reused", "installed_registry_projects_without_execution", "integrations_command_not_hardcoded_unavailable_when_registry_present", "mcp_command_filters_mcp_entries_truthfully", "settings_and_provider_views_remain_owner_backed", "session_navigation_reuses_persisted_session_owner", "detail_view_preserves_receipt_evidence_and_diff_identity", "interrupt_cancel_use_persistent_turn_control", "no_second_runtime_or_execution_owner", "focused_tui_tests", "full_regression"],
+    "publish_allowed": false
+  },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",
     "publishing any version other than 2.0.3",
@@ -181,6 +188,7 @@
     "direct agent exposure of arbitrary external endpoints, shell commands, executables, or service transports",
     "creating a second session, provider, terminal, or completion authority for first-run flow",
     "persisting plaintext external-service credentials in the installed capability registry",
-    "auto-executing discovered integrations before governed registration and authorization"
+    "auto-executing discovered integrations before governed registration and authorization",
+    "giving the Textual projection execution, authorization, receipt, or completion authority"
   ]
 }
