@@ -36,7 +36,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-RECOVERY-COMPLETION-PROMOTION-001",
     "owner": "SessionMemoryRuntimeBridge R5 recovery, CodingCompletionRuntime/R6F completion, CompletionEvidenceProducers, MemoryPromoter, WorkspaceMemoryStore, and GovernedAgentGateway",
-    "index_revision": "F559045AF6DF6BE6DC3DACFE022357549668079A0A072FC61340630F67EA16D3"
+    "index_revision": "80DE85102540F08CF8752D8646FF99F14C66DAA3D9B01621569321794DCA64FF"
   },
   "accepted_baseline": {
     "R3": "PROVEN_COMPLETE",
@@ -181,11 +181,21 @@
     "completion_checkpoint": "docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_CHECKPOINT.md"
   },
   "recovery_completion_promotion_integration": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
     "scope": ["normal_coding_auto_finalization", "provisional_completion_proof", "verified_completion_promotion", "safe_validation_recovery", "persisted_recovery_state", "duplicate_validation_execution_control", "completion_evidence_reuse", "task_lifecycle_truth"],
     "required_evidence": ["provider_completed_remains_provisional_before_gate", "task_complete_memory_is_unverified_before_ready", "normal_gateway_calls_existing_completion_gate_after_trusted_evidence", "ready_decision_sets_task_completed", "only_ready_promotes_task_complete_to_verified", "failed_or_incomplete_never_promotes_verified_completion", "recovery_wraps_only_idempotent_validation_evidence_operations", "mutation_reasoning_is_not_auto_retried", "persisted_recovery_state_survives_runtime_reconstruction", "terminal_success_prevents_duplicate_validation_execution_under_same operation identity", "no_second_recovery_completion_or_memory_owner", "focused_integration_tests", "full_regression"],
-    "publish_allowed": false
+    "publish_allowed": false,
+    "validation": {
+      "implementation_commit": "6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f",
+      "focused_tests": "59 passed",
+      "full_tests": "767 passed",
+      "git_diff_check": "PASS",
+      "head_alignment": "PASS",
+      "tracked_worktree": "CLEAN",
+      "protected_reference": "lbe-tui/ remained untracked and untouched"
+    },
+    "completion_checkpoint": "docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md"
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",

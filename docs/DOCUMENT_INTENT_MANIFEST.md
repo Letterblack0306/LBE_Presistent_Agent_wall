@@ -67,6 +67,7 @@ removal. Every entry below has an explicit role and disposition.
 ## Acceptance and gate records
 
 | `docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md` | `ACCEPTANCE_AUTHORITY` | PASS checkpoint for bounded governed disposable deletion; preserved snapshots remain outside this slice. |
+| `docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md` | `ACCEPTANCE_AUTHORITY` | PASS checkpoint for recovery, deterministic completion, and proof promotion; installed-package acceptance remains a separate next slice. |
 
 | Path | Class | Intent / disposition |
 |---|---|---|

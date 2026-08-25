@@ -43,7 +43,7 @@ Publication/version progression remains paused while complete-runtime product wo
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 active_phase        = COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
 active_slice        = RECOVERY_COMPLETION_PROMOTION_INTEGRATION
-active_slice_result = OPEN / IMPLEMENTED_VALIDATION_PENDING
+active_slice_result = PASS
 top_level_status    = OPEN
 next_phase_locked   = true
 publication         = PAUSED
@@ -55,20 +55,20 @@ publication         = PAUSED
 
 Validated implementation HEAD:
 
-`9ca27a1498afa017ec0c5a449d80882ca0958a73`
+`6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f`
 
 Checkpoint:
 
-`docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_CHECKPOINT.md`
+`docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md`
 
 LoopTool proof:
 
 ```text
 COMMAND HASH = 334C15A0913D56BE5D6EC6057BA5B66909B06C72F745FA92A5D3281837821C04
 MACHINE_BINDING = PASS
-focused regression = 53 passed
-full regression = 763 passed
-HEAD = 9ca27a1498afa017ec0c5a449d80882ca0958a73
+focused regression = 59 passed
+full regression = 767 passed
+HEAD = 6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f
 local exception = ?? lbe-tui/ (reference-only, untouched)
 ```
 

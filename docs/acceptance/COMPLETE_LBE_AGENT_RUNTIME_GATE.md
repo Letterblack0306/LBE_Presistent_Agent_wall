@@ -7,7 +7,7 @@ Status: **OPEN — EXPLICIT USER AUTHORIZATION — PUBLICATION PAUSED**
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
 slice: RECOVERY_COMPLETION_PROMOTION_INTEGRATION
-slice_result: OPEN / IMPLEMENTED_VALIDATION_PENDING
+slice_result: PASS
 status: OPEN
 implementation_allowed: true
 architecture_changes_allowed: true (explicit user authorization)
@@ -76,7 +76,7 @@ local exception = ?? lbe-tui/ (reference-only, untouched)
 
 Checkpoint: `docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_CHECKPOINT.md`.
 
-## Active slice — RECOVERY_COMPLETION_PROMOTION_INTEGRATION
+## Completed slice — RECOVERY_COMPLETION_PROMOTION_INTEGRATION
 
 ### Proven gap
 

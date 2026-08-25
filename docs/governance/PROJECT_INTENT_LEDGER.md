@@ -40,7 +40,7 @@ DESIRED_RESULT: Provider-facing coding turns receive only LBE-generated tool def
 NON_GOALS: No second executor, no second authorization owner, no second receipt/session/completion owner, no unrestricted shell, no branch/worktree creation, no push/publication, no TUI redesign, no lbe-core mutation, no direct Cline authority.
 REUSE_DECISION: REUSE GovernedProviderReasoningController, R6C authorization, R6E orchestration/receipts, agent guidance, workspace governance helpers, provider continuation, and current session identity. ADAPT only tool specifications/handlers and provider registration. REJECT native filesystem/shell/Git exposure.
 AUTHORITY_IMPACT: LBE authority remains unchanged; the agent-facing capability surface becomes stricter and more useful.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,docs/DOCUMENT_INTENT_MANIFEST.md,.lbe/governance/
 REQUIRED_EVIDENCE: provider-only LBE tool schema, contained write proof, stale-write denial, arbitrary-shell denial, bounded registered-process proof, primary-main Git proof, governed-staging proof, authorization-before-execution, correlated receipts, read-only audit/investigation preservation, duplicate-authority scan
 MACHINE_SLICE: MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH
 SUPERSEDES: none
@@ -145,11 +145,12 @@ DESIRED_RESULT: Mutation-capable reasoning is executed once without automatic re
 NON_GOALS: No retry of mutation-capable provider reasoning, no second recovery engine, no second completion evaluator, no provider-selected evidence, no direct promotion of provider prose, no new memory database, no publication, no lbe-core/lbe-tui mutation.
 REUSE_DECISION: REUSE R5 recovery through SessionMemoryRuntimeBridge, existing R6F completion runtime/evaluator, C2 evidence producers, MemoryPromoter, task/session persistence and GovernedAgentGateway. ADD only the missing lifecycle composition and provisional-to-verified completion proof contract.
 AUTHORITY_IMPACT: No new authority owner. LBE completion truth becomes automatic on the normal path while remaining evidence-gated.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,docs/DOCUMENT_INTENT_MANIFEST.md,.lbe/governance/
 REQUIRED_EVIDENCE: provider completion provisional before gate, provisional task_complete memory unverified, mutation reasoning not retried, idempotent validation recovery only, recovery state persists across runtime reconstruction, trusted evidence loaded from existing persistence, existing completion gate invoked automatically, READY alone promotes task_complete VERIFIED, failed/incomplete cannot promote verified completion, terminal recovery state prevents duplicate validation operation execution, no duplicate authority owner, focused integration tests, full regression
 MACHINE_SLICE: RECOVERY_COMPLETION_PROMOTION_INTEGRATION
 SUPERSEDES: none
-RESULT: IN_PROGRESS
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001
