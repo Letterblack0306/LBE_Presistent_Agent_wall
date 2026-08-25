@@ -11,6 +11,11 @@ from .persistent_turn_control import PersistentTurnControl
 from .provider_health import ProviderHealthResult, check_provider_health
 from .provider_registry import ProviderRegistry, default_provider_registry
 from .reasoning_provider import ProviderConfig
+from .runtime.external_capabilities import ExternalCapabilityKind
+from .runtime.installed_capability_registry import (
+    InstalledCapabilityRegistry,
+    InstalledCapabilityRegistryStore,
+)
 from .runtime.tool_orchestration import ToolRegistry
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 from .terminal_projection import render_terminal_activity, render_terminal_event_detail
@@ -26,6 +31,7 @@ def build_textual_tui(
     provider_registry: ProviderRegistry | None = None,
     provider_health_checker: Callable[..., ProviderHealthResult] = check_provider_health,
     tool_registry: ToolRegistry | None = None,
+    installed_capability_registry: InstalledCapabilityRegistry | None = None,
 ):
     """Build one stable workspace without creating a second runtime authority."""
     try:
@@ -44,6 +50,11 @@ def build_textual_tui(
 
     registry = provider_registry or default_provider_registry()
     provider_health = "unknown"
+    installed_registry = installed_capability_registry
+    if installed_registry is None:
+        installed_registry_path = os.environ.get("LBE_CAPABILITY_REGISTRY", "").strip()
+        if installed_registry_path:
+            installed_registry = InstalledCapabilityRegistryStore(installed_registry_path).load()
 
     no_color = "NO_COLOR" in os.environ
     accent = "#d0d0d0" if no_color else "#ef4b4b"
@@ -383,7 +394,7 @@ def build_textual_tui(
     def _composer_hint_text(value: str) -> str:
         stripped = value.lstrip()
         if stripped.startswith("/"):
-            return "/ commands: status provider settings tools mcp skills sessions evidence attach help"
+            return "/ commands: status provider settings tools integrations mcp skills sessions evidence attach help"
         if stripped.startswith("@"):
             return "@ context mention: session/tool/file syntax is reserved; runtime resolution must be owned, never guessed"
         if stripped.startswith("#"):
@@ -442,11 +453,34 @@ def build_textual_tui(
             )
         return "\n".join(lines)
 
+    def _installed_record_line(record) -> str:
+        state_text = "configured" if record.enabled else "disabled"
+        credential_text = "configured" if record.credential_ref is not None else "none"
+        return (
+            f"{record.integration_id} kind={record.kind.value} tool={record.tool_id} "
+            f"state={state_text} credential_ref={credential_text}"
+        )
+
     def _integrations_text() -> str:
-        return "INTEGRATIONS\nunavailable: no runtime integration registry owner is configured"
+        if installed_registry is None:
+            return "INTEGRATIONS\nunavailable: no runtime integration registry owner is configured"
+        if not installed_registry.records:
+            return "INTEGRATIONS\nempty: no installed integrations configured\nprojection_only=true execution_attempted=false"
+        lines = ["INTEGRATIONS"]
+        lines.extend(_installed_record_line(record) for record in installed_registry.records)
+        lines.append("projection_only=true execution_attempted=false")
+        return "\n".join(lines)
 
     def _mcp_text() -> str:
-        return "MCP\nunavailable: no runtime MCP registry owner is configured"
+        if installed_registry is None:
+            return "MCP\nunavailable: no runtime MCP registry owner is configured"
+        records = tuple(record for record in installed_registry.records if record.kind is ExternalCapabilityKind.MCP)
+        if not records:
+            return "MCP\nempty: no MCP integrations configured\nprojection_only=true execution_attempted=false"
+        lines = ["MCP"]
+        lines.extend(_installed_record_line(record) for record in records)
+        lines.append("projection_only=true execution_attempted=false")
+        return "\n".join(lines)
 
     def _skills_text() -> str:
         return "SKILLS\nunavailable: no runtime skill registry owner is configured"
@@ -475,7 +509,7 @@ def build_textual_tui(
     def _command_palette_text() -> str:
         return (
             "COMMAND PALETTE\n"
-            "/status /provider /settings /evidence /tools /mcp /skills /sessions /detail /attach /help\n"
+            "/status /provider /settings /evidence /tools /integrations /mcp /skills /sessions /detail /attach /help\n"
             "@ context references   # skill/profile selectors   + attachments\n"
             "Ctrl+I interrupt   Ctrl+X cancel   Ctrl+P details"
         )
@@ -486,7 +520,7 @@ def build_textual_tui(
             "/status runtime and policy  /settings persisted session settings\n"
             "/provider selected provider metadata  /provider use <provider> <model>  /provider check\n"
             "/evidence persisted event and receipt counts  /detail [sequence] event facts\n"
-            "/tools governed capabilities  /integrations integrations  /mcp MCP availability  /skills skill availability\n"
+            "/tools governed capabilities  /integrations installed integration metadata  /mcp MCP configuration  /skills skill availability\n"
             "/sessions list  /session <id> resume  /new <id> create\n"
             "/attach attachment availability  /mentions context-reference contract\n"
             "prefixes: / commands  @ context  # skills  + attachments  Ctrl+K palette\n"
@@ -519,6 +553,7 @@ def run_textual_tui(
     control: PersistentTurnControl,
     provider_config: ProviderConfig | None = None,
     tool_registry: ToolRegistry | None = None,
+    installed_capability_registry: InstalledCapabilityRegistry | None = None,
 ) -> None:
     build_textual_tui(
         history=history,
@@ -526,4 +561,5 @@ def run_textual_tui(
         control=control,
         provider_config=provider_config,
         tool_registry=tool_registry,
+        installed_capability_registry=installed_capability_registry,
     ).run()
