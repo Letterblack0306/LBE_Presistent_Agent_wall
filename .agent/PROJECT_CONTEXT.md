@@ -30,13 +30,15 @@ Tracked enforcement:
 Read every time before significant implementation:
 
 1. `.agent/PROJECT_CONTEXT.md`
-2. `.lbe/governance/workspace-lock.json`
-3. `.lbe/governance/implementation-gates.json`
-4. the exact `active_plan` path declared by `.lbe/governance/implementation-gates.json`
-5. `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md`
-6. architecture/design docs referenced by the active plan
-7. current source, tests, Git state, and runtime evidence
-8. older acceptance/plan records only as historical evidence unless the active gate explicitly names them
+2. `PROJECT_INDEX.md`
+3. `docs/governance/PROJECT_INTENT_LEDGER.md`
+4. `.lbe/governance/workspace-lock.json`
+5. `.lbe/governance/implementation-gates.json`
+6. the exact `active_plan` path declared by `.lbe/governance/implementation-gates.json`
+7. `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md`
+8. architecture/design docs referenced by the active plan
+9. current source, tests, Git state, and runtime evidence
+10. older acceptance/plan records only as historical evidence unless the active gate explicitly names them
 
 Never substitute a similarly named document for the machine-declared `active_plan`.
 

@@ -29,6 +29,24 @@
     "architecture_change_requires_user_authorization": true,
     "publication_requires_explicit_user_authorization": true
   },
+  "intent_and_structure_governance": {
+    "required": true,
+    "root_index": "PROJECT_INDEX.md",
+    "intent_ledger": "docs/governance/PROJECT_INTENT_LEDGER.md",
+    "intent_required_before_mutation": true,
+    "affected_structure_must_be_indexed": true,
+    "existing_owner_must_be_declared": true,
+    "intent_slice_match_required": true,
+    "staged_paths_must_match_intent_scope": true,
+    "structure_change_requires_index_update": true,
+    "completion_requires_intent_result_update": true,
+    "fail_closed": true
+  },
+  "active_intent": {
+    "intent_id": "LBE-INTENT-WORKSPACE-HYGIENE-001",
+    "owner": "LBE governance, documentation, runtime orchestration, and validation owners",
+    "index_revision": "B4F226AA25560E365E5956C46AEA358597B4B89127BB6F34B76B287CB467987A"
+  },
   "accepted_baseline": {
     "R3": "PROVEN_COMPLETE",
     "R4": "PROVEN_COMPLETE",

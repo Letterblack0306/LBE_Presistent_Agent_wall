@@ -7,6 +7,11 @@ The complete per-file intent inventory is [DOCUMENT_INTENT_MANIFEST.md](DOCUMENT
 Every material Markdown file must have an entry there before it can be treated as understood,
 current, historical, protected, or disposable.
 
+Before mutation, read the root [PROJECT_INDEX.md](../PROJECT_INDEX.md), then the
+[PROJECT_INTENT_LEDGER.md](governance/PROJECT_INTENT_LEDGER.md), then the machine gate. The index
+defines structural ownership; the ledger defines the intent; the machine gate authorizes the
+slice. None of these may be bypassed by a more convenient document.
+
 ## What is LBE
 
 LBE is a **persistent, provider-neutral runtime**: the agent/provider reasons, while LBE owns

@@ -105,6 +105,20 @@ GPT-Knowledge is reference/architecture knowledge, not live repository truth. Us
 
 # 3. Required phase lifecycle
 
+## 3A. G0-G3 pre-mutation law
+
+Before any implementation-state mutation, the agent must:
+
+```text
+G0 — read PROJECT_INDEX.md and locate every affected structural owner
+G1 — register exactly one active intent in PROJECT_INTENT_LEDGER.md
+G2 — verify the machine active slice binds to that INTENT_ID and scope
+G3 — mutate only after G0-G2 pass; then update evidence and intent RESULT
+```
+
+Fail closed when the root index, intent ledger, owner, intent binding, structural entry, or staged
+scope is missing or inconsistent. `UNINDEXED_STRUCTURE = NO_MUTATION`.
+
 Every implementation slice follows these phases exactly.
 
 ## G0 — Authority load
