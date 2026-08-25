@@ -19,9 +19,9 @@ active phase:
   COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
 
 active slice:
-  DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+  WORKSPACE_HYGIENE_GOVERNED_DELETION
 
-implementation_allowed: true (active complete-runtime slice only)
+implementation_allowed: true (active workspace-hygiene slice only)
 next_phase_locked: true
 ```
 

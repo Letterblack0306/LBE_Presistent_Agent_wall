@@ -35,10 +35,10 @@ PUBLICATION_PRECHECK: PASS
 ```text
 active_plan: docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 active_phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-active_slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+active_slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
 status: OPEN
 target_version: 2.0.3 (publication preparation paused)
-implementation_allowed: true (active complete-runtime slice only)
+implementation_allowed: true (active workspace-hygiene slice only)
 architecture_changes_allowed: true (explicit user authorization)
 publication_controls: false (nested publication governance records)
 ```
@@ -91,9 +91,9 @@ observability/harness assumption issue, not runtime product defect.
 
 ```text
 active_phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-active_slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+active_slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
 current_status: OPEN
-implementation_allowed: true (active complete-runtime slice only)
+implementation_allowed: true (active workspace-hygiene slice only)
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publication_controls: false (nested publication governance records)
@@ -102,8 +102,8 @@ publication_controls: false (nested publication governance records)
 ## Remaining sequence
 
 ```text
-complete doctrine-to-provider context bridge
- -> record focused configuration/provider/profile/persistence evidence
+complete governed workspace-hygiene deletion capability
+ -> validate bounded deletion, receipts, containment, and protected-scope behavior
  -> advance the complete-runtime gate only on PASS
  -> reactivate the paused 2.0.3 preparation gate when product work is accepted
 ```

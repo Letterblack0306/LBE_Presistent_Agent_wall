@@ -9,7 +9,7 @@ machine-declared active plan, `docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.m
 
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
 status: OPEN
 R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
 RELEASE_PACKAGE_READINESS_ACCEPTANCE: PASS
@@ -83,9 +83,9 @@ doctrine-to-provider context bridge and does not authorize publication:
 
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
 status: OPEN
-implementation_allowed: true (active complete-runtime slice only)
+implementation_allowed: true (active workspace-hygiene slice only)
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 target_version: 2.0.3 (publication preparation paused)
@@ -448,7 +448,7 @@ See the banner at the top of this file and the machine gate:
 
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
 status: OPEN
 R7_INSTALLED_END_TO_END_ACCEPTANCE: PASS
 implementation_allowed: true (terminal-workspace foundation scope only)

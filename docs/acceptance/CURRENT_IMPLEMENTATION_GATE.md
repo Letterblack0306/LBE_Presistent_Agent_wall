@@ -11,17 +11,17 @@ evidence and the machine gate outrank this summary.
 
 ```text
 phase: COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION
-slice: DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE
+slice: WORKSPACE_HYGIENE_GOVERNED_DELETION
 status: OPEN
 target_version: 2.0.3 (publication paused)
-implementation_allowed: true (active complete-runtime slice only)
+implementation_allowed: true (active workspace-hygiene slice only)
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 publication_controls: false (nested publication governance records)
 ```
 
 Only the exact paths and scope declared by the machine gate are authorized. The active slice is
-the doctrine-to-provider context bridge; it does not authorize a second runtime, provider,
+governed workspace-hygiene deletion; it does not authorize a second runtime, provider,
 execution, authorization, or completion owner.
 
 ## Accepted baseline
