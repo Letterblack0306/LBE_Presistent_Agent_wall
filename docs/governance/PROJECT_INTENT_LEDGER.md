@@ -75,7 +75,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION
 INTENT_ID: LBE-INTENT-FIRST-RUN-LIVE-SESSION-ENTRY-001
 STATUS: COMPLETED
 REQUEST: Provide one product-level first-run/live-session entry path that creates or restores a persisted LBE session using the existing workspace, provider/profile, policy, session, provider-turn, and terminal owners.
-WHY: The runtime pieces are proven individually, but users should enter the LBE product through one bounded start path instead of manually composing session-create, provider selection, and TUI/runtime wiring.
+WHY: The runtime pieces are proven individually, but users should enter the LBE product through one bounded start path instead of manually composing session creation/restoration and terminal entry.
 AFFECTED_STRUCTURE: lbe_guard_inspector/cli.py, lbe_guard_inspector/session_memory_runtime.py, lbe_guard_inspector/textual_tui.py, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
 EXISTING_OWNER: CLI thin control plane; SessionMemoryRuntimeBridge and WorkspaceMemoryStore persisted session owners; provider registry/profile/config/health owners; BackgroundProviderTurnRuntime and GovernedAgentGateway; Textual LBE projection/control client.
 DESIRED_RESULT: `lbe start` deterministically restores an existing session or creates one new persisted session from explicit workspace/mode/provider/model/profile inputs, validates provider identity/config where execution is requested, then enters the existing live TUI/runtime without introducing a second session or provider authority.
@@ -130,6 +130,26 @@ MACHINE_SLICE: LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES
 SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_CHECKPOINT.md
+```
+
+## INTENT LBE-INTENT-RECOVERY-COMPLETION-PROMOTION-001
+
+```text
+INTENT_ID: LBE-INTENT-RECOVERY-COMPLETION-PROMOTION-001
+STATUS: ACTIVE
+REQUEST: Complete the normal governed coding lifecycle by composing existing R5 bounded recovery, trusted completion-evidence producers, R6F deterministic completion, and validated memory promotion so provider completion remains provisional until LBE proof is ready.
+WHY: The normal coding gateway already establishes an immutable completion contract and produces trusted source_change/focused_test/git_status evidence, but it stops before calling the existing completion gate. Recovery and completion are proven separately; the product still needs one owner-composed lifecycle that automatically finalizes deterministic proof and promotes only validated completion truth.
+AFFECTED_STRUCTURE: lbe_guard_inspector/agent_integration.py, lbe_guard_inspector/runtime/completion_runtime.py, lbe_guard_inspector/runtime/completion_evidence_producers.py, lbe_guard_inspector/session_memory_runtime.py, lbe_guard_inspector/memory/, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
+EXISTING_OWNER: SessionMemoryRuntimeBridge.run_recoverable/load_recovery_state; lbe_guard_inspector/recovery.py; CodingCompletionRuntime and existing completion gate; CompletionEvidenceProducers; TaskCompletionEvidencePersistence; MemoryPromoter/WorkspaceMemoryStore; GovernedAgentGateway.
+DESIRED_RESULT: Mutation-capable reasoning is executed once without automatic retry; trusted idempotent validation/evidence operations may use bounded persisted recovery; provider COMPLETED creates only provisional/unverified task-completion proof; the normal gateway calls the existing deterministic completion gate after trusted evidence exists; READY sets the task COMPLETED and promotes the same task-completion proof to VERIFIED; FAILED/INCOMPLETE never creates verified completion truth.
+NON_GOALS: No retry of mutation-capable provider reasoning, no second recovery engine, no second completion evaluator, no provider-selected evidence, no direct promotion of provider prose, no new memory database, no publication, no lbe-core/lbe-tui mutation.
+REUSE_DECISION: REUSE R5 recovery through SessionMemoryRuntimeBridge, existing R6F completion runtime/evaluator, C2 evidence producers, MemoryPromoter, task/session persistence and GovernedAgentGateway. ADD only the missing lifecycle composition and provisional-to-verified completion proof contract.
+AUTHORITY_IMPACT: No new authority owner. LBE completion truth becomes automatic on the normal path while remaining evidence-gated.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: provider completion provisional before gate, provisional task_complete memory unverified, mutation reasoning not retried, idempotent validation recovery only, recovery state persists across runtime reconstruction, trusted evidence loaded from existing persistence, existing completion gate invoked automatically, READY alone promotes task_complete VERIFIED, failed/incomplete cannot promote verified completion, terminal recovery state prevents duplicate validation operation execution, no duplicate authority owner, focused integration tests, full regression
+MACHINE_SLICE: RECOVERY_COMPLETION_PROMOTION_INTEGRATION
+SUPERSEDES: none
+RESULT: IN_PROGRESS
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001
