@@ -73,7 +73,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION
 
 ```text
 INTENT_ID: LBE-INTENT-FIRST-RUN-LIVE-SESSION-ENTRY-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Provide one product-level first-run/live-session entry path that creates or restores a persisted LBE session using the existing workspace, provider/profile, policy, session, provider-turn, and terminal owners.
 WHY: The runtime pieces are proven individually, but users should enter the LBE product through one bounded start path instead of manually composing session-create, provider selection, and TUI/runtime wiring.
 AFFECTED_STRUCTURE: lbe_guard_inspector/cli.py, lbe_guard_inspector/session_memory_runtime.py, lbe_guard_inspector/textual_tui.py, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
@@ -85,6 +85,27 @@ AUTHORITY_IMPACT: No authority expansion; this composes existing owners into one
 EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
 REQUIRED_EVIDENCE: create-new persisted session, restore-existing persisted session, explicit provider/model consistency, provider-config mismatch denial, no silent provider fallback, stable session identity, existing TUI/runtime owner reuse, no duplicate session/provider authority, full regression
 MACHINE_SLICE: FIRST_RUN_LIVE_SESSION_ENTRY
+SUPERSEDES: none
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/FIRST_RUN_LIVE_SESSION_ENTRY_CHECKPOINT.md
+```
+
+## INTENT LBE-INTENT-INSTALLED-CAPABILITY-REGISTRY-001
+
+```text
+INTENT_ID: LBE-INTENT-INSTALLED-CAPABILITY-REGISTRY-001
+STATUS: ACTIVE
+REQUEST: Add one persisted, LBE-owned installed capability registry that discovers and configures concrete MCP/plugin/service/subagent adapters, then converts only validated configured entries into the already-proven governed external-capability registration contract.
+WHY: The generic external registration contract is proven, but the product still lacks a concrete installed/configured integration inventory. Users need LBE to know which integrations exist and which governed capabilities are actually available without exposing raw transport configuration to the reasoning provider.
+AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/, lbe_guard_inspector/cli.py, lbe_guard_inspector/textual_tui.py, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
+EXISTING_OWNER: ExternalCapabilityRegistration/register_external_capabilities; ToolRegistry/R6C/R6E; CLI thin control plane; persisted workspace/session owners; terminal capability projection. No separate integration executor or provider-owned transport authority may be created.
+DESIRED_RESULT: LBE can list configured installed integrations, validate their kind/tool identity and configuration provenance, report unavailable/misconfigured entries, and materialize only safe preconfigured adapters into the existing governed registry. The provider sees capability schemas, never raw endpoint/executable/shell credentials or transport-selection authority.
+NON_GOALS: No arbitrary MCP auto-execution from filesystem discovery, no generic HTTP client, no shell command registry supplied by the model, no credential plaintext persistence, no direct plugin/subagent authority, no publication, no lbe-core/lbe-tui mutation.
+REUSE_DECISION: REUSE external_capabilities.py, ToolRegistry/R6C/R6E, existing configuration/persistence/terminal projection owners. ADD only installed-integration metadata, validation/discovery/config loading, bounded adapter factories, and product/CLI projection.
+AUTHORITY_IMPACT: No new execution authority. This turns concrete installed integrations into governed registrations under existing LBE policy.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: persisted installed-registry schema, five-kind configuration classification, invalid/duplicate configuration denial, no plaintext credential persistence, unavailable integration projection, safe conversion to ExternalCapabilityRegistration, provider transport arguments remain hidden, existing R6C/R6E path reused, focused tests, full regression
+MACHINE_SLICE: INSTALLED_CAPABILITY_REGISTRY_DISCOVERY
 SUPERSEDES: none
 RESULT: IN_PROGRESS
 ```
