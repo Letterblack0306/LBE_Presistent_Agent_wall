@@ -43,7 +43,7 @@ Publication/version progression remains paused while complete-runtime product wo
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 active_phase        = SESSION_APPLICATION_CONTRACT_UNIFICATION
 active_slice        = SESSION_APPLICATION_CONTRACT_UNIFICATION
-active_slice_result = OPEN / IMPLEMENTATION_AUTHORIZED
+active_slice_result = PASS
 top_level_status    = OPEN
 next_phase_locked   = true
 publication         = PAUSED
@@ -89,9 +89,10 @@ behavior, governed execution receipts/evidence, deterministic completion and
 verified promotion, recovery reconstruction, installed Textual smoke, and
 focused/full regression.
 
-The preserved session/provider lifecycle patch is now authorized for hash
-verification, reconciliation, and bounded reapplication under the active
-intent.
+The session/provider lifecycle unification checkpoint is canonical at
+`docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md`.
+The shared service is now the CLI/Textual lifecycle owner; publication remains
+paused and no next product slice is active.
 
 ## Completed product work — recovery, deterministic completion and proof promotion
 

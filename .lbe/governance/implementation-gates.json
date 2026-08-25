@@ -36,7 +36,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-SESSION-APPLICATION-CONTRACT-UNIFICATION-001",
     "owner": "SessionMemoryRuntimeBridge / WorkspaceMemoryStore; ProviderRegistry; PersistentTurnControl; CLI control plane; Textual LBE interface",
-    "index_revision": "565DD1BEF2E6F0F0D5B9AE659B8B832118188188BD8109D8F482B3A997810739"
+    "index_revision": "3C96ECE883D99AA446D7DA9F05401EF83173CC5E50056A0EE591D593293C7AB1"
   },
   "accepted_baseline": {
     "R3": "PROVEN_COMPLETE",
@@ -227,11 +227,12 @@
     "active_slice": "COMPLETED"
   },
   "session_application_contract_unification": {
-    "status": "OPEN",
+    "status": "PASS",
     "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
     "scope": ["shared_session_lifecycle_service", "cli_session_provider_lifecycle", "textual_session_provider_lifecycle", "persisted_owner_reuse", "provider_registry_reuse", "persistent_turn_control_reuse"],
     "required_evidence": ["preserved_patch_hash_match", "shared_session_service_used_by_cli_and_textual", "session_identity_persists_across_restart", "provider_model_identity_persists", "no_duplicate_session_provider_authority", "focused_lifecycle_cli_textual_provider_tests", "full_regression", "fresh_installed_regression"],
-    "publish_allowed": false
+    "publish_allowed": false,
+    "completion_checkpoint": "docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md"
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",

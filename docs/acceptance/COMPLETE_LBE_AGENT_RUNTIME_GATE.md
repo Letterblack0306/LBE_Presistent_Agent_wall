@@ -7,7 +7,7 @@ Status: **PASS — COMPLETE RUNTIME PROVEN — PUBLICATION PAUSED**
 ```text
 phase: SESSION_APPLICATION_CONTRACT_UNIFICATION
 slice: SESSION_APPLICATION_CONTRACT_UNIFICATION
-slice_result: OPEN / IMPLEMENTATION_AUTHORIZED
+slice_result: PASS
 status: OPEN
 implementation_allowed: true
 architecture_changes_allowed: true (explicit user authorization)
@@ -151,16 +151,17 @@ The acceptance is recorded in
 `docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md`.
 The complete runtime gate is now PASS; publication remains separately locked.
 
-## Active product slice — SESSION_APPLICATION_CONTRACT_UNIFICATION
+## Completed product slice — SESSION_APPLICATION_CONTRACT_UNIFICATION
 
-The next authorized product slice unifies CLI and Textual session/provider
+The authorized product slice unified CLI and Textual session/provider
 lifecycle operations behind one shared `LbeSessionService` contract. It must
 reuse `SessionMemoryRuntimeBridge`, `WorkspaceMemoryStore`, `ProviderRegistry`,
 and `PersistentTurnControl`; it must not introduce a second session, provider,
 persistence, execution, authorization, receipt, or completion authority.
 
-The preserved four-file patch is an input to this intent only after exact
-hash verification and reconciliation against current `main`.
+The preserved four-file patch was hash-verified, reconciled against current
+`main`, applied, tested, and recorded in
+`docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md`.
 
 ## Current remaining product sequence
 

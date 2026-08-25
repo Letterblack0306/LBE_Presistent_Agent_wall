@@ -18,6 +18,7 @@ from .runtime.installed_capability_registry import (
 )
 from .runtime.tool_orchestration import ToolRegistry
 from .session_memory_runtime import SessionMemoryRuntimeBridge
+from .session_lifecycle import LbeSessionService, SessionLifecycleError
 from .terminal_projection import render_terminal_activity, render_terminal_event_detail
 from .tui_view_models import project_tui_capabilities
 
@@ -49,6 +50,7 @@ def build_textual_tui(
         raise ValueError(f"session not found: {current_session_id}")
 
     registry = provider_registry or default_provider_registry()
+    session_service = LbeSessionService(history=history, provider_registry=registry)
     provider_health = "unknown"
     installed_registry = installed_capability_registry
     if installed_registry is None:
@@ -231,20 +233,20 @@ def build_textual_tui(
 
         def _select_provider(self, provider_id: str, model_id: str) -> None:
             nonlocal state, provider_health
-            clean_provider = provider_id.strip()
-            clean_model = model_id.strip()
-            if history.latest_running_turn(session_id=current_session_id) is not None:
-                self.notify("Cancel or complete the active turn before changing provider.", severity="warning")
+            try:
+                state = session_service.configure_provider(
+                    state=state, provider_id=provider_id, model_id=model_id
+                )
+            except SessionLifecycleError as exc:
+                self.notify(str(exc), severity="warning")
                 return
-            if clean_provider not in registry.provider_ids():
-                self.notify(f"Provider is not registered: {clean_provider}", severity="warning")
-                return
-            runtime = _runtime_for_state(state)
-            state = runtime.configure_session(provider_id=clean_provider, provider_model=clean_model)
             provider_health = "unknown"
             self._refresh_projection()
             self._show_details(_provider_details_text())
-            self.notify(f"Selected provider {clean_provider}/{clean_model}", severity="information")
+            self.notify(
+                f"Selected provider {state.provider_id}/{state.provider_model}",
+                severity="information",
+            )
 
         def _check_provider_health(self) -> None:
             nonlocal provider_health
@@ -275,36 +277,31 @@ def build_textual_tui(
 
         def _switch_session(self, target_session_id: str) -> None:
             nonlocal current_session_id, state
-            clean_id = target_session_id.strip()
-            if history.latest_running_turn(session_id=current_session_id) is not None:
-                self.notify("Cancel or complete the active turn before switching sessions.", severity="warning")
-                return
-            target = history.store.load_session_state(session_id=clean_id)
-            if target is None:
-                self.notify(f"Session not found: {clean_id}", severity="warning")
+            try:
+                target = session_service.resume_session(
+                    current_session_id=current_session_id,
+                    target_session_id=target_session_id,
+                )
+            except SessionLifecycleError as exc:
+                self.notify(str(exc), severity="warning")
                 return
             current_session_id = target.session_id
             state = target
             self._refresh_projection()
-            self.notify(f"Resumed session {clean_id}", severity="information")
+            self.notify(f"Resumed session {target.session_id}", severity="information")
 
         def _create_session(self, requested_session_id: str) -> None:
             nonlocal current_session_id, state
-            clean_id = requested_session_id.strip()
-            if not clean_id:
-                self.notify("Session id must not be empty.", severity="warning")
+            try:
+                state = session_service.create_session(
+                    from_state=state, new_session_id=requested_session_id
+                )
+            except SessionLifecycleError as exc:
+                self.notify(str(exc), severity="warning")
                 return
-            if history.latest_running_turn(session_id=current_session_id) is not None:
-                self.notify("Cancel or complete the active turn before creating a session.", severity="warning")
-                return
-            if history.store.load_session_state(session_id=clean_id) is not None:
-                self.notify(f"Session already exists: {clean_id}", severity="warning")
-                return
-            runtime = _runtime_for_state(state, session_id=clean_id)
-            current_session_id = runtime.session_state.session_id
-            state = runtime.session_state
+            current_session_id = state.session_id
             self._refresh_projection()
-            self.notify(f"Created session {clean_id}", severity="information")
+            self.notify(f"Created session {state.session_id}", severity="information")
 
         def _refresh_terminal_chrome(self) -> None:
             self.title = _terminal_title_text()

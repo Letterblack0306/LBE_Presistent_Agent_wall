@@ -178,7 +178,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_C
 
 ```text
 INTENT_ID: LBE-INTENT-SESSION-APPLICATION-CONTRACT-UNIFICATION-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Unify CLI and Textual session/provider lifecycle operations behind one shared LbeSessionService contract while preserving existing LBE persistence, provider, and turn-control owners.
 WHY: The preserved lifecycle patch removes duplicate CLI/TUI lifecycle call sites, but it must be reconciled against current main and activated under its own architecture intent before it can be used.
 AFFECTED_STRUCTURE: lbe_guard_inspector/session_lifecycle.py,lbe_guard_inspector/cli.py,lbe_guard_inspector/textual_tui.py,tests/test_session_lifecycle.py,tests/test_cli.py,tests/test_textual_tui.py,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
@@ -187,11 +187,12 @@ DESIRED_RESULT: CLI and Textual session creation, resume, and provider selection
 NON_GOALS: No TUI redesign; no lbe-tui activation; no lbe-core mutation; no provider transport replacement; no new persistence or authorization system; no publication or release.
 REUSE_DECISION: ADAPT the preserved lifecycle patch only after hash verification and reconcile it against current main; preserve SessionMemoryRuntimeBridge, WorkspaceMemoryStore, ProviderRegistry, PersistentTurnControl, and existing CLI/Textual owners.
 AUTHORITY_IMPACT: One shared application-service contract; no new persistence, provider, execution, authorization, receipt, or completion authority.
-EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/DOCUMENT_INTENT_MANIFEST.md,lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
 REQUIRED_EVIDENCE: preserved patch hash match, shared lifecycle service used by CLI and Textual, persisted session identity across restart, provider/model identity persistence, no duplicate lifecycle authority, focused lifecycle/CLI/Textual/provider/session tests, full regression, fresh installed regression.
 MACHINE_SLICE: SESSION_APPLICATION_CONTRACT_UNIFICATION
 SUPERSEDES: none
-RESULT: IN_PROGRESS
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md
 ```
 
 ## INTENT LBE-INTENT-CLINE-AGENTRUNTIME-001

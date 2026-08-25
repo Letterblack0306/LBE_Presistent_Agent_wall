@@ -15,13 +15,15 @@ from uuid import uuid4
 
 from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
 from .evidence_service import EvidenceService
-from .memory import WorkspaceMemoryStore
+from .memory import SessionState, WorkspaceMemoryStore
+from .memory.operational_history import SessionOperationalHistory
 from .provider_health import check_provider_health
 from .provider_registry import default_provider_registry
 from .reasoning_config import load_provider_config
 from .reasoning_runtime import build_provider_controller
 from .runtime.completion_runtime import CodingCompletionRuntime
 from .session_memory_runtime import SessionMemoryRuntimeBridge
+from .session_lifecycle import LbeSessionService
 
 
 _MODES = ("coding", "audit", "investigation")
@@ -185,11 +187,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _session_create(args: argparse.Namespace) -> dict[str, Any]:
     workspace = _workspace_root(args.workspace)
     _validate_provider_selection(args.provider, args.model, require_pair=False)
-    runtime = SessionMemoryRuntimeBridge(
-        database_path=args.database,
-        project_workspace_id=args.project_workspace_id,
-        workspace_root=workspace,
+    state = SessionState(
         session_id=args.session_id,
+        project_workspace_id=args.project_workspace_id,
+        canonical_workspace_root=workspace,
         mode=args.mode,
         permission=args.permission,
         runtime_policy=args.runtime_policy,
@@ -199,9 +200,15 @@ def _session_create(args: argparse.Namespace) -> dict[str, Any]:
         permission_policy_id=args.permission_policy,
         evidence_policy_id=args.evidence_policy,
     )
+    store = WorkspaceMemoryStore(args.database)
+    service = LbeSessionService(
+        history=SessionOperationalHistory(store=store),
+        provider_registry=default_provider_registry(),
+    )
+    created = service.create_session(from_state=state, new_session_id=args.session_id)
     return {
         "action": "session.create",
-        "session": runtime.session_state.as_dict(),
+        "session": created.as_dict(),
     }
 
 
@@ -213,10 +220,15 @@ def _session_continue(args: argparse.Namespace) -> dict[str, Any]:
         provider_id = state.provider_id if args.provider is None else args.provider
         provider_model = state.provider_model if args.model is None else args.model
         _validate_provider_selection(provider_id, provider_model, require_pair=True)
-        runtime.configure_session(
+        state = LbeSessionService(
+            history=SessionOperationalHistory(store=store),
+            provider_registry=default_provider_registry(),
+        ).configure_provider(
+            state=state,
             provider_id=provider_id,
-            provider_model=provider_model,
+            model_id=provider_model,
         )
+        runtime = _runtime_from_state(database=args.database, state=state)
     packet = runtime.start_or_resume(task_id=args.task_id)
     return {
         "action": "session.continue",
@@ -348,11 +360,15 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
     _validate_provider_selection(args.provider, args.model, require_pair=True)
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
-    runtime = _runtime_from_state(database=args.database, state=state)
-    before = runtime.session_state
-    updated = runtime.configure_session(
+    service = LbeSessionService(
+        history=SessionOperationalHistory(store=store),
+        provider_registry=default_provider_registry(),
+    )
+    before = state
+    updated = service.configure_provider(
+        state=state,
         provider_id=args.provider,
-        provider_model=args.model,
+        model_id=args.model,
     )
     return {
         "action": "provider.select",
