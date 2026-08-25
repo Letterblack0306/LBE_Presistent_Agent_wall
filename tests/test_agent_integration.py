@@ -11,8 +11,12 @@ from lbe_guard_inspector.agent_integration import (
     AgentRequestEnvelope,
     GovernedAgentGateway,
 )
-from lbe_guard_inspector.memory import TaskStatus
+from lbe_guard_inspector.memory import TaskStatus, ValidationStatus
 from lbe_guard_inspector.reasoning_contracts import LBEResponse, ReasoningPlan
+from lbe_guard_inspector.runtime.completion_gate import CompletionRequirement
+from lbe_guard_inspector.runtime.completion_promotion import CompletionProofPromotion
+from lbe_guard_inspector.runtime.completion_runtime import CodingCompletionRuntime
+from lbe_guard_inspector.runtime.task_completion_policy import TaskCompletionPolicyCatalog
 from lbe_guard_inspector.runtime.tool_orchestration import (
     GovernedToolOrchestrator,
     ToolExecutionResult,
@@ -20,9 +24,6 @@ from lbe_guard_inspector.runtime.tool_orchestration import (
     ToolRegistry,
     workspace_read_spec,
 )
-from lbe_guard_inspector.runtime.task_completion_policy import TaskCompletionPolicyCatalog
-from lbe_guard_inspector.runtime.completion_runtime import CodingCompletionRuntime
-from lbe_guard_inspector.runtime.completion_gate import CompletionRequirement
 from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
 
 
@@ -57,6 +58,13 @@ class _Controller:
             explanation=None,
             outcome=self.outcome,
         )
+
+
+class _MutatingController(_Controller):
+    def run(self, request):
+        root = Path(request.workspace_root)
+        (root / "tracked.txt").write_text("two\n", encoding="utf-8")
+        return super().run(request)
 
 
 def _runtime(
@@ -121,7 +129,7 @@ def test_gateway_routes_agent_request_to_existing_runtime_and_reasoning_owner(tm
     assert state.last_outcome == "COMPLETED"
 
 
-def test_coding_gateway_keeps_model_completion_provisional(tmp_path: Path) -> None:
+def test_coding_gateway_keeps_provider_completion_provisional_until_gate_and_fails_closed(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     runtime = _runtime(
         tmp_path,
@@ -135,17 +143,133 @@ def test_coding_gateway_keeps_model_completion_provisional(tmp_path: Path) -> No
 
     result = gateway.invoke(_request(root, mode=AgentMode.CODING))
 
-    assert result.outcome == "COMPLETED"
-    assert result.status is TaskStatus.RUNNING
+    assert result.response.outcome == "COMPLETED"
+    assert result.outcome == "VALIDATION_FAILED"
+    assert result.status is TaskStatus.FAILED
     state = runtime.load_task_status(task_id="task-1")
     assert state is not None
-    assert state.status is TaskStatus.RUNNING
-    assert state.last_outcome == "AWAITING_VALIDATION"
+    assert state.status is TaskStatus.FAILED
+    assert state.last_outcome == "VALIDATION_FAILED"
     assert CodingCompletionRuntime(runtime=runtime).load_contract(task_id="task-1").requirements == (
         CompletionRequirement("source-change", "source_change"),
         CompletionRequirement("focused-tests", "focused_test"),
         CompletionRequirement("git-state", "git_status"),
     )
+    proof = CompletionProofPromotion(runtime=runtime).load(task_id="task-1")
+    assert proof is not None
+    assert proof.validation_status is ValidationStatus.UNVERIFIED
+    assert proof.value["proof_state"] == "TEMP"
+    assert proof.value["lbe_completion_verdict"] is None
+
+
+def test_coding_gateway_auto_finalizes_ready_and_promotes_same_completion_proof(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    controller = _MutatingController("COMPLETED")
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
+
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.completion_evidence_producers._run_validation_command",
+        lambda **kwargs: subprocess.CompletedProcess(kwargs["command"], 0, stdout="ok", stderr=""),
+    )
+
+    result = gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert len(controller.requests) == 1
+    assert result.response.outcome == "COMPLETED"
+    assert result.status is TaskStatus.COMPLETED
+    assert result.outcome == "VALIDATED_COMPLETION"
+    proof = CompletionProofPromotion(runtime=runtime).load(task_id="task-1")
+    assert proof is not None
+    assert proof.validation_status is ValidationStatus.VERIFIED
+    assert proof.value["proof_state"] == "VERIFIED"
+    assert proof.value["lbe_completion_verdict"] == "READY"
+    assert set(proof.value["satisfied_requirement_ids"]) == {
+        "source-change",
+        "focused-tests",
+        "git-state",
+    }
+    evidence = CodingCompletionRuntime(runtime=runtime).load_evidence(task_id="task-1")
+    assert [(item.kind, item.status.value) for item in evidence] == [
+        ("source_change", "PASS"),
+        ("focused_test", "PASS"),
+        ("git_status", "PASS"),
+    ]
+
+
+def test_noncompleted_coding_provider_never_creates_completion_proof(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    gateway = GovernedAgentGateway(
+        runtime=runtime,
+        reasoning_controller=_Controller("INSUFFICIENT_EVIDENCE"),
+    )
+
+    result = gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert result.status is TaskStatus.BLOCKED
+    assert result.outcome == "INSUFFICIENT_EVIDENCE"
+    assert CompletionProofPromotion(runtime=runtime).load(task_id="task-1") is None
+
+
+def test_coding_validation_recovery_retries_safe_producer_but_never_reasoning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from lbe_guard_inspector.runtime.completion_evidence_producers import CompletionEvidenceProducers
+
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    controller = _Controller("COMPLETED")
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
+    original = CompletionEvidenceProducers.produce_source_change
+    calls = {"count": 0}
+
+    def flaky(self, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise TimeoutError("temporary validation timeout")
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(CompletionEvidenceProducers, "produce_source_change", flaky)
+
+    result = gateway.invoke(_request(root, mode=AgentMode.CODING))
+
+    assert result.status is TaskStatus.FAILED
+    assert len(controller.requests) == 1
+    assert calls["count"] == 2
+    validation_state = runtime.load_recovery_state(
+        task_id="task-1",
+        operation_id="reasoning.inspect:request-1:validation:source_change",
+    )
+    assert validation_state is not None
+    assert validation_state.attempt_count == 2
+    assert validation_state.terminal is True
+    assert validation_state.succeeded is True
+    reasoning_state = runtime.load_recovery_state(
+        task_id="task-1",
+        operation_id="reasoning.inspect:request-1:reasoning",
+    )
+    assert reasoning_state is not None
+    assert reasoning_state.attempt_count == 1
+    assert reasoning_state.terminal is True
+    assert reasoning_state.succeeded is True
+
+
+def test_coding_exact_request_replay_is_blocked_without_second_reasoning_execution(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    runtime = _runtime(tmp_path, root, mode="coding")
+    controller = _Controller("COMPLETED")
+    gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
+    request = _request(root, mode=AgentMode.CODING)
+
+    gateway.invoke(request)
+    with pytest.raises(AgentIntegrationError) as exc:
+        gateway.invoke(request)
+
+    assert exc.value.code == "duplicate_operation"
+    assert len(controller.requests) == 1
 
 
 def test_coding_gateway_fails_closed_when_no_lbe_completion_policy_matches(tmp_path: Path) -> None:
@@ -180,9 +304,16 @@ def test_coding_provider_switch_reuses_existing_completion_contract(tmp_path: Pa
         session_id="session-1",
     )
     resumed_gateway = GovernedAgentGateway(runtime=resumed, reasoning_controller=_Controller())
-    resumed_gateway.invoke(_request(root, mode=AgentMode.CODING))
+    resumed_gateway.invoke(_request(root, mode=AgentMode.CODING, request_id="request-2"))
 
     assert CodingCompletionRuntime(runtime=resumed).load_contract(task_id="task-1") == initial
+    recovered = resumed.load_recovery_state(
+        task_id="task-1",
+        operation_id="reasoning.inspect:request-1:reasoning",
+    )
+    assert recovered is not None
+    assert recovered.terminal is True
+    assert recovered.succeeded is True
 
 
 def test_provider_plan_cannot_widen_lbe_completion_requirements(tmp_path: Path) -> None:
@@ -226,14 +357,19 @@ def test_provider_completion_cannot_manufacture_live_repository_evidence(tmp_pat
     runtime = _runtime(tmp_path, root, mode="coding")
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=_Controller("COMPLETED"))
 
-    gateway.invoke(_request(root, mode=AgentMode.CODING))
+    result = gateway.invoke(_request(root, mode=AgentMode.CODING))
 
+    assert result.status is TaskStatus.FAILED
+    assert result.outcome == "VALIDATION_FAILED"
     evidence = CodingCompletionRuntime(runtime=runtime).load_evidence(task_id="task-1")
     assert [(item.kind, item.status.value) for item in evidence] == [
         ("source_change", "FAIL"),
         ("focused_test", "FAIL"),
         ("git_status", "FAIL"),
     ]
+    proof = CompletionProofPromotion(runtime=runtime).load(task_id="task-1")
+    assert proof is not None
+    assert proof.validation_status is ValidationStatus.UNVERIFIED
 
 
 def test_gateway_rejects_legacy_session_missing_authoritative_typed_policy(tmp_path: Path) -> None:
