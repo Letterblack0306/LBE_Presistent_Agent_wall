@@ -115,8 +115,6 @@ show every material Markdown path and its disposition. A clean Git index alone i
 
 ## Design entry points
 
-- [Runtime vision: doctrine-driven engineering](design/LBE_RUNTIME_VISION_DOCTRINE_DRIVEN_ENGINEERING.md)
-  — proposed product and UX direction; not an implementation or gate owner.
 - [LBE Agent Lifecycle](LBE_AGENT_LIFECYCLE.md) — operational flow owner.
 - [Agent Lifecycle — Phases, Owners, Surfaces, Reuse](design/AGENT_LIFECYCLE_PHASES.md) — the
   single product lifecycle everything hangs off of.

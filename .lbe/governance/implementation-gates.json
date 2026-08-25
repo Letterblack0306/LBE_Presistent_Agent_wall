@@ -45,7 +45,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-WORKSPACE-HYGIENE-001",
     "owner": "LBE governance, documentation, runtime orchestration, and validation owners",
-    "index_revision": "B4F226AA25560E365E5956C46AEA358597B4B89127BB6F34B76B287CB467987A"
+    "index_revision": "FCD5E506FD59210F3B5F5D924D9DFF1AE6203E71AACCA21FBFAE7312720F9C27"
   },
   "accepted_baseline": {
     "R3": "PROVEN_COMPLETE",

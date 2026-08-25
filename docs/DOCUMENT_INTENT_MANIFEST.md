@@ -42,6 +42,7 @@ removal. Every entry below has an explicit role and disposition.
 |---|---|---|
 | `BASELINE_VALIDATION.md` | `HISTORY` | Historical Agent.py baseline and validation record; preserve, do not use as current proof. |
 | `MIGRATION.md` | `REFERENCE` | Legacy-state migration and rollback instructions; keep for migration use. |
+| `PROJECT_INDEX.md` | `GOVERNANCE` | Root structural authority index; every implementation area must have an owner and mutation boundary before change. |
 | `README.md` | `ROUTER` | Product overview and installation/usage entrypoint; keep concise and non-authoritative for mutable state. |
 
 ## Live documentation owners
@@ -127,6 +128,7 @@ removal. Every entry below has an explicit role and disposition.
 | Path | Class | Intent / disposition |
 |---|---|---|
 | `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md` | `GOVERNANCE` | Canonical operating guide for implementation execution; keep current. |
+| `docs/governance/PROJECT_INTENT_LEDGER.md` | `GOVERNANCE` | Canonical pre-mutation intent authority binding requested work to one active machine slice; keep current. |
 | `docs/governance/WORKSPACE_AND_IMPLEMENTATION_PROGRESSION_LOCK.md` | `GOVERNANCE` | Active progression and one-slice lock; keep as governance reference. |
 
 ## Closed history
