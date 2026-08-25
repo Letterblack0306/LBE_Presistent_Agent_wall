@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
   "active_phase": "COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION",
-  "active_slice": "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE",
+  "active_slice": "WORKSPACE_HYGIENE_GOVERNED_DELETION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -43,7 +43,8 @@
     "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS",
     "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS",
     "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS",
-    "PUBLICATION_PRECHECK": "PASS"
+    "PUBLICATION_PRECHECK": "PASS",
+    "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE": "PASS"
   },
   "release_package_readiness": {
     "status": "PASS",
@@ -129,9 +130,33 @@
   "complete_lbe_agent_runtime": {
     "status": "OPEN",
     "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
-    "active_slice": "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE",
+    "active_slice": "WORKSPACE_HYGIENE_GOVERNED_DELETION",
     "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
     "required_evidence": ["focused_configuration_tests", "credential_non_leakage_scan", "provider_profile_lifecycle", "persisted_owner_reuse"],
+    "publish_allowed": false
+  },
+  "workspace_hygiene_governed_deletion": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
+    "scope": [
+      "workspace_identity",
+      "path_containment",
+      "disposable_classification_enforcement",
+      "protected_path_denial",
+      "governed_deletion_adapter",
+      "receipt_evidence_emission",
+      "post_cleanup_validation"
+    ],
+    "required_evidence": [
+      "inside_workspace_disposable_delete_pass",
+      "outside_workspace_delete_denied",
+      "protected_path_delete_denied",
+      "path_escape_denied",
+      "authorization_before_execution",
+      "direct_adapter_bypass_unavailable",
+      "success_and_failure_receipts",
+      "protected_user_work_preserved"
+    ],
     "publish_allowed": false
   },
   "forbidden": [
