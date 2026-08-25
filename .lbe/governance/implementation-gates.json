@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
   "active_phase": "COMPLETE_LBE_AGENT_RUNTIME_IMPLEMENTATION",
-  "active_slice": "WORKSPACE_HYGIENE_GOVERNED_DELETION",
+  "active_slice": "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -43,8 +43,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-WORKSPACE-HYGIENE-001",
-    "owner": "LBE governance, documentation, runtime orchestration, and validation owners",
+    "intent_id": "LBE-INTENT-MANDATORY-GOVERNED-MUTATION-DISPATCH-001",
+    "owner": "LBE runtime orchestration, authorization, provider continuation, Git/workspace capability, and validation owners",
     "index_revision": "F559045AF6DF6BE6DC3DACFE022357549668079A0A072FC61340630F67EA16D3"
   },
   "accepted_baseline": {
@@ -62,7 +62,8 @@
     "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS",
     "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS",
     "PUBLICATION_PRECHECK": "PASS",
-    "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE": "PASS"
+    "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE": "PASS",
+    "WORKSPACE_HYGIENE_GOVERNED_DELETION": "PASS"
   },
   "release_package_readiness": {
     "status": "PASS",
@@ -148,7 +149,7 @@
   "complete_lbe_agent_runtime": {
     "status": "OPEN",
     "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
-    "active_slice": "WORKSPACE_HYGIENE_GOVERNED_DELETION",
+    "active_slice": "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH",
     "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
     "required_evidence": ["focused_configuration_tests", "credential_non_leakage_scan", "provider_profile_lifecycle", "persisted_owner_reuse"],
     "publish_allowed": false
@@ -177,6 +178,33 @@
     ],
     "publish_allowed": false,
     "completion_checkpoint": "docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md"
+  },
+  "mandatory_governed_agent_mutation_dispatch": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
+    "scope": [
+      "provider_tool_exposure",
+      "workspace_text_mutation",
+      "registered_process_execution",
+      "git_main_only_mutation",
+      "direct_mutation_bypass_denial",
+      "authorization_before_execution",
+      "receipt_evidence_emission"
+    ],
+    "required_evidence": [
+      "provider_receives_only_lbe_generated_tool_definitions",
+      "workspace_write_is_contained_and_governed",
+      "stale_overwrite_is_denied",
+      "arbitrary_shell_tool_is_unavailable",
+      "registered_process_command_is_bounded",
+      "git_mutation_requires_primary_main_workspace",
+      "git_staging_is_limited_to_current_governed_mutation_paths",
+      "authorization_occurs_before_execution",
+      "success_and_failure_emit_correlated_tool_receipts",
+      "audit_and_investigation_paths_remain_read_only",
+      "no_parallel_executor_authorization_receipt_or_session_owner"
+    ],
+    "publish_allowed": false
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",
