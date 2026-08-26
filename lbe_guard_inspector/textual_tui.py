@@ -39,7 +39,7 @@ def build_textual_tui(
         from textual import events
         from textual.app import App, ComposeResult
         from textual.binding import Binding
-        from textual.containers import Vertical
+        from textual.containers import Horizontal, Vertical
         from textual.widgets import Input, Static
     except ImportError as exc:
         raise RuntimeError("Textual UI is unavailable; install lbe-guard-inspector[tui]") from exc
@@ -67,16 +67,20 @@ def build_textual_tui(
 
         TITLE = "LBE"
         CSS = f"""
-        Screen {{ background: #000000; color: #e9e9ef; }}
-        #workspace {{ height: 100%; background: #000000; }}
-        #header {{ height: 1; padding: 0 1; color: #e9e9ef; background: #0b0c15; }}
-        #objective {{ height: 2; padding: 0 1; color: #e9e9ef; background: #0b0c15; }}
-        #columns {{ height: 1; padding: 0 1; color: {muted}; background: #0b0c15; }}
-        #activity {{ height: 1fr; min-height: 4; padding: 0 1; color: #e9e9ef; background: #000000; overflow-y: auto; }}
-        #composer {{ height: 3; margin: 0; border-top: solid {accent}; border-bottom: none; background: #000000; color: #e9e9ef; }}
-        #composer_hint {{ height: 1; padding: 0 1; color: {muted}; background: #000000; }}
-        #status {{ height: 1; padding: 0 1; color: {muted}; background: #0b0c15; }}
-        #details {{ height: auto; max-height: 8; padding: 0 1; color: #e9e9ef; background: #0b0c15; }}
+        Screen {{ background: #070708; color: #f1f1f4; }}
+        #workspace {{ height: 100%; background: #070708; padding: 0 1; }}
+        #header {{ height: 2; padding: 0 1; color: #ffffff; background: #15161b; border: solid {accent}; border-title-color: {accent}; content-align: left middle; }}
+        #objective {{ height: 3; padding: 0 1; color: #f1f1f4; background: #101115; border: solid #30323a; margin-top: 1; }}
+        #columns {{ height: 1; padding: 0 1; color: {muted}; background: #15161b; border-left: solid #30323a; border-right: solid #30323a; }}
+        #activity {{ height: 1fr; min-height: 4; padding: 1 1; color: #f1f1f4; background: #090a0c; border: solid #30323a; overflow-y: auto; }}
+        #composer {{ height: 3; margin: 1 0 0 0; border: solid {accent}; background: #0d0e12; color: #ffffff; }}
+        #composer:focus {{ border: double {accent}; }}
+        #composer_hint {{ height: 1; padding: 0 1; color: {muted}; background: #0d0e12; }}
+        #status {{ height: 2; padding: 0 1; color: {muted}; background: #15161b; border: solid #30323a; content-align: left middle; }}
+        #details {{ height: auto; max-height: 10; padding: 1 1; color: #f1f1f4; background: #101115; border: solid #454750; }}
+        #body {{ height: 1fr; min-height: 8; }}
+        #conversation {{ width: 1fr; min-width: 42; }}
+        #inspector {{ width: 30; min-width: 24; height: 100%; margin: 1 0 0 1; padding: 1; color: #f1f1f4; background: #101115; border: solid #30323a; }}
         """
         BINDINGS = [
             Binding("ctrl+k", "palette", "Commands", priority=True),
@@ -90,14 +94,17 @@ def build_textual_tui(
         def compose(self) -> ComposeResult:
             with Vertical(id="workspace"):
                 yield Static(_header_text(), id="header")
-                yield Static(_objective_text(), id="objective")
-                yield Static("event      target                                     receipt        state", id="columns")
-                yield Static(_activity_text(), id="activity")
-                yield Input(
-                    placeholder="Message LBE. / commands  @ context  # skills  + attach",
-                    id="composer",
-                )
-                yield Static(_composer_hint_text(""), id="composer_hint")
+                with Horizontal(id="body"):
+                    with Vertical(id="conversation"):
+                        yield Static(_objective_text(), id="objective")
+                        yield Static("event      target                                     receipt        state", id="columns")
+                        yield Static(_activity_text(), id="activity")
+                        yield Input(
+                            placeholder="Message LBE. / commands  @ context  # skills  + attach",
+                            id="composer",
+                        )
+                        yield Static(_composer_hint_text(""), id="composer_hint")
+                    yield Static(_inspector_text(), id="inspector")
                 yield Static(_status_text(), id="status")
                 details = Static(_details_text(), id="details")
                 details.display = False
@@ -311,6 +318,7 @@ def build_textual_tui(
             self.query_one("#activity", Static).update(_activity_text())
             self.query_one("#header", Static).update(_header_text())
             self.query_one("#objective", Static).update(_objective_text())
+            self.query_one("#inspector", Static).update(_inspector_text())
             self._refresh_terminal_chrome()
             details = self.query_one("#details", Static)
             if details.display:
@@ -387,6 +395,26 @@ def build_textual_tui(
             )
             line = base + suffix
         return line[:width] if width is not None and width > 0 and len(line) > width else line
+
+    def _inspector_text() -> str:
+        events = history.events_for_session(session_id=current_session_id)
+        receipts = tuple(event.tool_receipt_id for event in events if event.tool_receipt_id)
+        return (
+            "LBE INSPECTOR\n"
+            "─────────────\n"
+            f"SESSION\n{state.session_id}\n\n"
+            f"MODE\n{state.mode}\n\n"
+            f"PROVIDER\n{_provider_label()}\n"
+            f"health={provider_health}\n\n"
+            f"RUNTIME\n{_runtime_state_text()}\n\n"
+            f"EVENTS\n{len(events)}\n"
+            f"RECEIPTS\n{len(receipts)}\n\n"
+            "CONTROLS\n"
+            "Ctrl+K  commands\n"
+            "Ctrl+P  details\n"
+            "Ctrl+I  interrupt\n"
+            "Ctrl+X  cancel"
+        )
 
     def _composer_hint_text(value: str) -> str:
         stripped = value.lstrip()
