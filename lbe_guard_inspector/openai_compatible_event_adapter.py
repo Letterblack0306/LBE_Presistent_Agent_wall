@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from collections.abc import Iterator
 from typing import Any, Mapping
 
 from .professional_provider_events import (
@@ -134,6 +135,52 @@ class OpenAICompatibleEventAdapter:
                 metadata={"finish_reason": finish_reason} if finish_reason else {},
             ))
         return tuple(events)
+
+    def stream(
+        self,
+        *,
+        messages: tuple[Mapping[str, Any], ...],
+        provider_id: str = "openai-compatible",
+    ) -> Iterator[NormalizedModelEvent]:
+        """Normalize OpenAI-compatible SSE chunks into persisted LBE events."""
+        stream_json = getattr(self._transport, "stream_json", None)
+        if not callable(stream_json):
+            yield from self.complete(messages=messages, provider_id=provider_id)
+            return
+        payload = {"model": self._config.model.strip(), "messages": [dict(item) for item in messages], "stream": True}
+        headers = {"Content-Type": "application/json"}
+        if self._config.api_key:
+            headers["Authorization"] = f"Bearer {self._config.api_key}"
+        request_id: str | None = None
+        started = False
+        text_seen = False
+        try:
+            for response in stream_json(
+                endpoint=self._config.endpoint.strip(),
+                payload=payload,
+                headers=headers,
+                timeout_seconds=float(self._config.timeout_seconds),
+            ):
+                if not started:
+                    request_id = _optional_text(response.get("id"), "response id")
+                    yield self._event(event_type=ModelEventType.TURN_STARTED, provider_id=provider_id, provider_request_id=request_id)
+                    started = True
+                choices = response.get("choices")
+                if not isinstance(choices, list) or len(choices) != 1 or not isinstance(choices[0], Mapping):
+                    continue
+                delta = choices[0].get("delta")
+                if isinstance(delta, Mapping) and isinstance(delta.get("content"), str) and delta["content"]:
+                    text_seen = True
+                    yield self._event(event_type=ModelEventType.MESSAGE_DELTA, provider_id=provider_id, provider_request_id=request_id, text=delta["content"])
+                message = choices[0].get("message")
+                if isinstance(message, Mapping) and isinstance(message.get("content"), str) and message["content"]:
+                    text_seen = True
+                    yield self._event(event_type=ModelEventType.MESSAGE_COMPLETED, provider_id=provider_id, provider_request_id=request_id, text=message["content"])
+            if not started:
+                raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider returned no stream events")
+            yield self._event(event_type=ModelEventType.TURN_COMPLETED, provider_id=provider_id, provider_request_id=request_id)
+        except ProviderError as exc:
+            yield self._event(event_type=ModelEventType.ERROR, provider_id=provider_id, provider_request_id=request_id, error_code=exc.code, metadata={"terminal_attribution": "http_or_transport_error"})
 
     def _tool_events(
         self,

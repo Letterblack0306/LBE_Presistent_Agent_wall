@@ -56,10 +56,10 @@ class NonStreamingProviderTurnRuntime:
                     {"role": "system", "content": self.guidance.prompt},
                     {"role": "user", "content": text},
                 )
-            events = self.adapter.complete(messages=messages, provider_id=self.provider_id)
-            if self.was_cancelled(turn_id=turn_id):
-                return
-            project_provider_events(history=self.history, turn_id=turn_id, events=events)
+            for event in self.adapter.stream(messages=messages, provider_id=self.provider_id):
+                if self.was_cancelled(turn_id=turn_id):
+                    return
+                project_provider_events(history=self.history, turn_id=turn_id, events=(event,))
         except Exception as exc:
             if self.was_cancelled(turn_id=turn_id):
                 return

@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import PurePosixPath, PureWindowsPath
+from collections.abc import Iterator
 from typing import Any, Mapping, Protocol
 
 from .reasoning_contracts import (
@@ -58,6 +59,15 @@ class JsonTransport(Protocol):
     ) -> Mapping[str, Any]: ...
 
     def cancel(self) -> None: ...
+
+    def stream_json(
+        self,
+        *,
+        endpoint: str,
+        payload: Mapping[str, Any],
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> Iterator[Mapping[str, Any]]: ...
 
 
 class UrllibJsonTransport:
@@ -109,6 +119,47 @@ class UrllibJsonTransport:
         if not isinstance(decoded, Mapping):
             raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider response must be a JSON object")
         return decoded
+
+    def stream_json(
+        self,
+        *,
+        endpoint: str,
+        payload: Mapping[str, Any],
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> Iterator[Mapping[str, Any]]:
+        request = urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={**dict(headers), "Accept": "text/event-stream"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                for raw_line in response:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line:
+                        continue
+                    data = line[5:].strip() if line.startswith("data:") else line
+                    if data == "[DONE]":
+                        return
+                    try:
+                        decoded = json.loads(data)
+                    except json.JSONDecodeError as exc:
+                        raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider returned invalid stream JSON") from exc
+                    if not isinstance(decoded, Mapping):
+                        raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider stream event must be a JSON object")
+                    yield decoded
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace") if hasattr(exc, "read") else str(exc)
+            raise ProviderError("PROVIDER_HTTP_ERROR", f"HTTP {exc.code}: {detail}") from exc
+        except (TimeoutError, socket.timeout) as exc:
+            raise ProviderError("PROVIDER_TIMEOUT", str(exc) or "provider request timed out") from exc
+        except urllib.error.URLError as exc:
+            reason = getattr(exc, "reason", exc)
+            raise ProviderError("PROVIDER_TRANSPORT_ERROR", str(reason)) from exc
+        except OSError as exc:
+            raise ProviderError("PROVIDER_TRANSPORT_ERROR", str(exc)) from exc
 
 
 class OpenAICompatibleReasoningBackend:

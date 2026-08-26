@@ -19,6 +19,14 @@ class _Transport:
         return self.response
 
 
+class _StreamTransport(_Transport):
+    def stream_json(self, **request: Any):
+        self.requests.append(request)
+        yield {"id": "chatcmpl-stream", "choices": [{"delta": {"content": "Hel"}}]}
+        yield {"choices": [{"delta": {"content": "lo"}}]}
+        yield {"choices": [{"delta": {}, "finish_reason": "stop"}]}
+
+
 def _adapter(response: Mapping[str, Any] | Exception) -> OpenAICompatibleEventAdapter:
     return OpenAICompatibleEventAdapter(
         config=ProviderConfig(endpoint="http://provider/v1/chat/completions", model="local-model", timeout_seconds=5),
@@ -42,6 +50,25 @@ def test_complete_text_response_emits_no_fabricated_delta_and_preserves_usage() 
     assert events[1].text == "complete response"
     assert events[2].usage == {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
     assert all(event.event_type is not ModelEventType.MESSAGE_DELTA for event in events)
+
+
+def test_stream_normalizes_progressive_message_deltas_and_terminal_completion() -> None:
+    transport = _StreamTransport({})
+    adapter = OpenAICompatibleEventAdapter(
+        config=ProviderConfig(endpoint="http://provider/v1/chat/completions", model="local-model", timeout_seconds=5),
+        transport=transport,
+    )
+
+    events = tuple(adapter.stream(messages=({"role": "user", "content": "hello"},)))
+
+    assert [event.event_type for event in events] == [
+        ModelEventType.TURN_STARTED,
+        ModelEventType.MESSAGE_DELTA,
+        ModelEventType.MESSAGE_DELTA,
+        ModelEventType.TURN_COMPLETED,
+    ]
+    assert "".join(event.text or "" for event in events) == "Hello"
+    assert transport.requests[0]["payload"]["stream"] is True
 
 
 def test_complete_tool_call_preserves_distinct_provider_and_lbe_identity() -> None:
