@@ -248,7 +248,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/LBE_INTERFACE_PRODUCT_SURFACE_CHECKPOINT.
 
 ```text
 INTENT_ID: LBE-INTENT-LIVE-PROVIDER-CONVERSATION-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Deliver progressive provider conversation feedback in the LBE interface using the existing LBE provider adapter, persisted event history, background turn runtime, and Textual projection.
 WHY: The LBE product must show live model feedback while preserving LBE ownership of provider selection, session identity, authorization, execution, receipts, evidence, persistence, and completion.
 EXISTING_OWNER: OpenAI-compatible provider adapter; provider turn runtime; PersistentTurnControl; SessionOperationalHistory; Textual LBE interface.
@@ -260,7 +260,8 @@ EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/govern
 REQUIRED_EVIDENCE: normalized progressive events, persisted live projection, cancellation truth, focused provider/runtime/Textual tests, full regression, canonical checkpoint.
 MACHINE_SLICE: LBE_LIVE_PROVIDER_CONVERSATION
 SUPERSEDES: none
-RESULT: IN_PROGRESS
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/LBE_LIVE_PROVIDER_CONVERSATION_CHECKPOINT.md
 ```
 
 ## Ledger law

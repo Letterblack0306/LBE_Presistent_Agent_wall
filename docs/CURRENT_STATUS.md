@@ -41,10 +41,10 @@ Publication/version progression remains paused while complete-runtime product wo
 
 ```text
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
-active_phase        = LBE_LIVE_PROVIDER_CONVERSATION
-active_slice        = LBE_LIVE_PROVIDER_CONVERSATION
-active_slice_result = IN_PROGRESS
-top_level_status    = OPEN
+active_phase        = COMPLETE_LBE_AGENT_RUNTIME
+active_slice        = NONE
+active_slice_result = CLOSED
+top_level_status    = CLOSED
 next_phase_locked   = true
 publication         = PAUSED
 ```
@@ -67,9 +67,9 @@ The conversation-continuation checkpoint is canonical at
 `docs/acceptance/LBE_AGENT_CONVERSATION_CONTINUATION_CHECKPOINT.md`.
 The LBE interface follows persisted background-runtime events without
 introducing an independent runtime authority. Cline remains a mechanics/reuse
-source only. The current active slice adds progressive provider conversation
-feedback through the existing LBE adapter, persisted history, and Textual
-projection owners.
+source only. The live provider conversation checkpoint is canonical at
+`docs/acceptance/LBE_LIVE_PROVIDER_CONVERSATION_CHECKPOINT.md`; streaming
+provider events are persisted through the existing LBE event-history owner.
 
 Validated implementation HEAD:
 

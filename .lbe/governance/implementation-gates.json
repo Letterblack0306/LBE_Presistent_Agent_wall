@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
-  "active_phase": "LBE_LIVE_PROVIDER_CONVERSATION",
-  "active_slice": "LBE_LIVE_PROVIDER_CONVERSATION",
-  "status": "OPEN",
-  "implementation_allowed": true,
+  "active_phase": "COMPLETE_LBE_AGENT_RUNTIME",
+  "active_slice": "NONE",
+  "status": "CLOSED",
+  "implementation_allowed": false,
   "architecture_changes_allowed": true,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -44,10 +44,10 @@
     "index_revision": "2E7A4535D0CD98DA40BCEC4108C7B94F6CD9B59D3AE66077FCB5033DE20F8112"
   },
   "closure": {
-    "status": "OPEN",
-    "last_completed_slice": "LBE_AGENT_CONVERSATION_CONTINUATION",
-    "last_completed_intent": "LBE-INTENT-CLINE-AGENTRUNTIME-001",
-    "checkpoint": "docs/acceptance/LBE_AGENT_CONVERSATION_CONTINUATION_CHECKPOINT.md",
+    "status": "CLOSED",
+    "last_completed_slice": "LBE_LIVE_PROVIDER_CONVERSATION",
+    "last_completed_intent": "LBE-INTENT-LIVE-PROVIDER-CONVERSATION-001",
+    "checkpoint": "docs/acceptance/LBE_LIVE_PROVIDER_CONVERSATION_CHECKPOINT.md",
     "next_slice": "NOT_ACTIVATED",
     "publication": "LOCKED"
   },
