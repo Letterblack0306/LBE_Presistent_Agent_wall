@@ -112,6 +112,10 @@ def build_textual_tui(
 
         def on_mount(self) -> None:
             self.query_one("#composer", Input).focus()
+            # Provider runtimes may append persisted events from a background
+            # worker. Poll the history owner so the projection follows the
+            # live turn without creating a second event/runtime authority.
+            self.set_interval(0.2, self._refresh_projection)
             self._refresh_terminal_chrome()
 
         def on_resize(self, event: events.Resize) -> None:
@@ -320,9 +324,6 @@ def build_textual_tui(
             self.query_one("#objective", Static).update(_objective_text())
             self.query_one("#inspector", Static).update(_inspector_text())
             self._refresh_terminal_chrome()
-            details = self.query_one("#details", Static)
-            if details.display:
-                details.update(_status_details_text())
 
         def action_interrupt(self) -> None:
             active = history.latest_running_turn(session_id=current_session_id)

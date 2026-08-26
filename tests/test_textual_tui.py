@@ -75,6 +75,27 @@ def test_composer_refreshes_objective_activity_and_control_state(tmp_path: Path)
     ]
 
 
+def test_projection_follows_events_appended_by_background_runtime(tmp_path: Path) -> None:
+    app, history = _app(tmp_path)
+
+    async def exercise() -> None:
+        async with app.run_test(size=(100, 30)) as pilot:
+            turn = history.start_turn(session_id="s")
+            history.append_event(OperationalEvent(
+                session_id="s",
+                turn_id=turn.turn_id,
+                event_type="runtime.provider.running",
+                payload={},
+            ))
+            await pilot.pause(0.25)
+            activity = str(app.query_one("#activity", Static).render())
+            status = str(app.query_one("#status", Static).render())
+            assert "provider" in activity
+            assert "ACTIVE" in status
+
+    asyncio.run(exercise())
+
+
 def test_existing_persisted_failure_and_completion_render_truthfully(tmp_path: Path) -> None:
     app, history = _app(tmp_path)
     turn = history.start_turn(session_id="s")

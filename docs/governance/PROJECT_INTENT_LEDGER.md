@@ -212,7 +212,7 @@ the adapter boundary is proven.
 REUSE_DECISION: REUSE continuation/event/tool mechanics; ADAPT provider and presentation mechanics;
 REJECT native overlapping mutation/execution.
 AUTHORITY_IMPACT: LBE authority remains unchanged.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,docs/design/,docs/research/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/design/,docs/research/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
 REQUIRED_EVIDENCE: deny-before-execute, allow-exactly-once, receipt-backed continuation, event mapping,
 native mutation disabled, canonical LBE session ownership
 MACHINE_SLICE: LBE_AGENT_CONVERSATION_CONTINUATION
