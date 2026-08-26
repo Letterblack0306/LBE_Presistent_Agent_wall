@@ -224,7 +224,7 @@ RESULT: NOT_ACTIVE
 
 ```text
 INTENT_ID: LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Deliver the usable LBE interface on the existing canonical Textual owner, with the supplied visual direction and selectively adapted interaction mechanics behind LBE authority.
 WHY: The product identity is LBE and the interface must expose the real persisted session, provider, capability, receipt, evidence, and control state in a usable terminal surface.
 AFFECTED_STRUCTURE: lbe_guard_inspector/textual_tui.py,lbe_guard_inspector/terminal_projection.py,lbe_guard_inspector/tui_view_models.py,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
@@ -237,7 +237,8 @@ EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,lbe_guard_inspector/,tests/,docs/accept
 REQUIRED_EVIDENCE: canonical Textual launch, persisted session projection, provider and capability projection, receipt/evidence detail, keyboard controls, focused UI tests, full regression, real local launch.
 MACHINE_SLICE: LBE_INTERFACE_PRODUCT_SURFACE
 SUPERSEDES: none
-RESULT: IN_PROGRESS
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/LBE_INTERFACE_PRODUCT_SURFACE_CHECKPOINT.md
 ```
 
 ## Ledger law
