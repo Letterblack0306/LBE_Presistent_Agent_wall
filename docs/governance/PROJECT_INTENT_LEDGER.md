@@ -244,6 +244,25 @@ RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/LBE_INTERFACE_PRODUCT_SURFACE_CHECKPOINT.md
 ```
 
+## INTENT LBE-INTENT-LIVE-PROVIDER-CONVERSATION-001
+
+```text
+INTENT_ID: LBE-INTENT-LIVE-PROVIDER-CONVERSATION-001
+STATUS: ACTIVE
+REQUEST: Deliver progressive provider conversation feedback in the LBE interface using the existing LBE provider adapter, persisted event history, background turn runtime, and Textual projection.
+WHY: The LBE product must show live model feedback while preserving LBE ownership of provider selection, session identity, authorization, execution, receipts, evidence, persistence, and completion.
+EXISTING_OWNER: OpenAI-compatible provider adapter; provider turn runtime; PersistentTurnControl; SessionOperationalHistory; Textual LBE interface.
+DESIRED_RESULT: Provider message deltas are normalized and persisted as they arrive, the LBE interface projects them during a running turn, and terminal completion remains authoritative and deterministic.
+NON_GOALS: No independent Cline runtime; no direct provider/session/execution authority from reference code; no lbe-tui activation; no new persistence or authorization system; no publication; no branch/worktree creation.
+REUSE_DECISION: ADAPT approved streaming/event presentation mechanics behind existing LBE provider and history owners.
+AUTHORITY_IMPACT: None.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: normalized progressive events, persisted live projection, cancellation truth, focused provider/runtime/Textual tests, full regression, canonical checkpoint.
+MACHINE_SLICE: LBE_LIVE_PROVIDER_CONVERSATION
+SUPERSEDES: none
+RESULT: IN_PROGRESS
+```
+
 ## Ledger law
 
 ```text
