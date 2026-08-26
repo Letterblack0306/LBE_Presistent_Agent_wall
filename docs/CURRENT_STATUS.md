@@ -41,10 +41,10 @@ Publication/version progression remains paused while complete-runtime product wo
 
 ```text
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
-active_phase        = COMPLETE_LBE_AGENT_RUNTIME
-active_slice        = NONE
-active_slice_result = CLOSED
-top_level_status    = CLOSED
+active_phase        = LBE_AGENT_CONVERSATION_CONTINUATION
+active_slice        = LBE_AGENT_CONVERSATION_CONTINUATION
+active_slice_result = IN_PROGRESS
+top_level_status    = OPEN
 next_phase_locked   = true
 publication         = PAUSED
 ```
@@ -57,7 +57,8 @@ The installed package acceptance checkpoint is canonical at
 `docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md`.
 The complete runtime, session/application contract, and LBE interface product
 surface gates are PASS. The interface remains a projection/control surface;
-LBE runtime owners retain authority. No next product slice is active.
+LBE runtime owners retain authority. The active slice is LBE-owned conversation
+continuation and runtime feedback; Cline remains a mechanics/reuse source only.
 
 The interface checkpoint is canonical at
 `docs/acceptance/LBE_INTERFACE_PRODUCT_SURFACE_CHECKPOINT.md`.
