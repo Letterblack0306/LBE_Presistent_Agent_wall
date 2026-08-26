@@ -54,7 +54,11 @@ def test_wheel_contains_only_runtime_modules_and_contracts(
     assert not any(name.startswith("tests/") for name in names)
     assert not any(name.startswith("state/") for name in names)
     assert not any(name.startswith("docs/") for name in names)
-    assert not any("/cline_worker/" in name for name in names)
+    assert {
+        "lbe_guard_inspector/runtime/cline_worker/worker.mjs",
+        "lbe_guard_inspector/runtime/cline_worker/package.json",
+        "lbe_guard_inspector/runtime/cline_worker/package-lock.json",
+    } <= names
 
 
 def test_installed_wheel_runs_both_fixed_guard_slices(tmp_path: Path) -> None:

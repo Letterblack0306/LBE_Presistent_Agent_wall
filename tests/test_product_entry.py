@@ -10,9 +10,8 @@ from lbe_guard_inspector.memory import WorkspaceMemoryStore
 
 
 def _disable_live_ui(monkeypatch) -> None:
-    import lbe_guard_inspector.textual_tui as textual_tui
-
-    monkeypatch.setattr(textual_tui, "run_textual_tui", lambda **_kwargs: None)
+    # The Python/Textual UI has been removed; no live UI launches from `start`.
+    return None
 
 
 def _last_json(capsys) -> dict[str, object]:

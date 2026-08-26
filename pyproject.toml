@@ -17,7 +17,6 @@ test = [
   "pytest==8.3.5"
 ]
 tui = [
-  "textual==8.2.8"
 ]
 
 [project.scripts]
@@ -32,13 +31,14 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["lbe_guard_inspector*", "rules*", "schemas*"]
-exclude = ["lbe_guard_inspector.runtime.cline_worker*"]
 namespaces = true
 
 [tool.setuptools.package-data]
 schemas = ["*.json"]
 lbe_guard_inspector = [
-  "memory/*.sql"
+  "memory/*.sql",
+  "runtime/cline_worker/*.mjs",
+  "runtime/cline_worker/*.json"
 ]
 
 [tool.pytest.ini_options]

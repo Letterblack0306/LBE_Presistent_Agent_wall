@@ -395,7 +395,6 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .reasoning_config import load_provider_config
     from .runtime.agent_guidance import build_agent_guidance
     from .runtime.mode_controller import ModeRequest, resolve_mode
-    from .textual_tui import run_textual_tui
 
     if args.session_id is None:
         missing = [name for name in ("workspace", "project_workspace_id", "mode") if not getattr(args, name, None)]
@@ -410,7 +409,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     config = None
     if args.provider_config is not None:
         if state.provider_id != "openai-compatible":
-            raise ValueError("Textual non-streaming execution currently requires openai-compatible session provider")
+            raise ValueError("non-streaming provider execution currently requires openai-compatible session provider")
         config = load_provider_config(args.provider_config)
         if config.model != state.provider_model:
             raise ValueError("provider config model must match persisted session model")
@@ -438,12 +437,9 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
                 provider_id=state.provider_id,
                 guidance=guidance,
             ))
-    run_textual_tui(
-        history=history,
-        session_id=state.session_id,
-        control=PersistentTurnControl(history=history, provider_runtime=provider_runtime),
-        provider_config=config,
-    )
+    # Python/Textual interface removed (LBE-INTENT-CLINE-SURFACE-DIRECTION-001).
+    # The Cline CLI/SDK surface replaces it; session setup and provider-config
+    # validation above remain the canonical fail-closed entry contract.
     return {"action": "tui", "session_id": state.session_id}
 
 

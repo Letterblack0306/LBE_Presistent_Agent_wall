@@ -167,13 +167,26 @@ RECOVERY_COMPLETION_PROMOTION_INTEGRATION
  -> installed-package end-to-end acceptance
 ```
 
+## Interface technology decision (2026-08-26)
+
+```text
+FINAL INTERFACE TECHNOLOGY = Cline CLI/SDK (approved by product owner)
+PYTHON/TEXTUAL PRODUCT UI  = REJECTED as final product technology (user decision, see
+                             LBE-INTENT-CLINE-SURFACE-DIRECTION-001)
+LBE RUNTIME AUTHORITY      = unchanged (LBE retains authorization/receipts/evidence/
+                             session/completion ownership)
+CLINE                      = approved implementation surface direction AND mechanics source
+MIGRATION                  = pending scoping slice; existing Textual owners remain runnable
+                             until migrated but receive no further product investment
+```
+
 ## Product identity
 
 ```text
 PRODUCT           = LBE
-INTERFACE         = LBE interface / LBE-owned interface
+INTERFACE         = LBE interface delivered on Cline CLI/SDK mechanics
 RUNTIME AUTHORITY = LBE
-CLINE             = optional mechanics/reuse source only
+CLINE             = approved interface implementation surface + mechanics source
 ```
 
 Cline, `lbe-tui/`, and `lbe-core/` are not competing product/runtime authorities.

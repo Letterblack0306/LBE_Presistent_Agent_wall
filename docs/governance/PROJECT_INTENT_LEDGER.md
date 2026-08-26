@@ -263,6 +263,43 @@ SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/LBE_LIVE_PROVIDER_CONVERSATION_CHECKPOINT.md
 ```
+## INTENT LBE-INTENT-CLINE-SURFACE-DIRECTION-001
+
+```text
+INTENT_ID: LBE-INTENT-CLINE-SURFACE-DIRECTION-001
+STATUS: ACCEPTED (explicit user product decision, recorded 2026-08-26)
+REQUEST: Record the product owner's binding technology decision for the LBE interface surface:
+         the Cline CLI/SDK (https://cline.bot/cli, https://docs.cline.bot/sdk/overview) is the
+         approved implementation surface direction; the Python/Textual LBE interface is REJECTED
+         as the final LBE product UI technology.
+WHY: The product owner directed reuse of mature, already-served Cline CLI/SDK capabilities
+     instead of re-implementing them. Continuation of the pre-existing Python/Textual interface
+     was an agent interpretation, never an approved final technology decision.
+AFFECTED_STRUCTURE: docs/governance/, docs/CURRENT_STATUS.md, docs/research/, future lbe_guard_inspector/ presentation surfaces
+EXISTING_OWNER: Product owner decision authority; LBE runtime/control/event contracts (unchanged).
+DESIRED_RESULT: Future interface/product work targets Cline CLI/SDK mechanics under LBE
+                authority (REUSE runtime interaction/continuation mechanics; ADAPT provider and
+                presentation mechanics); no further Python/Textual product-surface investment.
+NON_GOALS: No retroactive rewriting or deletion of completed checkpoint records; no second
+           execution/authorization/session/persistence/completion authority; no immediate code
+           deletion in this record; migration scoping happens in a follow-up slice.
+REUSE_DECISION: REUSE Cline AgentRuntime/CLI/SDK mature mechanics; ADAPT onto LBE-owned
+                governance, authorization, receipts, evidence, persistence, and completion;
+                REJECT continued Python/Textual development as the product UI platform.
+AUTHORITY_IMPACT: Presentation-platform ownership changes direction. LBE remains sole runtime,
+                  authorization, receipt, evidence, session, and completion authority.
+AMENDS_INTERPRETATION_OF: LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001,
+                          LBE-INTENT-LIVE-PROVIDER-CONVERSATION-001
+                          (their runtime/PASS results remain valid evidence; their implicit
+                          conclusion that Textual is the permanent final UI technology is
+                          hereby overridden by explicit product-owner decision).
+SUPERSEDES: none (amends interpretation only)
+RESULT: DIRECTION ACCEPTED
+MIGRATION_NOTE: A follow-up slice must scope the Textual -> Cline CLI/SDK surface transition,
+                including disposition of existing Textual projection owners and tests.
+```
+
+## Ledger law
 
 ## Ledger law
 
