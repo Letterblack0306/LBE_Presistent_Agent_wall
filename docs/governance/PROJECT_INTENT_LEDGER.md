@@ -136,7 +136,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_C
 
 ```text
 INTENT_ID: LBE-INTENT-RECOVERY-COMPLETION-PROMOTION-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Complete the normal governed coding lifecycle by composing existing R5 bounded recovery, trusted completion-evidence producers, R6F deterministic completion, and validated memory promotion so provider completion remains provisional until LBE proof is ready.
 WHY: The normal coding gateway already establishes an immutable completion contract and produces trusted source_change/focused_test/git_status evidence, but it stops before calling the existing completion gate. Recovery and completion are proven separately; the product still needs one owner-composed lifecycle that automatically finalizes deterministic proof and promotes only validated completion truth.
 AFFECTED_STRUCTURE: lbe_guard_inspector/agent_integration.py, lbe_guard_inspector/runtime/completion_runtime.py, lbe_guard_inspector/runtime/completion_evidence_producers.py, lbe_guard_inspector/session_memory_runtime.py, lbe_guard_inspector/memory/, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
@@ -199,7 +199,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_
 
 ```text
 INTENT_ID: LBE-INTENT-CLINE-AGENTRUNTIME-001
-STATUS: ACTIVE
+STATUS: COMPLETED
 REQUEST: Use Cline AgentRuntime interaction and continuation mechanics behind an LBE-owned governance adapter.
 WHY: Reuse the mature agent loop without creating a second LBE authority/runtime.
 AFFECTED_STRUCTURE: lbe_guard_inspector/, docs/design/, docs/research/, .cline/
@@ -212,14 +212,15 @@ the adapter boundary is proven.
 REUSE_DECISION: REUSE continuation/event/tool mechanics; ADAPT provider and presentation mechanics;
 REJECT native overlapping mutation/execution.
 AUTHORITY_IMPACT: LBE authority remains unchanged.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/design/,docs/research/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/design/,docs/research/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
 REQUIRED_EVIDENCE: deny-before-execute, allow-exactly-once, receipt-backed continuation, event mapping,
 native mutation disabled, canonical LBE session ownership
 MACHINE_SLICE: LBE_AGENT_CONVERSATION_CONTINUATION
 SUPERSEDES: none
-RESULT: IN_PROGRESS
+RESULT: PASS
 ACTIVE_SCOPE: LBE-owned conversation projection, continuation, streaming/runtime feedback, and event presentation using existing PersistentTurnControl, provider turn runtime, and terminal projection owners.
 NON_GOALS_FOR_ACTIVE_SLICE: No independent Cline runtime, provider, session, execution, authorization, receipt, evidence, persistence, or completion authority; no lbe-tui activation; no branch/worktree creation; no publication.
+COMPLETION_CHECKPOINT: docs/acceptance/LBE_AGENT_CONVERSATION_CONTINUATION_CHECKPOINT.md
 ```
 
 ## INTENT LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001
