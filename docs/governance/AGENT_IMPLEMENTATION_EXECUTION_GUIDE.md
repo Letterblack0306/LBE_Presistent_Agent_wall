@@ -55,6 +55,27 @@ GitHub API/ref updates used to bypass local hooks
 
 Historical branches/worktrees may be inspected read-only.
 
+## Non-negotiable implementation location
+
+Every implementation, runtime, architecture, test, and product change must be
+made in the primary worktree on the attached `main` branch at its current HEAD.
+Agents must not create or use feature branches, agent branches, detached HEADs,
+or secondary worktrees for implementation. A secondary worktree or branch may
+be inspected read-only, but it is never an implementation or delivery surface.
+
+Before mutation, prove:
+
+```text
+branch = main
+HEAD is attached to refs/heads/main
+worktree = primary canonical worktree
+HEAD is the current implementation base
+```
+
+If any condition fails, stop before mutation. All commits must be created on
+primary `main` and pushed as `HEAD:refs/heads/main`. This rule applies equally
+to UI, runtime, tests, documentation, governance, and cleanup implementation.
+
 ## Workspace-hygiene projection exception
 
 The primary worktree remains the only implementation and delivery authority. If

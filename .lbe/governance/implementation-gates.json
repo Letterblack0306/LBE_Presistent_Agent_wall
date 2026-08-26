@@ -18,7 +18,12 @@
     "existing_owner_audit_required": true,
     "reuse_evaluation_required": true,
     "architecture_change_requires_user_authorization": true,
-    "publication_requires_explicit_user_authorization": true
+    "publication_requires_explicit_user_authorization": true,
+    "primary_main_worktree_only": true,
+    "implementation_head_must_equal_main": true,
+    "deny_branch_creation": true,
+    "deny_worktree_creation": true,
+    "deny_secondary_worktree_writes": true
   },
   "intent_and_structure_governance": {
     "required": true,
