@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
-  "active_phase": "COMPLETE_LBE_AGENT_RUNTIME",
-  "active_slice": "NONE",
-  "status": "CLOSED",
-  "implementation_allowed": false,
+  "active_phase": "LBE_INTERFACE_PRODUCT_SURFACE",
+  "active_slice": "LBE_INTERFACE_PRODUCT_SURFACE",
+  "status": "OPEN",
+  "implementation_allowed": true,
   "architecture_changes_allowed": true,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
@@ -39,9 +39,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-SESSION-APPLICATION-CONTRACT-UNIFICATION-001",
-    "owner": "SessionMemoryRuntimeBridge / WorkspaceMemoryStore; ProviderRegistry; PersistentTurnControl; CLI control plane; Textual LBE interface",
-    "index_revision": "3C96ECE883D99AA446D7DA9F05401EF83173CC5E50056A0EE591D593293C7AB1"
+    "intent_id": "LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001",
+    "owner": "Textual LBE interface; SessionMemoryRuntimeBridge; ProviderRegistry; PersistentTurnControl; terminal projection",
+    "index_revision": "682D9F58A7B6B99DB5EDC3BA5A88F7FD6D3B3B0CDD990D16044F6B9B2ED87F33"
   },
   "closure": {
     "status": "CLOSED",
@@ -246,6 +246,17 @@
     "required_evidence": ["preserved_patch_hash_match", "shared_session_service_used_by_cli_and_textual", "session_identity_persists_across_restart", "provider_model_identity_persists", "no_duplicate_session_provider_authority", "focused_lifecycle_cli_textual_provider_tests", "full_regression", "fresh_installed_regression"],
     "publish_allowed": false,
     "completion_checkpoint": "docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md"
+  },
+  "lbe_interface_product_surface": {
+    "status": "OPEN",
+    "authorization": "EXPLICIT_USER_AUTHORIZATION",
+    "scope": ["lbe_interface_layout", "conversation_projection", "provider_session_controls", "evidence_receipt_projection", "keyboard_interaction", "streaming_feedback"],
+    "required_evidence": ["canonical_textual_interface", "persisted_session_projection", "provider_and_capability_projection", "receipt_and_evidence_detail", "keyboard_controls", "focused_ui_tests", "full_regression", "real_local_launch"],
+    "product_identity": "LBE",
+    "reference_inputs": ["Cline interaction mechanics", "user-provided visual reference", "lbe-tui reference only"],
+    "authority_boundary": "LBE owns session, provider, authorization, execution, receipts, evidence, persistence, and completion; interface remains projection/control only",
+    "non_goals": ["lbe-tui activation", "independent provider transport", "independent session identity", "native shell execution", "new runtime authority", "publication", "branch creation", "worktree creation"],
+    "publish_allowed": false
   },
   "forbidden": [
     "publishing before the 2.0.3 artifact is validated",

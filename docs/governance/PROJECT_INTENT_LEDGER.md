@@ -220,6 +220,26 @@ SUPERSEDES: none
 RESULT: NOT_ACTIVE
 ```
 
+## INTENT LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001
+
+```text
+INTENT_ID: LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001
+STATUS: ACTIVE
+REQUEST: Deliver the usable LBE interface on the existing canonical Textual owner, with the supplied visual direction and selectively adapted interaction mechanics behind LBE authority.
+WHY: The product identity is LBE and the interface must expose the real persisted session, provider, capability, receipt, evidence, and control state in a usable terminal surface.
+AFFECTED_STRUCTURE: lbe_guard_inspector/textual_tui.py,lbe_guard_inspector/terminal_projection.py,lbe_guard_inspector/tui_view_models.py,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXISTING_OWNER: Textual LBE interface; SessionMemoryRuntimeBridge; WorkspaceMemoryStore; ProviderRegistry; PersistentTurnControl; ToolRegistry; ToolReceipt; persisted evidence and completion owners.
+DESIRED_RESULT: A runnable LBE interface provides a clear conversation surface, persisted session/provider state, capability visibility, streaming/runtime feedback, receipt/evidence detail, and keyboard controls without acquiring execution or authorization authority.
+NON_GOALS: No lbe-tui activation; no independent provider transport; no independent session identity; no native shell execution; no second runtime, persistence, authorization, receipt, evidence, or completion owner; no publication; no branch or worktree creation.
+REUSE_DECISION: ADAPT approved interaction, continuation, event, streaming, layout, and branding mechanics from reference inputs only; preserve LBE runtime and authority owners.
+AUTHORITY_IMPACT: LBE interface remains a projection/control surface; no new authority.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: canonical Textual launch, persisted session projection, provider and capability projection, receipt/evidence detail, keyboard controls, focused UI tests, full regression, real local launch.
+MACHINE_SLICE: LBE_INTERFACE_PRODUCT_SURFACE
+SUPERSEDES: none
+RESULT: IN_PROGRESS
+```
+
 ## Ledger law
 
 ```text
