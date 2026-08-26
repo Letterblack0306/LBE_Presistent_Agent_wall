@@ -56,7 +56,7 @@ publication         = PAUSED
 The installed package acceptance checkpoint is canonical at
 `docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md`.
 The complete runtime and session/application contract gates are PASS. The
-active product slice is now the LBE interface product surface, bound to
+active product slice is the LBE interface product surface, bound to
 LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001. The interface remains a
 projection/control surface; LBE runtime owners retain authority.
 

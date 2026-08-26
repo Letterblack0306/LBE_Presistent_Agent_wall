@@ -136,7 +136,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_C
 
 ```text
 INTENT_ID: LBE-INTENT-RECOVERY-COMPLETION-PROMOTION-001
-STATUS: COMPLETED
+STATUS: ACTIVE
 REQUEST: Complete the normal governed coding lifecycle by composing existing R5 bounded recovery, trusted completion-evidence producers, R6F deterministic completion, and validated memory promotion so provider completion remains provisional until LBE proof is ready.
 WHY: The normal coding gateway already establishes an immutable completion contract and produces trusted source_change/focused_test/git_status evidence, but it stops before calling the existing completion gate. Recovery and completion are proven separately; the product still needs one owner-composed lifecycle that automatically finalizes deterministic proof and promotes only validated completion truth.
 AFFECTED_STRUCTURE: lbe_guard_inspector/agent_integration.py, lbe_guard_inspector/runtime/completion_runtime.py, lbe_guard_inspector/runtime/completion_evidence_producers.py, lbe_guard_inspector/session_memory_runtime.py, lbe_guard_inspector/memory/, tests/, docs/acceptance/, docs/governance/, docs/CURRENT_STATUS.md, .lbe/governance/
@@ -233,7 +233,7 @@ DESIRED_RESULT: A runnable LBE interface provides a clear conversation surface, 
 NON_GOALS: No lbe-tui activation; no independent provider transport; no independent session identity; no native shell execution; no second runtime, persistence, authorization, receipt, evidence, or completion owner; no publication; no branch or worktree creation.
 REUSE_DECISION: ADAPT approved interaction, continuation, event, streaming, layout, and branding mechanics from reference inputs only; preserve LBE runtime and authority owners.
 AUTHORITY_IMPACT: LBE interface remains a projection/control surface; no new authority.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
 REQUIRED_EVIDENCE: canonical Textual launch, persisted session projection, provider and capability projection, receipt/evidence detail, keyboard controls, focused UI tests, full regression, real local launch.
 MACHINE_SLICE: LBE_INTERFACE_PRODUCT_SURFACE
 SUPERSEDES: none

@@ -41,7 +41,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001",
     "owner": "Textual LBE interface; SessionMemoryRuntimeBridge; ProviderRegistry; PersistentTurnControl; terminal projection",
-    "index_revision": "682D9F58A7B6B99DB5EDC3BA5A88F7FD6D3B3B0CDD990D16044F6B9B2ED87F33"
+    "index_revision": "2E7A4535D0CD98DA40BCEC4108C7B94F6CD9B59D3AE66077FCB5033DE20F8112"
   },
   "closure": {
     "status": "CLOSED",
@@ -250,7 +250,7 @@
   "lbe_interface_product_surface": {
     "status": "OPEN",
     "authorization": "EXPLICIT_USER_AUTHORIZATION",
-    "scope": ["lbe_interface_layout", "conversation_projection", "provider_session_controls", "evidence_receipt_projection", "keyboard_interaction", "streaming_feedback"],
+    "scope": ["lbe_interface_layout", "conversation_projection", "provider_session_controls", "evidence_receipt_projection", "keyboard_interaction", "streaming_feedback", "PROJECT_INDEX.md"],
     "required_evidence": ["canonical_textual_interface", "persisted_session_projection", "provider_and_capability_projection", "receipt_and_evidence_detail", "keyboard_controls", "focused_ui_tests", "full_regression", "real_local_launch"],
     "product_identity": "LBE",
     "reference_inputs": ["Cline interaction mechanics", "user-provided visual reference", "lbe-tui reference only"],
