@@ -159,6 +159,7 @@ def build_parser() -> argparse.ArgumentParser:
     tui.add_argument("--model", help="Provider model for a new terminal session")
     tui.add_argument("--profile")
     tui.add_argument("--permission-policy")
+    tui.add_argument("--evidence-policy")
     tui.add_argument("--provider-config", help="Explicit provider config for non-streaming turn execution")
     tui.set_defaults(handler=_tui)
 
