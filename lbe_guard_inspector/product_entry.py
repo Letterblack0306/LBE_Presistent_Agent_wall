@@ -33,7 +33,12 @@ from .runtime.tool_orchestration import (
     workspace_list_spec,
     workspace_read_spec,
 )
-from .runtime.governed_coding import build_workspace_patch_handler, workspace_patch_spec
+from .runtime.governed_coding import (
+    build_process_run_registered_handler,
+    build_workspace_patch_handler,
+    process_run_registered_spec,
+    workspace_patch_spec,
+)
 from agent import Context
 
 
@@ -109,7 +114,7 @@ def _build_tool_parser() -> argparse.ArgumentParser:
         prog="lbe tool",
         description="Invoke one explicitly registered governed LBE capability",
     )
-    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list", "workspace.glob", "workspace.search", "workspace.patch"))
+    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list", "workspace.glob", "workspace.search", "workspace.patch", "process.run_registered"))
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--workspace-id", required=True)
@@ -117,6 +122,7 @@ def _build_tool_parser() -> argparse.ArgumentParser:
     parser.add_argument("--path", required=True)
     parser.add_argument("--content")
     parser.add_argument("--expected-sha256")
+    parser.add_argument("--command-id")
     parser.add_argument("--operation-id", required=True)
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
@@ -299,6 +305,7 @@ def _tool(argv: Sequence[str]) -> int:
         registry.register(workspace_glob_spec(), build_workspace_glob_handler())
         registry.register(workspace_search_spec(), build_workspace_search_handler(EvidenceService()))
         registry.register(workspace_patch_spec(), build_workspace_patch_handler())
+        registry.register(process_run_registered_spec(), build_process_run_registered_handler())
         if args.tool_id == "workspace.glob":
             arguments = {"pattern": args.path}
         elif args.tool_id == "workspace.search":
@@ -309,6 +316,8 @@ def _tool(argv: Sequence[str]) -> int:
                 "content": args.content,
                 "expected_sha256": args.expected_sha256,
             }
+        elif args.tool_id == "process.run_registered":
+            arguments = {"command_id": args.command_id}
         else:
             arguments = {"path": args.path}
         receipt = GovernedToolOrchestrator(registry=registry).invoke(
