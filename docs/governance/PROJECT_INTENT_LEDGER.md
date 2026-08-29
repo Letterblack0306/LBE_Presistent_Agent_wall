@@ -376,13 +376,13 @@ INTENT_ID: LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001
 STATUS: ACTIVE
 REQUEST: Activate the bounded TUI P2/P3 governed-execution integration slice through the existing LBE R6C/R6E authorization, ToolRegistry, GovernedToolOrchestrator, ToolReceipt, evidence, validation, and completion owners.
 WHY: P1 read-only attachment is complete. The TUI now requires an explicitly scoped integration slice to submit authority-bearing requests without creating a second executor, authorization owner, receipt owner, evidence owner, or completion owner.
-AFFECTED_STRUCTURE: PROJECT_INDEX.md,docs/governance/PROJECT_INTENT_LEDGER.md,.lbe/governance/implementation-gates.json,lbe_guard_inspector/,tests/,docs/acceptance/
+AFFECTED_STRUCTURE: PROJECT_INDEX.md,config.json,docs/governance/PROJECT_INTENT_LEDGER.md,.lbe/governance/implementation-gates.json,lbe_guard_inspector/,tests/,docs/acceptance/
 EXISTING_OWNER: Existing LBE R6C authorization resolver; R6E ToolRegistry, GovernedToolOrchestrator, ToolRequest, and ToolReceipt; existing workspace/session identity; evidence, validation, and completion owners; canonical TUI LbeWrapper adapter.
 DESIRED_RESULT: The TUI integration may adapt request and projection contracts to the existing governed LBE execution path while all authorization, policy, execution, evidence, validation, receipt, and completion truth remains LBE-owned.
 NON_GOALS: No second executor; no second authorization, receipt, evidence, validation, persistence, or completion owner; no unrestricted shell; no direct Cline authority; no provider generation; no branch/worktree creation; no publication; no UI redesign; no bypass of Agent Wall policy.
 REUSE_DECISION: REUSE existing R6C/R6E authorization and orchestration owners, ToolRegistry, ToolReceipt, evidence/validation/completion services, session/workspace identity, and the canonical TUI LbeWrapper boundary. ADAPT only TUI request/event/snapshot wiring.
 AUTHORITY_IMPACT: No new authority owner. This slice opens only the bounded adapter path to already-proven Agent Wall governed execution.
-EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/governance/, .lbe/governance/,lbe_guard_inspector/,tests/,docs/acceptance/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,config.json,docs/governance/,.lbe/governance/,lbe_guard_inspector/,tests/,docs/acceptance/
 REQUIRED_EVIDENCE: active intent and matching machine slice; current PROJECT_INDEX revision binding; authorization-before-execution; provider receives only LBE-generated tool definitions; governed ToolReceipt correlation; mutation denial outside registered capabilities; read-only audit/investigation preservation; focused tests; full regression; no duplicate authority owner.
 MACHINE_SLICE: TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION
 SUPERSEDES: none

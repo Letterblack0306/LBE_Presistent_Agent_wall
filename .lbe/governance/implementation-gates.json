@@ -53,7 +53,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001",
     "owner": "Existing LBE R6C authorization resolver and R6E ToolRegistry/GovernedToolOrchestrator/ToolReceipt owners, with the canonical TUI LbeWrapper as projection adapter",
-    "index_revision": "6B2DA246B35BD680BE067308C679F046B06900A84E1EE97A1E8DDA5A2A4622BA"
+    "index_revision": "042919F11A8E2360999867EF71DD0712A4A962658E614096F3B959E38DC201E4"
   },
   "closure": {
     "status": "CLOSED",
