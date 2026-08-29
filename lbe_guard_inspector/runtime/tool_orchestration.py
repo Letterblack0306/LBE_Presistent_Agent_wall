@@ -448,6 +448,70 @@ def build_workspace_glob_handler() -> ToolHandler:
     return handler
 
 
+def workspace_search_spec() -> ToolSpec:
+    return ToolSpec(
+        tool_id="workspace.search",
+        capability="inspect",
+        required_arguments=("query",),
+        access_class=ToolAccessClass.READ,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.LOW,
+        timeout_seconds=30.0,
+        retry_policy="transient_read_failure_only",
+        preconditions=("non-empty workspace query", "active workspace scope"),
+        expected_evidence=("indexed reference evidence", "current workspace evidence"),
+        failure_modes=("invalid query", "workspace escape", "search failure", "authorization failure"),
+    )
+
+
+def build_workspace_search_handler(evidence_service: EvidenceService) -> ToolHandler:
+    """Delegate governed workspace search to the existing EvidenceService owner."""
+    if not isinstance(evidence_service, EvidenceService):
+        raise TypeError("evidence_service must be EvidenceService")
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        raw_query = request.arguments["query"]
+        if not isinstance(raw_query, str) or not raw_query.strip():
+            raise ValueError("query must be a non-empty string")
+        context = request.context
+        package = evidence_service.build_evidence_package(
+            task_id=request.operation_id,
+            query=raw_query.strip(),
+            workspace_id=context.workspace_id,
+            workspace_root=str(context.workspace_root),
+            max_results=50,
+            roots=[context.configured_root_id],
+            retrieval_mode="investigation",
+            evidence_requirements=["explicit governed workspace.search request"],
+        )
+        indexed = tuple(dict(item) for item in package.get("indexed_reference_evidence", ()))
+        current = tuple(dict(item) for item in package.get("current_workspace_evidence", ()))
+        return ToolExecutionResult(
+            output={
+                "query": raw_query.strip(),
+                "indexed_result_count": len(indexed),
+                "current_result_count": len(current),
+                "missing_evidence": list(package.get("missing_evidence", ())),
+                "results": [
+                    {
+                        "ref": item.get("ref"),
+                        "path": item.get("path"),
+                        "line_start": item.get("line_start"),
+                        "line_end": item.get("line_end"),
+                        "snippet": item.get("snippet"),
+                        "score": item.get("score"),
+                        "source_type": item.get("source_type"),
+                        "verified": item.get("verified"),
+                    }
+                    for item in (*indexed, *current)
+                ],
+            },
+            evidence=(*indexed, *current),
+        )
+
+    return handler
+
+
 _DELETABLE_CLASSIFICATIONS = frozenset({
     "GENERATED_REGENERABLE",
     "CACHE",

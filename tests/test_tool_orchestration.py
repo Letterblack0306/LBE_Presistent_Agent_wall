@@ -282,6 +282,75 @@ def test_workspace_glob_handler_rejects_path_escape(tmp_path: Path) -> None:
     assert receipt.error_code == "TOOL_EXECUTION_FAILED"
 
 
+def test_workspace_search_handler_projects_validated_evidence_package(tmp_path: Path) -> None:
+    from lbe_guard_inspector.runtime.tool_orchestration import (
+        build_workspace_search_handler,
+        workspace_search_spec,
+    )
+
+    class FakeSearchEvidenceService(EvidenceService):
+        def build_evidence_package(self, **kwargs):
+            assert kwargs["query"] == "workspace glob"
+            return {
+                "indexed_reference_evidence": [
+                    {
+                        "ref": "index:dev:README.md",
+                        "path": "README.md",
+                        "line_start": 4,
+                        "line_end": 4,
+                        "snippet": "workspace glob",
+                        "score": 120.0,
+                        "source_type": "index",
+                        "verified": False,
+                    }
+                ],
+                "current_workspace_evidence": [
+                    {
+                        "ref": "workspace:workspace-1:README.md",
+                        "path": str(tmp_path / "README.md"),
+                        "line_start": 1,
+                        "line_end": 1,
+                        "snippet": "workspace glob",
+                        "score": 2.0,
+                        "source_type": "workspace",
+                        "verified": True,
+                    }
+                ],
+                "missing_evidence": [],
+            }
+
+    registry = ToolRegistry()
+    registry.register(workspace_search_spec(), build_workspace_search_handler(FakeSearchEvidenceService()))
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        _request(
+            tmp_path,
+            tool_id="workspace.search",
+            arguments={"query": "workspace glob"},
+        )
+    )
+
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert receipt.output["indexed_result_count"] == 1
+    assert receipt.output["current_result_count"] == 1
+    assert len(receipt.output["results"]) == 2
+    assert len(receipt.evidence) == 2
+
+
+def test_workspace_search_handler_rejects_empty_query(tmp_path: Path) -> None:
+    from lbe_guard_inspector.runtime.tool_orchestration import (
+        build_workspace_search_handler,
+        workspace_search_spec,
+    )
+
+    registry = ToolRegistry()
+    registry.register(workspace_search_spec(), build_workspace_search_handler(EvidenceService()))
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        _request(tmp_path, tool_id="workspace.search", arguments={"query": "  "})
+    )
+    assert receipt.status is ToolReceiptStatus.FAILED
+    assert receipt.error_code == "TOOL_EXECUTION_FAILED"
+
+
 def _delete_orchestrator() -> GovernedToolOrchestrator:
     registry = ToolRegistry()
     registry.register(workspace_delete_spec(), build_workspace_delete_handler())
