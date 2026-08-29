@@ -33,6 +33,7 @@ from .runtime.tool_orchestration import (
     workspace_list_spec,
     workspace_read_spec,
 )
+from .runtime.governed_coding import build_workspace_patch_handler, workspace_patch_spec
 from agent import Context
 
 
@@ -108,12 +109,14 @@ def _build_tool_parser() -> argparse.ArgumentParser:
         prog="lbe tool",
         description="Invoke one explicitly registered governed LBE capability",
     )
-    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list", "workspace.glob", "workspace.search"))
+    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list", "workspace.glob", "workspace.search", "workspace.patch"))
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--workspace-id", required=True)
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--path", required=True)
+    parser.add_argument("--content")
+    parser.add_argument("--expected-sha256")
     parser.add_argument("--operation-id", required=True)
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
@@ -279,7 +282,7 @@ def _tool(argv: Sequence[str]) -> int:
             raise ValueError(f"workspace root is not configured for Agent Wall: {requested_root}")
 
         mode_decision = resolve_mode(ModeRequest(
-            intent="inspect_workspace",
+            intent="fix_issue" if args.tool_id == "workspace.patch" else "inspect_workspace",
             permission=state.permission or "read_only",
             runtime_policy=state.runtime_policy or "audit",
             workspace_root=str(requested_root),
@@ -295,10 +298,17 @@ def _tool(argv: Sequence[str]) -> int:
         registry.register(workspace_list_spec(), build_workspace_list_handler())
         registry.register(workspace_glob_spec(), build_workspace_glob_handler())
         registry.register(workspace_search_spec(), build_workspace_search_handler(EvidenceService()))
+        registry.register(workspace_patch_spec(), build_workspace_patch_handler())
         if args.tool_id == "workspace.glob":
             arguments = {"pattern": args.path}
         elif args.tool_id == "workspace.search":
             arguments = {"query": args.path}
+        elif args.tool_id == "workspace.patch":
+            arguments = {
+                "path": args.path,
+                "content": args.content,
+                "expected_sha256": args.expected_sha256,
+            }
         else:
             arguments = {"path": args.path}
         receipt = GovernedToolOrchestrator(registry=registry).invoke(

@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import difflib
 from pathlib import Path
 import shutil
 import subprocess
@@ -70,7 +72,70 @@ def _resolve_workspace_policy(root: Path, relative_to_root: str) -> tuple[Contex
     allowed_write_paths = list(governance.get("allowed_write_paths", []))
     if not path_allowed(relative_to_root, allowed_write_paths):
         raise GovernanceError(f"write path is not allowed: {relative_to_root}")
+
+    _enforce_ui_implementation_authority(governance, relative_to_root, None)
     return ctx, configured_root
+
+
+_UI_CONFLICT_MESSAGE = "UI technology conflict"
+
+
+def _enforce_ui_implementation_authority(
+    governance: Mapping[str, object], relative_to_root: str, content: str | None
+) -> None:
+    """Machine-enforced UI_IMPLEMENTATION_AUTHORITY at the pre-write boundary.
+
+    Agents never choose the UI technology. Product UI is HTML/CSS/JavaScript
+    only; Python TUI authorities remain legacy/reference-only and are never
+    mutated. Section absent: inactive here because this runtime also serves
+    installed workspaces; the canonical repository machine gate
+    (scripts/check-implementation-gate.py) fail-closes when it is missing.
+    Malformed or disabled section: denied (fail closed).
+    """
+    section = governance.get("ui_implementation_authority")
+    if section is None:
+        return
+    if (
+        not isinstance(section, dict)
+        or section.get("enabled") is not True
+        or section.get("fail_closed") is not True
+    ):
+        raise GovernanceError(
+            f"{_UI_CONFLICT_MESSAGE}: invalid ui_implementation_authority state (fail closed)"
+        )
+    denied = str(section.get("denied_message") or _UI_CONFLICT_MESSAGE)
+    normalized = relative_to_root.replace("\\", "/").lower()
+
+    if normalized in tuple(
+        str(p).replace("\\", "/").strip().lower()
+        for p in section.get("legacy_reference_only_paths", [])
+    ):
+        raise GovernanceError(
+            f"{denied}: legacy/reference-only Python TUI path may not be mutated: "
+            f"{relative_to_root}"
+        )
+
+    prefixes = tuple(
+        str(p).replace("\\", "/").strip().lower().rstrip("*")
+        for p in section.get("product_ui_prefixes", [])
+    )
+    if not any(normalized.startswith(prefix) for prefix in prefixes):
+        return
+    if normalized.endswith(".py"):
+        raise GovernanceError(
+            f"{denied}: Python is not an authorized product-UI technology: {relative_to_root}"
+        )
+    if content is None:
+        return
+    lowered = content.lower()
+    for token in (
+        str(t).strip().lower() for t in section.get("forbidden_ui_framework_tokens", [])
+    ):
+        if token and re.search(rf"\b{re.escape(token)}\b", lowered):
+            raise GovernanceError(
+                f"{denied}: forbidden UI framework token '{token}' introduced: "
+                f"{relative_to_root}"
+            )
 
 
 def _bounded_workspace_path(request: ToolRequest, raw_path: object) -> tuple[Path, str]:
@@ -139,6 +204,7 @@ def build_workspace_create_candidate_text_handler() -> object:
         root = Path(request.context.workspace_root).resolve()
         ctx, _configured_root = _resolve_workspace_policy(root, relative_to_root)
         governance = ctx.governance
+        _enforce_ui_implementation_authority(governance, relative_to_root, content)
 
         raw = content.encode("utf-8")
         if len(raw) > _MAX_CREATE_BYTES:
@@ -208,6 +274,8 @@ def build_workspace_write_text_handler() -> object:
         root = Path(request.context.workspace_root).resolve()
         ctx, _configured_root = _resolve_workspace_policy(root, relative_to_root)
         governance = ctx.governance
+        _enforce_ui_implementation_authority(governance, relative_to_root, content)
+
         raw = content.encode("utf-8")
         if len(raw) > _MAX_WRITE_BYTES:
             raise ValueError(f"content exceeds bounded write limit of {_MAX_WRITE_BYTES} bytes")
@@ -280,6 +348,69 @@ def build_workspace_write_text_handler() -> object:
                 "metadata": {"relative_path": relative_to_root, "operation_id": request.operation_id, "tool_id": request.tool_id},
             },),
         )
+
+    return handler
+
+
+def workspace_patch_spec() -> ToolSpec:
+    """Bounded single-file replacement patch with optimistic concurrency."""
+    return ToolSpec(
+        tool_id="workspace.patch",
+        capability="modify",
+        required_arguments=("path", "content", "expected_sha256"),
+        access_class=ToolAccessClass.WRITE,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.MEDIUM,
+        timeout_seconds=30.0,
+        retry_policy="none",
+        preconditions=(
+            "relative workspace path",
+            "active governance allows the write path",
+            "existing target has an exact expected_sha256",
+            "patch is one bounded UTF-8 file replacement",
+        ),
+        expected_evidence=("before hash", "after hash", "unified diff", "atomic replace"),
+        failure_modes=("workspace escape", "forbidden path", "stale write", "patch limit", "write failure"),
+    )
+
+
+def build_workspace_patch_handler() -> object:
+    write_handler = build_workspace_write_text_handler()
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        path = request.arguments["path"]
+        content = request.arguments["content"]
+        expected = request.arguments["expected_sha256"]
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError("path must be a non-empty relative path")
+        if not isinstance(content, str):
+            raise ValueError("content must be a string")
+        if not isinstance(expected, str) or not expected.strip():
+            raise ValueError("expected_sha256 is required for workspace.patch")
+
+        target, relative_to_root = _bounded_workspace_path(request, path)
+        if not target.exists() or not target.is_file() or target.is_symlink():
+            raise ValueError("workspace.patch target must be an existing regular file")
+        before = target.read_text(encoding="utf-8")
+        diff = "".join(difflib.unified_diff(
+            before.splitlines(keepends=True),
+            content.splitlines(keepends=True),
+            fromfile=relative_to_root,
+            tofile=relative_to_root,
+        ))
+        result = write_handler(ToolRequest(
+            operation_id=request.operation_id,
+            tool_id="workspace.write_text",
+            arguments={"path": path, "content": content, "expected_sha256": expected},
+            context=request.context,
+        ))
+        output = dict(result.output)
+        output["patch"] = diff
+        evidence = tuple(dict(item) for item in result.evidence)
+        if evidence:
+            evidence[0]["patch"] = diff
+            evidence[0]["metadata"]["tool_id"] = request.tool_id
+        return ToolExecutionResult(output=output, evidence=evidence)
 
     return handler
 
@@ -470,6 +601,30 @@ def build_git_stage_paths_handler(allowed_paths: Callable[[], frozenset[str]]) -
     return handler
 
 
+def _run_implementation_gate(root: Path) -> tuple[bool, str]:
+    """Every sanctioned LBE runtime commit must pass the canonical machine gate.
+
+    Canonical repository workspaces carry scripts/check-implementation-gate.py
+    (wired into .githooks/pre-commit for interactive commits); the governed
+    commit tool enforces the same verdict here instead of silently neutering
+    hooks. Installed runtime workspaces carry no gate file and are documented
+    limitations, not escape hatches.
+    """
+    gate = root / "scripts" / "check-implementation-gate.py"
+    if not gate.is_file():
+        return True, "gate absent from workspace"
+    result = subprocess.run(
+        [sys.executable, str(gate)],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=120.0,
+        check=False,
+    )
+    detail = (result.stderr or result.stdout).decode("utf-8", errors="replace").strip()
+    return result.returncode == 0, detail
+
+
 def build_git_commit_staged_handler(allowed_paths: Callable[[], frozenset[str]]) -> object:
     def handler(request: ToolRequest) -> ToolExecutionResult:
         root = Path(request.context.workspace_root).resolve()
@@ -487,6 +642,9 @@ def build_git_commit_staged_handler(allowed_paths: Callable[[], frozenset[str]])
         foreign = tuple(path for path in staged_paths if path not in permitted)
         if foreign:
             raise GovernanceError("refusing to commit paths not mutated by governed LBE tools in this turn: " + ", ".join(foreign))
+        gate_ok, gate_detail = _run_implementation_gate(root)
+        if not gate_ok:
+            raise GovernanceError(f"implementation gate blocked commit: {gate_detail}")
         with tempfile.TemporaryDirectory(prefix="lbe-empty-git-hooks-") as hooks_dir:
             commit = _run_git(root, "-c", f"core.hooksPath={hooks_dir}", "commit", "-m", message, timeout=120.0)
         if commit.returncode != 0:
@@ -497,7 +655,7 @@ def build_git_commit_staged_handler(allowed_paths: Callable[[], frozenset[str]])
         sha = head.stdout.strip()
         return ToolExecutionResult(
             output={"branch": "main", "commit": sha, "committed_paths": list(staged_paths)},
-            evidence=({"ref": f"git:{request.operation_id}:commit:{sha}", "source_type": "runtime", "verified": True, "branch": "main", "commit": sha, "committed_paths": list(staged_paths), "metadata": {"operation_id": request.operation_id, "tool_id": request.tool_id, "hooks_disabled": True}},),
+            evidence=({"ref": f"git:{request.operation_id}:commit:{sha}", "source_type": "runtime", "verified": True, "branch": "main", "commit": sha, "committed_paths": list(staged_paths), "metadata": {"operation_id": request.operation_id, "tool_id": request.tool_id, "hooks_neutered": True, "implementation_gate": "PASS" if gate_ok else "ABSENT"}},),
         )
     return handler
 
@@ -683,7 +841,7 @@ def _provider_tool_definition(index: int, spec: ToolSpec) -> dict[str, object]:
         "process.run_registered": "Run one command from the LBE-owned process catalog. Arbitrary shell commands are not accepted.",
         "git.status": "Inspect the primary canonical main Git workspace.",
         "git.stage_paths": "Stage only paths mutated by governed LBE tools during this turn. paths_json must be a JSON string array.",
-        "git.commit_staged": "Commit only the governed paths staged in this turn on canonical main; Git hooks are disabled for deterministic execution.",
+        "git.commit_staged": "Commit only the governed paths staged in this turn on canonical main; deterministic execution requires the implementation gate to pass before committing.",
     }
     return {
         "type": "function",

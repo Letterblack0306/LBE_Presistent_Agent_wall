@@ -22,6 +22,8 @@ from lbe_guard_inspector.runtime.governed_coding import (
     process_run_registered_spec,
     workspace_create_candidate_text_spec,
     workspace_write_text_spec,
+    build_workspace_patch_handler,
+    workspace_patch_spec,
 )
 from lbe_guard_inspector.runtime.mode_controller import ModeDecision
 from lbe_guard_inspector.runtime.tool_orchestration import (
@@ -236,6 +238,55 @@ def test_workspace_write_text_denies_stale_overwrite_and_accepts_exact_hash(tmp_
     assert exact.output["updated"] is True
     assert exact.output["before_sha256"] == before_hash
     assert target.read_text(encoding="utf-8") == "after"
+
+
+def _patch_orchestrator() -> GovernedToolOrchestrator:
+    registry = ToolRegistry()
+    registry.register(workspace_patch_spec(), build_workspace_patch_handler())
+    return GovernedToolOrchestrator(registry=registry)
+
+
+def test_workspace_patch_requires_exact_hash_and_records_unified_diff(tmp_path: Path, monkeypatch) -> None:
+    workspace = _configure_runtime_files(tmp_path, monkeypatch)
+    target = workspace / "existing.txt"
+    target.write_text("before\n", encoding="utf-8")
+    before_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+
+    stale = _patch_orchestrator().invoke(ToolRequest(
+        operation_id="patch-stale",
+        tool_id="workspace.patch",
+        arguments={"path": "existing.txt", "content": "after\n", "expected_sha256": "0" * 64},
+        context=_context(workspace, "modify"),
+    ))
+    assert stale.status is ToolReceiptStatus.FAILED
+    assert "stale overwrite denied" in stale.error_message
+    assert target.read_text(encoding="utf-8") == "before\n"
+
+    applied = _patch_orchestrator().invoke(ToolRequest(
+        operation_id="patch-exact",
+        tool_id="workspace.patch",
+        arguments={"path": "existing.txt", "content": "after\n", "expected_sha256": before_hash},
+        context=_context(workspace, "modify"),
+    ))
+    assert applied.status is ToolReceiptStatus.EXECUTED
+    assert applied.output["updated"] is True
+    assert "-before" in applied.output["patch"]
+    assert "+after" in applied.output["patch"]
+    assert applied.evidence[0]["metadata"]["tool_id"] == "workspace.patch"
+
+
+def test_workspace_patch_rejects_escape_before_preimage_read(tmp_path: Path, monkeypatch) -> None:
+    workspace = _configure_runtime_files(tmp_path, monkeypatch)
+    outside = tmp_path / "outside.txt"
+    outside.write_text("must remain", encoding="utf-8")
+    receipt = _patch_orchestrator().invoke(ToolRequest(
+        operation_id="patch-escape",
+        tool_id="workspace.patch",
+        arguments={"path": "../outside.txt", "content": "changed", "expected_sha256": "0" * 64},
+        context=_context(workspace, "modify"),
+    ))
+    assert receipt.status is ToolReceiptStatus.FAILED
+    assert outside.read_text(encoding="utf-8") == "must remain"
 
 
 def test_registered_process_catalog_rejects_arbitrary_shell(tmp_path: Path) -> None:
