@@ -388,6 +388,66 @@ def build_workspace_list_handler() -> ToolHandler:
     return handler
 
 
+def workspace_glob_spec() -> ToolSpec:
+    return ToolSpec(
+        tool_id="workspace.glob",
+        capability="inspect",
+        required_arguments=("pattern",),
+        access_class=ToolAccessClass.READ,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.LOW,
+        timeout_seconds=30.0,
+        retry_policy="transient_read_failure_only",
+        preconditions=("relative workspace glob pattern", "active workspace scope"),
+        expected_evidence=("matching workspace paths", "entry types"),
+        failure_modes=("invalid pattern", "workspace escape", "read failure", "authorization failure"),
+    )
+
+
+def build_workspace_glob_handler() -> ToolHandler:
+    """Match bounded workspace paths without exposing direct provider filesystem access."""
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        raw_pattern = request.arguments["pattern"]
+        if not isinstance(raw_pattern, str) or not raw_pattern.strip():
+            raise ValueError("pattern must be a non-empty string")
+        pattern = raw_pattern.replace("\\", "/").strip()
+        relative = Path(pattern)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("pattern must stay within the active workspace")
+
+        root = Path(request.context.workspace_root).resolve()
+        matches = []
+        evidence = []
+        for item in sorted(root.glob(pattern), key=lambda value: value.as_posix().casefold()):
+            if item.is_symlink():
+                continue
+            candidate = item.resolve(strict=False)
+            try:
+                candidate.relative_to(root)
+            except ValueError:
+                continue
+            match_path = item.relative_to(root).as_posix()
+            entry_type = "directory" if item.is_dir() else "file" if item.is_file() else "other"
+            matches.append({"path": match_path, "type": entry_type})
+            evidence.append({
+                "ref": f"workspace:{request.context.workspace_id}:{match_path}",
+                "source_type": "workspace",
+                "workspace_id": request.context.workspace_id,
+                "path": str(item),
+                "entry_type": entry_type,
+                "verified": True,
+                "metadata": {"operation_id": request.operation_id, "tool_id": request.tool_id},
+            })
+
+        return ToolExecutionResult(
+            output={"pattern": pattern, "matches": matches, "match_count": len(matches)},
+            evidence=tuple(evidence),
+        )
+
+    return handler
+
+
 _DELETABLE_CLASSIFICATIONS = frozenset({
     "GENERATED_REGENERABLE",
     "CACHE",

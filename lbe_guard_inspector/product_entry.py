@@ -25,7 +25,9 @@ from .runtime.tool_orchestration import (
     ToolRegistry,
     ToolRequest,
     build_workspace_list_handler,
+    build_workspace_glob_handler,
     build_workspace_read_handler,
+    workspace_glob_spec,
     workspace_list_spec,
     workspace_read_spec,
 )
@@ -104,7 +106,7 @@ def _build_tool_parser() -> argparse.ArgumentParser:
         prog="lbe tool",
         description="Invoke one explicitly registered governed LBE capability",
     )
-    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list"))
+    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list", "workspace.glob"))
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--workspace-id", required=True)
@@ -289,11 +291,13 @@ def _tool(argv: Sequence[str]) -> int:
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
         registry.register(workspace_list_spec(), build_workspace_list_handler())
+        registry.register(workspace_glob_spec(), build_workspace_glob_handler())
+        arguments = {"pattern": args.path} if args.tool_id == "workspace.glob" else {"path": args.path}
         receipt = GovernedToolOrchestrator(registry=registry).invoke(
             ToolRequest(
                 operation_id=args.operation_id,
                 tool_id=args.tool_id,
-                arguments={"path": args.path},
+                arguments=arguments,
                 context=context,
             )
         )

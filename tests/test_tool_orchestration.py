@@ -238,6 +238,50 @@ def test_workspace_read_handler_rejects_path_escape_before_evidence_read(tmp_pat
     assert service.calls == []
 
 
+def test_workspace_glob_handler_matches_files_and_excludes_symlinks(tmp_path: Path) -> None:
+    from lbe_guard_inspector.runtime.tool_orchestration import (
+        build_workspace_glob_handler,
+        workspace_glob_spec,
+    )
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.rs").write_text("fn main() {}", encoding="utf-8")
+    (tmp_path / "src" / "notes.txt").write_text("notes", encoding="utf-8")
+    registry = ToolRegistry()
+    registry.register(workspace_glob_spec(), build_workspace_glob_handler())
+
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        _request(
+            tmp_path,
+            tool_id="workspace.glob",
+            arguments={"pattern": "**/*.rs"},
+        )
+    )
+
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert receipt.output == {
+        "pattern": "**/*.rs",
+        "matches": [{"path": "src/main.rs", "type": "file"}],
+        "match_count": 1,
+    }
+    assert receipt.evidence[0]["ref"] == "workspace:workspace-1:src/main.rs"
+
+
+def test_workspace_glob_handler_rejects_path_escape(tmp_path: Path) -> None:
+    from lbe_guard_inspector.runtime.tool_orchestration import (
+        build_workspace_glob_handler,
+        workspace_glob_spec,
+    )
+
+    registry = ToolRegistry()
+    registry.register(workspace_glob_spec(), build_workspace_glob_handler())
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        _request(tmp_path, tool_id="workspace.glob", arguments={"pattern": "../*.rs"})
+    )
+    assert receipt.status is ToolReceiptStatus.FAILED
+    assert receipt.error_code == "TOOL_EXECUTION_FAILED"
+
+
 def _delete_orchestrator() -> GovernedToolOrchestrator:
     registry = ToolRegistry()
     registry.register(workspace_delete_spec(), build_workspace_delete_handler())
