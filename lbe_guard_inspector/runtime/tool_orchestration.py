@@ -324,6 +324,70 @@ def build_workspace_read_handler(evidence_service: EvidenceService) -> ToolHandl
     return handler
 
 
+def workspace_list_spec() -> ToolSpec:
+    return ToolSpec(
+        tool_id="workspace.list",
+        capability="inspect",
+        required_arguments=("path",),
+        access_class=ToolAccessClass.READ,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.LOW,
+        timeout_seconds=30.0,
+        retry_policy="transient_read_failure_only",
+        preconditions=("relative workspace directory", "active workspace scope"),
+        expected_evidence=("directory entries", "entry types"),
+        failure_modes=("invalid path", "workspace escape", "missing directory", "read failure", "authorization failure"),
+    )
+
+
+def build_workspace_list_handler() -> ToolHandler:
+    """List one bounded directory without exposing direct provider filesystem access."""
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        raw_path = request.arguments["path"]
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise ValueError("path must be a non-empty string")
+        relative = Path(raw_path.replace("\\", "/").strip())
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("path must stay within the active workspace")
+
+        root = Path(request.context.workspace_root).resolve()
+        candidate = (root / relative).resolve(strict=False)
+        try:
+            candidate.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("path must stay within the active workspace") from exc
+        if not candidate.exists():
+            raise FileNotFoundError(f"directory does not exist: {relative.as_posix() or '.'}")
+        if not candidate.is_dir():
+            raise ValueError("workspace.list path must be a directory")
+
+        entries = []
+        evidence = []
+        for item in sorted(candidate.iterdir(), key=lambda value: value.name.casefold()):
+            if item.is_symlink():
+                continue
+            entry_type = "directory" if item.is_dir() else "file" if item.is_file() else "other"
+            entry_path = (relative / item.name).as_posix() if relative.as_posix() != "." else item.name
+            entries.append({"name": item.name, "path": entry_path, "type": entry_type})
+            evidence.append({
+                "ref": f"workspace:{request.context.workspace_id}:{entry_path}",
+                "source_type": "workspace",
+                "workspace_id": request.context.workspace_id,
+                "path": str(item),
+                "entry_type": entry_type,
+                "verified": True,
+                "metadata": {"operation_id": request.operation_id, "tool_id": request.tool_id},
+            })
+
+        return ToolExecutionResult(
+            output={"path": relative.as_posix() or ".", "entries": entries, "entry_count": len(entries)},
+            evidence=tuple(evidence),
+        )
+
+    return handler
+
+
 _DELETABLE_CLASSIFICATIONS = frozenset({
     "GENERATED_REGENERABLE",
     "CACHE",

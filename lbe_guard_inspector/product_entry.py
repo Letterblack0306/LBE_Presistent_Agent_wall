@@ -24,7 +24,9 @@ from .runtime.tool_orchestration import (
     ToolExecutionContext,
     ToolRegistry,
     ToolRequest,
+    build_workspace_list_handler,
     build_workspace_read_handler,
+    workspace_list_spec,
     workspace_read_spec,
 )
 from agent import Context
@@ -102,7 +104,7 @@ def _build_tool_parser() -> argparse.ArgumentParser:
         prog="lbe tool",
         description="Invoke one explicitly registered governed LBE capability",
     )
-    parser.add_argument("tool_id", choices=("workspace.read",))
+    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list"))
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--workspace-id", required=True)
@@ -286,6 +288,7 @@ def _tool(argv: Sequence[str]) -> int:
         )
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
+        registry.register(workspace_list_spec(), build_workspace_list_handler())
         receipt = GovernedToolOrchestrator(registry=registry).invoke(
             ToolRequest(
                 operation_id=args.operation_id,
