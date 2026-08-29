@@ -9,8 +9,10 @@ must map to one row before it may be changed.
 | Path / area | Purpose | Authority owner | Canonical supporting document | Mutation boundary |
 |---|---|---|---|---|
 | `lbe_guard_inspector/` | Product runtime and governed execution source | LBE runtime | `docs/LBE_AGENT_LIFECYCLE.md` | Active intent and machine gate only |
+| `.ui-preview/` | Candidate HTML/CSS/JavaScript LBE Home and provider/model setup surface; non-authoritative until bridged to existing LBE owners | LBE product-surface projection owner | `docs/contracts/LBE_HOME_PROVIDER_SURFACE_CONTRACT.md` | Read-only contract-verification intent only; no provider, session, authorization, execution, receipt, evidence, persistence, or completion authority |
 | `lbe_guard_inspector/session_lifecycle.py` | Shared CLI/Textual session creation, resume, and provider-selection application service | Session application contract owner | `docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md` | Active session-contract intent only |
 | `lbe_guard_inspector/runtime/` | Session, provider-turn, orchestration, and governed runtime owners | LBE runtime | `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` | Existing owner required |
+| `lbe_guard_inspector/runtime/tool_orchestration.py` | Existing governed tool registry, authorization dispatch, and correlated tool-receipt execution owner reused by the TUI integration | LBE R6C/R6E runtime owners | `docs/governance/PROJECT_INTENT_LEDGER.md` | Active P2/P3 integration intent and machine gate only |
 | `lbe_guard_inspector/behavior/` | Mode and behavior contracts | LBE policy | `docs/contracts/PRIORITY_MODULE_REGISTRY.md` | Contract-scoped intent only |
 | `tests/` | Runtime and acceptance regression coverage | LBE validation | Active acceptance gate | Must prove the affected intent |
 | `scripts/` | Gate checks and validation tooling | LBE governance/validation | `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md` | Governance intent required |
@@ -24,6 +26,7 @@ must map to one row before it may be changed.
 | `docs/acceptance/INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE_CHECKPOINT.md` | PASS checkpoint for isolated installed-package end-to-end runtime proof | Complete-runtime acceptance owner | `.lbe/governance/implementation-gates.json` | Acceptance evidence only; publication remains separately locked |
 | `docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md` | PASS checkpoint for shared CLI/Textual session/provider lifecycle ownership | Session application contract owner | `.lbe/governance/implementation-gates.json` | Acceptance evidence only; no next product slice active |
 | `docs/acceptance/LBE_INTERFACE_PRODUCT_SURFACE_CHECKPOINT.md` | PASS checkpoint for the usable LBE Textual interface product surface | LBE interface product-surface owner | `.lbe/governance/implementation-gates.json` | Acceptance evidence only; no independent runtime authority |
+| `docs/acceptance/LBE_HOME_PROVIDER_CONTRACT_VERIFICATION_CHECKPOINT.md` | PASS checkpoint for read-only Home/provider contract and owner verification | LBE Home/provider contract owner | `.lbe/governance/implementation-gates.json` | Evidence only; no bridge or implementation authorization |
 | `.githooks/` | Commit and push enforcement | Repository governance | `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md` | Hook change requires governance intent |
 | `schemas/` | Machine-readable contract/reference schemas | Contract owner | `docs/contracts/` | Contract intent required |
 | `rules/` | Active audit and rule implementation | LBE audit/rule owner | `docs/AUDIT_FINDING_REVIEW_REGISTER.md` | Active implementation intent plus affected rule owner |

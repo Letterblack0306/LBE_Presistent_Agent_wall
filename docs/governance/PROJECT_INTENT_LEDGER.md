@@ -263,7 +263,7 @@ SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/LBE_LIVE_PROVIDER_CONVERSATION_CHECKPOINT.md
 ```
-## INTENT LBE-INTENT-CLINE-SURFACE-DIRECTION-001
+## INTENT LBE-INTENT-CLINE-SURFACE-DIRECTION-001 (AMENDED: HTML-BASED LBE TUI)
 
 ```text
 INTENT_ID: LBE-INTENT-CLINE-SURFACE-DIRECTION-001
@@ -295,11 +295,211 @@ AMENDS_INTERPRETATION_OF: LBE-INTENT-LBE-INTERFACE-PRODUCT-SURFACE-001,
                           hereby overridden by explicit product-owner decision).
 SUPERSEDES: none (amends interpretation only)
 RESULT: DIRECTION ACCEPTED
-MIGRATION_NOTE: A follow-up slice must scope the Textual -> Cline CLI/SDK surface transition,
-                including disposition of existing Textual projection owners and tests.
+MIGRATION_NOTE: Cline is an interaction/reference input only. The supplied HTML visual contract
+                is the basis for the LBE TUI; no copied Cline CLI/OpenTUI product surface or
+                Textual -> Cline product transition is authorized.
 ```
 
-## Ledger law
+## INTENT LBE-INTENT-CLINE-RUNTIME-WIRING-001
+
+```text
+INTENT_ID: LBE-INTENT-CLINE-RUNTIME-WIRING-001
+STATUS: ACCEPTED (implements LBE-INTENT-CLINE-SURFACE-DIRECTION-001)
+REQUEST: Provide an LBE-owned foreground provider turn runtime that executes turns through the
+         governed Cline Node worker (pinned AgentRuntime mechanics) behind existing LBE owners.
+WHY: The stdio bridge proved worker mechanics in isolation; product turns require one runtime
+     owner persisting worker events through SessionOperationalHistory while completion,
+     authorization, receipts, and evidence remain LBE-owned.
+AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/cline_provider_turn_runtime.py, tests/, docs/governance/
+EXISTING_OWNER: GovernedClineWorker; GovernedToolOrchestrator/R6C/R6E; SessionOperationalHistory;
+                PersistentTurnControl-compatible turn lifecycle; turn finalization owners.
+DESIRED_RESULT: ClineWorkerTurnRuntime satisfies the same foreground runtime contract as the
+                existing non-streaming owner (run/cancel/was_cancelled/supports_cancellation),
+                persists model message/turn events, fails closed on worker errors, and records
+                no completion truth for cancelled turns.
+NON_GOALS: No UI work (owned by parallel UI-experience slice); no second execution,
+           authorization, receipt, session, persistence, or completion authority; no CLI entry
+           rewiring in this record; no publication.
+REUSE_DECISION: REUSE GovernedClineWorker protocol/lifecycle, GovernedToolOrchestrator tool
+                mediation, SessionOperationalHistory event/finalization owners.
+AUTHORITY_IMPACT: None. Cline remains mechanics under LBE authority.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,tests/,docs/governance/
+REQUIRED_EVIDENCE: completed turn persists message + finalizes COMPLETED; failed turn persists
+                   model.error + finalizes FAILED; cancelled turn records no completion truth;
+                   worker exception fails closed; focused tests pass.
+SUPERSEDES: none
+RESULT: PASS (focused)
+MACHINE_SLICE: CLINE_RUNTIME_WIRING
+```
+
+## INTENT LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001
+
+```text
+INTENT_ID: LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001
+STATUS: ACCEPTED (explicit user implementation direction, recorded 2026-08-27)
+REQUEST: Integrate the native Cline CLI/OpenTUI source as the LBE terminal surface while
+         replacing visible product identity with LetterBlack Execution Engine and routing
+         all authority-bearing runtime callbacks through existing LBE owners.
+WHY: Cline CLI/OpenTUI is the selected base implementation and interaction model. LBE must
+     reuse its native terminal mechanics without exposing Cline as the visible product or
+     inheriting Cline's independent permission, execution, persistence, receipt, evidence,
+     or completion authority.
+AFFECTED_STRUCTURE: vendor/cline-cli/, lbe_guard_inspector/, tests/, .github/workflows/,
+                    docs/acceptance/, docs/governance/, PROJECT_INDEX.md
+EXISTING_OWNER: Pinned Cline CLI/OpenTUI source for rendering and interaction mechanics;
+                LBE session, provider, authorization, ToolRegistry, GovernedToolOrchestrator,
+                ToolReceipt, evidence, persistence, cancellation, and completion owners.
+DESIRED_RESULT: Native Cline OpenTUI launches as LetterBlack Execution Engine, preserves
+                Cline terminal interaction mechanics, exposes LBE terminology and authority
+                events, and cannot execute an authority-bearing tool outside the LBE boundary.
+NON_GOALS: No separate Python/Textual UI, no HTML runtime surface, no native Cline mutation
+           authority, no second session/provider/persistence/authorization/receipt/evidence/
+           completion owner, no branch, no worktree, no publication, no global installation
+           mutation, and no unpinned dependency drift.
+REUSE_DECISION: REUSE pinned Cline CLI/OpenTUI rendering, input, dialog, streaming, and
+                session interaction mechanics; ADAPT the runtime callback bridge and visible
+                terminology to LBE; REJECT native Cline authority-bearing tool execution.
+AUTHORITY_IMPACT: LBE remains sole authority for permissions, governed execution, receipts,
+                  evidence, persistence, cancellation, and completion truth.
+REQUIRED_EVIDENCE: pinned upstream source identity; native OpenTUI local launch; exact visible
+                   branding audit; LBE authority callback tests; denied/allowed tool receipt
+                   tests; session restore; streaming; cancellation; package/build proof;
+                   full Python regression; native CLI tests; main-only topology proof.
+MACHINE_SLICE: CLINE_NATIVE_SURFACE_INTEGRATION
+RESULT: ACTIVE
+```
+
+## INTENT LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001
+
+```text
+INTENT_ID: LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001
+STATUS: ACTIVE
+REQUEST: Activate the bounded TUI P2/P3 governed-execution integration slice through the existing LBE R6C/R6E authorization, ToolRegistry, GovernedToolOrchestrator, ToolReceipt, evidence, validation, and completion owners.
+WHY: P1 read-only attachment is complete. The TUI now requires an explicitly scoped integration slice to submit authority-bearing requests without creating a second executor, authorization owner, receipt owner, evidence owner, or completion owner.
+AFFECTED_STRUCTURE: PROJECT_INDEX.md,docs/governance/PROJECT_INTENT_LEDGER.md,.lbe/governance/implementation-gates.json,lbe_guard_inspector/,tests/,docs/acceptance/
+EXISTING_OWNER: Existing LBE R6C authorization resolver; R6E ToolRegistry, GovernedToolOrchestrator, ToolRequest, and ToolReceipt; existing workspace/session identity; evidence, validation, and completion owners; canonical TUI LbeWrapper adapter.
+DESIRED_RESULT: The TUI integration may adapt request and projection contracts to the existing governed LBE execution path while all authorization, policy, execution, evidence, validation, receipt, and completion truth remains LBE-owned.
+NON_GOALS: No second executor; no second authorization, receipt, evidence, validation, persistence, or completion owner; no unrestricted shell; no direct Cline authority; no provider generation; no branch/worktree creation; no publication; no UI redesign; no bypass of Agent Wall policy.
+REUSE_DECISION: REUSE existing R6C/R6E authorization and orchestration owners, ToolRegistry, ToolReceipt, evidence/validation/completion services, session/workspace identity, and the canonical TUI LbeWrapper boundary. ADAPT only TUI request/event/snapshot wiring.
+AUTHORITY_IMPACT: No new authority owner. This slice opens only the bounded adapter path to already-proven Agent Wall governed execution.
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/governance/, .lbe/governance/,lbe_guard_inspector/,tests/,docs/acceptance/
+REQUIRED_EVIDENCE: active intent and matching machine slice; current PROJECT_INDEX revision binding; authorization-before-execution; provider receives only LBE-generated tool definitions; governed ToolReceipt correlation; mutation denial outside registered capabilities; read-only audit/investigation preservation; focused tests; full regression; no duplicate authority owner.
+MACHINE_SLICE: TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION
+SUPERSEDES: none
+RESULT: ACTIVE
+COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_CHECKPOINT.md
+```
+
+## Product-owner correction — HTML-based TUI
+
+The prior Cline surface-direction record is amended by the current product decision: the
+supplied `docs/reference/ui/lbe_runtime_console.html` and
+`docs/reference/ui/lbe_runtime_surface_preview.html` are the visual/layout basis for the LBE
+TUI. Cline is reference material for interaction ideas only. A copied Cline CLI/OpenTUI tree is
+not a product UI implementation and must remain quarantined as reference/archive material.
+The existing LBE Textual projection and all existing LBE runtime/authority owners remain the
+canonical implementation boundary.
+
+## INTENT LBE-INTENT-LBE-HOME-PROVIDER-CONTRACT-VERIFICATION-001
+
+```text
+INTENT_ID: LBE-INTENT-LBE-HOME-PROVIDER-CONTRACT-VERIFICATION-001
+STATUS: COMPLETED
+REQUEST: Verify the contract and ownership boundary for the LBE Home/provider experience before
+         implementing or staging the HTML product surface.
+WHY: The supplied HTML establishes the intended LBE landing and provider/model setup experience,
+     but its model discovery is currently a reference simulation and no runtime bridge has been
+     proven. Existing LBE owners must be mapped before any UI or provider integration changes.
+AFFECTED_STRUCTURE: .ui-preview/,docs/reference/ui/,docs/contracts/LBE_HOME_PROVIDER_SURFACE_CONTRACT.md,
+                    lbe_guard_inspector/provider_registry.py,
+                    lbe_guard_inspector/provider_capability_discovery.py,
+                    lbe_guard_inspector/provider_health.py,lbe_guard_inspector/session_lifecycle.py,
+                    lbe_guard_inspector/cli.py,tests/,docs/acceptance/,docs/governance/,PROJECT_INDEX.md,
+                    .lbe/governance/
+EXISTING_OWNER: LBE provider registry and descriptors; provider/model capability-discovery contract;
+                provider health contract; LbeSessionService and persisted SessionMemoryRuntimeBridge/
+                WorkspaceMemoryStore owners; existing HTML/CSS/JavaScript projection boundary; LBE
+                authorization, execution, receipt, evidence, persistence, validation, and completion
+                owners. Cline/OpenTUI and unused-in-repo material are reference-only.
+DESIRED_RESULT: A read-only contract verification identifies the authoritative provider/model discovery,
+                health, session, and projection seams; distinguishes static/reference behavior from
+                live behavior; records every implementation gap; and proves that the future Home/
+                provider surface remains a projection/control client under LBE authority.
+NON_GOALS: No implementation; no staging or cleanup of existing dirty paths; no provider I/O or
+           credential changes; no new provider registry, session, transport, authorization, execution,
+           receipt, evidence, persistence, validation, or completion authority; no Textual product UI;
+           no Cline/OpenTUI product surface; no branch/worktree/publication.
+REUSE_DECISION: REUSE existing ProviderRegistry, ProviderModelCapabilitySnapshot,
+                discover_provider_model_capabilities, provider health, LbeSessionService,
+                SessionMemoryRuntimeBridge, persisted history, and LBE projection/control contracts;
+                ADAPT only after the read-only contract gaps and bridge boundary are proven.
+AUTHORITY_IMPACT: None. This is a read-only verification slice and does not authorize product or
+                  runtime implementation.
+EXPECTED_PATH_PREFIXES: .ui-preview/,docs/reference/ui/,docs/contracts/,lbe_guard_inspector/,tests/,docs/acceptance/,
+                         docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+REQUIRED_EVIDENCE: dirty-path ownership matrix; HTML static/reference versus live-runtime classification;
+                   provider/model discovery and health owner mapping; session/provider persistence owner
+                   mapping; LBE authority-boundary proof; obsolete Textual and quarantined Cline disposition;
+                   explicit implementation-gap list; no second authority owner; read-only verification
+                   tests or contract evidence only after a follow-on implementation authorization.
+MACHINE_SLICE: LBE_HOME_PROVIDER_CONTRACT_VERIFICATION
+SUPERSEDES: LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001 (product-surface direction only; prior
+            runtime evidence remains historical/reference evidence)
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/LBE_HOME_PROVIDER_CONTRACT_VERIFICATION_CHECKPOINT.md
+```
+
+## INTENT LBE-INTENT-LBE-HOME-PROVIDER-OWNER-NORMALIZATION-001
+
+```text
+INTENT_ID: LBE-INTENT-LBE-HOME-PROVIDER-OWNER-NORMALIZATION-001
+STATUS: PROPOSED (non-authorizing until explicitly activated by the machine gate)
+REQUEST: Add bounded provider-boundary normalization for model discovery, provider-specific
+         authentication results, and typed provider health outcomes before implementing the HTML
+         bridge or changing the HTML surface.
+WHY: The frozen Home/provider contract has proven its existing owner mappings but live model
+     enumeration, authentication state, and typed health failures still have no complete producers.
+     These state producers must be bounded and evidence-bearing before bridge composition.
+AFFECTED_STRUCTURE: lbe_guard_inspector/provider_registry.py,
+                    lbe_guard_inspector/provider_capability_discovery.py,
+                    lbe_guard_inspector/provider_health.py,lbe_guard_inspector/runtime/,
+                    tests/,docs/contracts/,docs/acceptance/,docs/governance/,PROJECT_INDEX.md,
+                    .lbe/governance/
+EXISTING_OWNER: ProviderRegistry and provider-specific adapters; ProviderModelCapabilitySnapshot;
+                existing provider health probe; LBE runtime/provider boundary; existing evidence,
+                session, authorization, execution, persistence, validation, and completion owners.
+                No standalone global authentication service is authorized by this intent.
+DESIRED_RESULT: Existing provider-boundary adapters return deterministic model-discovery results,
+                provider-specific authentication outcomes normalized to unknown/authenticated/
+                authentication_required/unavailable, and typed health outcomes with reasons and
+                optional evidence references. Registry identity, session selection, and LBE authority
+                remain owned by their existing owners.
+NON_GOALS: No HTML changes; no bridge implementation; no Textual cleanup; no session/runtime
+           authority changes; no replacement ProviderRegistry; no standalone global authentication
+           service; no provider fallback; no credential persistence changes; no provider I/O outside
+           explicitly bounded provider adapters; no receipts for ordinary reads by default; no
+           publication, branch, or worktree.
+REUSE_DECISION: REUSE ProviderRegistry for registered provider identity, existing provider-specific
+                adapter mechanics, ProviderModelCapabilitySnapshot for configuration-derived claims,
+                check_provider_health as the health owner, and existing LBE evidence/persistence/
+                authority owners. ADD only bounded provider-boundary discovery/auth probes and a
+                normalization layer; ADAPT health output without replacing its owner.
+AUTHORITY_IMPACT: No new session, authorization, execution, receipt, evidence, persistence,
+                  validation, or completion authority. Provider adapters own provider-specific
+                  mechanics; LBE normalization owns only the bounded surface result.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py,lbe_guard_inspector/provider_capability_discovery.py,
+                         lbe_guard_inspector/provider_health.py,lbe_guard_inspector/runtime/,tests/,
+                         docs/contracts/,docs/acceptance/,docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+REQUIRED_EVIDENCE: provider model enumeration is bounded and distinct from registry identity;
+                   discovery collection state and provenance are deterministic; provider-specific
+                   authentication outcomes are explicit and not inferred from health/errors; health
+                   results are typed with deterministic reasons; optional evidence references remain
+                   optional; no credential leakage or persistence change; no second provider/session/
+                   authority owner; focused owner-normalization tests; full regression; diff check.
+MACHINE_SLICE: LBE_HOME_PROVIDER_OWNER_NORMALIZATION
+SUPERSEDES: none
+RESULT: NOT_STARTED
+```
 
 ## Ledger law
 
