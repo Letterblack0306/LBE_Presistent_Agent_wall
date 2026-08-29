@@ -14,6 +14,7 @@ import sys
 from typing import Sequence
 
 from . import cli as _cli
+from . import read_only_exports
 from .runtime.installed_capability_registry import InstalledCapabilityRegistryStore
 
 
@@ -62,6 +63,25 @@ def _build_capabilities_parser() -> argparse.ArgumentParser:
     parser.add_argument("action", choices=("list", "validate"))
     parser.add_argument("--registry", required=True, help="Path to installed capability registry JSON")
     parser.add_argument("--format", choices=("json", "text"), default="json")
+    return parser
+
+
+def _build_export_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="lbe export",
+        description="Read-only Agent Wall projection export",
+    )
+    parser.add_argument(
+        "projection",
+        choices=("project_truth", "session_context", "provenance", "validation"),
+    )
+    parser.add_argument("--format", choices=("json", "text"), default="json")
+    parser.add_argument("--workspace")
+    parser.add_argument("--workspace-id")
+    parser.add_argument("--database")
+    parser.add_argument("--session-id")
+    parser.add_argument("--task-id")
+    parser.add_argument("--configured-root-id")
     return parser
 
 
@@ -151,6 +171,58 @@ def _capabilities(argv: Sequence[str]) -> int:
     return 0
 
 
+def _export(argv: Sequence[str]) -> int:
+    parser = _build_export_parser()
+    args = parser.parse_args(list(argv))
+    try:
+        if args.projection == "project_truth":
+            if not args.workspace:
+                raise ValueError("--workspace is required for project_truth export")
+            payload = read_only_exports.project_truth(
+                workspace_root=args.workspace,
+                configured_root_id=args.configured_root_id,
+            )
+        else:
+            if not args.database:
+                raise ValueError(f"--database is required for {args.projection} export")
+            from .memory import WorkspaceMemoryStore
+
+            store = WorkspaceMemoryStore(args.database)
+            if args.projection == "session_context":
+                if not args.session_id:
+                    raise ValueError("--session-id is required for session_context export")
+                payload = read_only_exports.session_context(
+                    store=store,
+                    session_id=args.session_id,
+                    workspace_id=args.workspace_id,
+                    workspace_root=args.workspace,
+                    task_id=args.task_id,
+                )
+            elif args.projection == "provenance":
+                if not args.workspace_id:
+                    raise ValueError("--workspace-id is required for provenance export")
+                payload = read_only_exports.provenance(
+                    store=store,
+                    workspace_id=args.workspace_id,
+                    session_id=args.session_id,
+                    task_id=args.task_id,
+                )
+            else:
+                if not args.session_id or not args.task_id:
+                    raise ValueError("--session-id and --task-id are required for validation export")
+                payload = read_only_exports.validation(
+                    store=store,
+                    session_id=args.session_id,
+                    task_id=args.task_id,
+                )
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
+        _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
+        return 2
+
+    _cli._emit(payload, args.format)
+    return 0
+
+
 def _dispatch_product_command(values: list[str], command: str) -> int:
     command_index = values.index(command)
     prefix = values[:command_index]
@@ -165,13 +237,15 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
         return _start(suffix)
     if command == "capabilities":
         return _capabilities(suffix)
+    if command == "export":
+        return _export(suffix)
     raise AssertionError(f"unsupported product command: {command}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
 
-    product_commands = [command for command in ("start", "capabilities") if command in values]
+    product_commands = [command for command in ("start", "capabilities", "export") if command in values]
     if not product_commands:
         return _cli.main(values)
     if len(product_commands) > 1:
