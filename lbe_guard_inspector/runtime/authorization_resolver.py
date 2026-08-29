@@ -29,6 +29,7 @@ class AuthorizationRequest:
     persistent_policy_change: bool = False
     persistent_policy_authorized: bool = False
     intent_scope_conflict: bool = False
+    approval_granted: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.mode_decision, ModeDecision):
@@ -61,6 +62,25 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
             verdict=AuthorizationVerdict.DENY,
             capability=capability,
             rationale="Operation is explicitly forbidden by active policy.",
+        )
+
+    if request.approval_granted:
+        if not request.within_workspace_scope:
+            return AuthorizationDecision(
+                verdict=AuthorizationVerdict.ESCALATE,
+                capability=capability,
+                rationale="Approval cannot expand beyond the active workspace scope.",
+            )
+        if request.intent_scope_conflict:
+            return AuthorizationDecision(
+                verdict=AuthorizationVerdict.ESCALATE,
+                capability=capability,
+                rationale="Approval cannot resolve an unresolved intent or scope conflict.",
+            )
+        return AuthorizationDecision(
+            verdict=AuthorizationVerdict.ALLOW,
+            capability=capability,
+            rationale="Explicit Agent Wall approval authorizes this operation.",
         )
 
     if capability not in request.mode_decision.capabilities:

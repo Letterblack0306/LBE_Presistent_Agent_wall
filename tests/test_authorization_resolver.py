@@ -167,3 +167,26 @@ def test_invalid_mode_decision_is_rejected() -> None:
 def test_invalid_request_type_is_rejected() -> None:
     with pytest.raises(TypeError):
         resolve_authorization(object())  # type: ignore[arg-type]
+
+
+def test_explicit_approval_allows_in_scope_capability() -> None:
+    decision = resolve_authorization(
+        AuthorizationRequest(
+            mode_decision=_audit_decision(),
+            capability="modify",
+            approval_granted=True,
+        )
+    )
+    assert decision.verdict is AuthorizationVerdict.ALLOW
+
+
+def test_explicit_approval_cannot_expand_scope() -> None:
+    decision = resolve_authorization(
+        AuthorizationRequest(
+            mode_decision=_audit_decision(),
+            capability="modify",
+            within_workspace_scope=False,
+            approval_granted=True,
+        )
+    )
+    assert decision.verdict is AuthorizationVerdict.ESCALATE

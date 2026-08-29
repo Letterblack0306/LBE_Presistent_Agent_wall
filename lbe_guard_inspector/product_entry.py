@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import hashlib
 from pathlib import Path
 from typing import Sequence
 
@@ -18,6 +19,7 @@ from . import cli as _cli
 from . import read_only_exports
 from .evidence_service import EvidenceService
 from .runtime.mode_controller import ModeRequest, resolve_mode
+from .runtime.authorization_resolver import AuthorizationRequest, resolve_authorization, AuthorizationVerdict
 from .runtime.installed_capability_registry import InstalledCapabilityRegistryStore
 from .runtime.tool_orchestration import (
     GovernedToolOrchestrator,
@@ -124,6 +126,21 @@ def _build_tool_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-sha256")
     parser.add_argument("--command-id")
     parser.add_argument("--operation-id", required=True)
+    parser.add_argument("--format", choices=("json", "text"), default="json")
+    return parser
+
+
+def _build_authorization_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="lbe authorization")
+    parser.add_argument("action", choices=("evaluate", "resolve"))
+    parser.add_argument("--database", required=True)
+    parser.add_argument("--session-id", required=True)
+    parser.add_argument("--workspace-id", required=True)
+    parser.add_argument("--workspace", required=True)
+    parser.add_argument("--capability", required=True)
+    parser.add_argument("--operation-id", required=True)
+    parser.add_argument("--approval-id")
+    parser.add_argument("--decision", choices=("approve", "reject"))
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
 
@@ -351,6 +368,73 @@ def _tool(argv: Sequence[str]) -> int:
     return 0
 
 
+def _authorization(argv: Sequence[str]) -> int:
+    parser = _build_authorization_parser()
+    args = parser.parse_args(list(argv))
+    try:
+        store = _cli.WorkspaceMemoryStore(args.database)
+        state = _cli._require_session(store, args.session_id)
+        requested_root = Path(args.workspace).expanduser().resolve()
+        if state.project_workspace_id != args.workspace_id:
+            raise ValueError("workspace id does not match persisted session")
+        if requested_root != Path(state.canonical_workspace_root).expanduser().resolve():
+            raise ValueError("workspace root does not match persisted session")
+        intent = "fix_issue" if args.capability in {"modify", "test_candidate", "validate_proposal"} else "inspect_workspace"
+        mode = resolve_mode(ModeRequest(
+            intent=intent,
+            permission=state.permission or "read_only",
+            runtime_policy=state.runtime_policy or "audit",
+            workspace_root=str(requested_root),
+        ))
+        approval_id = "approval-" + hashlib.sha256(
+            f"{args.operation_id}:{args.capability}:{state.project_workspace_id}".encode()
+        ).hexdigest()[:24]
+        if args.action == "evaluate":
+            decision = resolve_authorization(AuthorizationRequest(mode_decision=mode, capability=args.capability))
+            verdict = "REQUIRE_APPROVAL" if decision.verdict is AuthorizationVerdict.ESCALATE else decision.verdict.value
+            payload = {
+                "ok": True,
+                "operation_id": args.operation_id,
+                "capability": args.capability,
+                "verdict": verdict,
+                "rationale": decision.rationale,
+                "approval_id": approval_id if verdict == "REQUIRE_APPROVAL" else None,
+            }
+        else:
+            if args.approval_id != approval_id:
+                raise ValueError("approval id does not match Agent Wall authorization request")
+            if args.decision is None:
+                raise ValueError("decision is required for authorization resolution")
+            if args.decision == "reject":
+                payload = {
+                    "ok": True,
+                    "operation_id": args.operation_id,
+                    "capability": args.capability,
+                    "verdict": "DENY",
+                    "rationale": "User rejected the Agent Wall approval request.",
+                    "approval_id": approval_id,
+                }
+            else:
+                decision = resolve_authorization(AuthorizationRequest(
+                    mode_decision=mode,
+                    capability=args.capability,
+                    approval_granted=True,
+                ))
+                payload = {
+                    "ok": True,
+                    "operation_id": args.operation_id,
+                    "capability": args.capability,
+                    "verdict": decision.verdict.value,
+                    "rationale": decision.rationale,
+                    "approval_id": approval_id,
+                }
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
+        _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
+        return 2
+    _cli._emit(payload, args.format)
+    return 0
+
+
 def _dispatch_product_command(values: list[str], command: str) -> int:
     command_index = values.index(command)
     prefix = values[:command_index]
@@ -369,13 +453,15 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
         return _export(suffix)
     if command == "tool":
         return _tool(suffix)
+    if command == "authorization":
+        return _authorization(suffix)
     raise AssertionError(f"unsupported product command: {command}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
 
-    product_commands = [command for command in ("start", "capabilities", "export", "tool") if command in values]
+    product_commands = [command for command in ("start", "capabilities", "export", "tool", "authorization") if command in values]
     if not product_commands:
         return _cli.main(values)
     if len(product_commands) > 1:
