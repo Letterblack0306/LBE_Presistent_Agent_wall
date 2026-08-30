@@ -8,7 +8,11 @@ from lbe_guard_inspector.provider_registry import (
     ProviderHandle,
     ProviderRegistry,
     default_provider_registry,
+    normalize_provider_descriptor,
 )
+from lbe_guard_inspector.professional_capabilities import CapabilityClaim, CapabilitySupport
+from lbe_guard_inspector.provider_capability_discovery import discover_provider_model_capabilities
+from lbe_guard_inspector.professional_provider_events import ProviderProtocolFamily
 from lbe_guard_inspector.reasoning_contracts import ExplanationResult, ReasoningPlan
 from lbe_guard_inspector.reasoning_provider import OpenAICompatibleReasoningBackend, ProviderConfig
 from lbe_guard_inspector.reasoning_runtime import (
@@ -156,3 +160,42 @@ def test_existing_openai_builder_remains_compatible():
     controller = build_openai_compatible_controller(provider_config=config())
     assert isinstance(controller, LBERequestController)
     assert isinstance(controller._backend, OpenAICompatibleReasoningBackend)
+
+
+def test_discovered_provider_capabilities_normalize_without_inventing_features():
+    snapshot = discover_provider_model_capabilities(
+        provider_id="anthropic",
+        model_id="claude-test",
+        endpoint="https://api.anthropic.com/v1/messages",
+        context_window=200000,
+        explicit_evidence={
+            "client_tool_calls": CapabilityClaim(
+                support=CapabilitySupport.SUPPORTED,
+                reason="provider metadata declares tool calls",
+                source="provider-model-metadata",
+            )
+        },
+    )
+
+    descriptor = normalize_provider_descriptor(snapshot)
+
+    assert descriptor.provider_id == "anthropic"
+    assert descriptor.model_id == "claude-test"
+    assert descriptor.protocol_family is ProviderProtocolFamily.ANTHROPIC_MESSAGES
+    assert descriptor.capabilities.tool_calls is True
+    assert descriptor.capabilities.streaming is False
+    assert descriptor.capabilities.context_limit == 200000
+
+
+def test_unknown_protocol_discovery_remains_non_executable_metadata():
+    snapshot = discover_provider_model_capabilities(
+        provider_id="routed-provider",
+        model_id="model-a",
+        endpoint="https://router.example/custom/inference",
+    )
+
+    descriptor = normalize_provider_descriptor(snapshot)
+
+    assert descriptor.protocol_family is ProviderProtocolFamily.UNKNOWN
+    assert descriptor.capabilities.tool_calls is False
+    assert descriptor.capabilities.streaming is False

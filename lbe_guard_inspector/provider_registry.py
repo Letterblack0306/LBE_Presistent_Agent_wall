@@ -9,6 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
+from .professional_capabilities import CapabilitySupport
+from .provider_capability_discovery import ProviderModelCapabilitySnapshot
+from .professional_provider_events import ProviderProtocolFamily
 from .reasoning_contracts import ReasoningBackend
 from .reasoning_provider import OpenAICompatibleReasoningBackend, ProviderConfig
 
@@ -30,12 +33,15 @@ class ProviderDescriptor:
     provider_id: str
     model_id: str
     capabilities: ProviderCapabilities
+    protocol_family: ProviderProtocolFamily = ProviderProtocolFamily.UNKNOWN
 
     def __post_init__(self) -> None:
         if not isinstance(self.provider_id, str) or not self.provider_id.strip():
             raise ValueError("provider_id must be a non-empty string")
         if not isinstance(self.model_id, str) or not self.model_id.strip():
             raise ValueError("model_id must be a non-empty string")
+        if not isinstance(self.protocol_family, ProviderProtocolFamily):
+            raise TypeError("protocol_family must be ProviderProtocolFamily")
 
 
 @dataclass(frozen=True)
@@ -98,6 +104,7 @@ def openai_compatible_factory(config: ProviderConfig) -> ProviderHandle:
                 structured_output=True,
                 context_limit=None,
             ),
+            protocol_family=ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
         ),
         backend=OpenAICompatibleReasoningBackend(config=config),
     )
@@ -106,6 +113,29 @@ def openai_compatible_factory(config: ProviderConfig) -> ProviderHandle:
 def default_provider_registry() -> ProviderRegistry:
     """Return built-in provider adapters without reading environment/runtime state."""
     return ProviderRegistry({"openai-compatible": openai_compatible_factory})
+
+
+def normalize_provider_descriptor(snapshot: ProviderModelCapabilitySnapshot) -> ProviderDescriptor:
+    """Convert configuration/evidence discovery into a provider-neutral descriptor.
+
+    Technical capability claims remain separate from LBE authorization. Unknown
+    claims are never promoted to supported execution features.
+    """
+    if not isinstance(snapshot, ProviderModelCapabilitySnapshot):
+        raise TypeError("snapshot must be ProviderModelCapabilitySnapshot")
+    tool_calls = snapshot.capabilities.claim("client_tool_calls").support is CapabilitySupport.SUPPORTED
+    streaming = snapshot.capabilities.claim("streaming_text").support is CapabilitySupport.SUPPORTED
+    return ProviderDescriptor(
+        provider_id=snapshot.capabilities.provider_id,
+        model_id=snapshot.capabilities.model_id,
+        capabilities=ProviderCapabilities(
+            streaming=streaming,
+            tool_calls=tool_calls,
+            structured_output=True,
+            context_limit=snapshot.context_window,
+        ),
+        protocol_family=snapshot.capabilities.protocol_family,
+    )
 
 
 def _provider_id(value: str) -> str:
