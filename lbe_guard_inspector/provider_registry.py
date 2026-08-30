@@ -94,7 +94,7 @@ def openai_compatible_factory(config: ProviderConfig) -> ProviderHandle:
             model_id=config.model.strip(),
             capabilities=ProviderCapabilities(
                 streaming=False,
-                tool_calls=False,
+                tool_calls=True,
                 structured_output=True,
                 context_limit=None,
             ),

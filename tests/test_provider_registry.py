@@ -115,6 +115,7 @@ def test_default_registry_exposes_existing_openai_compatible_backend():
     assert handle.descriptor.provider_id == "openai-compatible"
     assert handle.descriptor.model_id == "model-a"
     assert handle.descriptor.capabilities.structured_output is True
+    assert handle.descriptor.capabilities.tool_calls is True
     assert isinstance(handle.backend, OpenAICompatibleReasoningBackend)
 
 
