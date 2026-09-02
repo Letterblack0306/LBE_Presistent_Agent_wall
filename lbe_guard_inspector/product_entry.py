@@ -9,16 +9,24 @@ second session, provider, credential, tool, or completion authority.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import hashlib
 from pathlib import Path
 from typing import Sequence
+from uuid import uuid4
 
 from . import cli as _cli
+from .control_protocol import ControlMethod, ControlRequest
+from .agent_integration import GovernedAgentGateway
 from . import read_only_exports
 from .evidence_service import EvidenceService
 from .runtime.mode_controller import ModeRequest, resolve_mode
+from .runtime.external_capabilities import (
+    birdeye_mcp_tool_spec,
+    build_birdeye_mcp_handler,
+)
 from .runtime.authorization_resolver import AuthorizationRequest, resolve_authorization, AuthorizationVerdict
 from .runtime.installed_capability_registry import InstalledCapabilityRegistryStore
 from .runtime.tool_orchestration import (
@@ -81,6 +89,131 @@ def _build_start_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _build_turn_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="lbe turn",
+        description="Start one conversational turn through the persisted LBE runtime",
+    )
+    parser.add_argument("--database", required=True)
+    parser.add_argument("--session-id", required=True)
+    parser.add_argument("--text", required=True)
+    parser.add_argument("--provider-config", required=True)
+    parser.add_argument("--format", choices=("json", "text"), default="json")
+    return parser
+
+
+def _serialize_operational_event(event: object) -> dict[str, object]:
+    return {
+        "event_id": event.event_id,
+        "session_id": event.session_id,
+        "turn_id": event.turn_id,
+        "event_type": event.event_type,
+        "payload": dict(event.payload),
+        "provider_id": event.provider_id,
+        "model_id": event.model_id,
+        "provider_request_id": event.provider_request_id,
+        "provider_item_id": event.provider_item_id,
+        "provider_tool_call_id": event.provider_tool_call_id,
+        "lbe_call_id": event.lbe_call_id,
+        "runtime_operation_id": event.runtime_operation_id,
+        "tool_receipt_id": event.tool_receipt_id,
+        "created_at": event.created_at,
+        "session_sequence": event.session_sequence,
+        "turn_sequence": event.turn_sequence,
+    }
+
+
+def _turn(argv: Sequence[str]) -> int:
+    parser = _build_turn_parser()
+    args = parser.parse_args(list(argv))
+    try:
+        from .memory.operational_history import SessionOperationalHistory
+        from .persistent_turn_control import PersistentTurnControl
+        from .provider_turn_runtime import GovernedCodingTurnRuntime, NonStreamingProviderTurnRuntime
+        from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
+        from .runtime.agent_guidance import build_agent_guidance
+        from .runtime.governed_coding import GovernedProviderReasoningController
+        from .runtime.mode_controller import ModeRequest, resolve_mode
+        from .workspace_identity import resolve_workspace_identity
+
+        store = _cli.WorkspaceMemoryStore(args.database)
+        state = _cli._require_session(store, args.session_id)
+        config = _cli.load_provider_config(args.provider_config)
+        if state.provider_id != "openai-compatible":
+            raise ValueError("turn bridge currently requires an openai-compatible session provider")
+        if config.model != state.provider_model:
+            raise ValueError("provider config model must match persisted session model")
+        history = SessionOperationalHistory(store=store)
+        runtime = _cli._runtime_from_state(database=args.database, state=state)
+        if state.mode == "coding" and state.permission not in {"read_only", "audit_only"}:
+            controller = GovernedProviderReasoningController(
+                runtime=runtime, provider_id=state.provider_id, provider_config=config
+            )
+            provider_runtime = GovernedCodingTurnRuntime(
+                history=history,
+                gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller),
+            )
+        else:
+            decision = resolve_mode(ModeRequest(
+                intent={"audit": "inspect_workspace", "investigation": "investigate_issue", "coding": "inspect_workspace"}.get(state.mode, "inspect_workspace"),
+                permission=state.permission or "read_only",
+                workspace_root=str(state.canonical_workspace_root),
+                runtime_policy=state.runtime_policy or "audit",
+            ))
+            tools = () if state.mode == "investigation" else (
+                __import__("lbe_guard_inspector.runtime.tool_orchestration", fromlist=["workspace_read_spec"]).workspace_read_spec(),
+            )
+            guidance = build_agent_guidance(
+                mode_decision=decision, workspace_root=state.canonical_workspace_root, tools=tools
+            )
+            workspace_identity = resolve_workspace_identity(
+                __import__("agent", fromlist=["Context"]).Context.load(),
+                state.canonical_workspace_root,
+            )
+            provider_runtime = NonStreamingProviderTurnRuntime(
+                history=history,
+                adapter=OpenAICompatibleEventAdapter(config=config),
+                provider_id=state.provider_id,
+                guidance=guidance,
+                workspace_root=state.canonical_workspace_root,
+                workspace_id=state.project_workspace_id,
+                permission=state.permission or "read_only",
+                runtime_policy=state.runtime_policy or "audit",
+                configured_root_id=workspace_identity.configured_root_id,
+                enable_audit_tools=state.permission in {"read_only", "audit_only"},
+            )
+        control = PersistentTurnControl(history=history, provider_runtime=provider_runtime)
+        outcome = control.handle(ControlRequest(
+            request_id=f"bridge-{uuid4().hex}",
+            method=ControlMethod.TURN_START,
+            params={"session_id": state.session_id, "text": args.text},
+        ))
+        turn = history.latest_running_turn(session_id=state.session_id)
+        if turn is None:
+            turns = history.events_for_session(session_id=state.session_id)
+            turn_id = turns[-1].turn_id if turns else None
+        else:
+            turn_id = turn.turn_id
+        events = history.events_for_turn(turn_id=turn_id) if turn_id else ()
+        payload = {
+            "ok": outcome.accepted,
+            "request_id": outcome.request_id,
+            "state": outcome.state,
+            "reason": outcome.reason,
+            "session_id": state.session_id,
+            "turn_id": turn_id,
+            "mode": state.mode,
+            "events": [_serialize_operational_event(event) for event in events],
+        }
+        if not outcome.accepted:
+            payload["error"] = "TURN_START_REJECTED"
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError, KeyError) as exc:
+        _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
+        return 2
+    _cli._emit(payload, args.format)
+    return 0
+
+
 def _build_capabilities_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="lbe capabilities",
@@ -116,7 +249,7 @@ def _build_tool_parser() -> argparse.ArgumentParser:
         prog="lbe tool",
         description="Invoke one explicitly registered governed LBE capability",
     )
-    parser.add_argument("tool_id", choices=("workspace.read", "workspace.list", "workspace.glob", "workspace.search", "workspace.patch", "process.run_registered"))
+    parser.add_argument("tool_id")
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--workspace-id", required=True)
@@ -125,6 +258,7 @@ def _build_tool_parser() -> argparse.ArgumentParser:
     parser.add_argument("--content")
     parser.add_argument("--expected-sha256")
     parser.add_argument("--command-id")
+    parser.add_argument("--arguments", help="JSON object for external capability arguments")
     parser.add_argument("--operation-id", required=True)
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
@@ -315,6 +449,10 @@ def _tool(argv: Sequence[str]) -> int:
             workspace_id=state.project_workspace_id,
             workspace_root=requested_root,
             configured_root_id=configured_root.name,
+            explicitly_forbidden=(
+                args.tool_id in {"workspace.patch", "process.run_registered"}
+                and (state.permission or "read_only") in {"read_only", "audit_only"}
+            ),
         )
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
@@ -323,7 +461,14 @@ def _tool(argv: Sequence[str]) -> int:
         registry.register(workspace_search_spec(), build_workspace_search_handler(EvidenceService()))
         registry.register(workspace_patch_spec(), build_workspace_patch_handler())
         registry.register(process_run_registered_spec(), build_process_run_registered_handler())
-        if args.tool_id == "workspace.glob":
+        if args.tool_id.startswith("mcp.birdeye."):
+            birdeye_tool = args.tool_id.removeprefix("mcp.birdeye.")
+            registry.register(birdeye_mcp_tool_spec(birdeye_tool), build_birdeye_mcp_handler(birdeye_tool))
+        if args.tool_id.startswith("mcp.birdeye."):
+            if args.arguments is None:
+                raise ValueError("--arguments is required for BirdEye MCP tools")
+            arguments = {"arguments": json.loads(args.arguments)}
+        elif args.tool_id == "workspace.glob":
             arguments = {"pattern": args.path}
         elif args.tool_id == "workspace.search":
             arguments = {"query": args.path}
@@ -389,8 +534,16 @@ def _authorization(argv: Sequence[str]) -> int:
         approval_id = "approval-" + hashlib.sha256(
             f"{args.operation_id}:{args.capability}:{state.project_workspace_id}".encode()
         ).hexdigest()[:24]
+        explicitly_forbidden = (
+            args.capability in {"modify", "test_candidate", "validate_proposal"}
+            and (state.permission or "read_only") in {"read_only", "audit_only"}
+        )
         if args.action == "evaluate":
-            decision = resolve_authorization(AuthorizationRequest(mode_decision=mode, capability=args.capability))
+            decision = resolve_authorization(AuthorizationRequest(
+                mode_decision=mode,
+                capability=args.capability,
+                explicitly_forbidden=explicitly_forbidden,
+            ))
             verdict = "REQUIRE_APPROVAL" if decision.verdict is AuthorizationVerdict.ESCALATE else decision.verdict.value
             payload = {
                 "ok": True,
@@ -419,6 +572,7 @@ def _authorization(argv: Sequence[str]) -> int:
                     mode_decision=mode,
                     capability=args.capability,
                     approval_granted=True,
+                    explicitly_forbidden=explicitly_forbidden,
                 ))
                 payload = {
                     "ok": True,
@@ -445,6 +599,8 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
                 suffix = ["--format", prefix[1], *suffix]
         else:
             return _cli.main(values)
+    if command == "turn":
+        return _turn(suffix)
     if command == "start":
         return _start(suffix)
     if command == "capabilities":
@@ -461,7 +617,7 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
 
-    product_commands = [command for command in ("start", "capabilities", "export", "tool", "authorization") if command in values]
+    product_commands = [command for command in ("turn", "start", "capabilities", "export", "tool", "authorization") if command in values]
     if not product_commands:
         return _cli.main(values)
     if len(product_commands) > 1:

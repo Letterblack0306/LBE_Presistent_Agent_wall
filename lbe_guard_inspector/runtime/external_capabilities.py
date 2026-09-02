@@ -9,7 +9,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Iterable
+import json
+import os
+from pathlib import Path
+import subprocess
+from typing import Any, Iterable, Mapping
 
 from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
@@ -183,6 +187,95 @@ def external_capability_descriptions(
     registrations: Iterable[ExternalCapabilityRegistration],
 ) -> dict[str, str]:
     return {item.tool_id: item.description for item in registrations}
+
+
+def birdeye_mcp_tool_spec(tool: str) -> ToolSpec:
+    """Return the bounded LBE-facing spec for one BirdEye read-only MCP tool."""
+    normalized = str(tool).strip()
+    if not normalized:
+        raise ValueError("BirdEye MCP tool must be non-empty")
+    return ToolSpec(
+        tool_id=f"mcp.birdeye.{normalized}",
+        capability="inspect",
+        required_arguments=("arguments",),
+        access_class=ToolAccessClass.READ,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.LOW,
+        timeout_seconds=60.0,
+        retry_policy="none",
+        preconditions=(
+            "BirdEye MCP tool is explicitly registered by LBE",
+            "provider cannot select transport or endpoint",
+            "LBE authorization precedes BirdEye invocation",
+        ),
+        expected_evidence=("BirdEye MCP result",),
+        failure_modes=("invalid arguments", "BirdEye unavailable", "authorization failure"),
+    )
+
+
+def build_birdeye_mcp_handler(tool: str) -> ToolHandler:
+    """Adapt one installed BirdEye stdio tool behind the LBE handler boundary."""
+    normalized = str(tool).strip()
+    if not normalized:
+        raise ValueError("BirdEye MCP tool must be non-empty")
+
+    def handler(request: ToolRequest) -> ToolExecutionResult:
+        arguments = request.arguments["arguments"]
+        if not isinstance(arguments, Mapping):
+            raise ValueError("BirdEye MCP arguments must be an object")
+        server = Path(os.environ.get(
+            "LBE_BIRDEYE_MCP_SERVER",
+            r"C:\MCP Local\Letterblack_BirdEye\mcp_server.py",
+        ))
+        python = os.environ.get("LBE_BIRDEYE_MCP_PYTHON", "python")
+        if not server.is_file():
+            raise FileNotFoundError(f"BirdEye MCP server is unavailable: {server}")
+        request_message = lambda identifier, method, params: {
+            "jsonrpc": "2.0", "id": identifier, "method": method, "params": params,
+        }
+        messages = [
+            request_message(1, "initialize", {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "lbe-guard-inspector", "version": "0.1.0"},
+            }),
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
+            request_message(2, "tools/list", {}),
+            request_message(3, "tools/call", {"name": normalized, "arguments": dict(arguments)}),
+            request_message(4, "shutdown", {}),
+        ]
+        encoded = "\n".join(json.dumps(message, ensure_ascii=False) for message in messages) + "\n"
+        completed = subprocess.run(
+            [python, str(server), "--stdio"],
+            cwd=str(server.parent),
+            input=encoded,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(f"BirdEye MCP exited unsuccessfully: {completed.returncode}")
+        responses = [json.loads(line) for line in completed.stdout.splitlines() if line.strip()]
+        initialize = next((item for item in responses if item.get("id") == 1), None)
+        if initialize is None or initialize.get("result", {}).get("serverInfo", {}).get("name") != "birdeye":
+            raise ValueError("BirdEye MCP server identity mismatch")
+        tools = next((item for item in responses if item.get("id") == 2), {}).get("result", {}).get("tools", [])
+        if not any(item.get("name") == normalized for item in tools):
+            raise ValueError(f"BirdEye MCP tool was not advertised: {normalized}")
+        call = next((item for item in responses if item.get("id") == 3), None)
+        if call is None:
+            raise ValueError("BirdEye MCP response omitted tools/call result")
+        content = call.get("result", {}).get("content", [])
+        text = next((item.get("text") for item in content if item.get("type") == "text"), None)
+        if not isinstance(text, str):
+            raise ValueError("BirdEye MCP tools/call omitted text content")
+        payload = json.loads(text)
+        if not isinstance(payload, dict):
+            raise ValueError("BirdEye MCP result must be an object")
+        evidence = tuple(dict(item) for item in payload.get("evidence", []) if isinstance(item, dict))
+        return ToolExecutionResult(output=payload, evidence=evidence)
+
+    return handler
 
 
 class GovernedExternalCapabilityController(GovernedProviderReasoningController):
