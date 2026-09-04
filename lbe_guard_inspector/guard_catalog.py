@@ -24,7 +24,7 @@ FOUNDATION_GUARDS = (
         "condition": "always",
         "category": "mandatory_policy",
         "evidence_contract": _evidence_contract(
-            path_patterns=("pyproject.toml", "package.json", "README.md"),
+            path_patterns=("pyproject.toml", "package.json", "Cargo.toml", "README.md"),
             extensions=(".toml", ".json", ".md"),
             evidence_requirements=("bounded project metadata",),
         ),
@@ -50,6 +50,7 @@ _OPTIONAL_GUARDS_BY_PACK = {
         "cep.host_version",
         "cep.menubar_extension",
         "cep.debug_mode",
+        "cep.callback_contract",
         "cep.no_zip_in_repo",
         "cep.symlink_free",
     ),
@@ -141,6 +142,11 @@ _EVIDENCE_CONTRACTS: dict[str, dict[str, Any]] = {
     "cep.symlink_free": _evidence_contract(
         path_patterns=("*",),
         evidence_requirements=("current workspace paths",),
+    ),
+    "cep.callback_contract": _evidence_contract(
+        path_patterns=("**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"),
+        extensions=(".js", ".jsx", ".ts", ".tsx"),
+        evidence_requirements=("CEP evalScript callback contracts",),
     ),
     "module_registry.loaded_module_registration": _evidence_contract(
         path_patterns=(".lbe/module-registry.json",),
