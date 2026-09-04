@@ -341,6 +341,12 @@ param(
 $ErrorActionPreference = "Stop"
 $client = Join-Path $InstallRoot "lbe.exe"
 $python = Join-Path $InstallRoot "venv\Scripts\python.exe"
+$mcpConfigPath = Join-Path $InstallRoot "config\mcp.json"
+if (Test-Path -LiteralPath $mcpConfigPath -PathType Leaf) {
+    $mcp = Get-Content -LiteralPath $mcpConfigPath -Raw | ConvertFrom-Json
+    if ($mcp.python) { $env:LBE_BIRDEYE_MCP_PYTHON = [string]$mcp.python }
+    if ($mcp.server) { $env:LBE_BIRDEYE_MCP_SERVER = [string]$mcp.server }
+}
 if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Installed LBE Python runtime missing: $python" }
 if (-not (Test-Path -LiteralPath $Project -PathType Container)) { throw "Project workspace missing: $Project" }
@@ -372,7 +378,12 @@ exit $LASTEXITCODE
 function Write-Installer {
     param([string]$PackageRoot)
     $installer = @'
-param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE"))
+param(
+    [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE"),
+    [string]$BirdEyeServer,
+    [string]$BirdEyePython,
+    [string]$Project
+)
 $ErrorActionPreference = "Stop"
 $venv = Join-Path $InstallRoot "venv"
 New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
@@ -382,6 +393,43 @@ $wheel = Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot "runtime") -Filter 
 if (-not $wheel) { throw "LBE runtime wheel missing" }
 & $python -m pip install --no-deps $wheel.FullName
 if ($LASTEXITCODE -ne 0) { throw "LBE runtime install failed" }
+$config = Join-Path $InstallRoot "config"
+New-Item -ItemType Directory -Path $config -Force | Out-Null
+$server = $BirdEyeServer
+if (-not $server -and $env:LBE_BIRDEYE_MCP_SERVER) { $server = $env:LBE_BIRDEYE_MCP_SERVER }
+if (-not $server) {
+    $candidates = @(
+        (Join-Path $InstallRoot "mcp\birdeye\mcp_server.py"),
+        (Join-Path $PSScriptRoot "mcp\birdeye\mcp_server.py"),
+        "C:\MCP Local\Letterblack_BirdEye\mcp_server.py"
+    )
+    $server = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+}
+if ($server) { $server = [IO.Path]::GetFullPath($server) }
+$mcpPython = if ($BirdEyePython) { $BirdEyePython } elseif ($env:LBE_BIRDEYE_MCP_PYTHON) { $env:LBE_BIRDEYE_MCP_PYTHON } else { $python }
+$mcpStatus = if ($server -and (Test-Path -LiteralPath $server -PathType Leaf) -and (Test-Path -LiteralPath $mcpPython -PathType Leaf)) { "CONFIGURED" } else { "UNAVAILABLE_CONFIGURATION_REQUIRED" }
+$registryPath = Join-Path $config "capability-registry.json"
+if (-not (Test-Path -LiteralPath $registryPath -PathType Leaf)) {
+    @{ schema_version = 1; integrations = @() } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $registryPath -Encoding UTF8
+}
+@{
+    schema_version = 1
+    provider = "birdeye"
+    status = $mcpStatus
+    server = $server
+    python = $mcpPython
+    transport = "stdio"
+    authority = "LBE ToolRegistry and authorization"
+    index_owner = "BirdEye MCP workspace/index projection"
+    skills_role = "procedural guidance only"
+} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $config "mcp.json") -Encoding UTF8
+@{
+    schema_version = 1
+    workspace = $Project
+    database = (Join-Path $InstallRoot "state\lbe.sqlite3")
+    capability_registry = $registryPath
+    mcp_configuration = (Join-Path $config "mcp.json")
+} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $config "runtime.json") -Encoding UTF8
 $site = & $python -c "import pathlib,lbe_guard_inspector; print(pathlib.Path(lbe_guard_inspector.__file__).parent)"
 if ($LASTEXITCODE -ne 0) { throw "Unable to resolve installed LBE package" }
 $workerTarget = Join-Path $site "runtime\cline_worker"
@@ -392,6 +440,7 @@ Write-Host "Installed LetterBlack LBE to $InstallRoot"
 Write-Host "Runtime CLI: $(Join-Path $venv 'Scripts\lbe.exe')"
 Write-Host "Rust client: $(Join-Path $InstallRoot 'lbe.exe')"
 Write-Host "Real-runtime launcher: $(Join-Path $InstallRoot 'lbe-launch.ps1')"
+Write-Host "MCP configuration: $(Join-Path $config 'mcp.json') [$mcpStatus]"
 '@
     Set-Content -LiteralPath (Join-Path $PackageRoot "install.ps1") -Value $installer -Encoding UTF8
 }
