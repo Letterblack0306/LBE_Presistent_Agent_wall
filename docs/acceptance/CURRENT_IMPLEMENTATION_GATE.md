@@ -147,7 +147,7 @@ The active TUI P2/P3 integration must reuse existing LBE owners and existing ext
 where compatible. Cline is the accepted `ADAPT` source for provider streaming, agent-loop
 continuation, tool proposal/result, and abort mechanics. OpenCode is an additional reuse source;
 the pinned revision `dc4449df0d52199704ea4989a5a993ebbc605612` is classified in the TUI interop
-strategy (`C:\LBE-TUI-Lab\Docs\31_cline_interop_reuse_strategy.md`). That workspace is a
+ strategy (`C:\LBE-TUI-Lab\Docs\31_cline_interop_reuse_strategy.md`). That workspace is a
 **candidate/reference** workspace, not runtime authority. No frontend is canonical until explicitly
 selected through the user-authorized transition process. The recovered `lbe-authority` bridge is a
 bounded integration seam pending wiring; the LBE-owned adapter and installed interactive proof remain
