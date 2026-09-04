@@ -33,9 +33,10 @@
     "deny_branch_creation": true,
     "deny_worktree_creation": true,
     "deny_secondary_worktree_writes": true,
-    "ui_product_surface_locked_to_html_css_javascript": true,
-    "python_tui_ui_forbidden": true,
-    "agents_may_not_select_ui_technology": true
+    "python_product_ui_forbidden": true,
+    "ui_technology_requires_explicit_user_selection": true,
+    "gate_transition_requires_explicit_user_intent": true,
+    "agents_may_not_silently_change_gate": true
   },
   "intent_and_structure_governance": {
     "required": true,
@@ -51,9 +52,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001",
-    "owner": "Existing LBE R6C authorization resolver and R6E ToolRegistry/GovernedToolOrchestrator/ToolReceipt owners, with the canonical TUI LbeWrapper as projection adapter",
-    "index_revision": "042919F11A8E2360999867EF71DD0712A4A962658E614096F3B959E38DC201E4"
+    "intent_id": "LBE-INTENT-CLINE-CLI-LBE-RUNTIME-INTEGRATION-001",
+    "owner": "Existing LBE session/provider/authorization/ToolRegistry/GovernedToolOrchestrator/receipt/evidence/persistence/validation/completion owners, with the Cline CLI LBE-backed runtime adapter as projection client",
+    "index_revision": "552BD063A0265C53341A969EC41F0E4E857E927D1837A0E9F0D14C8B12AD08A5"
   },
   "closure": {
     "status": "CLOSED",
@@ -539,5 +540,11 @@
     "giving the Textual projection execution, authorization, receipt, or completion authority",
     "auto-retrying mutation-capable provider reasoning",
     "promoting provider prose or provisional completion claims directly to verified task completion"
-  ]
+  ],
+  "selected_reasoning_agent": {
+    "name": "Cline",
+    "source": "https://github.com/cline/cline",
+    "status": "USER_SELECTED",
+    "boundary": "Cline owns reasoning, planning, tool proposals, continuation, and response composition; LBE owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion."
+  }
 }
