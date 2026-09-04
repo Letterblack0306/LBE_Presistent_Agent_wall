@@ -9,11 +9,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
+from .coding_reasoning_provider import ToolAwareOpenAICompatibleReasoningBackend
+from .cline_reasoning_provider import ClineReasoningBackend
+from .first_party_reasoning_provider import AnthropicReasoningBackend, GeminiReasoningBackend, require_api_key
 from .professional_capabilities import CapabilitySupport
 from .provider_capability_discovery import ProviderModelCapabilitySnapshot
 from .professional_provider_events import ProviderProtocolFamily
 from .reasoning_contracts import ReasoningBackend
-from .reasoning_provider import OpenAICompatibleReasoningBackend, ProviderConfig
+from .reasoning_provider import ProviderConfig
 
 
 @dataclass(frozen=True)
@@ -106,13 +109,60 @@ def openai_compatible_factory(config: ProviderConfig) -> ProviderHandle:
             ),
             protocol_family=ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
         ),
-        backend=OpenAICompatibleReasoningBackend(config=config),
+        backend=ToolAwareOpenAICompatibleReasoningBackend(config=config),
+    )
+
+
+def openai_factory(config: ProviderConfig) -> ProviderHandle:
+    require_api_key(config, "openai")
+    return _handle("openai", config, ToolAwareOpenAICompatibleReasoningBackend(config=config))
+
+
+def anthropic_factory(config: ProviderConfig) -> ProviderHandle:
+    return _handle("anthropic", config, AnthropicReasoningBackend(config=config))
+
+
+def gemini_factory(config: ProviderConfig) -> ProviderHandle:
+    return _handle("gemini", config, GeminiReasoningBackend(config=config))
+
+
+def cline_factory(provider_id: str) -> ProviderFactory:
+    def factory(config: ProviderConfig) -> ProviderHandle:
+        return _handle(provider_id, config, ClineReasoningBackend(provider_id=provider_id, config=config))
+    return factory
+
+
+def _handle(provider_id: str, config: ProviderConfig, backend: ReasoningBackend) -> ProviderHandle:
+    return ProviderHandle(
+        descriptor=ProviderDescriptor(
+            provider_id=provider_id,
+            model_id=config.model.strip(),
+            capabilities=ProviderCapabilities(
+                streaming=False,
+                tool_calls=True,
+                structured_output=True,
+                context_limit=None,
+            ),
+        ),
+        backend=backend,
     )
 
 
 def default_provider_registry() -> ProviderRegistry:
     """Return built-in provider adapters without reading environment/runtime state."""
-    return ProviderRegistry({"openai-compatible": openai_compatible_factory})
+    return ProviderRegistry({
+        "openai-compatible": openai_compatible_factory,
+        "openai": openai_factory,
+        "anthropic": anthropic_factory,
+        "gemini": gemini_factory,
+        "openai-native": cline_factory("openai-native"),
+        "vertex": cline_factory("vertex"),
+        "bedrock": cline_factory("bedrock"),
+        "ollama": cline_factory("ollama"),
+        "lmstudio": cline_factory("lmstudio"),
+        "openrouter": cline_factory("openrouter"),
+        "opencode": cline_factory("opencode"),
+    })
 
 
 def normalize_provider_descriptor(snapshot: ProviderModelCapabilitySnapshot) -> ProviderDescriptor:
