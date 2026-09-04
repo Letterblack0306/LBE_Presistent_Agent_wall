@@ -13,13 +13,14 @@ import json
 import os
 import sys
 import hashlib
+import time
 from pathlib import Path
 from typing import Sequence
 from uuid import uuid4
 
 from . import cli as _cli
 from .control_protocol import ControlMethod, ControlRequest
-from .agent_integration import GovernedAgentGateway
+from .agent_integration import AgentMode, GovernedAgentGateway
 from . import read_only_exports
 from .evidence_service import EvidenceService
 from .runtime.mode_controller import ModeRequest, resolve_mode
@@ -102,6 +103,19 @@ def _build_turn_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _build_control_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="lbe control",
+        description="Apply a persisted turn control operation",
+    )
+    parser.add_argument("action", choices=("cancel", "interrupt"))
+    parser.add_argument("--database", required=True)
+    parser.add_argument("--session-id", required=True)
+    parser.add_argument("--turn-id", required=True)
+    parser.add_argument("--format", choices=("json", "text"), default="json")
+    return parser
+
+
 def _serialize_operational_event(event: object) -> dict[str, object]:
     return {
         "event_id": event.event_id,
@@ -129,18 +143,13 @@ def _turn(argv: Sequence[str]) -> int:
     try:
         from .memory.operational_history import SessionOperationalHistory
         from .persistent_turn_control import PersistentTurnControl
-        from .provider_turn_runtime import GovernedCodingTurnRuntime, NonStreamingProviderTurnRuntime
-        from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
-        from .runtime.agent_guidance import build_agent_guidance
+        from .provider_turn_runtime import GovernedCodingTurnRuntime, GovernedProviderTurnRuntime
+        from .reasoning_runtime import build_provider_controller
         from .runtime.governed_coding import GovernedProviderReasoningController
-        from .runtime.mode_controller import ModeRequest, resolve_mode
-        from .workspace_identity import resolve_workspace_identity
 
         store = _cli.WorkspaceMemoryStore(args.database)
         state = _cli._require_session(store, args.session_id)
         config = _cli.load_provider_config(args.provider_config)
-        if state.provider_id != "openai-compatible":
-            raise ValueError("turn bridge currently requires an openai-compatible session provider")
         if config.model != state.provider_model:
             raise ValueError("provider config model must match persisted session model")
         history = SessionOperationalHistory(store=store)
@@ -154,33 +163,14 @@ def _turn(argv: Sequence[str]) -> int:
                 gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller),
             )
         else:
-            decision = resolve_mode(ModeRequest(
-                intent={"audit": "inspect_workspace", "investigation": "investigate_issue", "coding": "inspect_workspace"}.get(state.mode, "inspect_workspace"),
-                permission=state.permission or "read_only",
-                workspace_root=str(state.canonical_workspace_root),
-                runtime_policy=state.runtime_policy or "audit",
-            ))
-            tools = () if state.mode == "investigation" else (
-                __import__("lbe_guard_inspector.runtime.tool_orchestration", fromlist=["workspace_read_spec"]).workspace_read_spec(),
-            )
-            guidance = build_agent_guidance(
-                mode_decision=decision, workspace_root=state.canonical_workspace_root, tools=tools
-            )
-            workspace_identity = resolve_workspace_identity(
-                __import__("agent", fromlist=["Context"]).Context.load(),
-                state.canonical_workspace_root,
-            )
-            provider_runtime = NonStreamingProviderTurnRuntime(
-                history=history,
-                adapter=OpenAICompatibleEventAdapter(config=config),
+            controller, _ = build_provider_controller(
                 provider_id=state.provider_id,
-                guidance=guidance,
-                workspace_root=state.canonical_workspace_root,
-                workspace_id=state.project_workspace_id,
-                permission=state.permission or "read_only",
-                runtime_policy=state.runtime_policy or "audit",
-                configured_root_id=workspace_identity.configured_root_id,
-                enable_audit_tools=state.permission in {"read_only", "audit_only"},
+                provider_config=config,
+            )
+            provider_runtime = GovernedProviderTurnRuntime(
+                history=history,
+                gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller),
+                mode=AgentMode(state.mode),
             )
         control = PersistentTurnControl(history=history, provider_runtime=provider_runtime)
         outcome = control.handle(ControlRequest(
@@ -188,6 +178,13 @@ def _turn(argv: Sequence[str]) -> int:
             method=ControlMethod.TURN_START,
             params={"session_id": state.session_id, "text": args.text},
         ))
+        if outcome.accepted:
+            deadline = time.monotonic() + float(config.timeout_seconds) + 5.0
+            while time.monotonic() < deadline:
+                running = history.latest_running_turn(session_id=state.session_id)
+                if running is None:
+                    break
+                time.sleep(0.05)
         turn = history.latest_running_turn(session_id=state.session_id)
         if turn is None:
             turns = history.events_for_session(session_id=state.session_id)
@@ -207,6 +204,38 @@ def _turn(argv: Sequence[str]) -> int:
         }
         if not outcome.accepted:
             payload["error"] = "TURN_START_REJECTED"
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError, KeyError) as exc:
+        _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
+        return 2
+    _cli._emit(payload, args.format)
+    return 0
+
+
+def _control(argv: Sequence[str]) -> int:
+    parser = _build_control_parser()
+    args = parser.parse_args(list(argv))
+    try:
+        from .memory.operational_history import SessionOperationalHistory
+        from .persistent_turn_control import PersistentTurnControl
+
+        store = _cli.WorkspaceMemoryStore(args.database)
+        history = SessionOperationalHistory(store=store)
+        outcome = PersistentTurnControl(history=history).handle(ControlRequest(
+            request_id=f"control-{uuid4().hex}",
+            method=ControlMethod.TURN_CANCEL if args.action == "cancel" else ControlMethod.TURN_INTERRUPT,
+            params={"session_id": args.session_id, "turn_id": args.turn_id},
+        ))
+        payload = {
+            "ok": outcome.accepted,
+            "action": f"turn.{args.action}",
+            "request_id": outcome.request_id,
+            "state": outcome.state,
+            "reason": outcome.reason,
+            "session_id": args.session_id,
+            "turn_id": args.turn_id,
+        }
+        if not outcome.accepted:
+            payload["error"] = "TURN_CONTROL_REJECTED"
     except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError, KeyError) as exc:
         _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
         return 2
@@ -601,6 +630,8 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
             return _cli.main(values)
     if command == "turn":
         return _turn(suffix)
+    if command == "control":
+        return _control(suffix)
     if command == "start":
         return _start(suffix)
     if command == "capabilities":
@@ -617,7 +648,7 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
 
-    product_commands = [command for command in ("turn", "start", "capabilities", "export", "tool", "authorization") if command in values]
+    product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization") if command in values]
     if not product_commands:
         return _cli.main(values)
     if len(product_commands) > 1:
