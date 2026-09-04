@@ -441,15 +441,86 @@ RESULT: SUPERSEDED
 COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_CHECKPOINT.md
 ```
 
-## Product-owner correction — HTML-based TUI
+## INTENT LBE-INTENT-CLINE-CLI-LBE-RUNTIME-INTEGRATION-001
+
+```text
+INTENT_ID: LBE-INTENT-CLINE-CLI-LBE-RUNTIME-INTEGRATION-001
+STATUS: ACTIVE
+REQUEST: Make the Cline CLI/TUI the selected LetterBlack product surface and replace native
+         Cline SessionRuntime product authority with an LBE-backed session/runtime adapter.
+WHY: Cline provides reusable reasoning, provider, tool-proposal, continuation, and presentation
+     mechanics, while LBE remains the sole authority for session identity, policy, authorization,
+     governed execution, receipts, evidence, persistence, recovery, validation, and completion.
+AFFECTED_STRUCTURE: PROJECT_INDEX.md,docs/governance/PROJECT_INTENT_LEDGER.md,.lbe/governance/implementation-gates.json,
+                    docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md,bin/lbe.js,run-lbe.bat,
+                    lbe_guard_inspector/product_entry.py,lbe_guard_inspector/cli.py,
+                    lbe_guard_inspector/session_lifecycle.py,lbe_guard_inspector/provider_turn_runtime.py,
+                    lbe_guard_inspector/persistent_turn_control.py,lbe_guard_inspector/memory/,
+                    lbe_guard_inspector/runtime/,lbe_guard_inspector/runtime/cline_worker/
+EXISTING_OWNER: Existing LBE session lifecycle, provider-turn runtime, R6C authorization, ToolRegistry,
+                GovernedToolOrchestrator, ToolReceipt, evidence, persistence/recovery,
+                validation/completion owners; existing Cline AgentRuntime mechanics.
+DESIRED_RESULT: A bounded LBE authority stdio/session transport and Cline-side adapter expose
+                authoritative LBE session/provider/event state to the Cline CLI, route governed
+                proposals through LBE, and prevent native Cline SessionRuntime/tool/persistence
+                authority from becoming product truth.
+NON_GOALS: No second LBE runtime; no Cline-owned session, provider, authorization, execution,
+           MCP, receipt, evidence, persistence, validation, or completion authority; no direct
+           native mutation bypass; no publication; no branch/worktree creation.
+REUSE_DECISION: REUSE existing LBE owners and Cline AgentRuntime/provider/event mechanics. ADD only
+                the bounded authority stdio/session transport and adapter seam required for composition.
+AUTHORITY_IMPACT: LBE remains the sole runtime and governance authority; Cline is the selected
+                  reasoning/client mechanics surface.
+EXPECTED_PATH_PREFIXES: bin/lbe.js,run-lbe.bat,lbe_guard_inspector/product_entry.py,lbe_guard_inspector/cli.py,lbe_guard_inspector/session_lifecycle.py,lbe_guard_inspector/provider_turn_runtime.py,lbe_guard_inspector/persistent_turn_control.py,lbe_guard_inspector/memory/,lbe_guard_inspector/runtime/,docs/governance/
+REQUIRED_EVIDENCE: transport framing and identity validation; authoritative session start/restore;
+                   provider event streaming; native SessionRuntime not instantiated for product path;
+                   deny-before-execute; allow-exactly-once; receipt/evidence correlation; continuation;
+                   cancellation; persistence/resume; installed Cline CLI acceptance; no duplicate authority.
+MACHINE_SLICE: TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION
+SUPERSEDES: LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001 for the selected product surface and adapter scope
+RESULT: ACTIVE
+COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_CHECKPOINT.md
+```
+
+## Historical product-owner correction — HTML-based TUI (superseded in scope)
 
 The prior Cline surface-direction record is amended by the current product decision: the
 supplied `docs/reference/ui/lbe_runtime_console.html` and
 `docs/reference/ui/lbe_runtime_surface_preview.html` are the visual/layout basis for the LBE
 TUI. Cline is reference material for interaction ideas only. A copied Cline CLI/OpenTUI tree is
 not a product UI implementation and must remain quarantined as reference/archive material.
-The existing LBE Textual projection and all existing LBE runtime/authority owners remain the
-canonical implementation boundary.
+The HTML cockpit was recorded as the canonical UI target at that time, but that technology selection
+is superseded by the current UI technology scope correction below. Existing LBE runtime/authority
+owners remain canonical; the older Textual projection remains forbidden as product UI.
+
+## INTENT LBE-INTENT-UI-TECHNOLOGY-SCOPE-CORRECTION-001
+
+```text
+INTENT_ID: LBE-INTENT-UI-TECHNOLOGY-SCOPE-CORRECTION-001
+STATUS: ACCEPTED (explicit current user instruction, recorded 2026-09-02)
+REQUEST: Narrow product UI governance to forbid Python/Textual product UI without selecting HTML,
+         CSS, JavaScript, Rust/Ratatui, Tauri, WinUI/WPF, or another frontend as canonical.
+WHY: The prior HTML-only lock encoded a stronger decision than the current user intent authorizes.
+AFFECTED_STRUCTURE: PROJECT_INDEX.md,governance.json,.lbe/governance/implementation-gates.json,
+                    docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md,docs/CURRENT_STATUS.md,
+                    docs/IMPLEMENTATION_PLAN.md,docs/governance/PROJECT_INTENT_LEDGER.md,
+                    scripts/check-implementation-gate.py,tests/test_ui_implementation_authority.py
+EXISTING_OWNER: User product-decision authority; LBE runtime, authorization, execution, receipt,
+                evidence, session, persistence, validation, and completion owners unchanged.
+DESIRED_RESULT: Python/Textual product UI remains forbidden; frontend technology is OPEN until an
+                explicit user decision records a deterministic gate transition.
+NON_GOALS: No frontend selection; no runtime redesign; no deletion of historical records; no
+           silent agent gate change; no branch, worktree, publication, or release action.
+REUSE_DECISION: Preserve existing frontend candidates as candidates/reference surfaces only.
+AUTHORITY_IMPACT: Governance becomes user-overridable through explicit transition records while
+                  agents remain unable to silently change a gate to unblock themselves.
+TRANSITION_RULE: A new explicit user decision may supersede prior UI intent only after recording
+                 the new intent, updating the active gate, superseding the old interpretation,
+                 reconciling owner/index docs, and passing deterministic validation.
+SUPERSEDES: HTML-only interpretation in LBE-INTENT-CLINE-SURFACE-DIRECTION-001 and related current
+             HTML-canonical projections; historical records are retained.
+RESULT: ACCEPTED / APPLIED
+```
 
 ## INTENT LBE-INTENT-LBE-HOME-PROVIDER-CONTRACT-VERIFICATION-001
 
