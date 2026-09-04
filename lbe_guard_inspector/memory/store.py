@@ -253,6 +253,170 @@ class WorkspaceMemoryStore:
             created_at=str(row["created_at"]),
         )
 
+    def save_governed_operation(
+        self,
+        *,
+        operation_id: str,
+        session_id: str,
+        project_workspace_id: str,
+        canonical_workspace_root: str,
+        tool_id: str,
+        capability: str,
+        request_fingerprint: str,
+        request: dict[str, Any],
+        approval_id: str,
+    ) -> dict[str, Any]:
+        """Persist one exact approval-bound operation without changing its identity."""
+        now = utc_now()
+        request_json = json.dumps(request, sort_keys=True, separators=(",", ":"))
+        with self._connect() as connection:
+            existing = connection.execute(
+                "SELECT * FROM governed_operations WHERE operation_id=?",
+                (operation_id,),
+            ).fetchone()
+            if existing is not None:
+                immutable = {
+                    "session_id": session_id,
+                    "project_workspace_id": project_workspace_id,
+                    "canonical_workspace_root": canonical_workspace_root,
+                    "tool_id": tool_id,
+                    "capability": capability,
+                    "request_fingerprint": request_fingerprint,
+                    "request_json": request_json,
+                    "approval_id": approval_id,
+                }
+                for name, expected in immutable.items():
+                    if str(existing[name]) != str(expected):
+                        raise ValueError(
+                            "governed operation identity or payload does not match persisted approval"
+                        )
+                return self._row_to_governed_operation(existing)
+            connection.execute(
+                """
+                INSERT INTO governed_operations (
+                    operation_id, session_id, project_workspace_id,
+                    canonical_workspace_root, tool_id, capability,
+                    request_fingerprint, request_json, approval_id,
+                    decision, receipt_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?, ?)
+                """,
+                (
+                    operation_id,
+                    session_id,
+                    project_workspace_id,
+                    canonical_workspace_root,
+                    tool_id,
+                    capability,
+                    request_fingerprint,
+                    request_json,
+                    approval_id,
+                    now,
+                    now,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM governed_operations WHERE operation_id=?",
+                (operation_id,),
+            ).fetchone()
+        return self._row_to_governed_operation(row)
+
+    def load_governed_operation(self, *, operation_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM governed_operations WHERE operation_id=?",
+                (operation_id,),
+            ).fetchone()
+        return None if row is None else self._row_to_governed_operation(row)
+
+    def resolve_governed_operation(
+        self, *, operation_id: str, approval_id: str, decision: str
+    ) -> dict[str, Any]:
+        if decision not in {"approve", "reject"}:
+            raise ValueError("governed operation decision must be approve or reject")
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM governed_operations WHERE operation_id=?",
+                (operation_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("governed operation is not persisted")
+            if str(row["approval_id"]) != approval_id:
+                raise ValueError("approval id does not match persisted governed operation")
+            current = str(row["decision"])
+            target = "approved" if decision == "approve" else "rejected"
+            if current in {"executed", "failed"}:
+                return self._row_to_governed_operation(row)
+            if current == "rejected" and target != "rejected":
+                raise ValueError("rejected governed operation cannot be approved")
+            if current == "approved" and target == "rejected":
+                raise ValueError("approved governed operation cannot be rejected")
+            if current != target:
+                connection.execute(
+                    "UPDATE governed_operations SET decision=?, updated_at=? WHERE operation_id=?",
+                    (target, utc_now(), operation_id),
+                )
+            row = connection.execute(
+                "SELECT * FROM governed_operations WHERE operation_id=?",
+                (operation_id,),
+            ).fetchone()
+        return self._row_to_governed_operation(row)
+
+    def complete_governed_operation(
+        self,
+        *,
+        operation_id: str,
+        receipt: dict[str, Any],
+        failed: bool = False,
+    ) -> dict[str, Any]:
+        receipt_json = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM governed_operations WHERE operation_id=?",
+                (operation_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("governed operation is not persisted")
+            if str(row["decision"]) in {"executed", "failed"}:
+                persisted = row["receipt_json"]
+                if persisted is not None and str(persisted) != receipt_json:
+                    raise ValueError("terminal governed operation receipt cannot be replaced")
+                return self._row_to_governed_operation(row)
+            if str(row["decision"]) != "approved":
+                raise ValueError("governed operation must be approved before completion")
+            connection.execute(
+                """
+                UPDATE governed_operations
+                SET decision=?, receipt_json=?, updated_at=?
+                WHERE operation_id=?
+                """,
+                ("failed" if failed else "executed", receipt_json, utc_now(), operation_id),
+            )
+            row = connection.execute(
+                "SELECT * FROM governed_operations WHERE operation_id=?",
+                (operation_id,),
+            ).fetchone()
+        return self._row_to_governed_operation(row)
+
+    @staticmethod
+    def _row_to_governed_operation(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "operation_id": str(row["operation_id"]),
+            "session_id": str(row["session_id"]),
+            "project_workspace_id": str(row["project_workspace_id"]),
+            "canonical_workspace_root": str(row["canonical_workspace_root"]),
+            "tool_id": str(row["tool_id"]),
+            "capability": str(row["capability"]),
+            "request_fingerprint": str(row["request_fingerprint"]),
+            "request": json.loads(str(row["request_json"])),
+            "approval_id": str(row["approval_id"]),
+            "decision": str(row["decision"]),
+            "receipt": None
+            if row["receipt_json"] is None
+            else json.loads(str(row["receipt_json"])),
+            "created_at": str(row["created_at"]),
+            "updated_at": str(row["updated_at"]),
+        }
+
     def save_session_state(self, state: SessionState) -> SessionState:
         with self._connect() as connection:
             existing = connection.execute(
