@@ -262,3 +262,157 @@ def test_global_format_before_start_is_preserved(tmp_path: Path, monkeypatch, ca
     output = capsys.readouterr().out
     assert "tui" in output
     assert "entry: start" in output
+
+
+
+def test_product_entry_approval_bridge_executes_exact_operation_once(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    from types import SimpleNamespace
+
+    from lbe_guard_inspector.memory.models import SessionState
+    from lbe_guard_inspector.runtime.tool_orchestration import ToolExecutionResult
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = workspace / "target.txt"
+    target.write_text("before", encoding="utf-8")
+    database = tmp_path / "lbe.sqlite"
+    store = WorkspaceMemoryStore(database)
+    store.save_session_state(
+        SessionState(
+            session_id="session-approval",
+            project_workspace_id="project-approval",
+            canonical_workspace_root=str(workspace.resolve()),
+            mode="coding",
+            permission="write_allowed",
+            runtime_policy="development",
+        )
+    )
+
+    monkeypatch.setattr(
+        product_entry.Context,
+        "load",
+        staticmethod(
+            lambda: SimpleNamespace(
+                roots=[SimpleNamespace(path=workspace.resolve(), name="test-root")]
+            )
+        ),
+    )
+    calls: list[str] = []
+
+    def fake_patch_handler():
+        def handler(request):
+            calls.append(request.operation_id)
+            content = str(request.arguments["content"])
+            target.write_text(content, encoding="utf-8")
+            return ToolExecutionResult(
+                output={
+                    "path": "target.txt",
+                    "created": False,
+                    "updated": True,
+                    "bytes": len(content.encode("utf-8")),
+                    "before_sha256": str(request.arguments["expected_sha256"]),
+                    "sha256": "b" * 64,
+                    "patch": "-before\n+after",
+                },
+                evidence=(
+                    {
+                        "ref": "workspace:project-approval:target.txt",
+                        "verified": True,
+                        "metadata": {
+                            "operation_id": request.operation_id,
+                            "tool_id": request.tool_id,
+                        },
+                    },
+                ),
+            )
+
+        return handler
+
+    monkeypatch.setattr(
+        product_entry,
+        "build_workspace_patch_handler",
+        fake_patch_handler,
+    )
+
+    base = [
+        "tool",
+        "workspace.patch",
+        "--database",
+        str(database),
+        "--session-id",
+        "session-approval",
+        "--workspace-id",
+        "project-approval",
+        "--workspace",
+        str(workspace),
+        "--path",
+        "target.txt",
+        "--content",
+        "after",
+        "--expected-sha256",
+        "a" * 64,
+        "--operation-id",
+        "op-approved-patch",
+        "--format",
+        "json",
+    ]
+
+    assert product_entry.main(base) == 0
+    escalated = _last_json(capsys)
+    assert escalated["status"] == "ESCALATED"
+    assert escalated["approval_id"]
+    assert calls == []
+    assert target.read_text(encoding="utf-8") == "before"
+
+    approval_id = str(escalated["approval_id"])
+    assert product_entry.main(
+        [
+            "authorization",
+            "resolve",
+            "--database",
+            str(database),
+            "--session-id",
+            "session-approval",
+            "--workspace-id",
+            "project-approval",
+            "--workspace",
+            str(workspace),
+            "--capability",
+            "modify",
+            "--operation-id",
+            "op-approved-patch",
+            "--approval-id",
+            approval_id,
+            "--decision",
+            "approve",
+            "--format",
+            "json",
+        ]
+    ) == 0
+    approved = _last_json(capsys)
+    assert approved["verdict"] == "ALLOW"
+
+    assert product_entry.main(base) == 0
+    executed = _last_json(capsys)
+    assert executed["status"] == "EXECUTED"
+    receipt_id = executed["receipt_id"]
+    assert calls == ["op-approved-patch"]
+    assert target.read_text(encoding="utf-8") == "after"
+
+    assert product_entry.main(base) == 0
+    replay = _last_json(capsys)
+    assert replay["status"] == "EXECUTED"
+    assert replay["receipt_id"] == receipt_id
+    assert calls == ["op-approved-patch"]
+
+    changed = base.copy()
+    changed[changed.index("after")] = "substituted"
+    assert product_entry.main(changed) == 2
+    rejected = _last_json(capsys)
+    assert rejected["ok"] is False
+    assert "payload" in str(rejected["message"]).lower()
+    assert calls == ["op-approved-patch"]
