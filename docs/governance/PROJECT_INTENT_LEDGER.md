@@ -382,12 +382,12 @@ RESULT: PASS (focused)
 MACHINE_SLICE: CLINE_RUNTIME_WIRING
 ```
 
-## INTENT LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001
+## INTENT LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001 — SUPERSEDED / REFERENCE ONLY
 
 ```text
 INTENT_ID: LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001
-STATUS: ACCEPTED (explicit user implementation direction, recorded 2026-08-27)
-REQUEST: Integrate the native Cline CLI/OpenTUI source as the LBE terminal surface while
+STATUS: SUPERSEDED (product-owner HTML-based TUI direction; retained as reference history)
+REQUEST: Historical proposal to integrate the native Cline CLI/OpenTUI source as the LBE terminal surface while
          replacing visible product identity with LetterBlack Execution Engine and routing
          all authority-bearing runtime callbacks through existing LBE owners.
 WHY: Cline CLI/OpenTUI is the selected base implementation and interaction model. LBE must
@@ -399,10 +399,10 @@ AFFECTED_STRUCTURE: vendor/cline-cli/, lbe_guard_inspector/, tests/, .github/wor
 EXISTING_OWNER: Pinned Cline CLI/OpenTUI source for rendering and interaction mechanics;
                 LBE session, provider, authorization, ToolRegistry, GovernedToolOrchestrator,
                 ToolReceipt, evidence, persistence, cancellation, and completion owners.
-DESIRED_RESULT: Native Cline OpenTUI launches as LetterBlack Execution Engine, preserves
-                Cline terminal interaction mechanics, exposes LBE terminology and authority
-                events, and cannot execute an authority-bearing tool outside the LBE boundary.
-NON_GOALS: No separate Python/Textual UI, no HTML runtime surface, no native Cline mutation
+DESIRED_RESULT: Historical reference only. The current canonical UI is the HTML-based LBE TUI
+                under `.ui-preview/`; Cline mechanics remain reference inputs and any governed
+                bridge must be implemented through existing LBE owners.
+NON_GOALS: No native Cline CLI/OpenTUI product surface, no separate Python/Textual UI, no native Cline mutation
            authority, no second session/provider/persistence/authorization/receipt/evidence/
            completion owner, no branch, no worktree, no publication, no global installation
            mutation, and no unpinned dependency drift.
@@ -416,14 +416,15 @@ REQUIRED_EVIDENCE: pinned upstream source identity; native OpenTUI local launch;
                    tests; session restore; streaming; cancellation; package/build proof;
                    full Python regression; native CLI tests; main-only topology proof.
 MACHINE_SLICE: CLINE_NATIVE_SURFACE_INTEGRATION
-RESULT: ACTIVE
+RESULT: SUPERSEDED / REFERENCE_ONLY
+SUPERSEDED_BY: LBE-INTENT-CLINE-SURFACE-DIRECTION-001 and LBE-INTENT-LBE-HOME-PROVIDER-CONTRACT-VERIFICATION-001
 ```
 
 ## INTENT LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001
 
 ```text
 INTENT_ID: LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001
-STATUS: ACTIVE
+STATUS: SUPERSEDED BY LBE-INTENT-CLINE-CLI-LBE-RUNTIME-INTEGRATION-001
 REQUEST: Activate the bounded TUI P2/P3 governed-execution integration slice through the existing LBE R6C/R6E authorization, ToolRegistry, GovernedToolOrchestrator, ToolReceipt, evidence, validation, and completion owners.
 WHY: P1 read-only attachment is complete. The TUI now requires an explicitly scoped integration slice to submit authority-bearing requests without creating a second executor, authorization owner, receipt owner, evidence owner, or completion owner.
 AFFECTED_STRUCTURE: PROJECT_INDEX.md,config.json,docs/governance/PROJECT_INTENT_LEDGER.md,.lbe/governance/implementation-gates.json,lbe_guard_inspector/,tests/,docs/acceptance/
@@ -436,7 +437,7 @@ EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,config.json,docs/governance/,.lbe/gover
 REQUIRED_EVIDENCE: active intent and matching machine slice; current PROJECT_INDEX revision binding; authorization-before-execution; provider receives only LBE-generated tool definitions; governed ToolReceipt correlation; mutation denial outside registered capabilities; read-only audit/investigation preservation; focused tests; full regression; no duplicate authority owner.
 MACHINE_SLICE: TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION
 SUPERSEDES: none
-RESULT: ACTIVE
+RESULT: SUPERSEDED
 COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_CHECKPOINT.md
 ```
 
