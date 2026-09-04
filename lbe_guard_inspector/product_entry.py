@@ -28,11 +28,19 @@ from .runtime.external_capabilities import (
     birdeye_mcp_tool_spec,
     build_birdeye_mcp_handler,
 )
-from .runtime.authorization_resolver import AuthorizationRequest, resolve_authorization, AuthorizationVerdict
+from .runtime.authorization_resolver import (
+    AuthorizationDecision,
+    AuthorizationRequest,
+    AuthorizationVerdict,
+    resolve_authorization,
+)
 from .runtime.installed_capability_registry import InstalledCapabilityRegistryStore
 from .runtime.tool_orchestration import (
     GovernedToolOrchestrator,
+    ToolAccessClass,
     ToolExecutionContext,
+    ToolReceipt,
+    ToolReceiptStatus,
     ToolRegistry,
     ToolRequest,
     build_workspace_list_handler,
@@ -446,6 +454,55 @@ def _export(argv: Sequence[str]) -> int:
     return 0
 
 
+def _governed_operation_approval_id(
+    *, operation_id: str, capability: str, workspace_id: str
+) -> str:
+    return "approval-" + hashlib.sha256(
+        f"{operation_id}:{capability}:{workspace_id}".encode()
+    ).hexdigest()[:24]
+
+
+def _governed_operation_fingerprint(
+    *,
+    session_id: str,
+    workspace_id: str,
+    workspace_root: Path,
+    tool_id: str,
+    arguments: dict[str, object],
+) -> tuple[str, dict[str, object]]:
+    request = {
+        "session_id": session_id,
+        "workspace_id": workspace_id,
+        "workspace_root": str(workspace_root),
+        "tool_id": tool_id,
+        "arguments": arguments,
+    }
+    encoded = json.dumps(request, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest(), request
+
+
+def _tool_receipt_payload(
+    receipt: ToolReceipt, *, approval_id: str | None = None
+) -> dict[str, object]:
+    return {
+        "ok": True,
+        "operation_id": receipt.operation_id,
+        "tool_id": receipt.tool_id,
+        "status": receipt.status.value,
+        "receipt_id": receipt.receipt_id,
+        "approval_id": approval_id,
+        "authorization": None if receipt.authorization is None else {
+            "verdict": receipt.authorization.verdict.value,
+            "capability": receipt.authorization.capability,
+            "rationale": receipt.authorization.rationale,
+        },
+        "output": dict(receipt.output or {}),
+        "evidence": [dict(item) for item in receipt.evidence],
+        "error_code": receipt.error_code,
+        "error_message": receipt.error_message,
+    }
+
+
 def _tool(argv: Sequence[str]) -> int:
     parser = _build_tool_parser()
     args = parser.parse_args(list(argv))
@@ -473,16 +530,11 @@ def _tool(argv: Sequence[str]) -> int:
             runtime_policy=state.runtime_policy or "audit",
             workspace_root=str(requested_root),
         ))
-        context = ToolExecutionContext(
-            mode_decision=mode_decision,
-            workspace_id=state.project_workspace_id,
-            workspace_root=requested_root,
-            configured_root_id=configured_root.name,
-            explicitly_forbidden=(
-                args.tool_id in {"workspace.patch", "process.run_registered"}
-                and (state.permission or "read_only") in {"read_only", "audit_only"}
-            ),
+        explicitly_forbidden = (
+            args.tool_id in {"workspace.patch", "process.run_registered"}
+            and (state.permission or "read_only") in {"read_only", "audit_only"}
         )
+
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
         registry.register(workspace_list_spec(), build_workspace_list_handler())
@@ -492,7 +544,11 @@ def _tool(argv: Sequence[str]) -> int:
         registry.register(process_run_registered_spec(), build_process_run_registered_handler())
         if args.tool_id.startswith("mcp.birdeye."):
             birdeye_tool = args.tool_id.removeprefix("mcp.birdeye.")
-            registry.register(birdeye_mcp_tool_spec(birdeye_tool), build_birdeye_mcp_handler(birdeye_tool))
+            registry.register(
+                birdeye_mcp_tool_spec(birdeye_tool),
+                build_birdeye_mcp_handler(birdeye_tool),
+            )
+
         if args.tool_id.startswith("mcp.birdeye."):
             if args.arguments is None:
                 raise ValueError("--arguments is required for BirdEye MCP tools")
@@ -511,6 +567,127 @@ def _tool(argv: Sequence[str]) -> int:
             arguments = {"command_id": args.command_id}
         else:
             arguments = {"path": args.path}
+
+        registered = registry.get(args.tool_id)
+        if registered is None:
+            raise ValueError(f"tool is not registered: {args.tool_id}")
+        capability = registered.spec.capability
+        fingerprint, request_binding = _governed_operation_fingerprint(
+            session_id=state.session_id,
+            workspace_id=state.project_workspace_id,
+            workspace_root=requested_root,
+            tool_id=args.tool_id,
+            arguments=arguments,
+        )
+        approval_id = _governed_operation_approval_id(
+            operation_id=args.operation_id,
+            capability=capability,
+            workspace_id=state.project_workspace_id,
+        )
+        persisted_operation = store.load_governed_operation(operation_id=args.operation_id)
+
+        if persisted_operation is not None:
+            persisted_operation = store.save_governed_operation(
+                operation_id=args.operation_id,
+                session_id=state.session_id,
+                project_workspace_id=state.project_workspace_id,
+                canonical_workspace_root=str(requested_root),
+                tool_id=args.tool_id,
+                capability=capability,
+                request_fingerprint=fingerprint,
+                request=request_binding,
+                approval_id=approval_id,
+            )
+            decision = str(persisted_operation["decision"])
+            if decision in {"executed", "failed"}:
+                persisted_receipt = persisted_operation.get("receipt")
+                if not isinstance(persisted_receipt, dict):
+                    raise ValueError("terminal governed operation is missing its persisted receipt")
+                _cli._emit(persisted_receipt, args.format)
+                return 0
+            if decision == "rejected":
+                receipt = ToolReceipt(
+                    operation_id=args.operation_id,
+                    tool_id=args.tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=AuthorizationDecision(
+                        verdict=AuthorizationVerdict.DENY,
+                        capability=capability,
+                        rationale="User rejected the Agent Wall approval request.",
+                    ),
+                    error_code="AUTHORIZATION_DENIED",
+                    error_message="User rejected the Agent Wall approval request.",
+                )
+                _cli._emit(
+                    _tool_receipt_payload(receipt, approval_id=approval_id),
+                    args.format,
+                )
+                return 0
+            approval_granted = decision == "approved"
+        else:
+            approval_granted = False
+
+        context = ToolExecutionContext(
+            mode_decision=mode_decision,
+            workspace_id=state.project_workspace_id,
+            workspace_root=requested_root,
+            configured_root_id=configured_root.name,
+            explicitly_forbidden=explicitly_forbidden,
+            approval_granted=approval_granted,
+        )
+
+        if registered.spec.access_class is ToolAccessClass.WRITE and not approval_granted:
+            baseline = resolve_authorization(AuthorizationRequest(
+                mode_decision=mode_decision,
+                capability=capability,
+                explicitly_forbidden=explicitly_forbidden,
+            ))
+            if baseline.verdict is AuthorizationVerdict.DENY:
+                receipt = ToolReceipt(
+                    operation_id=args.operation_id,
+                    tool_id=args.tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=baseline,
+                    error_code="AUTHORIZATION_DENIED",
+                    error_message=baseline.rationale,
+                )
+                _cli._emit(_tool_receipt_payload(receipt), args.format)
+                return 0
+
+            store.save_governed_operation(
+                operation_id=args.operation_id,
+                session_id=state.session_id,
+                project_workspace_id=state.project_workspace_id,
+                canonical_workspace_root=str(requested_root),
+                tool_id=args.tool_id,
+                capability=capability,
+                request_fingerprint=fingerprint,
+                request=request_binding,
+                approval_id=approval_id,
+            )
+            rationale = (
+                baseline.rationale
+                if baseline.verdict is AuthorizationVerdict.ESCALATE
+                else "Writable operation requires explicit Agent Wall approval."
+            )
+            receipt = ToolReceipt(
+                operation_id=args.operation_id,
+                tool_id=args.tool_id,
+                status=ToolReceiptStatus.ESCALATED,
+                authorization=AuthorizationDecision(
+                    verdict=AuthorizationVerdict.ESCALATE,
+                    capability=capability,
+                    rationale=rationale,
+                ),
+                error_code="AUTHORIZATION_REQUIRED",
+                error_message=rationale,
+            )
+            _cli._emit(
+                _tool_receipt_payload(receipt, approval_id=approval_id),
+                args.format,
+            )
+            return 0
+
         receipt = GovernedToolOrchestrator(registry=registry).invoke(
             ToolRequest(
                 operation_id=args.operation_id,
@@ -519,28 +696,27 @@ def _tool(argv: Sequence[str]) -> int:
                 context=context,
             )
         )
-        payload = {
-            "ok": True,
-            "operation_id": receipt.operation_id,
-            "tool_id": receipt.tool_id,
-            "status": receipt.status.value,
-            "receipt_id": receipt.receipt_id,
-            "authorization": None if receipt.authorization is None else {
-                "verdict": receipt.authorization.verdict.value,
-                "capability": receipt.authorization.capability,
-                "rationale": receipt.authorization.rationale,
-            },
-            "output": dict(receipt.output or {}),
-            "evidence": [dict(item) for item in receipt.evidence],
-            "error_code": receipt.error_code,
-            "error_message": receipt.error_message,
-        }
+        payload = _tool_receipt_payload(
+            receipt,
+            approval_id=approval_id if persisted_operation is not None else None,
+        )
+        if persisted_operation is not None and approval_granted and receipt.status in {
+            ToolReceiptStatus.EXECUTED,
+            ToolReceiptStatus.FAILED,
+        }:
+            store.complete_governed_operation(
+                operation_id=args.operation_id,
+                receipt=payload,
+                failed=receipt.status is ToolReceiptStatus.FAILED,
+            )
+        _cli._emit(payload, args.format)
+        return 0
     except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
-        _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
+        _cli._emit(
+            {"ok": False, "error": type(exc).__name__, "message": str(exc)},
+            args.format,
+        )
         return 2
-    _cli._emit(payload, args.format)
-    return 0
-
 
 def _authorization(argv: Sequence[str]) -> int:
     parser = _build_authorization_parser()
@@ -553,40 +729,83 @@ def _authorization(argv: Sequence[str]) -> int:
             raise ValueError("workspace id does not match persisted session")
         if requested_root != Path(state.canonical_workspace_root).expanduser().resolve():
             raise ValueError("workspace root does not match persisted session")
-        intent = "fix_issue" if args.capability in {"modify", "test_candidate", "validate_proposal"} else "inspect_workspace"
+        intent = (
+            "fix_issue"
+            if args.capability in {"modify", "test_candidate", "validate_proposal"}
+            else "inspect_workspace"
+        )
         mode = resolve_mode(ModeRequest(
             intent=intent,
             permission=state.permission or "read_only",
             runtime_policy=state.runtime_policy or "audit",
             workspace_root=str(requested_root),
         ))
-        approval_id = "approval-" + hashlib.sha256(
-            f"{args.operation_id}:{args.capability}:{state.project_workspace_id}".encode()
-        ).hexdigest()[:24]
+        approval_id = _governed_operation_approval_id(
+            operation_id=args.operation_id,
+            capability=args.capability,
+            workspace_id=state.project_workspace_id,
+        )
         explicitly_forbidden = (
             args.capability in {"modify", "test_candidate", "validate_proposal"}
             and (state.permission or "read_only") in {"read_only", "audit_only"}
         )
+        persisted_operation = store.load_governed_operation(
+            operation_id=args.operation_id
+        )
+        if persisted_operation is not None:
+            if str(persisted_operation["session_id"]) != state.session_id:
+                raise ValueError("governed operation session identity mismatch")
+            if str(persisted_operation["project_workspace_id"]) != state.project_workspace_id:
+                raise ValueError("governed operation workspace identity mismatch")
+            if str(persisted_operation["canonical_workspace_root"]) != str(requested_root):
+                raise ValueError("governed operation workspace root mismatch")
+            if str(persisted_operation["capability"]) != args.capability:
+                raise ValueError("governed operation capability mismatch")
+            if str(persisted_operation["approval_id"]) != approval_id:
+                raise ValueError("governed operation approval identity mismatch")
+
         if args.action == "evaluate":
             decision = resolve_authorization(AuthorizationRequest(
                 mode_decision=mode,
                 capability=args.capability,
                 explicitly_forbidden=explicitly_forbidden,
             ))
-            verdict = "REQUIRE_APPROVAL" if decision.verdict is AuthorizationVerdict.ESCALATE else decision.verdict.value
+            pending = (
+                persisted_operation is not None
+                and str(persisted_operation["decision"]) == "pending"
+            )
+            verdict = (
+                "REQUIRE_APPROVAL"
+                if pending or decision.verdict is AuthorizationVerdict.ESCALATE
+                else decision.verdict.value
+            )
             payload = {
                 "ok": True,
                 "operation_id": args.operation_id,
                 "capability": args.capability,
                 "verdict": verdict,
-                "rationale": decision.rationale,
+                "rationale": (
+                    "Writable operation requires explicit Agent Wall approval."
+                    if pending
+                    else decision.rationale
+                ),
                 "approval_id": approval_id if verdict == "REQUIRE_APPROVAL" else None,
             }
         else:
             if args.approval_id != approval_id:
-                raise ValueError("approval id does not match Agent Wall authorization request")
+                raise ValueError(
+                    "approval id does not match Agent Wall authorization request"
+                )
             if args.decision is None:
-                raise ValueError("decision is required for authorization resolution")
+                raise ValueError(
+                    "decision is required for authorization resolution"
+                )
+            if persisted_operation is not None:
+                store.resolve_governed_operation(
+                    operation_id=args.operation_id,
+                    approval_id=approval_id,
+                    decision=args.decision,
+                )
             if args.decision == "reject":
                 payload = {
                     "ok": True,
@@ -612,11 +831,13 @@ def _authorization(argv: Sequence[str]) -> int:
                     "approval_id": approval_id,
                 }
     except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
-        _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
+        _cli._emit(
+            {"ok": False, "error": type(exc).__name__, "message": str(exc)},
+            args.format,
+        )
         return 2
     _cli._emit(payload, args.format)
     return 0
-
 
 def _dispatch_product_command(values: list[str], command: str) -> int:
     command_index = values.index(command)
