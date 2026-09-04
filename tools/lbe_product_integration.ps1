@@ -215,13 +215,12 @@ function Build-Product {
     if ($pipWheel.exit_code -ne 0) { throw "Agent Wall wheel build failed." }
 
     $workerSource = Join-Path $AgentStage "lbe_guard_inspector\runtime\cline_worker"
-    $npm = Get-Command npm -ErrorAction Stop
-    $npmCi = Invoke-Native -FilePath $npm.Source -WorkingDirectory $workerSource -Arguments @("ci", "--omit=dev")
-    if ($npmCi.exit_code -ne 0) { throw "Cline worker dependency provisioning failed." }
     Copy-Item -LiteralPath (Join-Path $workerSource "worker.mjs") -Destination $workerOut
     Copy-Item -LiteralPath (Join-Path $workerSource "package.json") -Destination $workerOut
     Copy-Item -LiteralPath (Join-Path $workerSource "package-lock.json") -Destination $workerOut
-    Copy-Item -LiteralPath (Join-Path $workerSource "node_modules") -Destination $workerOut -Recurse
+    $npm = Get-Command npm -ErrorAction Stop
+    $npmCi = Invoke-Native -FilePath $npm.Source -WorkingDirectory $workerOut -Arguments @("ci", "--omit=dev")
+    if ($npmCi.exit_code -ne 0) { throw "Cline worker dependency provisioning failed." }
 
     $cargo = Get-Command cargo -ErrorAction Stop
     $cargoBuild = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("build", "--release", "--locked")
