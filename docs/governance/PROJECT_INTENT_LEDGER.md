@@ -522,6 +522,30 @@ SUPERSEDES: HTML-only interpretation in LBE-INTENT-CLINE-SURFACE-DIRECTION-001 a
 RESULT: ACCEPTED / APPLIED
 ```
 
+## INTENT LBE-INTENT-CLINE-REASONING-AGENT-SELECTION-001
+
+```text
+INTENT_ID: LBE-INTENT-CLINE-REASONING-AGENT-SELECTION-001
+STATUS: ACCEPTED (explicit current user instruction, recorded 2026-09-02)
+REQUEST: Use the official Cline repository as the selected reasoning-agent source instead of the
+         VS Code repository.
+WHY: Cline is the safer selected agent-loop source for this product direction.
+AFFECTED_STRUCTURE: .lbe/governance/implementation-gates.json,docs/acceptance/,
+                    docs/governance/PROJECT_INTENT_LEDGER.md,docs/IMPLEMENTATION_PLAN.md
+EXISTING_OWNER: Cline Agent/AgentRuntime and ClineCore mechanics under the LBE adapter; LBE
+                identity, authorization, execution, receipts, evidence, persistence, validation,
+                and completion owners remain authoritative.
+DESIRED_RESULT: Cline reasoning/planning/tool-proposal/continuation mechanics are the selected
+                agent source and all authority-bearing consequences remain LBE-governed.
+NON_GOALS: No direct Cline mutation, shell, MCP, provider, session, receipt, evidence, persistence,
+           or completion authority; no VS Code agent implementation; no publication or release.
+REUSE_DECISION: ADAPT official Cline agent-loop mechanics behind the existing LBE boundary.
+AUTHORITY_IMPACT: Selected reasoning-agent source changes to Cline; LBE authority is unchanged.
+SOURCE: https://github.com/cline/cline
+SUPERSEDES: Unselected VS Code agent direction; does not supersede LBE authority.
+RESULT: ACCEPTED / APPLIED
+```
+
 ## INTENT LBE-INTENT-LBE-HOME-PROVIDER-CONTRACT-VERIFICATION-001
 
 ```text
