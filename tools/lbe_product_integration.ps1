@@ -12,7 +12,16 @@ $ErrorActionPreference = "Stop"
 
 $AgentWallRepository = "Letterblack0306/LBE_Presistent_Agent_wall"
 $TuiRepository = "Letterblack0306/LBE_Agents_wall_Intigration"
-$SchemaVersion = 1
+$SchemaVersion = 2
+$ClineReferenceRepository = "cline/cline"
+$ClineReferenceCommit = "952df213ee654633fb3f7abda23a1c1b24e92d7f"
+$ClineReferenceFiles = @(
+    "apps/cli/src/runtime/run-interactive.ts",
+    "apps/cli/src/runtime/interactive/session-runtime.ts",
+    "apps/cli/src/runtime/interactive/approvals.ts",
+    "apps/cli/src/runtime/session-events.ts",
+    "apps/cli/src/runtime/tool-policies.ts"
+)
 
 function Invoke-Native {
     param(
@@ -100,10 +109,17 @@ function Assert-Workspace {
 }
 
 function New-ContractCheck {
-    param([string]$Id, [bool]$Passed, [string]$Classification, [string]$Detail)
+    param(
+        [string]$Id,
+        [bool]$Passed,
+        [string]$Classification,
+        [string]$Detail,
+        [bool]$Blocking = $true
+    )
     [pscustomobject]@{
         id = $Id
         passed = $Passed
+        blocking = $Blocking
         classification = $Classification
         detail = $Detail
     }
@@ -117,6 +133,9 @@ function Test-IntegrationContracts {
     $productTests = Get-GitText -Root $AgentRoot -Ref "origin/main" -Path "tests/test_product_entry.py"
     $wrapper = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/wrapper.rs"
     $types = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/types.rs"
+    $app = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/app.rs"
+    $main = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/main.rs"
+    $requests = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/requests.rs"
 
     $checks = [System.Collections.Generic.List[object]]::new()
 
@@ -159,6 +178,73 @@ function Test-IntegrationContracts {
 
     $sessionProjection = $types.Contains("session_id") -and $wrapper.Contains("session_id")
     $checks.Add((New-ContractCheck -Id "session.identity_projection" -Passed $sessionProjection -Classification $(if ($sessionProjection) { "CONNECTED" } else { "PARTIAL" }) -Detail "Rust session projection must preserve authoritative LBE session identity."))
+
+    # Cline is a behavior/reference source only. LetterBlack owns product identity,
+    # session truth, authorization, governed execution, receipts, and completion.
+    # These checks verify that the selected Rust surface has the same categories of
+    # interaction that make an agent CLI usable: interactive chat, sessions,
+    # provider/model selection, approvals, event projection, and tool activity.
+    $cliSurfaceMarkers = @(
+        "lbe                         Start the TUI",
+        "lbe [project]               Start the TUI in a project",
+        "lbe run",
+        "--model PROVIDER/MODEL",
+        "--agent build|plan|audit",
+        "--session SESSION_ID",
+        "--continue",
+        "--json"
+    )
+    $missingCliSurface = @($cliSurfaceMarkers | Where-Object { -not $main.Contains($_) })
+    $checks.Add((New-ContractCheck -Id "tui.cli_launch_surface" -Passed ($missingCliSurface.Count -eq 0) -Classification $(if ($missingCliSurface.Count -eq 0) { "CONNECTED" } else { "PARTIAL" }) -Detail $(if ($missingCliSurface.Count -eq 0) { "Interactive, project, headless, provider/model, mode, session, continuation, and JSON launch surfaces are present." } else { "Missing CLI markers: $($missingCliSurface -join ', ')" })))
+
+    $navigationCommands = @(
+        "/provider", "/models", "/sessions", "/mcp", "/tools", "/processes",
+        "/activity", "/evidence", "/receipts", "/changes", "/memory", "/doctor", "/help"
+    )
+    $missingNavigation = @($navigationCommands | Where-Object { -not $app.Contains('"' + $_ + '"') })
+    $checks.Add((New-ContractCheck -Id "tui.navigation_surfaces" -Passed ($missingNavigation.Count -eq 0) -Classification $(if ($missingNavigation.Count -eq 0) { "PRESENT" } else { "PARTIAL" }) -Detail $(if ($missingNavigation.Count -eq 0) { "All selected navigation/diagnostic surfaces are present in the Rust UI." } else { "Missing navigation commands: $($missingNavigation -join ', ')" })))
+
+    $governedCommands = @(
+        "/open", "/read", "/tree", "/list", "/glob", "/find", "/search",
+        "/patch", "/run", "/authorize", "/audit", "/mode", "/new", "/clear", "/quit"
+    )
+    $missingGoverned = @($governedCommands | Where-Object { -not $app.Contains('"' + $_ + '"') })
+    $checks.Add((New-ContractCheck -Id "tui.governed_command_surfaces" -Passed ($missingGoverned.Count -eq 0) -Classification $(if ($missingGoverned.Count -eq 0) { "PRESENT" } else { "PARTIAL" }) -Detail $(if ($missingGoverned.Count -eq 0) { "Governed workspace, authorization, mode, session, and lifecycle command surfaces are present." } else { "Missing governed commands: $($missingGoverned -join ', ')" })))
+
+    $coreRealRoutes = @(
+        "UserRequest::RefreshProviderCatalog",
+        "UserRequest::SelectModel",
+        "UserRequest::ListSessions",
+        "UserRequest::ResumeSession",
+        "UserRequest::RefreshMcpRegistry",
+        "UserRequest::RunDiagnostics",
+        "UserRequest::InspectWorkspace",
+        "UserRequest::ListWorkspace",
+        "UserRequest::GlobWorkspace",
+        "UserRequest::SearchWorkspace",
+        "UserRequest::PatchWorkspace",
+        "UserRequest::RunRegisteredProcess",
+        "UserRequest::Approve",
+        "UserRequest::Reject",
+        "UserRequest::SubmitTask"
+    )
+    $missingRealRoutes = @($coreRealRoutes | Where-Object { -not $wrapper.Contains($_) })
+    $checks.Add((New-ContractCheck -Id "tui.real_runtime_core_routes" -Passed ($missingRealRoutes.Count -eq 0) -Classification $(if ($missingRealRoutes.Count -eq 0) { "CONNECTED" } else { "PARTIAL" }) -Detail $(if ($missingRealRoutes.Count -eq 0) { "Core conversational, provider/model, session, MCP, diagnostics, workspace, process, and approval requests route through RealLbeWrapper." } else { "Missing RealLbeWrapper routes: $($missingRealRoutes -join ', ')" })))
+
+    $explicitlyDeferred = @(
+        "provider configuration",
+        "provider removal",
+        "checkpoint comparison",
+        "checkpoint restore",
+        "context compaction",
+        "session memory operations",
+        "browser chat"
+    )
+    $deferredPresent = @($explicitlyDeferred | Where-Object { $wrapper.Contains('unsupported_real_request("' + $_ + '")') })
+    $checks.Add((New-ContractCheck -Id "tui.deferred_scaffolding_truth" -Passed $true -Blocking $false -Classification $(if ($deferredPresent.Count -eq 0) { "NONE" } else { "EXPLICITLY_UNAVAILABLE" }) -Detail $(if ($deferredPresent.Count -eq 0) { "No selected deferred real-runtime scaffolding remains." } else { "Still explicitly unavailable in the real wrapper: $($deferredPresent -join ', '). These surfaces must not be represented as connected." })))
+
+    $requestContractPresent = $requests.Contains("SubmitTask") -and $requests.Contains("PatchWorkspace") -and $requests.Contains("Approve") -and $requests.Contains("Reject")
+    $checks.Add((New-ContractCheck -Id "tui.typed_request_contract" -Passed $requestContractPresent -Classification $(if ($requestContractPresent) { "CONNECTED" } else { "PARTIAL" }) -Detail "Typed request contract must cover conversational task submission, governed patching, and approval decisions."))
 
     return @($checks)
 }
@@ -237,6 +323,52 @@ function Build-Product {
     }
 }
 
+function Write-Launcher {
+    param([string]$PackageRoot)
+    $launcher = @'
+param(
+    [Parameter(Mandatory)][string]$Project,
+    [Parameter(Mandatory)][string]$Database,
+    [Parameter(Mandatory)][string]$ProviderConfig,
+    [string]$CapabilityRegistry,
+    [string]$SessionId,
+    [ValidateSet("build", "plan", "audit")][string]$Agent = "build",
+    [string]$Model,
+    [switch]$Continue,
+    [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE")
+)
+
+$ErrorActionPreference = "Stop"
+$client = Join-Path $InstallRoot "lbe.exe"
+$python = Join-Path $InstallRoot "venv\Scripts\python.exe"
+if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
+if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Installed LBE Python runtime missing: $python" }
+if (-not (Test-Path -LiteralPath $Project -PathType Container)) { throw "Project workspace missing: $Project" }
+if (-not (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) { throw "Provider config missing: $ProviderConfig" }
+
+$env:LBE_RUNTIME = "real"
+$env:LBE_WALL_ROOT = $InstallRoot
+$env:LBE_WALL_PYTHON = $python
+$env:LBE_TARGET_WORKSPACE = [IO.Path]::GetFullPath($Project)
+$env:LBE_WALL_DATABASE = [IO.Path]::GetFullPath($Database)
+$env:LBE_PROVIDER_CONFIG = [IO.Path]::GetFullPath($ProviderConfig)
+if ($CapabilityRegistry) {
+    if (-not (Test-Path -LiteralPath $CapabilityRegistry -PathType Leaf)) { throw "Capability registry missing: $CapabilityRegistry" }
+    $env:LBE_CAPABILITY_REGISTRY = [IO.Path]::GetFullPath($CapabilityRegistry)
+}
+if ($SessionId) { $env:LBE_SESSION_ID = $SessionId } else { Remove-Item Env:LBE_SESSION_ID -ErrorAction SilentlyContinue }
+
+$clientArgs = @($env:LBE_TARGET_WORKSPACE, "--agent", $Agent)
+if ($Model) { $clientArgs += @("--model", $Model) }
+if ($SessionId) { $clientArgs += @("--session", $SessionId) }
+if ($Continue) { $clientArgs += "--continue" }
+
+& $client @clientArgs
+exit $LASTEXITCODE
+'@
+    Set-Content -LiteralPath (Join-Path $PackageRoot "lbe-launch.ps1") -Value $launcher -Encoding UTF8
+}
+
 function Write-Installer {
     param([string]$PackageRoot)
     $installer = @'
@@ -255,9 +387,11 @@ if ($LASTEXITCODE -ne 0) { throw "Unable to resolve installed LBE package" }
 $workerTarget = Join-Path $site "runtime\cline_worker"
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "cline-worker\node_modules") -Destination $workerTarget -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "client\lbe.exe") -Destination (Join-Path $InstallRoot "lbe.exe") -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "lbe-launch.ps1") -Destination (Join-Path $InstallRoot "lbe-launch.ps1") -Force
 Write-Host "Installed LetterBlack LBE to $InstallRoot"
 Write-Host "Runtime CLI: $(Join-Path $venv 'Scripts\lbe.exe')"
 Write-Host "Rust client: $(Join-Path $InstallRoot 'lbe.exe')"
+Write-Host "Real-runtime launcher: $(Join-Path $InstallRoot 'lbe-launch.ps1')"
 '@
     Set-Content -LiteralPath (Join-Path $PackageRoot "install.ps1") -Value $installer -Encoding UTF8
 }
@@ -283,7 +417,7 @@ if ($agent.worktree_count -ne 1) { throw "Agent Wall must have exactly one regis
 if ($tui.worktree_count -ne 1) { throw "LBE TUI must have exactly one registered worktree; found $($tui.worktree_count)." }
 
 $contracts = Test-IntegrationContracts -AgentRoot $AgentWallRoot -ClientRoot $TuiRoot
-$structuralPass = @($contracts | Where-Object { -not $_.passed }).Count -eq 0
+$structuralPass = @($contracts | Where-Object { $_.blocking -and -not $_.passed }).Count -eq 0
 
 New-Item -ItemType Directory -Path $OutputRoot -Force | Out-Null
 $stageRoot = Join-Path $OutputRoot "_staging"
@@ -307,6 +441,7 @@ if ($Mode -in @("build", "package")) {
     $packageRoot = Join-Path $OutputRoot "LetterBlack-LBE"
     $build = Build-Product -AgentStage $agentStage -TuiStage $tuiStage -BuildRoot $packageRoot
     Write-Installer -PackageRoot $packageRoot
+    Write-Launcher -PackageRoot $packageRoot
 }
 
 $manifest = [ordered]@{
@@ -319,6 +454,21 @@ $manifest = [ordered]@{
         rule = "Agent Wall is runtime authority; Rust is client/projection; this script verifies, proves, builds, and packages but owns no runtime decision."
         agent_wall = $agent
         rust_client = $tui
+    }
+    behavior_reference = [ordered]@{
+        repository = $ClineReferenceRepository
+        commit = $ClineReferenceCommit
+        role = "REFERENCE_ONLY"
+        rule = "Use Cline CLI interaction mechanics as behavioral reference only. Do not expose Cline branding or transfer session, provider, authorization, execution, persistence, receipt, evidence, validation, or completion authority away from LBE."
+        reference_files = $ClineReferenceFiles
+        adopted_patterns = @(
+            "interactive chat as primary surface",
+            "session lifecycle and resume",
+            "provider/model selection",
+            "explicit approval controller",
+            "event-driven UI projection",
+            "tool lifecycle visibility"
+        )
     }
     contracts = $contracts
     proofs = $proofs
@@ -355,6 +505,7 @@ Write-Host "Agent Wall origin/main: $($agent.origin_main)"
 Write-Host "Rust TUI origin/main:     $($tui.origin_main)"
 Write-Host "Structural integration:   $structuralPass"
 Write-Host "Proof pass:               $proofPass"
+Write-Host "Cline behavior reference: $ClineReferenceRepository@$ClineReferenceCommit (reference only)"
 Write-Host "Manifest:                 $manifestPath"
 if ($packagePath) { Write-Host "Candidate package:        $packagePath" }
 Write-Host "Release ready:             False (external installed PTY/ConPTY acceptance is intentionally not fabricated)"
