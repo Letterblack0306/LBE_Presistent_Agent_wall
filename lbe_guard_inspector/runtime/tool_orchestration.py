@@ -6,7 +6,7 @@ operation-id idempotency. Tool implementations remain separate services.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol
@@ -88,6 +88,7 @@ class ToolExecutionContext:
     persistent_policy_change: bool = False
     persistent_policy_authorized: bool = False
     intent_scope_conflict: bool = False
+    approval_granted: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.mode_decision, ModeDecision):
@@ -176,13 +177,20 @@ class GovernedToolOrchestrator:
         self._registry = registry
         self._authorization_resolver = authorization_resolver
         self._receipts: dict[str, ToolReceipt] = {}
+        self._requests: dict[str, ToolRequest] = {}
 
     def invoke(self, request: ToolRequest) -> ToolReceipt:
         if not isinstance(request, ToolRequest):
             raise TypeError("request must be ToolRequest")
         prior = self._receipts.get(request.operation_id)
         if prior is not None:
-            return prior
+            if prior.status is not ToolReceiptStatus.ESCALATED or not request.context.approval_granted:
+                return prior
+            original = self._requests.get(request.operation_id)
+            if original is None or not _same_operation_request(original, request):
+                return prior
+        else:
+            self._requests[request.operation_id] = request
 
         registered = self._registry.get(request.tool_id)
         if registered is None:
@@ -217,6 +225,7 @@ class GovernedToolOrchestrator:
             persistent_policy_change=context.persistent_policy_change,
             persistent_policy_authorized=context.persistent_policy_authorized,
             intent_scope_conflict=context.intent_scope_conflict,
+            approval_granted=context.approval_granted,
         ))
         if authorization.verdict is AuthorizationVerdict.DENY:
             return self._remember(ToolReceipt(
@@ -636,6 +645,16 @@ def _workspace_file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _same_operation_request(original: ToolRequest, current: ToolRequest) -> bool:
+    return (
+        original.operation_id == current.operation_id
+        and original.tool_id == current.tool_id
+        and dict(original.arguments) == dict(current.arguments)
+        and replace(original.context, approval_granted=False)
+        == replace(current.context, approval_granted=False)
+    )
 
 
 def _validate_arguments(spec: ToolSpec, arguments: Mapping[str, Any]) -> str | None:
