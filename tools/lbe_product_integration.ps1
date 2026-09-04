@@ -44,7 +44,7 @@ function Invoke-Git {
     )
     $result = Invoke-Native -FilePath "git" -Arguments (@("-C", $Root) + $Arguments)
     if (-not $AllowFailure -and $result.exit_code -ne 0) {
-        throw "git failed in $Root: $($result.command) $([Environment]::NewLine)$($result.output -join [Environment]::NewLine)"
+        throw "git failed in ${Root}: $($result.command) $([Environment]::NewLine)$($result.output -join [Environment]::NewLine)"
     }
     return $result
 }
