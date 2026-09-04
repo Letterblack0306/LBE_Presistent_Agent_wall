@@ -8,6 +8,12 @@
   "architecture_changes_allowed": true,
   "next_phase_locked": true,
   "required_status_for_advance": "PASS",
+  "selected_reasoning_agent": {
+    "name": "Cline",
+    "source": "https://github.com/cline/cline",
+    "status": "USER_SELECTED",
+    "boundary": "Cline owns reasoning, planning, tool proposals, continuation, and response composition; LBE owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion."
+  },
   "blocking_statuses": [
     "FAIL",
     "UNVERIFIED",
@@ -540,11 +546,5 @@
     "giving the Textual projection execution, authorization, receipt, or completion authority",
     "auto-retrying mutation-capable provider reasoning",
     "promoting provider prose or provisional completion claims directly to verified task completion"
-  ],
-  "selected_reasoning_agent": {
-    "name": "Cline",
-    "source": "https://github.com/cline/cline",
-    "status": "USER_SELECTED",
-    "boundary": "Cline owns reasoning, planning, tool proposals, continuation, and response composition; LBE owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion."
-  }
+  ]
 }
