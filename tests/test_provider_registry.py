@@ -10,6 +10,9 @@ from lbe_guard_inspector.provider_registry import (
     default_provider_registry,
     normalize_provider_descriptor,
 )
+from lbe_guard_inspector.coding_reasoning_provider import ToolAwareOpenAICompatibleReasoningBackend
+from lbe_guard_inspector.cline_reasoning_provider import ClineReasoningBackend
+from lbe_guard_inspector.first_party_reasoning_provider import AnthropicReasoningBackend, GeminiReasoningBackend
 from lbe_guard_inspector.professional_capabilities import CapabilityClaim, CapabilitySupport
 from lbe_guard_inspector.provider_capability_discovery import discover_provider_model_capabilities
 from lbe_guard_inspector.professional_provider_events import ProviderProtocolFamily
@@ -115,12 +118,51 @@ def test_default_registry_exposes_existing_openai_compatible_backend():
     registry = default_provider_registry()
     handle = registry.build(provider_id="openai-compatible", config=config())
 
-    assert registry.provider_ids() == ("openai-compatible",)
+    assert registry.provider_ids() == (
+        "anthropic", "bedrock", "gemini", "lmstudio", "ollama", "openai",
+        "openai-compatible", "openai-native", "opencode", "openrouter", "vertex",
+    )
     assert handle.descriptor.provider_id == "openai-compatible"
     assert handle.descriptor.model_id == "model-a"
     assert handle.descriptor.capabilities.structured_output is True
     assert handle.descriptor.capabilities.tool_calls is True
-    assert isinstance(handle.backend, OpenAICompatibleReasoningBackend)
+    assert isinstance(handle.backend, ToolAwareOpenAICompatibleReasoningBackend)
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "backend_type"),
+    [
+        ("openai", ToolAwareOpenAICompatibleReasoningBackend),
+        ("anthropic", AnthropicReasoningBackend),
+        ("gemini", GeminiReasoningBackend),
+        ("openai-native", ClineReasoningBackend),
+        ("vertex", ClineReasoningBackend),
+        ("bedrock", ClineReasoningBackend),
+        ("ollama", ClineReasoningBackend),
+        ("lmstudio", ClineReasoningBackend),
+        ("openrouter", ClineReasoningBackend),
+        ("opencode", ClineReasoningBackend),
+    ],
+)
+def test_default_registry_builds_reused_provider_adapters(provider_id, backend_type):
+    handle = default_provider_registry().build(
+        provider_id=provider_id,
+        config=ProviderConfig(
+            endpoint="https://provider.invalid/v1/messages",
+            model="model-a",
+            timeout_seconds=30,
+            api_key="test-key",
+        ),
+    )
+
+    assert isinstance(handle.backend, backend_type)
+    assert handle.descriptor.provider_id == provider_id
+
+
+@pytest.mark.parametrize("provider_id", ["openai", "anthropic", "gemini"])
+def test_reused_provider_adapters_require_explicit_api_key(provider_id):
+    with pytest.raises(ValueError, match="requires a non-empty api_key"):
+        default_provider_registry().build(provider_id=provider_id, config=config())
 
 
 def test_generic_composition_uses_registered_backend_without_invoking_it():
