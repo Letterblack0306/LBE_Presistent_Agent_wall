@@ -6,6 +6,56 @@ Every meaningful repository mutation must resolve to exactly one intent record b
 The machine gate binds the active slice to the `INTENT_ID`, and the affected structure must exist
 in `PROJECT_INDEX.md`.
 
+## Current reconciliation — 2026-09-02
+
+The current implementation uses the originating project-planning concepts as a
+bounded LBE startup projection. `lbe start` profiles the selected workspace and
+returns the applicable guard catalog; it does not execute guards or transfer
+authorization, execution, receipt, evidence, persistence, validation, or
+completion authority to the planner, provider, or CLI.
+
+The CEP plan is connected to the canonical `cep` rule pack. The callback
+implementation is registered as `cep.callback_contract` through `rules/cep.py`,
+and the pack loader no longer mistakes the imported implementation for a second
+rule. The reference files remain provenance and schema inputs, not executable
+configuration.
+
+Current proof for this bounded integration is recorded as:
+
+```text
+target-profile regression = PASS — 1 passed
+audit-controller suite    = PASS — 14 passed
+focused CLI/CEP set       = PASS — 66 passed
+full Python suite         = 839 passed before final provider-list assertion repair
+post-repair provider focus = PASS — 56 passed
+test-file provenance      = UNKNOWN; untracked test files are present
+active TUI gate           = OPEN
+```
+
+This reconciliation does not advance or close
+`TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION`.
+
+## INTENT LBE-INTENT-PROJECT-PROFILE-GUARD-CATALOG-INTEGRATION-001
+
+```text
+INTENT_ID: LBE-INTENT-PROJECT-PROFILE-GUARD-CATALOG-INTEGRATION-001
+STATUS: COMPLETED (bounded integration; active TUI gate unchanged)
+REQUEST: Connect the repository's project-profile, rule-pack, and planner-output concepts to the canonical LBE start and audit paths without creating a second planner, guard executor, or authority owner.
+WHY: The reference planning artifacts carry meaningful repository architecture and must inform the first profile/guard decision while remaining separate from live runtime configuration.
+AFFECTED_STRUCTURE: lbe_guard_inspector/cli.py,lbe_guard_inspector/project_profiler.py,lbe_guard_inspector/guard_catalog.py,audit_controller.py,rules/cep.py,rules/cep_callback.py,examples/reference/,docs/acceptance/,docs/contracts/,docs/governance/,docs/CURRENT_STATUS.md
+EXISTING_OWNER: ProjectProfiler; canonical guard catalog; deterministic rule-pack loader; LBE CLI/session owners; existing authorization, execution, receipt, evidence, persistence, validation, and completion owners.
+DESIRED_RESULT: `lbe start` exposes read-only `project_profile` and `guard_catalog` projections; CEP profiles select the canonical `cep` rules; the callback contract resolves without duplicate rule discovery; reference planner/registry files remain provenance inputs.
+NON_GOALS: No autonomous planner execution; no guard execution during startup; no provider or client authority; no reference-file loading as live configuration; no new test files; no TUI gate advancement or publication.
+REUSE_DECISION: REUSE ProjectProfiler, select_guard_catalog, existing audit loader, canonical CEP rule implementation, and LBE runtime owners. ADAPT only the bounded startup projection and CEP pack registration.
+AUTHORITY_IMPACT: None. LBE remains the sole authority for authorization, governed execution, receipts, evidence, persistence, validation, and completion.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,audit_controller.py,rules/,examples/reference/,docs/contracts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md
+REQUIRED_EVIDENCE: startup profile/catalog projection; canonical CEP rule resolution; target-profile audit scope; no duplicate callback rule discovery; focused integration regression; full Python regression; preserved active TUI gate.
+MACHINE_SLICE: NONE — bounded implementation record; does not alter the machine-declared active slice.
+SUPERSEDES: none
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/CURRENT_STATUS.md and .agent/evidence/CURRENT_TASK.md
+```
+
 ## INTENT LBE-INTENT-WORKSPACE-HYGIENE-001
 
 ```text
