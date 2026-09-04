@@ -14,7 +14,7 @@ active_plan: docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
 phase: P2_P3_GOVERNED_EXECUTION
 slice: TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION
 status: OPEN
-implementation_allowed: true — active TUI integration slice only
+implementation_allowed: true — active Cline CLI LBE-backed runtime integration slice only
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 required_status_for_advance: PASS
@@ -25,15 +25,34 @@ Only the exact paths and scope declared by the machine gate are authorized. The 
 the TUI P2/P3 governed-execution integration. It does not authorize a second runtime, provider,
 execution, authorization, evidence, receipt, or completion owner.
 
+### Selected reasoning-agent source
+
+The current user-selected reasoning-agent source is the official Cline repository:
+`https://github.com/cline/cline`. Cline supplies reasoning, planning, tool proposals, continuation,
+and response-composition mechanics. LBE remains the authority for identity, authorization, governed
+execution, receipts, evidence, persistence, validation, and completion. Cline's native mutation,
+shell, MCP, session, or completion authority must not bypass the LBE adapter boundary.
+
 The authoritative machine source is:
 
 ```text
 C:\Agents-Memory-Tool-v6-integration\.lbe\governance\implementation-gates.json
 ```
 
-Its active intent is `LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001`, owned by the existing LBE
-R6C authorization and R6E governed-tool/receipt owners with the canonical TUI `LbeWrapper` as
-projection adapter.
+Its active intent is `LBE-INTENT-CLINE-CLI-LBE-RUNTIME-INTEGRATION-001`, owned by the existing
+LBE session/provider/authorization/ToolRegistry/GovernedToolOrchestrator/receipt/evidence/
+persistence/validation/completion owners with the Cline CLI LBE-backed runtime adapter as the
+projection client.
+
+### Product surface scope — existing LetterBlack entry and runtime
+
+The active LetterBlack product surface is the existing launcher and Python runtime entry:
+`bin/lbe.js`, `run-lbe.bat`, `lbe_guard_inspector.product_entry`, and
+`lbe_guard_inspector.cli`. The bundled Cline worker under
+`lbe_guard_inspector/runtime/cline_worker/` supplies reusable governed reasoning mechanics.
+Cline remains a client/reasoning mechanics layer, not an authority owner. LBE
+runtime/authorization/execution/receipt/evidence/session/persistence/validation/completion
+ownership is unchanged.
 
 ## Accepted baseline
 
@@ -60,6 +79,22 @@ the machine gate identifies TUI P2/P3 governed-execution integration as active.
 
 `publish_allowed` remains false. Version 2.0.3 preparation is paused and must be reactivated by
 a future machine-gate change after the active integration slice passes.
+
+## Startup projection reconciliation — 2026-09-02
+
+The normal `lbe start` path now returns the workspace profile and selected guard catalog as
+read-only startup projections. It uses `ProjectProfiler` and `select_guard_catalog`; it does not
+run guards or authorize, execute, receipt, persist, or complete a proposed operation. Those
+responsibilities remain with the canonical LBE runtime owners.
+
+The originating CEP reference artifacts are now represented in the canonical rule surface:
+`cep.callback_contract` is part of the `cep` catalog and resolves through `rules/cep.py` to the
+deterministic callback guard in `rules/cep_callback.py`. `examples/reference/` remains provenance
+and schema documentation rather than runtime configuration.
+
+This closes only the startup profile/catalog projection sub-slice. It does not change the machine
+gate status above and does not prove installed TUI writable mutation, MCP/BirdEye projection,
+provider continuation through the installed client, or release readiness.
 
 ## Reconciliation note — 2026-08-30
 
@@ -111,10 +146,12 @@ question are in `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` and
 The active TUI P2/P3 integration must reuse existing LBE owners and existing external mechanics
 where compatible. Cline is the accepted `ADAPT` source for provider streaming, agent-loop
 continuation, tool proposal/result, and abort mechanics. OpenCode is an additional reuse source;
-the pinned revision `dc4449df0d52199704ea4989a5a993ebbc605612` is classified in
-`C:\LBE-TUI-Lab\Docs\31_cline_interop_reuse_strategy.md`. Its terminal, provider, session,
-permission, tool, MCP, and extension mechanics are reuse inputs only. The LBE-owned adapter and
-installed Rust/TUI proof remain required.
+the pinned revision `dc4449df0d52199704ea4989a5a993ebbc605612` is classified in the TUI interop
+strategy (`C:\LBE-TUI-Lab\Docs\31_cline_interop_reuse_strategy.md`). That workspace is a
+**candidate/reference** workspace, not runtime authority. No frontend is canonical until explicitly
+selected through the user-authorized transition process. The recovered `lbe-authority` bridge is a
+bounded integration seam pending wiring; the LBE-owned adapter and installed interactive proof remain
+required for whichever frontend is selected.
 
 Required implementation behavior:
 
