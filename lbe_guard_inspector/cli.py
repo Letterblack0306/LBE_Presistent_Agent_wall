@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Sequence
 from uuid import uuid4
 
 from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
+from .control_protocol import ControlMethod, ControlRequest
 from .evidence_service import EvidenceService
 from .memory import SessionState, WorkspaceMemoryStore
 from .memory.operational_history import SessionOperationalHistory
@@ -60,6 +62,14 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--permission-policy")
     create.add_argument("--evidence-policy")
     create.set_defaults(handler=_session_create)
+
+    list_parser = session_commands.add_parser(
+        "list", help="List bounded persisted sessions"
+    )
+    _add_database_argument(list_parser)
+    list_parser.add_argument("--project-workspace-id")
+    list_parser.add_argument("--limit", type=int, default=100)
+    list_parser.set_defaults(handler=_session_list)
 
     continue_parser = session_commands.add_parser(
         "continue", help="Rehydrate an existing persistent session"
@@ -161,6 +171,8 @@ def build_parser() -> argparse.ArgumentParser:
     tui.add_argument("--permission-policy")
     tui.add_argument("--evidence-policy")
     tui.add_argument("--provider-config", help="Explicit provider config for non-streaming turn execution")
+    tui.add_argument("--prompt", help="Submit one turn through the existing LBE session/provider runtime")
+    tui.add_argument("--wait-timeout", type=float, default=120.0, help=argparse.SUPPRESS)
     tui.set_defaults(handler=_tui)
 
     return parser
@@ -210,6 +222,29 @@ def _session_create(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "action": "session.create",
         "session": created.as_dict(),
+    }
+
+
+def _session_list(args: argparse.Namespace) -> dict[str, Any]:
+    if args.limit < 1:
+        raise ValueError("limit must be a positive integer")
+    store = WorkspaceMemoryStore(args.database)
+    states = store.list_session_states(
+        project_workspace_id=args.project_workspace_id,
+        limit=args.limit,
+    )
+    return {
+        "action": "session.list",
+        "project_workspace_id": args.project_workspace_id,
+        "sessions": [
+            {
+                **state.as_dict(),
+                "status": "idle",
+                "origin": "user",
+                "parent_session_id": None,
+            }
+            for state in states
+        ],
     }
 
 
@@ -391,8 +426,10 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
 def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .memory.operational_history import SessionOperationalHistory
     from .persistent_turn_control import PersistentTurnControl
-    from .provider_turn_runtime import BackgroundProviderTurnRuntime, GovernedCodingTurnRuntime, NonStreamingProviderTurnRuntime
+    from .provider_turn_runtime import BackgroundProviderTurnRuntime, GovernedCodingTurnRuntime, GovernedProviderTurnRuntime
     from .reasoning_config import load_provider_config
+    from .project_profiler import ProjectProfiler
+    from .guard_catalog import select_guard_catalog
     from .runtime.agent_guidance import build_agent_guidance
     from .runtime.mode_controller import ModeRequest, resolve_mode
 
@@ -404,12 +441,12 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
         _session_create(args)
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
+    project_profile = ProjectProfiler().profile(state.canonical_workspace_root)
+    guard_catalog = select_guard_catalog(project_profile)
     history = SessionOperationalHistory(store=store)
     provider_runtime = None
     config = None
     if args.provider_config is not None:
-        if state.provider_id != "openai-compatible":
-            raise ValueError("non-streaming provider execution currently requires openai-compatible session provider")
         config = load_provider_config(args.provider_config)
         if config.model != state.provider_model:
             raise ValueError("provider config model must match persisted session model")
@@ -419,28 +456,93 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
             controller = GovernedProviderReasoningController(runtime=runtime, provider_id=state.provider_id, provider_config=config)
             provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=GovernedCodingTurnRuntime(history=history, gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)))
         else:
-            from .openai_compatible_event_adapter import OpenAICompatibleEventAdapter
-            mode_decision = resolve_mode(ModeRequest(
-                intent={"audit": "inspect_workspace", "investigation": "investigate_issue"}.get(state.mode, "inspect_workspace"),
-                permission=state.permission,
-                workspace_root=str(state.canonical_workspace_root),
-                runtime_policy=state.runtime_policy,
-            ))
-            guidance = build_agent_guidance(
-                mode_decision=mode_decision,
-                workspace_root=state.canonical_workspace_root,
-                tools=(),
-            )
-            provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=NonStreamingProviderTurnRuntime(
-                history=history,
-                adapter=OpenAICompatibleEventAdapter(config=config),
+            from .reasoning_runtime import build_provider_controller
+            controller, _ = build_provider_controller(
                 provider_id=state.provider_id,
-                guidance=guidance,
+                provider_config=config,
+            )
+            provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=GovernedProviderTurnRuntime(
+                history=history,
+                gateway=GovernedAgentGateway(
+                    runtime=_runtime_from_state(database=args.database, state=state),
+                    reasoning_controller=controller,
+                ),
+                mode=AgentMode(state.mode),
             ))
+    prompt = getattr(args, "prompt", None)
+    wait_timeout = getattr(args, "wait_timeout", 120.0)
+    if prompt is not None:
+        if provider_runtime is None:
+            raise ValueError("--prompt requires --provider-config")
+        control = PersistentTurnControl(history=history, provider_runtime=provider_runtime)
+        outcome = control.handle(ControlRequest(
+            request_id=f"tui-{uuid4().hex}",
+            method=ControlMethod.TURN_START,
+            params={"session_id": state.session_id, "text": prompt},
+        ))
+        if not outcome.accepted:
+            raise RuntimeError(outcome.reason or "turn submission was rejected")
+        turn = history.latest_running_turn(session_id=state.session_id)
+        if turn is None:
+            raise RuntimeError("turn submission did not create a running turn")
+        deadline = time.monotonic() + max(0.1, wait_timeout)
+        while provider_runtime.is_running(turn_id=turn.turn_id):
+            if time.monotonic() >= deadline:
+                control.handle(ControlRequest(
+                    request_id=f"tui-cancel-{uuid4().hex}",
+                    method=ControlMethod.TURN_CANCEL,
+                    params={"session_id": state.session_id, "turn_id": turn.turn_id},
+                ))
+                raise TimeoutError(f"turn did not complete within {wait_timeout:g} seconds")
+            time.sleep(0.05)
+        completed = history.get_turn(turn_id=turn.turn_id)
+        if completed is None:
+            raise RuntimeError("completed turn is missing from operational history")
+        return {
+            "action": "tui",
+            "session_id": state.session_id,
+            "turn_id": turn.turn_id,
+            "turn_status": completed.status.value,
+            "turn_submission": {
+                "request_id": outcome.request_id,
+                "state": outcome.state,
+                "reason": outcome.reason,
+            },
+            "events": [_serialize_tui_event(event) for event in history.events_for_turn(turn_id=turn.turn_id)],
+            "project_profile": project_profile,
+            "guard_catalog": guard_catalog,
+        }
     # Python/Textual interface removed (LBE-INTENT-CLINE-SURFACE-DIRECTION-001).
     # The Cline CLI/SDK surface replaces it; session setup and provider-config
     # validation above remain the canonical fail-closed entry contract.
-    return {"action": "tui", "session_id": state.session_id}
+    return {
+        "action": "tui",
+        "session_id": state.session_id,
+        "project_profile": project_profile,
+        "guard_catalog": guard_catalog,
+    }
+
+
+def _serialize_tui_event(event: object) -> dict[str, object]:
+    """Project persisted operational history without creating a second event owner."""
+    return {
+        "event_id": event.event_id,
+        "session_id": event.session_id,
+        "turn_id": event.turn_id,
+        "event_type": event.event_type,
+        "payload": dict(event.payload),
+        "provider_id": event.provider_id,
+        "model_id": event.model_id,
+        "provider_request_id": event.provider_request_id,
+        "provider_item_id": event.provider_item_id,
+        "provider_tool_call_id": event.provider_tool_call_id,
+        "lbe_call_id": event.lbe_call_id,
+        "runtime_operation_id": event.runtime_operation_id,
+        "tool_receipt_id": event.tool_receipt_id,
+        "created_at": event.created_at,
+        "session_sequence": event.session_sequence,
+        "turn_sequence": event.turn_sequence,
+    }
 
 
 def _code(args: argparse.Namespace) -> dict[str, Any]:
