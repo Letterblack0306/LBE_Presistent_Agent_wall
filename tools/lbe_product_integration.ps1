@@ -127,9 +127,23 @@ function Test-IntegrationContracts {
     $wrapperUsesProductEntry = $wrapper.Contains("lbe_guard_inspector.product_entry")
     $checks.Add((New-ContractCheck -Id "tui.real_wrapper_boundary" -Passed $wrapperUsesProductEntry -Classification $(if ($wrapperUsesProductEntry) { "CONNECTED" } else { "MISSING" }) -Detail "Rust RealLbeWrapper must route through the canonical Agent Wall product entry."))
 
-    $readOnlyTools = @("workspace.read", "workspace.list", "workspace.glob", "workspace.search")
-    $readOnlyConnected = @($readOnlyTools | Where-Object { -not ($productEntry.Contains($_) -and $wrapper.Contains($_)) }).Count -eq 0
-    $checks.Add((New-ContractCheck -Id "workspace.readonly_tools" -Passed $readOnlyConnected -Classification $(if ($readOnlyConnected) { "CONNECTED" } else { "PARTIAL" }) -Detail "Read-only workspace capabilities must exist on both runtime and client sides."))
+    $readOnlyRuntimeMarkers = @(
+        "registry.register(workspace_read_spec()",
+        "registry.register(workspace_list_spec()",
+        "registry.register(workspace_glob_spec()",
+        "registry.register(workspace_search_spec()"
+    )
+    $readOnlyClientTools = @("workspace.read", "workspace.list", "workspace.glob", "workspace.search")
+    $missingRuntimeMarkers = @($readOnlyRuntimeMarkers | Where-Object { -not $productEntry.Contains($_) })
+    $missingClientTools = @($readOnlyClientTools | Where-Object { -not $wrapper.Contains($_) })
+    $readOnlyConnected = ($missingRuntimeMarkers.Count -eq 0) -and ($missingClientTools.Count -eq 0)
+    $readOnlyDetail = if ($readOnlyConnected) {
+        "Read-only workspace capabilities are registered by their canonical Agent Wall specs and routed by the Rust client."
+    }
+    else {
+        "Missing runtime registrations: $($missingRuntimeMarkers -join ', '); missing Rust tool IDs: $($missingClientTools -join ', ')."
+    }
+    $checks.Add((New-ContractCheck -Id "workspace.readonly_tools" -Passed $readOnlyConnected -Classification $(if ($readOnlyConnected) { "CONNECTED" } else { "PARTIAL" }) -Detail $readOnlyDetail))
 
     $approvalRuntime = $toolRuntime.Contains("approval_granted") -and $productEntry.Contains("_governed_operation_fingerprint") -and $productEntry.Contains("save_governed_operation")
     $approvalTest = $productTests.Contains("test_product_entry_approval_bridge_executes_exact_operation_once")
