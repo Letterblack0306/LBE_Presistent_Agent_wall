@@ -166,6 +166,26 @@ CREATE TABLE IF NOT EXISTS operational_events (
 CREATE INDEX IF NOT EXISTS idx_operational_events_turn
     ON operational_events(turn_id, turn_sequence);
 
+CREATE TABLE IF NOT EXISTS governed_operations (
+    operation_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    project_workspace_id TEXT NOT NULL,
+    canonical_workspace_root TEXT NOT NULL,
+    tool_id TEXT NOT NULL,
+    capability TEXT NOT NULL,
+    request_fingerprint TEXT NOT NULL,
+    request_json TEXT NOT NULL,
+    approval_id TEXT NOT NULL,
+    decision TEXT NOT NULL CHECK (decision IN ('pending','approved','rejected','executed','failed')),
+    receipt_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES session_state(session_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_governed_operations_session
+    ON governed_operations(session_id, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS task_completion_contracts (
     session_id TEXT NOT NULL,
     task_id TEXT NOT NULL,
