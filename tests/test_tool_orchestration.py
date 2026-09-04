@@ -177,6 +177,79 @@ def test_duplicate_operation_id_returns_original_receipt_without_reexecution(tmp
     assert orchestrator.receipt("op-repeat") is first
 
 
+def test_approved_escalated_operation_resumes_once_with_same_identity(tmp_path: Path) -> None:
+    calls = []
+
+    def handler(request):
+        calls.append(request.operation_id)
+        return ToolExecutionResult(output={"count": len(calls)})
+
+    orchestrator = GovernedToolOrchestrator(registry=_registry(handler))
+    first = orchestrator.invoke(
+        _request(
+            tmp_path,
+            operation_id="op-approved",
+            capabilities=("search",),
+        )
+    )
+    assert first.status is ToolReceiptStatus.ESCALATED
+    assert calls == []
+
+    approved = orchestrator.invoke(
+        _request(
+            tmp_path,
+            operation_id="op-approved",
+            capabilities=("search",),
+            approval_granted=True,
+        )
+    )
+    assert approved.status is ToolReceiptStatus.EXECUTED
+    assert approved.authorization is not None
+    assert approved.authorization.verdict is AuthorizationVerdict.ALLOW
+    assert approved.output == {"count": 1}
+    assert calls == ["op-approved"]
+
+    replay = orchestrator.invoke(
+        _request(
+            tmp_path,
+            operation_id="op-approved",
+            capabilities=("search",),
+            approval_granted=True,
+        )
+    )
+    assert replay is approved
+    assert calls == ["op-approved"]
+
+
+def test_approved_retry_cannot_change_original_operation_payload(tmp_path: Path) -> None:
+    calls = []
+    orchestrator = GovernedToolOrchestrator(
+        registry=_registry(lambda request: calls.append(request) or ToolExecutionResult(output={}))
+    )
+    first = orchestrator.invoke(
+        _request(
+            tmp_path,
+            operation_id="op-bound",
+            capabilities=("search",),
+            arguments={"path": "README.md"},
+        )
+    )
+    assert first.status is ToolReceiptStatus.ESCALATED
+
+    changed = orchestrator.invoke(
+        _request(
+            tmp_path,
+            operation_id="op-bound",
+            capabilities=("search",),
+            arguments={"path": "OTHER.md"},
+            approval_granted=True,
+        )
+    )
+    assert changed is first
+    assert changed.status is ToolReceiptStatus.ESCALATED
+    assert calls == []
+
+
 def test_handler_failure_becomes_structured_receipt(tmp_path: Path) -> None:
     def handler(request):
         raise OSError("read failed")
