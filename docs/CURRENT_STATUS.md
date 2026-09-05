@@ -41,13 +41,31 @@ Publication/version progression remains paused while complete-runtime product wo
 
 ```text
 active_plan         = docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
-active_phase        = COMPLETE_LBE_AGENT_RUNTIME
-active_slice        = NONE
-active_slice_result = CLOSED
-top_level_status    = CLOSED
+active_phase        = PARENT_CONTINUATION_AND_DEEP_CORRELATION
+active_slice        = PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION
+active_slice_result = OPEN
+top_level_status    = OPEN
 next_phase_locked   = true
 publication         = PAUSED
 ```
+
+## Active machine-driven continuation
+
+The current machine gate defines the execution sequence and agent continuation behavior. The agent must not ask which predeclared step comes next while the current slice is runnable.
+
+```text
+PARENT_CONTINUATION_IMPLEMENTATION
+-> DEEP_CORRELATION_PROPAGATION
+-> FOCUSED_ADAPTER_VALIDATION (15/15)
+-> LIVE_PARENT_CHILD_PARENT_PROOF
+-> LIVE_CANCELLATION_TERMINALITY_PROOF
+-> CANONICAL_VERIFIER_PROOF
+-> GATE_CLOSURE
+```
+
+Current unresolved requirements remain machine-visible as pending until claim-matched validation changes them. `PASS` advances automatically; `FAIL` and `BLOCKED` remain on the current slice with explicit criteria/blocker output.
+
+Out of scope for this gate: `/team` exposure, PTY/ConPTY acceptance, UI redesign, general Git divergence reconciliation, publication, and release.
 
 ## Latest completed checkpoint
 
