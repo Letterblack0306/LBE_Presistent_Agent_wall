@@ -694,11 +694,37 @@ if ($Mode -in @("build", "package")) {
     Write-Launcher -PackageRoot $packageRoot
 }
 
+$machineGatePath = Join-Path $agentStage ".lbe\governance\implementation-gates.json"
+if (-not (Test-Path -LiteralPath $machineGatePath -PathType Leaf)) {
+    throw "Machine execution gate missing: $machineGatePath"
+}
+$machineGate = Get-Content -LiteralPath $machineGatePath -Raw | ConvertFrom-Json
+if (-not $machineGate.active_execution_plan) {
+    throw "Machine execution gate does not declare active_execution_plan."
+}
+$machineExecutionPlan = $machineGate.active_execution_plan
+$orderedMachineSlices = @($machineExecutionPlan.ordered_slices | Sort-Object order)
+$currentMachineSlice = @($orderedMachineSlices | Where-Object { $_.status -ne "PASS" } | Select-Object -First 1)
+$currentMachineSliceId = if ($currentMachineSlice.Count -eq 0) { "GATE_CLOSURE" } else { [string]$currentMachineSlice[0].slice_id }
+$currentMachineSliceStatus = if ($currentMachineSlice.Count -eq 0) { "READY_FOR_GATE_EVALUATION" } else { [string]$currentMachineSlice[0].status }
+
 $manifest = [ordered]@{
     schema_version = $SchemaVersion
     product = "LetterBlack LBE"
     generated_at = [DateTimeOffset]::UtcNow.ToString("o")
     generator = "tools/lbe_product_integration.ps1"
+    machine_execution = [ordered]@{
+        gate_id = [string]$machineExecutionPlan.gate_id
+        objective = [string]$machineExecutionPlan.objective
+        current_slice = $currentMachineSliceId
+        current_slice_status = $currentMachineSliceStatus
+        continuation_policy = [string]$machineGate.agent_continuation_policy.mode
+        ordered_slices = $orderedMachineSlices
+        always_visible_pending = @($machineExecutionPlan.always_visible_pending)
+        out_of_scope = @($machineExecutionPlan.out_of_scope)
+        next_gate_after_pass = [string]$machineExecutionPlan.next_gate_after_pass
+        rule = "PENDING/IMPLEMENTED/UNVERIFIED continue through the declared plan when runnable; FAIL/BLOCKED remain visible; only PASS advances."
+    }
     mode = $Mode
     verification_source = [ordered]@{
         mode = $SourceMode
@@ -766,6 +792,9 @@ Write-Host "Agent Wall origin/main: $($agent.origin_main)"
 Write-Host "Rust TUI origin/main:     $($tui.origin_main)"
 Write-Host "Structural integration:   $structuralPass"
 Write-Host "Proof pass:               $proofPass"
+Write-Host "Machine gate:             $($machineExecutionPlan.gate_id)"
+Write-Host "Machine current slice:    $currentMachineSliceId [$currentMachineSliceStatus]"
+Write-Host "Continuation policy:      $($machineGate.agent_continuation_policy.mode)"
 Write-Host "Cline mechanics reference: $ClineReferenceRepository@$ClineReferenceCommit"
 Write-Host "Manifest:                  $manifestPath"
 if ($packagePath) { Write-Host "Candidate package:         $packagePath" }
