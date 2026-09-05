@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "active_plan": "docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md",
-  "active_phase": "P2_P3_GOVERNED_EXECUTION",
-  "active_slice": "TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION",
+  "active_phase": "PARENT_CONTINUATION_AND_DEEP_CORRELATION",
+  "active_slice": "PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -22,7 +22,8 @@
     "PYPI_VERSION_ALREADY_EXISTS",
     "TRUSTED_PUBLISHING_EXECUTION_FAILURE",
     "TRACKED_SOURCE_DIRTY",
-    "PACKAGE_VERSION_CONFLICT"
+    "PACKAGE_VERSION_CONFLICT",
+    "BLOCKED"
   ],
   "rules": {
     "one_active_slice": true,
@@ -546,5 +547,155 @@
     "giving the Textual projection execution, authorization, receipt, or completion authority",
     "auto-retrying mutation-capable provider reasoning",
     "promoting provider prose or provisional completion claims directly to verified task completion"
-  ]
+  ],
+  "agent_continuation_policy": {
+    "schema_version": 1,
+    "mode": "MACHINE_DRIVEN_CONTINUATION",
+    "rule": "The machine plan is the execution plan. Agents execute the active slice and do not ask the user to choose the next declared step.",
+    "state_transitions": {
+      "PENDING": "CONTINUE_ACTIVE_SLICE",
+      "IMPLEMENTED": "RUN_DECLARED_VALIDATION",
+      "PASS": "ADVANCE_TO_DECLARED_NEXT_SLICE",
+      "FAIL": "REMAIN_AND_EXPOSE_FAILED_CRITERIA",
+      "BLOCKED": "REMAIN_AND_EXPOSE_EXACT_BLOCKER",
+      "UNVERIFIED": "CONTINUE_REQUIRED_PROOF_IF_RUNNABLE"
+    },
+    "may_pause_for_user_only_when": [
+      "explicit authorization is required by governance",
+      "workspace identity is ambiguous",
+      "the machine plan contains contradictory active requirements",
+      "a destructive or publication action requires explicit approval",
+      "required external information cannot be derived from current authoritative sources"
+    ],
+    "forbidden_agent_behavior": [
+      "asking which predeclared next step to execute",
+      "promoting implementation to PASS without declared validation",
+      "treating missing validation as PASS",
+      "reordering declared slices without a machine-gate change",
+      "hiding pending acceptance criteria",
+      "using conversational confidence as gate evidence"
+    ]
+  },
+  "active_execution_plan": {
+    "gate_id": "PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE",
+    "objective": "Prove that the parent consumes the persisted authoritative LBE child result with complete explicit correlation, then prove live continuation and cancellation before verifier closure.",
+    "workspaces": {
+      "backend": "C:\\Agents-Memory-Tool-v6-integration",
+      "client": "C:\\LBE-TUI-Lab"
+    },
+    "authority_boundary": {
+      "backend": "LBE owns child lifecycle, operation identity, governed execution, receipts, evidence, persistence, cancellation terminality, validation, and completion.",
+      "client": "Cline/LBE adapter originates or preserves provider-side correlation identifiers and consumes/projects authoritative LBE results without becoming a second authority."
+    },
+    "ordered_slices": [
+      {
+        "order": 1,
+        "slice_id": "PARENT_CONTINUATION_IMPLEMENTATION",
+        "status": "PENDING",
+        "required": [
+          "parent consumes persisted LBE child terminal result",
+          "no transient Cline/local adapter result is accepted as authoritative"
+        ],
+        "next_slice": "DEEP_CORRELATION_PROPAGATION"
+      },
+      {
+        "order": 2,
+        "slice_id": "DEEP_CORRELATION_PROPAGATION",
+        "status": "PENDING",
+        "required": [
+          "provider_tool_call_id is explicit and stable",
+          "lbe_call_id is explicit and stable",
+          "child_run_id is bound to the delegated call",
+          "runtime_operation_id is preserved for governed child operations",
+          "tool_receipt_id resolves to the same delegated operation",
+          "no correlation link is reconstructed from ordering, timestamps, text matching, or nearest-event heuristics"
+        ],
+        "correlation_chain": [
+          "provider_tool_call_id",
+          "lbe_call_id",
+          "child_run_id",
+          "runtime_operation_id",
+          "tool_receipt_id",
+          "persisted_child_result",
+          "parent_continuation",
+          "parent_completion"
+        ],
+        "next_slice": "FOCUSED_ADAPTER_VALIDATION"
+      },
+      {
+        "order": 3,
+        "slice_id": "FOCUSED_ADAPTER_VALIDATION",
+        "status": "PENDING",
+        "command": "bunx vitest run src/runtime/lbe-tool-adapter.test.ts",
+        "workspace": "C:\\LBE-TUI-Lab",
+        "pass_condition": "15/15 tests pass",
+        "fail_condition": "any test remains failing",
+        "next_slice": "LIVE_PARENT_CHILD_PARENT_PROOF"
+      },
+      {
+        "order": 4,
+        "slice_id": "LIVE_PARENT_CHILD_PARENT_PROOF",
+        "status": "PENDING",
+        "required": [
+          "one live parent provider tool call captured",
+          "single explicit correlation chain captured end to end",
+          "child governed execution produces persisted ToolReceipt/evidence",
+          "persisted LBE child terminal result is consumed by parent",
+          "provider continuation resumes from that result",
+          "parent reaches terminal completion"
+        ],
+        "next_slice": "LIVE_CANCELLATION_TERMINALITY_PROOF"
+      },
+      {
+        "order": 5,
+        "slice_id": "LIVE_CANCELLATION_TERMINALITY_PROOF",
+        "status": "PENDING",
+        "required": [
+          "CANCELLED observed for the same child_run_id",
+          "no later COMPLETED exists for that child_run_id",
+          "no successful parent continuation is produced from the cancelled run"
+        ],
+        "next_slice": "CANONICAL_VERIFIER_PROOF"
+      },
+      {
+        "order": 6,
+        "slice_id": "CANONICAL_VERIFIER_PROOF",
+        "status": "PENDING",
+        "verifier": "tools/lbe_product_integration.ps1",
+        "mode": "prove",
+        "rule": "Repair only the existing verifier harness if it alone blocks claim-matched proof; do not create a parallel verifier.",
+        "next_slice": "GATE_CLOSURE"
+      }
+    ],
+    "gate_pass_conditions": [
+      "all ordered slices are PASS",
+      "all correlation identifiers are explicit and resolve to the same delegated operation",
+      "parent continuation consumes persisted authoritative LBE child result",
+      "live cancellation terminality is proven negatively",
+      "canonical verifier prove mode passes"
+    ],
+    "current_known_state": {
+      "adapter_test_status": "12/15 before env-cleanup rerun; current PASS not established",
+      "env_isolation_change": "afterEach cleanup added for LBE_WALL_DATABASE, LBE_PROJECT_WORKSPACE_ID, LBE_TARGET_WORKSPACE",
+      "backend_child_persistence": "PROVEN_LOCALLY_BY_REPORTED_EVIDENCE",
+      "verifier": "EXTENDED_HARNESS_REPAIR_PENDING",
+      "release_ready": false
+    },
+    "always_visible_pending": [
+      "parent continuation implementation",
+      "deep correlation propagation",
+      "focused adapter validation 15/15",
+      "live parent->child->parent proof",
+      "live cancellation terminality proof",
+      "canonical verifier prove"
+    ],
+    "out_of_scope": [
+      "/team exposure",
+      "PTY/ConPTY acceptance",
+      "UI branding or keyboard redesign",
+      "general Git divergence reconciliation",
+      "publication or release"
+    ],
+    "next_gate_after_pass": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE"
+  }
 }
