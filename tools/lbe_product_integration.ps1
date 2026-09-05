@@ -704,7 +704,8 @@ if (-not $machineGate.active_execution_plan) {
 }
 $machineExecutionPlan = $machineGate.active_execution_plan
 $orderedMachineSlices = @($machineExecutionPlan.ordered_slices | Sort-Object order)
-$currentMachineSlice = @($orderedMachineSlices | Where-Object { $_.status -ne "PASS" } | Select-Object -First 1)
+$pendingMachineSlices = @($orderedMachineSlices | Where-Object { $_.status -ne "PASS" })
+$currentMachineSlice = @($pendingMachineSlices | Select-Object -First 1)
 $currentMachineSliceId = if ($currentMachineSlice.Count -eq 0) { "GATE_CLOSURE" } else { [string]$currentMachineSlice[0].slice_id }
 $currentMachineSliceStatus = if ($currentMachineSlice.Count -eq 0) { "READY_FOR_GATE_EVALUATION" } else { [string]$currentMachineSlice[0].status }
 
@@ -720,6 +721,8 @@ $manifest = [ordered]@{
         current_slice_status = $currentMachineSliceStatus
         continuation_policy = [string]$machineGate.agent_continuation_policy.mode
         ordered_slices = $orderedMachineSlices
+        pending_slices = @($pendingMachineSlices | ForEach-Object { [string]$_.slice_id })
+        pending_count = $pendingMachineSlices.Count
         always_visible_pending = @($machineExecutionPlan.always_visible_pending)
         out_of_scope = @($machineExecutionPlan.out_of_scope)
         next_gate_after_pass = [string]$machineExecutionPlan.next_gate_after_pass
@@ -795,6 +798,10 @@ Write-Host "Proof pass:               $proofPass"
 Write-Host "Machine gate:             $($machineExecutionPlan.gate_id)"
 Write-Host "Machine current slice:    $currentMachineSliceId [$currentMachineSliceStatus]"
 Write-Host "Continuation policy:      $($machineGate.agent_continuation_policy.mode)"
+Write-Host "Pending machine slices:   $($pendingMachineSlices.Count)"
+if ($pendingMachineSlices.Count -gt 0) {
+    Write-Host "Pending IDs:               $((@($pendingMachineSlices | ForEach-Object { $_.slice_id })) -join ', ')"
+}
 Write-Host "Cline mechanics reference: $ClineReferenceRepository@$ClineReferenceCommit"
 Write-Host "Manifest:                  $manifestPath"
 if ($packagePath) { Write-Host "Candidate package:         $packagePath" }
