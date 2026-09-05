@@ -574,7 +574,39 @@
       "reordering declared slices without a machine-gate change",
       "hiding pending acceptance criteria",
       "using conversational confidence as gate evidence"
-    ]
+    ],
+    "subslice_status_updates": {
+      "authorized": true,
+      "scope": "active_execution_plan.ordered_slices only",
+      "allowed_transitions": [
+        "PENDING->IMPLEMENTED",
+        "PENDING->PASS",
+        "PENDING->FAIL",
+        "PENDING->BLOCKED",
+        "IMPLEMENTED->PASS",
+        "IMPLEMENTED->FAIL",
+        "IMPLEMENTED->BLOCKED",
+        "FAIL->PASS after declared validation rerun",
+        "BLOCKED->PENDING when exact blocker is removed",
+        "BLOCKED->PASS when blocker removal and declared validation are both proven"
+      ],
+      "evidence_required": true,
+      "rule": "An agent may update a declared sub-slice status when claim-matched machine/runtime validation is observed. This is evidence bookkeeping within the already authorized active gate, not a new gate transition.",
+      "forbidden": [
+        "changing gate_id or objective",
+        "adding or reordering slices",
+        "changing out_of_scope",
+        "changing next_gate_after_pass",
+        "authorizing publication or release",
+        "changing architecture ownership"
+      ]
+    },
+    "completion_behavior": {
+      "when_slice_passes": "advance to the next declared ordered slice without asking the user",
+      "when_all_slices_pass": "mark active gate READY_FOR_GATE_CLOSURE and expose next_gate_after_pass; do not authorize publication/release",
+      "when_fail": "remain on current slice, expose failed criterion, continue repair only if repair is inside declared scope",
+      "when_blocked": "remain on current slice and expose blocker; ask user only if blocker requires one of may_pause_for_user_only_when conditions"
+    }
   },
   "active_execution_plan": {
     "gate_id": "PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE",
