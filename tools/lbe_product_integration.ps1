@@ -1,6 +1,8 @@
 param(
     [ValidateSet("check", "prove", "build", "package")]
     [string]$Mode = "check",
+    [ValidateSet("auto", "worktree", "origin-main")]
+    [string]$SourceMode = "auto",
     [string]$AgentWallRoot = "C:\Agents-Memory-Tool-v6-integration",
     [string]$TuiRoot = "C:\LBE-TUI-Lab",
     [string]$OutputRoot = (Join-Path $PSScriptRoot "..\dist\product-integration"),
@@ -22,6 +24,14 @@ $ClineReferenceFiles = @(
     "apps/cli/src/runtime/session-events.ts",
     "apps/cli/src/runtime/tool-policies.ts"
 )
+
+if ($SourceMode -eq "auto") {
+    $SourceMode = if ($Mode -in @("build", "package")) { "origin-main" } else { "worktree" }
+}
+if ($Mode -in @("build", "package") -and $SourceMode -ne "origin-main") {
+    throw "Build/package modes require -SourceMode origin-main so candidate artifacts are never assembled from an uncommitted worktree."
+}
+$SourceRef = if ($SourceMode -eq "origin-main") { "origin/main" } else { "WORKTREE" }
 
 function Invoke-Native {
     param(
@@ -66,6 +76,31 @@ function Get-GitText {
     )
     $spec = "{0}:{1}" -f $Ref, $Path
     $result = Invoke-Git -Root $Root -Arguments @("show", $spec)
+    return ($result.output -join [Environment]::NewLine)
+}
+
+function Get-SourceText {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][ValidateSet("worktree", "origin-main")][string]$SourceMode,
+        [switch]$AllowMissing
+    )
+    if ($SourceMode -eq "worktree") {
+        $full = Join-Path $Root $Path
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+            if ($AllowMissing) { return $null }
+            throw "source file missing from worktree: $full"
+        }
+        return Get-Content -LiteralPath $full -Raw
+    }
+
+    $spec = "{0}:{1}" -f "origin/main", $Path
+    $result = Invoke-Git -Root $Root -Arguments @("show", $spec) -AllowFailure
+    if ($result.exit_code -ne 0) {
+        if ($AllowMissing) { return $null }
+        throw "source file missing from origin/main: $Path"
+    }
     return ($result.output -join [Environment]::NewLine)
 }
 
@@ -126,16 +161,37 @@ function New-ContractCheck {
 }
 
 function Test-IntegrationContracts {
-    param([string]$AgentRoot, [string]$ClientRoot)
+    param(
+        [string]$AgentRoot,
+        [string]$ClientRoot,
+        [ValidateSet("worktree", "origin-main")][string]$SourceMode
+    )
 
-    $productEntry = Get-GitText -Root $AgentRoot -Ref "origin/main" -Path "lbe_guard_inspector/product_entry.py"
-    $toolRuntime = Get-GitText -Root $AgentRoot -Ref "origin/main" -Path "lbe_guard_inspector/runtime/tool_orchestration.py"
-    $productTests = Get-GitText -Root $AgentRoot -Ref "origin/main" -Path "tests/test_product_entry.py"
-    $wrapper = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/wrapper.rs"
-    $types = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/types.rs"
-    $app = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/app.rs"
-    $main = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/main.rs"
-    $requests = Get-GitText -Root $ClientRoot -Ref "origin/main" -Path "src/requests.rs"
+    $productEntry = Get-SourceText -Root $AgentRoot -Path "lbe_guard_inspector/product_entry.py" -SourceMode $SourceMode
+    $toolRuntime = Get-SourceText -Root $AgentRoot -Path "lbe_guard_inspector/runtime/tool_orchestration.py" -SourceMode $SourceMode
+    $productTests = Get-SourceText -Root $AgentRoot -Path "tests/test_product_entry.py" -SourceMode $SourceMode
+    $history = Get-SourceText -Root $AgentRoot -Path "lbe_guard_inspector/memory/operational_history.py" -SourceMode $SourceMode -AllowMissing
+    $childProductTests = Get-SourceText -Root $AgentRoot -Path "tests/test_child_agent_product_seam.py" -SourceMode $SourceMode -AllowMissing
+    $historyTests = Get-SourceText -Root $AgentRoot -Path "tests/test_operational_history.py" -SourceMode $SourceMode -AllowMissing
+
+    # Rust/Ratatui remains a reference/integration client. It is still checked for boundary drift,
+    # but it is no longer treated as the primary LBE product surface.
+    $wrapper = Get-SourceText -Root $ClientRoot -Path "src/wrapper.rs" -SourceMode $SourceMode
+    $types = Get-SourceText -Root $ClientRoot -Path "src/types.rs" -SourceMode $SourceMode
+    $app = Get-SourceText -Root $ClientRoot -Path "src/app.rs" -SourceMode $SourceMode
+    $main = Get-SourceText -Root $ClientRoot -Path "src/main.rs" -SourceMode $SourceMode
+    $requests = Get-SourceText -Root $ClientRoot -Path "src/requests.rs" -SourceMode $SourceMode
+
+    # The active product surface uses bundled Cline CLI mechanics under LBE branding and authority.
+    $clineAdapter = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/lbe-tool-adapter.ts" -SourceMode $SourceMode -AllowMissing
+    $clineRunAgent = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/run-agent.ts" -SourceMode $SourceMode -AllowMissing
+    $clineAdapterTests = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/lbe-tool-adapter.test.ts" -SourceMode $SourceMode -AllowMissing
+    $clineWelcome = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/interactive-welcome.ts" -SourceMode $SourceMode -AllowMissing
+    $clineKeyboard = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/keyboard-map.ts" -SourceMode $SourceMode -AllowMissing
+    $clineOnboarding = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/views/onboarding/screens.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineStatusBar = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/status-bar.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineRoot = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/root.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineIdentity = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/lbe-identity.tsx" -SourceMode $SourceMode -AllowMissing
 
     $checks = [System.Collections.Generic.List[object]]::new()
 
@@ -246,6 +302,67 @@ function Test-IntegrationContracts {
     $requestContractPresent = $requests.Contains("SubmitTask") -and $requests.Contains("PatchWorkspace") -and $requests.Contains("Approve") -and $requests.Contains("Reject")
     $checks.Add((New-ContractCheck -Id "tui.typed_request_contract" -Passed $requestContractPresent -Classification $(if ($requestContractPresent) { "CONNECTED" } else { "PARTIAL" }) -Detail "Typed request contract must cover conversational task submission, governed patching, and approval decisions."))
 
+    $childOwnerPresent = $history -and
+        $history.Contains("create_child_agent_run") -and
+        $history.Contains("start_child_agent_run") -and
+        $history.Contains("finalize_child_agent_run")
+    $checks.Add((New-ContractCheck -Id "lbe.child_agent.owner" -Passed ([bool]$childOwnerPresent) -Classification $(if ($childOwnerPresent) { "OWNER_PRESENT" } else { "MISSING" }) -Detail "ChildAgentRun lifecycle must reuse SessionOperationalHistory rather than introducing a second child state machine."))
+
+    $childProductSeam = $productEntry.Contains("child_agent") -and
+        $productEntry.Contains("create") -and
+        $productEntry.Contains("started") -and
+        $productEntry.Contains("complete") -and
+        $productEntry.Contains("failed") -and
+        $productEntry.Contains("cancel")
+    $checks.Add((New-ContractCheck -Id "lbe.child_agent.product_seam" -Passed $childProductSeam -Classification $(if ($childProductSeam) { "REGISTERED" } else { "MISSING" }) -Detail "LBE product entry must expose create/started/complete/failed/cancel as thin adapters over the existing child lifecycle owner."))
+
+    $childProofPresent = $childProductTests -and $historyTests -and
+        $childProductTests.Contains("child_agent") -and
+        $historyTests.Contains("child_agent")
+    $checks.Add((New-ContractCheck -Id "lbe.child_agent.test_contract" -Passed ([bool]$childProofPresent) -Classification $(if ($childProofPresent) { "TEST_PROOF_PRESENT" } else { "MISSING" }) -Detail "Focused product-seam and lifecycle-owner regression tests must be present."))
+
+    $clineSurfacePresent = $clineAdapter -and $clineRunAgent -and $clineAdapterTests
+    $checks.Add((New-ContractCheck -Id "cline.embedded_surface.present" -Passed ([bool]$clineSurfacePresent) -Classification $(if ($clineSurfacePresent) { "PRESENT" } else { "MISSING" }) -Detail "Bundled Cline CLI mechanics are the active LBE CLI/TUI implementation surface; absence blocks current product proof."))
+
+    $clineSpawnBinding = $clineSurfacePresent -and
+        $clineAdapter.Contains("child_agent") -and
+        $clineAdapter.Contains("spawn_operation_id") -and
+        $clineRunAgent.Contains("child_agent_spawn")
+    $checks.Add((New-ContractCheck -Id "cline.child_spawn.lbe_admission" -Passed ([bool]$clineSpawnBinding) -Classification $(if ($clineSpawnBinding) { "BOUND_TO_LBE" } else { "MISSING" }) -Detail "Cline delegated-agent execution must cross the LBE child_agent admission seam before child execution."))
+
+    $governedChildSurface = $clineSpawnBinding -and
+        $clineAdapter.Contains("childAgentGovernedToolSurface") -and
+        $clineAdapter.Contains("createLbeToolProxies") -and
+        -not $clineAdapter.Contains("createBuiltinTools(") -and
+        -not $clineRunAgent.Contains("createBuiltinTools(")
+    $checks.Add((New-ContractCheck -Id "cline.child_tools.lbe_only" -Passed ([bool]$governedChildSurface) -Classification $(if ($governedChildSurface) { "FAIL_CLOSED" } else { "BYPASS_RISK" }) -Detail "Delegated children must receive only LBE-governed proxy tools; native Cline tool construction must not be reachable from the LBE child integration seam."))
+
+    $recursiveSpawnGuard = $clineSpawnBinding -and
+        $clineAdapter.Contains("LBE_ALLOW_RECURSIVE_SPAWN") -and
+        ($clineAdapter.Contains("depth") -or $clineAdapter.Contains("DEPTH"))
+    $checks.Add((New-ContractCheck -Id "cline.child_spawn.recursion_default_deny" -Passed ([bool]$recursiveSpawnGuard) -Classification $(if ($recursiveSpawnGuard) { "GUARDED" } else { "UNPROVEN" }) -Detail "Recursive child spawning must remain denied by default unless explicitly authorized by the LBE integration policy."))
+
+    $lifecycleCalls = $clineSpawnBinding -and
+        $clineAdapter.Contains("started") -and
+        $clineAdapter.Contains("complete") -and
+        $clineAdapter.Contains("failed") -and
+        $clineAdapter.Contains("cancel")
+    $checks.Add((New-ContractCheck -Id "cline.child_spawn.lifecycle_projection" -Passed ([bool]$lifecycleCalls) -Classification $(if ($lifecycleCalls) { "PRESENT" } else { "PARTIAL" }) -Detail "Cline child execution must project started and terminal outcomes through LBE."))
+
+    $uiFilesPresent = $clineWelcome -and $clineKeyboard -and $clineOnboarding -and $clineStatusBar -and $clineRoot -and $clineIdentity
+    $visibleUi = @($clineWelcome, $clineKeyboard, $clineOnboarding, $clineStatusBar, $clineRoot, $clineIdentity) -join [Environment]::NewLine
+    $brandingLeaks = @("Welcome to Cline", "Exit Cline", "Cline Hub", "ClinePass:") | Where-Object { $visibleUi.Contains($_) }
+    $identityPresent = $uiFilesPresent -and
+        $visibleUi.Contains("Welcome to LBE") -and
+        $visibleUi.Contains("Exit LBE") -and
+        $visibleUi.Contains("Lockstep Boundry Engine") -and
+        $visibleUi.Contains("LETTERBLACK")
+    $brandingPass = $uiFilesPresent -and ($brandingLeaks.Count -eq 0) -and $identityPresent
+    $checks.Add((New-ContractCheck -Id "lbe.ui.branding_contract" -Passed ([bool]$brandingPass) -Classification $(if ($brandingPass) { "LBE_ONLY" } elseif (-not $uiFilesPresent) { "MISSING" } else { "FAIL" }) -Detail $(if ($brandingLeaks.Count) { "Visible Cline branding leaks: $($brandingLeaks -join ', ')" } elseif (-not $identityPresent) { "Required LBE / Lockstep Boundry Engine / LETTERBLACK identity markers are incomplete." } else { "Active CLI/TUI surface is LBE-branded." })))
+
+    $teamPremature = $clineWelcome -and $clineWelcome.Contains("Start the task with agent team")
+    $checks.Add((New-ContractCheck -Id "lbe.ui.subagent_exposure" -Passed (-not [bool]$teamPremature) -Classification $(if ($teamPremature) { "PREMATURE_EXPOSURE" } else { "NOT_EXPOSED" }) -Detail "Do not advertise /team as generally available until installed governed child-agent acceptance passes."))
+
     return @($checks)
 }
 
@@ -269,7 +386,22 @@ function Invoke-Proof {
         $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = "BLOCKED"; exit_code = $null; command = "python"; output = @("python not found") })
     }
     else {
-        $agent = Invoke-Native -FilePath $python.Source -WorkingDirectory $AgentStage -Arguments @("-m", "pytest", "-q", "tests/test_authorization_resolver.py", "tests/test_tool_orchestration.py", "tests/test_product_entry.py", "tests/test_provider_continuation.py")
+        $agentTests = [System.Collections.Generic.List[string]]::new()
+        @(
+            "tests/test_authorization_resolver.py",
+            "tests/test_tool_orchestration.py",
+            "tests/test_product_entry.py",
+            "tests/test_provider_continuation.py"
+        ) | ForEach-Object { $agentTests.Add($_) }
+        foreach ($candidate in @("tests/test_child_agent_product_seam.py", "tests/test_operational_history.py")) {
+            if (Test-Path -LiteralPath (Join-Path $AgentStage $candidate) -PathType Leaf) {
+                $agentTests.Add($candidate)
+            }
+            else {
+                $proofs.Add([pscustomobject]@{ id = "agent.$([IO.Path]::GetFileNameWithoutExtension($candidate))"; status = "BLOCKED"; exit_code = $null; command = "pytest"; output = @("required child-agent proof missing: $candidate") })
+            }
+        }
+        $agent = Invoke-Native -FilePath $python.Source -WorkingDirectory $AgentStage -Arguments (@("-m", "pytest", "-q") + @($agentTests))
         $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = $(if ($agent.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $agent.exit_code; command = $agent.command; output = $agent.output })
     }
 
@@ -283,6 +415,30 @@ function Invoke-Proof {
         $fmt = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("fmt", "--", "--check")
         $proofs.Add([pscustomobject]@{ id = "tui.cargo_fmt"; status = $(if ($fmt.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $fmt.exit_code; command = $fmt.command; output = $fmt.output })
     }
+    $clineRoot = Join-Path $TuiStage "cline\apps\cli"
+    if (-not (Test-Path -LiteralPath $clineRoot -PathType Container)) {
+        $proofs.Add([pscustomobject]@{ id = "cline.subagent_tests"; status = "BLOCKED"; exit_code = $null; command = "npx vitest"; output = @("bundled Cline CLI source missing: $clineRoot") })
+        $proofs.Add([pscustomobject]@{ id = "cline.typecheck"; status = "BLOCKED"; exit_code = $null; command = "npm run typecheck"; output = @("bundled Cline CLI source missing") })
+    }
+    else {
+        $npx = Get-Command npx -ErrorAction SilentlyContinue
+        if (-not $npx) {
+            $proofs.Add([pscustomobject]@{ id = "cline.subagent_tests"; status = "BLOCKED"; exit_code = $null; command = "npx"; output = @("npx not found") })
+        }
+        else {
+            $clineTests = Invoke-Native -FilePath $npx.Source -WorkingDirectory $clineRoot -Arguments @("vitest", "run", "src/runtime/lbe-tool-adapter.test.ts", "src/runtime/run-agent.test.ts")
+            $proofs.Add([pscustomobject]@{ id = "cline.subagent_tests"; status = $(if ($clineTests.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $clineTests.exit_code; command = $clineTests.command; output = $clineTests.output })
+        }
+        $npm = Get-Command npm -ErrorAction SilentlyContinue
+        if (-not $npm) {
+            $proofs.Add([pscustomobject]@{ id = "cline.typecheck"; status = "BLOCKED"; exit_code = $null; command = "npm"; output = @("npm not found") })
+        }
+        else {
+            $typecheck = Invoke-Native -FilePath $npm.Source -WorkingDirectory $clineRoot -Arguments @("run", "typecheck")
+            $proofs.Add([pscustomobject]@{ id = "cline.typecheck"; status = $(if ($typecheck.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $typecheck.exit_code; command = $typecheck.command; output = $typecheck.output })
+        }
+    }
+
     return @($proofs)
 }
 
@@ -459,13 +615,51 @@ function Get-Checksums {
     )
 }
 
+function Test-PackageArchive {
+    param(
+        [Parameter(Mandatory)][string]$ZipPath,
+        [Parameter(Mandatory)][string]$VerificationRoot
+    )
+    if (Test-Path -LiteralPath $VerificationRoot) { Remove-Item -LiteralPath $VerificationRoot -Recurse -Force }
+    New-Item -ItemType Directory -Path $VerificationRoot -Force | Out-Null
+    Expand-Archive -LiteralPath $ZipPath -DestinationPath $VerificationRoot -Force
+
+    $checksumPath = Join-Path $VerificationRoot "checksums.json"
+    if (-not (Test-Path -LiteralPath $checksumPath -PathType Leaf)) {
+        throw "Package verification failed: checksums.json missing from archive."
+    }
+    $expected = @(Get-Content -LiteralPath $checksumPath -Raw | ConvertFrom-Json)
+    $errors = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $expected) {
+        $relative = ([string]$entry.path).Replace("/", "\")
+        $file = Join-Path $VerificationRoot $relative
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+            $errors.Add("missing: $($entry.path)")
+            continue
+        }
+        $actualHash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+        $actualBytes = (Get-Item -LiteralPath $file).Length
+        if ($actualHash -ne [string]$entry.sha256) { $errors.Add("sha256 mismatch: $($entry.path)") }
+        if ($actualBytes -ne [int64]$entry.bytes) { $errors.Add("size mismatch: $($entry.path)") }
+    }
+
+    $result = [pscustomobject]@{
+        status = $(if ($errors.Count -eq 0) { "PASS" } else { "FAIL" })
+        archive = $ZipPath
+        verified_file_count = $expected.Count
+        errors = @($errors)
+    }
+    Remove-Item -LiteralPath $VerificationRoot -Recurse -Force
+    return $result
+}
+
 $agent = Assert-Workspace -Root $AgentWallRoot -Repository $AgentWallRepository
 $tui = Assert-Workspace -Root $TuiRoot -Repository $TuiRepository
 
 if ($agent.worktree_count -ne 1) { throw "Agent Wall must have exactly one registered worktree; found $($agent.worktree_count)." }
 if ($tui.worktree_count -ne 1) { throw "LBE TUI must have exactly one registered worktree; found $($tui.worktree_count)." }
 
-$contracts = Test-IntegrationContracts -AgentRoot $AgentWallRoot -ClientRoot $TuiRoot
+$contracts = Test-IntegrationContracts -AgentRoot $AgentWallRoot -ClientRoot $TuiRoot -SourceMode $SourceMode
 $structuralPass = @($contracts | Where-Object { $_.blocking -and -not $_.passed }).Count -eq 0
 
 New-Item -ItemType Directory -Path $OutputRoot -Force | Out-Null
@@ -475,10 +669,17 @@ $tuiStage = Join-Path $stageRoot "lbe-tui"
 $proofs = @()
 $build = $null
 $packagePath = $null
+$packageVerification = $null
 
 if ($Mode -in @("prove", "build", "package")) {
-    Export-OriginMain -Root $AgentWallRoot -Destination $agentStage
-    Export-OriginMain -Root $TuiRoot -Destination $tuiStage
+    if ($SourceMode -eq "worktree") {
+        $agentStage = $AgentWallRoot
+        $tuiStage = $TuiRoot
+    }
+    else {
+        Export-OriginMain -Root $AgentWallRoot -Destination $agentStage
+        Export-OriginMain -Root $TuiRoot -Destination $tuiStage
+    }
     $proofs = Invoke-Proof -AgentStage $agentStage -TuiStage $tuiStage
 }
 
@@ -499,25 +700,30 @@ $manifest = [ordered]@{
     generated_at = [DateTimeOffset]::UtcNow.ToString("o")
     generator = "tools/lbe_product_integration.ps1"
     mode = $Mode
-    authority = [ordered]@{
-        rule = "Agent Wall is runtime authority; Rust is client/projection; this script verifies, proves, builds, and packages but owns no runtime decision."
-        agent_wall = $agent
-        rust_client = $tui
+    verification_source = [ordered]@{
+        mode = $SourceMode
+        ref = $SourceRef
+        rule = "check/prove may validate the assembled worktree; build/package are forced to origin/main and cannot package uncommitted state."
     }
-    behavior_reference = [ordered]@{
+    authority = [ordered]@{
+        rule = "Agent Wall is the runtime/governance authority. The LBE CLI/TUI uses bundled Cline mechanics for cognition/provider/model/agent execution. Rust/Ratatui is a reference/integration client. This script owns no runtime decision."
+        agent_wall = $agent
+        lbe_cli_repository = $tui
+        rust_reference_client = [ordered]@{ repository = $TuiRepository; role = "REFERENCE_INTEGRATION_CLIENT"; path = "src/" }
+    }
+    product_surface = [ordered]@{
+        name = "LBE CLI/TUI"
+        full_name = "Lockstep Boundry Engine"
+        brand = "LETTERBLACK"
+        mechanics = "bundled Cline CLI"
+        rule = "Cline implementation names may exist internally, but user-facing product identity is LBE and all capability/consequence authority remains with LBE."
+    }
+    cline_upstream_reference = [ordered]@{
         repository = $ClineReferenceRepository
         commit = $ClineReferenceCommit
-        role = "REFERENCE_ONLY"
-        rule = "Use Cline CLI interaction mechanics as behavioral reference only. Do not expose Cline branding or transfer session, provider, authorization, execution, persistence, receipt, evidence, validation, or completion authority away from LBE."
+        role = "UPSTREAM_REFERENCE_FOR_EMBEDDED_MECHANICS"
+        rule = "Reuse Cline cognition/provider/model/delegated-agent mechanics without transferring session, authorization, governed execution, persistence, receipt, evidence, validation, or completion authority away from LBE."
         reference_files = $ClineReferenceFiles
-        adopted_patterns = @(
-            "interactive chat as primary surface",
-            "session lifecycle and resume",
-            "provider/model selection",
-            "explicit approval controller",
-            "event-driven UI projection",
-            "tool lifecycle visibility"
-        )
     }
     contracts = $contracts
     proofs = $proofs
@@ -544,19 +750,26 @@ if ($Mode -eq "package") {
     if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
     Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zip -CompressionLevel Optimal
     $packagePath = $zip
+    $packageVerification = Test-PackageArchive -ZipPath $zip -VerificationRoot (Join-Path $OutputRoot "_package-verify")
+    $packageVerification | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $OutputRoot "package-verification.json") -Encoding UTF8
+    if ($packageVerification.status -ne "PASS") {
+        throw "Package verification failed: $($packageVerification.errors -join '; ')"
+    }
 }
 
 if (Test-Path -LiteralPath $stageRoot) { Remove-Item -LiteralPath $stageRoot -Recurse -Force }
 
 Write-Host "=== LETTERBLACK PRODUCT INTEGRATION ==="
 Write-Host "Mode: $Mode"
+Write-Host "Verification source:      $SourceMode ($SourceRef)"
 Write-Host "Agent Wall origin/main: $($agent.origin_main)"
 Write-Host "Rust TUI origin/main:     $($tui.origin_main)"
 Write-Host "Structural integration:   $structuralPass"
 Write-Host "Proof pass:               $proofPass"
-Write-Host "Cline behavior reference: $ClineReferenceRepository@$ClineReferenceCommit (reference only)"
-Write-Host "Manifest:                 $manifestPath"
-if ($packagePath) { Write-Host "Candidate package:        $packagePath" }
+Write-Host "Cline mechanics reference: $ClineReferenceRepository@$ClineReferenceCommit"
+Write-Host "Manifest:                  $manifestPath"
+if ($packagePath) { Write-Host "Candidate package:         $packagePath" }
+if ($packageVerification) { Write-Host "Package verification:      $($packageVerification.status)" }
 Write-Host "Release ready:             False (external installed PTY/ConPTY acceptance is intentionally not fabricated)"
 
 if (-not $structuralPass) { exit 2 }
