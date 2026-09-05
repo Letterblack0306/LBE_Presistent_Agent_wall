@@ -1,6 +1,6 @@
 # Current Implementation Gate
 
-Status: **OPEN — TUI P2/P3 GOVERNED EXECUTION INTEGRATION — PUBLICATION PAUSED**
+Status: **OPEN — PARENT CONTINUATION + DEEP CORRELATION ACCEPTANCE — PUBLICATION PAUSED**
 
 This file is the human-readable projection of `.lbe/governance/implementation-gates.json`.
 The machine-declared active plan is
@@ -11,15 +11,43 @@ evidence and the machine gate outrank this summary.
 
 ```text
 active_plan: docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
-phase: P2_P3_GOVERNED_EXECUTION
-slice: TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION
+phase: PARENT_CONTINUATION_AND_DEEP_CORRELATION
+slice: PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION
 status: OPEN
-implementation_allowed: true — active Cline CLI LBE-backed runtime integration slice only
+implementation_allowed: true — active parent-continuation/correlation acceptance slice only
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 required_status_for_advance: PASS
 publication: LOCKED / NOT AUTHORIZED
 ```
+
+## Machine-driven continuation rule — 2026-09-06
+
+The machine gate now declares the complete ordered continuation plan for the active slice.
+Agents must execute the declared current slice and continue through declared `PENDING` / `IMPLEMENTED` / `UNVERIFIED` work when runnable. They must not ask the user which predeclared step to run next.
+
+State behavior:
+
+```text
+PENDING / IMPLEMENTED / UNVERIFIED -> continue active declared work and validation
+PASS                               -> advance to declared next slice
+FAIL                               -> remain on current slice and expose failed criteria
+BLOCKED                            -> remain and expose the exact blocker
+```
+
+The active acceptance order is:
+
+```text
+PARENT_CONTINUATION_IMPLEMENTATION
+-> DEEP_CORRELATION_PROPAGATION
+-> FOCUSED_ADAPTER_VALIDATION (15/15)
+-> LIVE_PARENT_CHILD_PARENT_PROOF
+-> LIVE_CANCELLATION_TERMINALITY_PROOF
+-> CANONICAL_VERIFIER_PROOF
+-> GATE_CLOSURE
+```
+
+Pending criteria remain visible until matching machine evidence changes them to `PASS`. Conversational confidence, source implementation, or unrelated test success cannot advance the gate.
 
 Only the exact paths and scope declared by the machine gate are authorized. The active slice is
 the TUI P2/P3 governed-execution integration. It does not authorize a second runtime, provider,
