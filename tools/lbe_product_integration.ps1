@@ -192,6 +192,11 @@ function Test-IntegrationContracts {
     $clineStatusBar = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/status-bar.tsx" -SourceMode $SourceMode -AllowMissing
     $clineRoot = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/root.tsx" -SourceMode $SourceMode -AllowMissing
     $clineIdentity = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/lbe-identity.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineHome = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/views/home-view.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineChat = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/views/chat-view.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineInput = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/input-bar.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineMessages = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/chat-message-list.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineLoader = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/letterblack-loader.tsx" -SourceMode $SourceMode -AllowMissing
 
     $checks = [System.Collections.Generic.List[object]]::new()
 
@@ -359,6 +364,37 @@ function Test-IntegrationContracts {
         $visibleUi.Contains("LETTERBLACK")
     $brandingPass = $uiFilesPresent -and ($brandingLeaks.Count -eq 0) -and $identityPresent
     $checks.Add((New-ContractCheck -Id "lbe.ui.branding_contract" -Passed ([bool]$brandingPass) -Classification $(if ($brandingPass) { "LBE_ONLY" } elseif (-not $uiFilesPresent) { "MISSING" } else { "FAIL" }) -Detail $(if ($brandingLeaks.Count) { "Visible Cline branding leaks: $($brandingLeaks -join ', ')" } elseif (-not $identityPresent) { "Required LBE / Lockstep Boundry Engine / LETTERBLACK identity markers are incomplete." } else { "Active CLI/TUI surface is LBE-branded." })))
+
+    # Branding alone is insufficient. The accepted LBE surface must not retain the
+    # recognizable Cline centered hero/composer composition. Structural acceptance
+    # requires the minimal LBE runtime shell: persistent status/header hierarchy,
+    # [I] composer identity, bounded active-process stream, collapsed completed work,
+    # and context projection. A renamed logo or recolored Cline home view must FAIL.
+    $visualFilesPresent = $clineHome -and $clineChat -and $clineInput -and $clineMessages -and $clineLoader
+    $clineHeroMarkers = @(
+        'alignItems="center"',
+        'justifyContent="center"',
+        '<TrackedRobot',
+        '<strong>What can I do for you?</strong>'
+    )
+    $clineHeroMarkerCount = @($clineHeroMarkers | Where-Object { $clineHome.Contains($_) }).Count
+    $lbeStructuralMarkers = @(
+        $clineInput.Contains("[I]"),
+        ($clineLoader.Contains("bounce") -or $clineLoader.Contains("direction")),
+        ($clineMessages.Contains("3") -and ($clineMessages.Contains("expand") -or $clineMessages.Contains("collapsed"))),
+        ($clineHome.Contains("context") -or $clineStatusBar.Contains("context"))
+    )
+    $lbeStructuralPass = $visualFilesPresent -and ($clineHeroMarkerCount -lt 3) -and -not ($lbeStructuralMarkers -contains $false)
+    $visualDetail = if (-not $visualFilesPresent) {
+        "Required Cline/LBE visual source files are missing."
+    } elseif ($clineHeroMarkerCount -ge 3) {
+        "UI still retains the recognizable centered Cline hero/composer composition; branding/color changes are not sufficient."
+    } elseif ($lbeStructuralMarkers -contains $false) {
+        "LBE minimal runtime-shell markers are incomplete: [I] composer, bouncing activity, bounded/collapsible process stream, and context projection are required."
+    } else {
+        "LBE visual shell is structurally distinct from the upstream Cline home composition."
+    }
+    $checks.Add((New-ContractCheck -Id "lbe.ui.structural_differentiation" -Passed ([bool]$lbeStructuralPass) -Classification $(if ($lbeStructuralPass) { "DISTINCT_LBE_SHELL" } else { "FAIL" }) -Detail $visualDetail))
 
     $teamPremature = $clineWelcome -and $clineWelcome.Contains("Start the task with agent team")
     $checks.Add((New-ContractCheck -Id "lbe.ui.subagent_exposure" -Passed (-not [bool]$teamPremature) -Classification $(if ($teamPremature) { "PREMATURE_EXPOSURE" } else { "NOT_EXPOSED" }) -Detail "Do not advertise /team as generally available until installed governed child-agent acceptance passes."))
