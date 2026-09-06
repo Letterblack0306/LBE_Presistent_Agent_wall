@@ -1,57 +1,40 @@
 # Current Implementation Gate
 
-Status: **OPEN — PARENT CONTINUATION + DEEP CORRELATION ACCEPTANCE — PUBLICATION PAUSED**
+Status: **OPEN — PARENT CONTINUATION AND DEEP CORRELATION — READY FOR GATE CLOSURE**
 
 This file is the human-readable projection of `.lbe/governance/implementation-gates.json`.
 The machine-declared active plan is
-`docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md`; live Git/runtime/validation
-evidence and the machine gate outrank this summary.
+`docs/acceptance/PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE_GATE.md`; live
+Git/runtime/validation evidence and the machine gate outrank this summary.
 
 ## CURRENT MACHINE STATE (authoritative projection)
 
 ```text
-active_plan: docs/acceptance/COMPLETE_LBE_AGENT_RUNTIME_GATE.md
+active_plan: docs/acceptance/PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE_GATE.md
 phase: PARENT_CONTINUATION_AND_DEEP_CORRELATION
 slice: PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION
 status: OPEN
-implementation_allowed: true — active parent-continuation/correlation acceptance slice only
+implementation_allowed: true — active parent-continuation LBE-backed runtime integration slice only
 architecture_changes_allowed: true (explicit user authorization)
 next_phase_locked: true
 required_status_for_advance: PASS
 publication: LOCKED / NOT AUTHORIZED
 ```
 
-## Machine-driven continuation rule — 2026-09-06
-
-The machine gate now declares the complete ordered continuation plan for the active slice.
-Agents must execute the declared current slice and continue through declared `PENDING` / `IMPLEMENTED` / `UNVERIFIED` work when runnable. They must not ask the user which predeclared step to run next.
-
-State behavior:
+Current proof projection:
 
 ```text
-PENDING / IMPLEMENTED / UNVERIFIED -> continue active declared work and validation
-PASS                               -> advance to declared next slice
-FAIL                               -> remain on current slice and expose failed criteria
-BLOCKED                            -> remain and expose the exact blocker
+READY_FOR_GATE_CLOSURE: YES
+NEXT_PRODUCT_SLICE: INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE
+FOCUSED_ADAPTER_VALIDATION: PASS — 15/15
+LIVE_PARENT_CHILD_PARENT_PROOF: PASS
+LIVE_CANCELLATION_TERMINALITY_PROOF: PASS
+CANONICAL_VERIFIER_PROOF: PASS
 ```
-
-The active acceptance order is:
-
-```text
-PARENT_CONTINUATION_IMPLEMENTATION
--> DEEP_CORRELATION_PROPAGATION
--> FOCUSED_ADAPTER_VALIDATION (15/15)
--> LIVE_PARENT_CHILD_PARENT_PROOF
--> LIVE_CANCELLATION_TERMINALITY_PROOF
--> CANONICAL_VERIFIER_PROOF
--> GATE_CLOSURE
-```
-
-Pending criteria remain visible until matching machine evidence changes them to `PASS`. Conversational confidence, source implementation, or unrelated test success cannot advance the gate.
 
 Only the exact paths and scope declared by the machine gate are authorized. The active slice is
-the TUI P2/P3 governed-execution integration. It does not authorize a second runtime, provider,
-execution, authorization, evidence, receipt, or completion owner.
+the parent-continuation and deep-correlation governed-execution integration. It does not authorize
+a second runtime, provider, execution, authorization, evidence, receipt, or completion owner.
 
 ### Selected reasoning-agent source
 
@@ -67,10 +50,10 @@ The authoritative machine source is:
 C:\Agents-Memory-Tool-v6-integration\.lbe\governance\implementation-gates.json
 ```
 
-Its active intent is `LBE-INTENT-CLINE-CLI-LBE-RUNTIME-INTEGRATION-001`, owned by the existing
+Its active intent is `LBE-INTENT-PARENT-CONTINUATION-DEEP-CORRELATION-001`, owned by the existing
 LBE session/provider/authorization/ToolRegistry/GovernedToolOrchestrator/receipt/evidence/
-persistence/validation/completion owners with the Cline CLI LBE-backed runtime adapter as the
-projection client.
+persistence/validation/completion owners with the parent-continuation projection client composed
+through existing Cline mechanics.
 
 ### Product surface scope — existing LetterBlack entry and runtime
 
@@ -129,7 +112,7 @@ provider continuation through the installed client, or release readiness.
 This human-readable projection was reconciled with the machine gate. Older references in this
 file to `WORKSPACE_HYGIENE_GOVERNED_DELETION` remain preserved as historical slice evidence;
 they are not current authorization. Current authorization is the machine-declared
-`TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION` slice above.
+`PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION` slice above.
 
 ## HISTORICAL FAILURE (preserved, not current state)
 

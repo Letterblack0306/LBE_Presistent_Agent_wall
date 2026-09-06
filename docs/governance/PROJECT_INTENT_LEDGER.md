@@ -6,7 +6,7 @@ Every meaningful repository mutation must resolve to exactly one intent record b
 The machine gate binds the active slice to the `INTENT_ID`, and the affected structure must exist
 in `PROJECT_INDEX.md`.
 
-## Current reconciliation — 2026-09-02
+## Current reconciliation — 2026-09-05
 
 The current implementation uses the originating project-planning concepts as a
 bounded LBE startup projection. `lbe start` profiles the selected workspace and
@@ -23,17 +23,15 @@ configuration.
 Current proof for this bounded integration is recorded as:
 
 ```text
-target-profile regression = PASS — 1 passed
-audit-controller suite    = PASS — 14 passed
-focused CLI/CEP set       = PASS — 66 passed
-full Python suite         = 839 passed before final provider-list assertion repair
-post-repair provider focus = PASS — 56 passed
-test-file provenance      = UNKNOWN; untracked test files are present
-active TUI gate           = OPEN
+focused adapter validation         = PASS — 15/15
+live parent->child->parent proof   = PASS
+live cancellation terminality      = PASS
+canonical verifier proof           = PASS
+ready for gate closure             = YES
 ```
 
 This reconciliation does not advance or close
-`TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION`.
+`PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION`.
 
 ## INTENT LBE-INTENT-PROJECT-PROFILE-GUARD-CATALOG-INTEGRATION-001
 
@@ -313,6 +311,47 @@ SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/LBE_LIVE_PROVIDER_CONVERSATION_CHECKPOINT.md
 ```
+
+## INTENT LBE-INTENT-PARENT-CONTINUATION-DEEP-CORRELATION-001
+
+```text
+INTENT_ID: LBE-INTENT-PARENT-CONTINUATION-DEEP-CORRELATION-001
+STATUS: ACTIVE
+REQUEST: Reconcile the parent-continuation and deep-correlation machine gate so the
+         persisted child result is the authoritative parent input, with the live proof
+         chain recorded as evidence-backed PASS rather than stale PENDING state.
+WHY: The parent-continuation gate must reflect the proven local adapter validation,
+     live parent->child->parent proof, cancellation terminality proof, and canonical
+     verifier proof without creating a second authority or heuristic correlation path.
+AFFECTED_STRUCTURE: PROJECT_INDEX.md,.lbe/governance/implementation-gates.json,docs/CURRENT_STATUS.md,
+                    docs/IMPLEMENTATION_PLAN.md,docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md,
+                    docs/acceptance/PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE_GATE.md,
+                    docs/governance/PROJECT_INTENT_LEDGER.md
+EXISTING_OWNER: Existing LBE session/provider/authorization/ToolRegistry/GovernedToolOrchestrator/
+                receipt/evidence/persistence/validation/completion owners; existing provider-turn
+                runtime and continuation owners; existing Cline mechanics as projection/reuse input.
+DESIRED_RESULT: The canonical gate records the persisted-child-result continuation slice as the
+                active machine gate, marks all ordered slices PASS, exposes READY_FOR_GATE_CLOSURE,
+                and preserves the invariant that parent continuation consumes authoritative LBE
+                child results only.
+NON_GOALS: No new runtime authority, no heuristic correlation, no second session/provider/receipt/
+           evidence/completion owner, no publication, no branch/worktree creation, no UI redesign.
+REUSE_DECISION: REUSE existing LBE persistence, continuation, receipt, validation, and completion
+                owners plus existing Cline continuation mechanics where compatible; ADAPT only the
+                gate projection and active slice bookkeeping.
+AUTHORITY_IMPACT: LBE remains sole authority. The projection is bookkeeping only.
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,.lbe/governance/,docs/CURRENT_STATUS.md,docs/IMPLEMENTATION_PLAN.md,docs/acceptance/,docs/governance/
+REQUIRED_EVIDENCE: parent consumes persisted authoritative LBE child terminal result; no transient
+                   local/Cline result is authoritative; provider_tool_call_id ↔ lbe_call_id ↔
+                   child_run_id ↔ runtime_operation_id ↔ tool_receipt_id are all correlated;
+                   no heuristic correlation; focused adapter validation; live continuation proof;
+                   cancellation terminality proof; canonical verifier proof.
+MACHINE_SLICE: PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION
+SUPERSEDES: none
+RESULT: ACTIVE
+COMPLETION_CHECKPOINT: docs/acceptance/PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE_CHECKPOINT.md
+```
+
 ## INTENT LBE-INTENT-CLINE-SURFACE-DIRECTION-001 (AMENDED: HTML-BASED LBE TUI)
 
 ```text
