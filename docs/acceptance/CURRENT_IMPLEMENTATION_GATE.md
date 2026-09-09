@@ -1,11 +1,36 @@
 # Current Implementation Gate
 
-Status: **OPEN — PARENT CONTINUATION AND DEEP CORRELATION — READY FOR GATE CLOSURE**
+Status: **OPEN — INSTALLED PTY/CONPTY AND FINAL PRODUCT ACCEPTANCE — SOURCE RECONCILIATION REQUIRED**
 
 This file is the human-readable projection of `.lbe/governance/implementation-gates.json`.
-The machine-declared active plan is
-`docs/acceptance/PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE_GATE.md`; live
-Git/runtime/validation evidence and the machine gate outrank this summary.
+Current machine state is authoritative over stale historical sections below.
+
+```text
+active_plan: docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md
+phase: INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE
+slice: FINAL_PRODUCT_SOURCE_RECONCILIATION
+status: OPEN
+implementation_allowed: true
+next_phase_locked: true
+required_status_for_advance: PASS
+publication: LOCKED
+```
+
+Current source reconciliation:
+
+```text
+single-command lbe entrypoint             UNVERIFIED as final UI launch
+Textual product shell                     PRESENT
+Textual runtime state                     PREVIEW
+real Cline provider/model binding         UNVERIFIED on this surface
+governed coding flow                      FAIL_CURRENT_IMPLEMENTATION
+receipt/evidence projection               FAIL_CURRENT_IMPLEMENTATION
+installed PTY/ConPTY exit                 UNVERIFIED
+installed restart/resume                  UNVERIFIED
+FINAL_PRODUCT_ACCEPTANCE                  BLOCKED
+```
+
+The earlier local 23/23 PASS claim is superseded by canonical source inspection. Presence/import checks do not establish final installed behavior.
 
 ## CURRENT MACHINE STATE (authoritative projection)
 
