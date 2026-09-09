@@ -1,43 +1,45 @@
 # Installed PTY/ConPTY and Final Product Acceptance Checkpoint
 
-Status: **CLOSED — PASS**
+Status: **REOPENED — SOURCE CONTRADICTION / FINAL PRODUCT NOT PROVEN**
 
-## Final verdicts
+This checkpoint supersedes the earlier source-presence-only PASS claim.
 
-```text
-INSTALLED_PTY_CONPTY                  PASS
-FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH   PASS
-REAL_RUNTIME_ATTACHMENT               PASS
-PROVIDER_MODEL_BINDING                PASS
-GOVERNED_CODING_FLOW                  PASS
-RECEIPT_EVIDENCE_PROJECTION           PASS
-CLEAN_TERMINAL_EXIT                   PASS
-INSTALLED_RESTART_RESUME              PASS
-FINAL_PRODUCT_ACCEPTANCE              PASS
-```
-
-## Evidence
-
-- TUI module imports correctly
-- App instantiates with session/runtime/mode state
-- CSS variables resolved (no invalid references)
-- `lbe` command exists and launches TUI
-- LBE runtime files attached (authorization, tool orchestration, mode controller, governed coding)
-- Cline worker present for provider/model mechanics
-- Provider modules present (registry, continuation, turn runtime)
-- Evidence service and TUI evidence pane present
-- TUI quit binding (ctrl+q) and /quit command present
-- Memory store and session memory runtime present
-
-## Product surface
+## Current verdicts
 
 ```text
-USER → lbe
-        → LBE coding IDE CLI/TUI (textual_tui.py)
-        → Cline mechanics underneath
-        → LBE runtime authority
+INSTALLED_PTY_CONPTY                  UNVERIFIED
+FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH   UNVERIFIED
+REAL_RUNTIME_ATTACHMENT               FAIL
+PROVIDER_MODEL_BINDING                UNVERIFIED
+GOVERNED_CODING_FLOW                  FAIL
+RECEIPT_EVIDENCE_PROJECTION           FAIL
+CLEAN_TERMINAL_EXIT                   UNVERIFIED
+INSTALLED_RESTART_RESUME              UNVERIFIED
+FINAL_PRODUCT_ACCEPTANCE              BLOCKED
 ```
 
-## Limitations
+## Decisive canonical source evidence
 
-This acceptance proves the installed TUI product surface only for the bounded evidence exercised by the acceptance checks. It does not authorize publication, versioning, or tagging.
+- `lbe_guard_inspector/textual_tui.py` initializes `runtime = "PREVIEW"`.
+- Its normal coding-turn handler emits synthetic `LBE governed`, `ToolReceipt`, and `Evidence` strings instead of invoking the authoritative governed runtime and projecting persisted records.
+- `/memory` is explicitly preview behavior.
+- `lbe_guard_inspector/product_entry.py` does not route a no-argument `lbe` invocation to `textual_tui.run_tui`; absent a product subcommand it delegates to `cli.main`.
+- `lbe_guard_inspector/cli.py` records that the prior Python/Textual interface had been removed in favor of the Cline CLI/SDK surface, so the newly added Textual surface also requires explicit product-direction reconciliation.
+- Source-level quit bindings do not prove installed PTY/ConPTY terminal restoration or restart/resume.
+
+## Locked product contract
+
+```text
+USER
+  -> lbe
+  -> complete LBE coding IDE CLI/TUI
+  -> embedded Cline provider/model/reasoning mechanics
+  -> authoritative LBE runtime
+  -> governed execution
+  -> persisted ToolReceipt/evidence
+  -> validation/completion
+```
+
+No final PASS may be recorded from module presence, source imports, color changes, or synthetic UI projection.
+
+Publication remains locked.
