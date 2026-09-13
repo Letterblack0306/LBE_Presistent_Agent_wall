@@ -16,6 +16,7 @@ from .tool_orchestration import (
     GovernedToolOrchestrator,
     ToolExecutionContext,
     ToolRequest,
+    ToolReceipt,
 )
 
 
@@ -148,6 +149,7 @@ class GovernedClineWorker:
         context: ToolExecutionContext,
         timeout_seconds: float = 60.0,
         on_provider_event: Callable[[BridgeFrame], None] | None = None,
+        on_tool_receipt: Callable[[BridgeFrame, ToolReceipt], None] | None = None,
     ) -> BridgeFrame:
         """Run one Cline turn while LBE remains the only executable-tool owner."""
         if frame.message_type != "turn.execute":
@@ -177,6 +179,7 @@ class GovernedClineWorker:
                     response,
                     orchestrator=orchestrator,
                     context=context,
+                    on_tool_receipt=on_tool_receipt,
                 )
                 continue
 
@@ -238,6 +241,7 @@ class GovernedClineWorker:
         *,
         orchestrator: GovernedToolOrchestrator,
         context: ToolExecutionContext,
+        on_tool_receipt: Callable[[BridgeFrame, ToolReceipt], None] | None = None,
     ) -> None:
         tool_id = proposal.payload.get("tool_id")
         arguments = proposal.payload.get("arguments", {})
@@ -265,6 +269,8 @@ class GovernedClineWorker:
                 context=context,
             )
         )
+        if on_tool_receipt is not None:
+            on_tool_receipt(proposal, receipt)
         result = BridgeFrame(
             protocol_version=PROTOCOL_VERSION,
             message_id=self._next_message_id("tool-result"),

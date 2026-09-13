@@ -20,6 +20,7 @@ from lbe_guard_inspector.runtime.tool_orchestration import (
     GovernedToolOrchestrator,
     ToolExecutionContext,
     ToolExecutionResult,
+    ToolReceiptStatus,
     ToolRegistry,
     workspace_read_spec,
 )
@@ -424,3 +425,68 @@ def test_cline_tool_call_routes_through_governed_orchestrator_and_continues(
         assert orchestrator.receipt(calls[0].operation_id) is not None
         assert len(server.requests) == 2
         worker.shutdown(_frame("runtime.shutdown", message_id="py-3"))
+
+
+def test_tool_receipt_is_correlated_to_the_governing_proposal(tmp_path: Path) -> None:
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return ToolExecutionResult(
+            output={"path": "README.md", "content": "governed-result"},
+            evidence=({"ref": "workspace:README.md", "verified": True},),
+        )
+
+    registry = ToolRegistry()
+    registry.register(workspace_read_spec(), handler)
+    orchestrator = GovernedToolOrchestrator(registry=registry)
+    allowed_tools = [
+        {
+            "tool_id": "workspace.read",
+            "description": "Read one file through the LBE governed workspace owner.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}},
+                "required": ["path"],
+                "additionalProperties": False,
+            },
+            "timeout_ms": 10_000,
+        }
+    ]
+    correlated = []
+    with _openai_stub([_tool_call_response(), _text_response("tool complete")]) as (
+        server,
+        base_url,
+    ):
+        worker = GovernedClineWorker()
+        worker.start(
+            _frame(
+                "runtime.start",
+                payload=_provider_payload(base_url, allowed_tools=allowed_tools),
+            )
+        )
+        result = worker.execute_turn(
+            _frame(
+                "turn.execute",
+                message_id="py-2",
+                payload={"text": "Read README.md then finish."},
+            ),
+            orchestrator=orchestrator,
+            context=_context(tmp_path, "inspect"),
+            timeout_seconds=15,
+            on_tool_receipt=lambda proposal, receipt: correlated.append((proposal, receipt)),
+        )
+    assert result.message_type == "turn.completed"
+    assert result.payload["output_text"] == "tool complete"
+    assert len(correlated) == 1, "exactly one tool receipt must be correlated to its proposal"
+    proposal, receipt = correlated[0]
+    assert proposal.payload["tool_id"] == "workspace.read"
+    assert proposal.cline_tool_call_id
+    assert proposal.lbe_call_id
+    assert receipt.tool_id == proposal.payload["tool_id"]
+    assert receipt.operation_id == proposal.operation_id
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert receipt.evidence
+    assert orchestrator.receipt(receipt.operation_id) is not None
+    assert len(calls) == 1
+    worker.shutdown(_frame("runtime.shutdown", message_id="py-3"))
