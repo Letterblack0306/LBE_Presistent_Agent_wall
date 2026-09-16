@@ -686,6 +686,42 @@ SUPERSEDES: none
 RESULT: NOT_STARTED
 ```
 
+## INTENT LBE-INTENT-FINAL-PRODUCT-SOURCE-RECONCILIATION-001
+
+```text
+INTENT_ID: LBE-INTENT-FINAL-PRODUCT-SOURCE-RECONCILIATION-001
+STATUS: ACTIVE
+REQUEST: Reconcile the preserved local provider-runtime delta (cli.py, cline_reasoning_provider.py,
+         provider_turn_runtime.py, tests/test_provider_turn_runtime.py, pyproject.toml) onto canonical
+         origin/main 388ca647 under the FINAL_PRODUCT_SOURCE_RECONCILIATION gate, without duplicating
+         the on_tool_receipt correlation owner or existing provider continuation owners.
+WHY: Laptop-local uncommitted provider/continuation and model-validation work had to be preserved
+     across the required fast-forward to 388ca647 and either land in canonical source or be explicitly
+     superseded; losing it silently would drop genuine governed-runtime work.
+AFFECTED_STRUCTURE: lbe_guard_inspector/cli.py, lbe_guard_inspector/cline_reasoning_provider.py,
+                    lbe_guard_inspector/provider_turn_runtime.py, tests/test_provider_turn_runtime.py,
+                    pyproject.toml, docs/governance/PROJECT_INTENT_LEDGER.md
+EXISTING_OWNER: Existing governed provider-turn runtime owners; existing Cline stdio bridge
+                on_tool_receipt correlation owner; ClineReasoningBackend provider adapter owner;
+                product_entry single-command CLI surface; existing validation/completion owners.
+DESIRED_RESULT: Canonical main carries the retained deltas (governed runtime doctrine delivery and
+                guidance load, backend model resolution, provider adapter reads, model-validation
+                hardening) with no duplicate owner and the canonical lbe entrypoint intact.
+NON_GOALS: No Textual deletion; no gate merge or gate transition; no branch or worktree; no generated
+           artifact commits; no on_tool_receipt duplication; no provider registry replacement.
+REUSE_DECISION: REUSE GovernedProviderTurnRuntime, the stdio bridge correlation path, and registry
+                adapter construction; ADD only the preserved local deltas adapted to current owners;
+                ADAPT ClineReasoningBackend model resolution to keep upstream factories working.
+AUTHORITY_IMPACT: No new session, authorization, execution, receipt, evidence, persistence,
+                  validation, or completion authority; retained deltas strengthen existing owners only.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tests/,pyproject.toml,docs/governance/PROJECT_INTENT_LEDGER.md,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: focused provider-runtime tests; cline stdio bridge tests; CLI/package-relevant
+                   tests; full pytest suite; git diff --check clean.
+MACHINE_SLICE: FINAL_PRODUCT_SOURCE_RECONCILIATION
+SUPERSEDES: none
+RESULT: NOT_STARTED
+```
+
 ## Ledger law
 
 ```text

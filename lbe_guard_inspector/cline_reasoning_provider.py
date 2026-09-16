@@ -39,12 +39,16 @@ def _provider_request_payload(request: ReasoningRequest) -> dict[str, object]:
 class ClineReasoningBackend:
     """Use the already-installed Cline provider gateway behind LBE validation."""
 
-    def __init__(self, *, provider_id: str, config: ProviderConfig, node_executable: str = "node") -> None:
-        if not isinstance(config, ProviderConfig):
-            raise TypeError("config must be a ProviderConfig")
+    def __init__(self, *, provider_id: str, model: str | None = None, config: ProviderConfig | None = None, node_executable: str = "node") -> None:
         if not isinstance(provider_id, str) or not provider_id.strip():
             raise ValueError("provider_id must be a non-empty string")
         self.provider_id = provider_id.strip()
+        resolved_model = model if isinstance(model, str) and model.strip() else (config.model if config is not None else "")
+        if not isinstance(resolved_model, str) or not resolved_model.strip():
+            raise ValueError("model must be a non-empty string")
+        self.model = resolved_model.strip()
+        if config is not None and not isinstance(config, ProviderConfig):
+            raise TypeError("config must be a ProviderConfig or None")
         self._config = config
         self._node_executable = node_executable
 

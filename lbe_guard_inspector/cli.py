@@ -461,6 +461,12 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
                 provider_id=state.provider_id,
                 provider_config=config,
             )
+            intent = "inspect_workspace" if state.mode == AgentMode.AUDIT.value else "diagnose_failure" if state.mode == AgentMode.INVESTIGATION.value else "inspect_workspace"
+            guidance = build_agent_guidance(
+                mode_decision=resolve_mode(ModeRequest(intent=intent, permission=state.permission, runtime_policy=state.runtime_policy, workspace_root=str(state.canonical_workspace_root))),
+                workspace_root=state.canonical_workspace_root,
+                tools=(),
+            )
             provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=GovernedProviderTurnRuntime(
                 history=history,
                 gateway=GovernedAgentGateway(
@@ -468,6 +474,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
                     reasoning_controller=controller,
                 ),
                 mode=AgentMode(state.mode),
+                guidance=guidance,
             ))
     prompt = getattr(args, "prompt", None)
     wait_timeout = getattr(args, "wait_timeout", 120.0)

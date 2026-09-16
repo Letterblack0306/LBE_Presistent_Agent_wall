@@ -251,10 +251,11 @@ class GovernedProviderTurnRuntime:
 
     supports_cancellation = False
 
-    def __init__(self, *, history: SessionOperationalHistory, gateway: GovernedAgentGateway, mode: AgentMode) -> None:
+    def __init__(self, *, history: SessionOperationalHistory, gateway: GovernedAgentGateway, mode: AgentMode, guidance: AgentGuidance | None = None) -> None:
         self.history = history
         self.gateway = gateway
         self.mode = mode
+        self.guidance = guidance
 
     def cancel(self, *, turn_id: str) -> None:
         raise RuntimeError("live provider cancellation is not available for governed reasoning")
@@ -274,6 +275,14 @@ class GovernedProviderTurnRuntime:
             provider_id=state.provider_id, model_id=state.provider_model,
         ))
         try:
+            problem = text
+            if self.guidance is not None:
+                self.history.append_event(OperationalEvent(
+                    session_id=turn.session_id, turn_id=turn_id,
+                    event_type="runtime.guidance.loaded",
+                    payload=self.guidance.audit_payload(),
+                ))
+                problem = f"{self.guidance.prompt}\n\n---\n\n{text}"
             result = self.gateway.invoke(AgentRequestEnvelope(
                 request_id=f"tui-{uuid4().hex}",
                 session_id=state.session_id,
@@ -282,7 +291,7 @@ class GovernedProviderTurnRuntime:
                 workspace_root=state.canonical_workspace_root,
                 mode=self.mode,
                 operation_id="reasoning.inspect",
-                arguments={"problem": text, "max_results": 10},
+                arguments={"problem": problem, "max_results": 10},
             ))
             response = result.response
             if response.explanation is not None and response.explanation.explanation:
