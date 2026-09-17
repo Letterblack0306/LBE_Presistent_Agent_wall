@@ -46,13 +46,24 @@ LBE owns workspace/session/turn identity, provider/model policy truth, authoriza
 
 Do not create a second provider gateway, session store, authorization engine, tool executor, receipt/evidence authority, persistence owner, or completion authority.
 
-## 2. Accepted user-facing product surface
+## 2. Product entrypoint and embedded mechanics
+
+The normal user entrypoint and final product identity are:
 
 ```text
-client source = C:\LBE-TUI-Lab\cline\apps\cli
-launcher      = C:\LBE-TUI-Lab\run-cline-lbe.ps1
-runtime       = LBE Agent Wall
+product = LBE
+entrypoint = lbe
+runtime authority = LBE Agent Wall
 validation runtime = C:\Agents-Memory-Tool-v6-validation
+```
+
+Cline is embedded/reused for reasoning, provider/model, continuation, response composition,
+and compatible interaction mechanics. It is not an independent final-product authority or a
+separate final-product acceptance path:
+
+```text
+embedded Cline source = C:\LBE-TUI-Lab\cline\apps\cli
+embedded launcher/mechanics = C:\LBE-TUI-Lab\run-cline-lbe.ps1
 ```
 
 Rust/Ratatui is reference/integration only:
@@ -116,7 +127,7 @@ no permanent centered Cline hero / TrackedRobot-style landing composition
 ## 5. Current single job
 
 ```text
-CLINE_LBE_STRUCTURAL_VISUAL_DIFFERENTIATION
+LBE_CLI_PRODUCT_COMPOSITION_AND_STRUCTURAL_VISUAL_DIFFERENTIATION
 ```
 
 Execute this without reopening settled runtime architecture:
