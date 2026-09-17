@@ -43,11 +43,21 @@ LBE owns identity, provider/model policy truth, authorization, governed executio
 
 No second authority owner may be introduced.
 
-## Accepted user-facing client
+## Product entrypoint and embedded mechanics
 
 ```text
-C:\LBE-TUI-Lab\cline\apps\cli
-C:\LBE-TUI-Lab\run-cline-lbe.ps1
+product       = LBE
+entrypoint    = lbe
+runtime       = LBE Agent Wall
+```
+
+Cline is embedded/reused for reasoning, provider/model, continuation, response composition,
+and compatible interaction mechanics. It is not an independent final-product authority or a
+separate final-product acceptance path:
+
+```text
+embedded source = C:\LBE-TUI-Lab\cline\apps\cli
+embedded launcher/mechanics = C:\LBE-TUI-Lab\run-cline-lbe.ps1
 ```
 
 Validation runtime:
@@ -105,7 +115,7 @@ no permanent centered Cline hero / TrackedRobot-style landing composition
 ## Current single job
 
 ```text
-CLINE_LBE_STRUCTURAL_VISUAL_DIFFERENTIATION
+LBE_CLI_PRODUCT_COMPOSITION_AND_STRUCTURAL_VISUAL_DIFFERENTIATION
 ```
 
 Work only in the selected Cline client/projection layer and reuse existing LBE runtime owners.
