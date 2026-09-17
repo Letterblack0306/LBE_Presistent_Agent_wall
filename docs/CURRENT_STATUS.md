@@ -12,7 +12,9 @@ Canonical branch: `main`
 
 Canonical backend workspace: `C:\Agents-Memory-Tool-v6-integration`
 
-Accepted user-facing client workspace: `C:\LBE-TUI-Lab`
+Product entrypoint: `lbe`
+
+Embedded client/mechanics workspace: `C:\LBE-TUI-Lab`
 
 ## Current machine state — READ FIRST
 
@@ -44,7 +46,8 @@ The contradiction is not a missing LBE runtime owner. It is a final-product sour
 
 ```text
 USER
-  -> Cline CLI/TUI reasoning/client mechanics
+  -> `lbe` LBE-branded CLI/TUI product entrypoint
+  -> embedded Cline reasoning/client mechanics
   -> LBE session/workspace identity
   -> mode/policy
   -> authorization
