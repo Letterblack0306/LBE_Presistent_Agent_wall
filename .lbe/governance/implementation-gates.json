@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "FINAL_PRODUCT_SOURCE_RECONCILIATION",
+  "active_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -59,20 +59,20 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-FINAL-PRODUCT-SOURCE-RECONCILIATION-001",
-    "owner": "Existing LBE session/provider/authorization/ToolRegistry/GovernedToolOrchestrator/receipt/evidence/persistence/validation/completion owners, with the single-command LBE CLI/TUI product surface composed over embedded Cline provider/model/reasoning mechanics",
-    "index_revision": "FFE9CDE4BC1D911A313E85D18691964B0640E1694224A99CE08386002C5CB9DE"
+    "intent_id": "LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001",
+    "owner": "LBE-owned Rust/Ratatui presentation client over existing LBE runtime/session/provider-policy/authorization/ToolRegistry/GovernedToolOrchestrator/receipt/evidence/persistence/validation/completion owners, with headless Cline reasoning/provider/model/continuation mechanics",
+    "index_revision": "PENDING_REHASH_AFTER_2026_09_18_PRODUCT_OWNER_DECISION"
   },
   "closure": {
     "status": "CLOSED",
     "last_completed_slice": "PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION",
     "last_completed_intent": "LBE-INTENT-PARENT-CONTINUATION-DEEP-CORRELATION-001",
     "checkpoint": "docs/acceptance/PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE_CHECKPOINT.md",
-    "next_slice": "FINAL_PRODUCT_SOURCE_RECONCILIATION",
+    "next_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "BLOCKED_BY_SOURCE_CONTRADICTION",
+    "status": "OPEN_RUST_TUI_CANONICALIZATION",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "UNVERIFIED",
@@ -103,12 +103,12 @@
         "evidence": "No claim-matched installed restart/resume proof is present in canonical source evidence."
       },
       "STRUCTURAL_LBE_UI": {
-        "status": "UNVERIFIED",
-        "evidence": "A new Textual shell exists, but user-authorized final UI technology/composition and live structural acceptance are not proven."
+        "status": "ACTIVE",
+        "evidence": "Explicit 2026-09-18 product-owner decision selects the existing LBE-owned Rust/Ratatui client as the canonical visible product implementation. Structural implementation and real-terminal acceptance remain open."
       },
       "FINAL_PRODUCT_ACCEPTANCE": {
         "status": "BLOCKED",
-        "evidence": "Cannot close while runtime is PREVIEW, coding/receipt/evidence paths are synthetic, and the final visible surface is not reconciled with the locked Cline-under-LBE architecture."
+        "evidence": "Cannot close until the Rust/Ratatui client is the actual packaged/installed `lbe` surface, projects authoritative LBE state, uses headless Cline reasoning/provider mechanics without native Cline authority, and passes full PTY/ConPTY lifecycle acceptance."
       }
     },
     "next_phase": null
@@ -533,45 +533,56 @@
     "completion_checkpoint": "docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md"
   },
   "lbe_interface_product_surface": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_AUTHORIZATION",
+    "status": "AUTHORIZED_RUST_TUI_PRODUCT_SURFACE",
+    "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_18",
+    "implementation_technology": "Rust/Ratatui",
+    "canonical_client_workspace": "C:/LBE-TUI-Lab/src",
+    "visual_contract": "Existing LBE HTML/React work and canonical GPT-K LBE_TERMINAL_TUI_UI_PLAN.md are reference/specification inputs; browser prototypes are not runtime truth.",
+    "reasoning_mechanics": "Cline remains selected headless reasoning/planning/provider/model/tool-proposal/continuation/response-composition source behind LBE.",
     "scope": [
-      "lbe_interface_layout",
-      "conversation_projection",
-      "provider_session_controls",
-      "evidence_receipt_projection",
-      "keyboard_interaction",
-      "streaming_feedback",
-      "PROJECT_INDEX.md"
+      "lbe_owned_terminal_layout",
+      "conversation_work_timeline",
+      "provider_model_projection",
+      "plan_act_audit_controls",
+      "approval_presentation",
+      "runtime_activity_projection",
+      "context_usage_projection",
+      "keyboard_interaction"
     ],
     "required_evidence": [
-      "canonical_textual_interface",
-      "persisted_session_projection",
-      "provider_and_capability_projection",
-      "receipt_and_evidence_detail",
-      "keyboard_controls",
-      "focused_ui_tests",
-      "full_regression",
-      "real_local_launch"
+      "canonical_rust_client_build",
+      "real_lbe_runtime_attachment",
+      "headless_cline_provider_turn",
+      "authoritative_provider_model_projection",
+      "governed_tool_and_approval_flow",
+      "tool_receipt_and_evidence_projection",
+      "real_context_usage",
+      "plan_act_audit_policy_mapping",
+      "clean_pty_conpty_exit",
+      "restart_resume",
+      "installed_single_command_lbe_launch"
     ],
     "product_identity": "LBE",
     "reference_inputs": [
-      "Cline interaction mechanics",
-      "user-provided visual reference",
-      "lbe-tui reference only"
+      "existing LBE HTML/React visual and interaction work",
+      "Cline interaction patterns where useful",
+      "upstream Cline CLI/OpenTUI as reference only"
     ],
-    "authority_boundary": "LBE owns session, provider, authorization, execution, receipts, evidence, persistence, and completion; interface remains projection/control only",
+    "authority_boundary": "Rust/Ratatui owns presentation/input only; Cline owns headless cognition/provider continuation mechanics; LBE owns session/workspace identity, provider policy truth, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion.",
     "non_goals": [
-      "lbe-tui activation",
+      "copied or rebranded Cline product UI as a requirement",
+      "native Cline session or persistence authority",
+      "native Cline mutation/shell/MCP authority",
+      "browser/HTML prototype as runtime truth",
+      "Python/Textual final-product UI",
       "independent provider transport",
       "independent session identity",
-      "native shell execution",
       "new runtime authority",
-      "publication",
+      "publication without separate authorization",
       "branch creation",
       "worktree creation"
     ],
-    "completion_checkpoint": "docs/acceptance/LBE_INTERFACE_PRODUCT_SURFACE_CHECKPOINT.md",
+    "completion_checkpoint": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
     "publish_allowed": false
   },
   "forbidden": [
