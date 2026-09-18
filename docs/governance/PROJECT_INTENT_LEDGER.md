@@ -734,3 +734,24 @@ NO MACHINE-GATE MATCH -> NO CHANGE
 
 Completed intents must update `RESULT` and retain the evidence/commit reference. Proposed intents
 remain non-authorizing until explicitly bound to the machine gate.
+
+
+## INTENT LBE-INTENT-DOCUMENT-SOURCE-OF-TRUTH-CONSOLIDATION-001
+
+```text
+INTENT_ID: LBE-INTENT-DOCUMENT-SOURCE-OF-TRUTH-CONSOLIDATION-001
+STATUS: ACTIVE
+REQUEST: Establish one canonical LBE product source-of-truth document and one narrowly-scoped agent document-write policy before any documentation cleanup.
+WHY: Current product truth is distributed across roadmap, design, status, acceptance, and historical records. Agents must not infer that an omitted feature is obsolete, rewrite architecture merely to match current wiring, or generate new competing status/plan documents.
+AFFECTED_STRUCTURE: docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md,docs/governance/AGENT_DOCUMENT_WRITE_POLICY.md,docs/governance/PROJECT_INTENT_LEDGER.md
+EXISTING_OWNER: PROJECT_INDEX.md; docs/README.md; .lbe/governance/implementation-gates.json; PROJECT_INTENT_LEDGER.md; current runtime/source/acceptance owners.
+DESIRED_RESULT: One product-truth document preserves current architecture, implemented/partial/planned feature inventory, evidence classifications, and feature-preservation rules. One governance policy defines that after the one-time consolidation, agents may not create or edit arbitrary documentation; ordinary agent documentation writes are limited to bounded intent lifecycle entries in PROJECT_INTENT_LEDGER.md.
+NON_GOALS: No product-code mutation. No deletion or relocation in this intent. No feature removal. No architecture ownership change. No modification of completed historical intent records. No conversion of historical acceptance evidence into current truth. No publication.
+REUSE_DECISION: REUSE existing machine governance, project index, intent ledger, Git history, current runtime/source evidence, and acceptance evidence. Consolidate current truth without discarding historical proof.
+AUTHORITY_IMPACT: None. This intent changes documentation routing only and does not create a new runtime, reasoning, execution, validation, persistence, or completion authority.
+EXPECTED_PATH_PREFIXES: docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md,docs/governance/AGENT_DOCUMENT_WRITE_POLICY.md,docs/governance/PROJECT_INTENT_LEDGER.md
+REQUIRED_EVIDENCE: created source-of-truth document; created document-write policy; no product-code changes; no existing docs deleted; canonical GitHub commit(s) available for local pull.
+MACHINE_SLICE: NONE — explicit user-authorized documentation-governance bootstrap; does not advance the closed product gate.
+SUPERSEDES: none
+RESULT: ACTIVE
+```
