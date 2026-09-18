@@ -72,12 +72,11 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "RUNTIME_AND_BARE_COMMAND_PASS__CANONICAL_INSTALLER_CONTRACT_FAIL",
+    "status": "INSTALLED_PRODUCT_PASS__CANONICAL_INSTALLER_SOURCE_PENDING",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "PASS",
-        "evidence": "Fresh-terminal acceptance 2026-09-18: bare `lbe` resolved first through C:\\Users\\prave\\AppData\\Roaming\\npm\\lbe(.ps1/.cmd) and launched the canonical Rust/Ratatui binary. Real WinPTY showed LETTERBLACK ENGINE, CONNECTED / AGENT WALL / ACT LIVE, authoritative session sess_lbe_accept_001, live LM Studio google/gemma-4-e4b, 11-provider discovery, and clean Ctrl+D exit. This proves command-name invocation behavior on the tested machine.",
-        "qualification": "The winning npm shims were manually rewired and target C:\\Users\\prave\\AppData\\Local\\Temp\\opencode\\lbe-tui-canon-clone\\target\\release\\lbe.exe. This is not yet a durable installer-owned product entrypoint."
+        "evidence": "Fresh-terminal installed-product acceptance 2026-09-18: Get-Command lbe -All resolves first to C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd, which launches installed lbe-launch.ps1 -> installed lbe.exe. Bare `lbe` renders LETTERBLACK ENGINE, CONNECTED / AGENT WALL / ACT LIVE, restores sess_lbe_accept_001, projects LM Studio / google/gemma-4-e4b, and tears down without retained lbe.exe processes."
       },
       "REAL_RUNTIME_ATTACHMENT": {
         "status": "PASS",
@@ -109,7 +108,7 @@
       },
       "FINAL_PRODUCT_ACCEPTANCE": {
         "status": "BLOCKED",
-        "evidence": "Interactive/runtime acceptance and fresh-shell bare-command behavior pass on the tested machine, but the canonical installer/launcher contract remains unproven because the winning shims were manually rewired to an ephemeral Temp build. Final distributable/installed-product acceptance remains blocked on installer-owned durable command resolution."
+        "evidence": "All functional installed-runtime, PTY, provider/model, governed tool, receipt/evidence, approval/reject, exit, resume, mode-policy, and bare-command behaviors are proven PASS on the tested machine. Final canonical product acceptance is blocked only because the durable installer/launcher behavior is not yet represented in canonical GitHub main as required by implementation_head_must_equal_main."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
         "status": "PASS",
@@ -122,9 +121,9 @@
         "required_fix": "NONE. Closed. Do not reopen without contradictory runtime evidence."
       },
       "CANONICAL_INSTALLER_LAUNCHER_CONTRACT": {
-        "status": "FAIL",
-        "evidence": "Canonical tools/lbe_product_integration.ps1 has not been shown to install/own the winning PATH entrypoint. The accepted bare command currently depends on manually edited npm-global shim files and an ephemeral Temp build path; original npm shims were backed up as *.bak. The stale @letterblack/lbe installation remains a junction to C:\\Agents-Memory-Tool-v6-integration and lacks package.json/bin/lbe.js.",
-        "required_fix": "Update the canonical combined product installer so it installs one durable PATH-owned `lbe` command pointing to the installed LetterBlack LBE root (not Temp or a dirty worktree), migrates/neutralizes stale npm/Python collisions explicitly, then reinstall and repeat fresh-terminal resolution/PTY smoke."
+        "status": "UNVERIFIED",
+        "evidence": "The tested machine now has the desired stable installation root, authoritative bin\\lbe.cmd PATH entry, removed stale npm package/shims, and working zero-argument launcher. However canonical GitHub main 85de0ffc7c37b2978b2e9b07d8079505656bf64a still has tools/lbe_product_integration.ps1 that copies lbe.exe/lbe-launch.ps1 but does not create bin\\lbe.cmd, prepend user PATH, or implement the tested zero-argument durable launcher contract. Therefore installed behavior is proven, but its canonical source provenance is not.",
+        "required_fix": "Publish the exact installer/launcher changes that produced the proven %LOCALAPPDATA%\\LetterBlack\\LBE installation to canonical tools/lbe_product_integration.ps1 (and only any directly required tests/docs), then rebuild/reinstall from that exact main and repeat the lightweight fresh-shell Get-Command/lbe smoke. No runtime/UI/mode-policy changes are required."
       }
     },
     "next_phase": null
