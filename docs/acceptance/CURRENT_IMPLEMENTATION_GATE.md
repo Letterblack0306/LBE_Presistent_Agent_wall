@@ -72,7 +72,7 @@ Rust/Ratatui selected product technology   ACCEPTED
 existing Rust client implementation        IMPLEMENTED / NEEDS CANONICALIZATION
 headless Cline reasoning mechanics          PRESENT / RETAIN
 HTML/React visual contract                  REFERENCE / RETAIN
-product integration script                  NEEDS RECONCILIATION
+product integration script                  SOURCE_RECONCILED / VALIDATION_PENDING
 installed one-command product               UNVERIFIED
 real PTY/ConPTY acceptance                  UNVERIFIED
 FINAL_PRODUCT_ACCEPTANCE                    BLOCKED
@@ -86,7 +86,7 @@ LBE_OWNED_RUST_TUI_PRODUCT_SURFACE
 
 Required sequence:
 
-1. Reconcile `tools/lbe_product_integration.ps1` so its contract/proof/build/package/launcher targets all match the selected Rust LBE client plus headless Cline worker composition.
+1. Validate the `tools/lbe_product_integration.ps1` source reconciliation at `cebd8cf7751b2cdeb8a76fb0dcc2e0bc0c8f58e5`; copied Cline UI checks are reference-only/non-blocking and the build/package path targets the Rust LBE client plus headless Cline worker.
 2. Preserve existing LBE runtime/session/provider/authorization/execution/receipt/evidence owners.
 3. Adapt the locked LBE UI contract and existing HTML/React visual work into the Rust client without synthetic state.
 4. Ensure PLAN/ACT/AUDIT maps explicitly to backend policy/mode/permission owners.
