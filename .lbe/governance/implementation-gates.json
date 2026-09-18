@@ -72,7 +72,7 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "MODE_POLICY_CANONICALIZED_REVALIDATION_PENDING",
+    "status": "MODE_POLICY_EXACT_HEAD_REVALIDATION_FAILED_REPAIR_PENDING_RECHECK",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "UNVERIFIED",
@@ -111,9 +111,13 @@
         "evidence": "Cannot close until the Rust/Ratatui client is the actual packaged/installed `lbe` surface, projects authoritative LBE state, uses headless Cline reasoning/provider mechanics without native Cline authority, and passes full PTY/ConPTY lifecycle acceptance."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
-        "status": "UNVERIFIED",
-        "evidence": "Local candidate bounded-runtime-validation-002 previously passed. The same semantics are now committed to canonical GitHub main: backend f7e09491c2142778ccead48611ed4c63d0da30d9 and TUI 7c41dfab251e2da6226d4682e9c5b1ea00afa3f6. Exact-head local revalidation is still required before PASS.",
-        "required_fix": "Fetch the exact canonical backend/TUI heads without destroying unrelated local work, then rerun focused backend tests, cargo check/test/fmt, and bounded-runtime-validation-002. Only exact-head PASS may close this slice."
+        "status": "FAIL",
+        "evidence": "Exact-head validation mode-policy-exact-head-revalidation-001 failed on backend 905030cb and TUI 7c41dfab. Backend mode path raised NameError because ModeRequest/resolve_mode were not imported; provider-list test also had a stale singleton expectation. TUI cargo fmt failed and 26 tests failed; one deterministic replay mismatch was found in AgentMode::next ordering versus canonical tests. Narrow follow-up fixes are now committed, but exact-head validation has not yet been rerun.",
+        "follow_up_commits": {
+          "backend": "24e3cacf1e2899df0d28beffe27ed1a71a583b08",
+          "tui": "2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf"
+        },
+        "required_fix": "Rerun focused backend tests and full Rust check/test/fmt against the new exact canonical heads. If Rust still fails, capture the exact failing test names/assertions before any further source changes. Then rerun bounded runtime validation."
       }
     },
     "next_phase": null
