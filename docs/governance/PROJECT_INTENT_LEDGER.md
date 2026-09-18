@@ -484,7 +484,7 @@ COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_
 
 ```text
 INTENT_ID: LBE-INTENT-CLINE-CLI-LBE-RUNTIME-INTEGRATION-001
-STATUS: ACTIVE
+STATUS: SUPERSEDED IN CLIENT/PRESENTATION SCOPE; HEADLESS CLINE MECHANICS RETAINED
 REQUEST: Make the Cline CLI/TUI the selected LetterBlack product surface and replace native
          Cline SessionRuntime product authority with an LBE-backed session/runtime adapter.
 WHY: Cline provides reusable reasoning, provider, tool-proposal, continuation, and presentation
@@ -508,8 +508,8 @@ NON_GOALS: No second LBE runtime; no Cline-owned session, provider, authorizatio
            native mutation bypass; no publication; no branch/worktree creation.
 REUSE_DECISION: REUSE existing LBE owners and Cline AgentRuntime/provider/event mechanics. ADD only
                 the bounded authority stdio/session transport and adapter seam required for composition.
-AUTHORITY_IMPACT: LBE remains the sole runtime and governance authority; Cline is the selected
-                  reasoning/client mechanics surface.
+AUTHORITY_IMPACT: LBE remains the sole runtime and governance authority. Cline remains selected for
+                  headless reasoning/provider/model/continuation mechanics, but is no longer the selected visible client surface.
 EXPECTED_PATH_PREFIXES: bin/lbe.js,run-lbe.bat,lbe_guard_inspector/product_entry.py,lbe_guard_inspector/cli.py,lbe_guard_inspector/session_lifecycle.py,lbe_guard_inspector/provider_turn_runtime.py,lbe_guard_inspector/persistent_turn_control.py,lbe_guard_inspector/memory/,lbe_guard_inspector/runtime/,docs/governance/
 REQUIRED_EVIDENCE: transport framing and identity validation; authoritative session start/restore;
                    provider event streaming; native SessionRuntime not instantiated for product path;
@@ -517,7 +517,8 @@ REQUIRED_EVIDENCE: transport framing and identity validation; authoritative sess
                    cancellation; persistence/resume; installed Cline CLI acceptance; no duplicate authority.
 MACHINE_SLICE: TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION
 SUPERSEDES: LBE-INTENT-TUI-P2P3-GOVERNED-INTEGRATION-001 for the selected product surface and adapter scope
-RESULT: ACTIVE
+SUPERSEDED_BY: LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001 (client/presentation scope only)
+RESULT: SUPERSEDED_IN_CLIENT_SURFACE_SCOPE
 COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_CHECKPOINT.md
 ```
 
