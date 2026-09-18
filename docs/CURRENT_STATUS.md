@@ -235,3 +235,29 @@ Do not create another current-status or roadmap document. Update these owners in
 ## Publication
 
 Publication/version work is not part of the active final-product source reconciliation unless separately authorized by the machine gate and user.
+## Exact-head revalidation failure — 2026-09-18
+
+`mode-policy-exact-head-revalidation-001` failed against clean exports of backend `905030cb72eebdaff12c124165abfecd6cb6e74d` and TUI `7c41dfab251e2da6226d4682e9c5b1ea00afa3f6`.
+
+Observed:
+
+- backend mode transition raised `NameError` because `ModeRequest` / `resolve_mode` were not imported at module scope;
+- provider-list test had a stale singleton-provider expectation unrelated to the mode repair;
+- Rust `cargo fmt -- --check` failed;
+- Rust tests: 176 passed, 26 failed, 2 ignored;
+- canonical mode-policy gate therefore remained FAIL.
+
+Narrow canonical follow-up fixes are now committed:
+
+```text
+backend = 24e3cacf1e2899df0d28beffe27ed1a71a583b08
+  - restore canonical mode-controller import
+  - make provider-list test assert current registry contract rather than obsolete singleton list
+
+TUI = 2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf
+  - align visible cycle with existing canonical test contract: ACT -> PLAN -> AUDIT -> ACT
+  - apply rustfmt-style formatting to the inserted real mode bridge
+```
+
+These commits are **UNVERIFIED** until the exact-head suite and bounded runtime probe pass again. No further Rust test failures should be patched without their exact names/assertions.
+
