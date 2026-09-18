@@ -1,14 +1,14 @@
 # Installed PTY/ConPTY and Final Product Acceptance Gate
 
-Status: **OPEN — FINAL PRODUCT SOURCE RECONCILIATION REQUIRED**
+Status: **OPEN — SINGLE-COMMAND INSTALLED LAUNCH ONLY BLOCKER**
 
 ## Machine-selected state
 
 ```text
 phase: INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE
-slice: FINAL_PRODUCT_SOURCE_RECONCILIATION
+slice: LBE_OWNED_RUST_TUI_PRODUCT_SURFACE
 status: OPEN
-implementation_allowed: true — final-product reconciliation only
+implementation_allowed: true — final acceptance only
 next_phase_locked: true
 required_status_for_advance: PASS
 publication: LOCKED / NOT AUTHORIZED
@@ -20,11 +20,11 @@ publication: LOCKED / NOT AUTHORIZED
 fresh installed environment
 -> open terminal
 -> type: lbe
--> full LBE coding IDE CLI/TUI renders
--> Cline provider/auth/model mechanics are available underneath
+-> full LBE Rust/Ratatui coding IDE CLI/TUI renders
+-> headless Cline provider/auth/model mechanics are available underneath
 -> selected provider/model is bound to the authoritative LBE session
--> normal coding turn uses the real governed runtime
--> authority-bearing tools pass through LBE authorization
+-> normal conversational/tool turn uses the real governed runtime
+-> authority-bearing capabilities pass through LBE authorization
 -> real persisted ToolReceipt/evidence are projected
 -> quit restores terminal cleanly
 -> restart
@@ -32,36 +32,64 @@ fresh installed environment
 -> same session/workspace resumes correctly
 ```
 
-## Current blockers
+## Runtime acceptance evidence — 2026-09-18
 
-1. The new Textual surface reports `RUNTIME: PREVIEW`.
-2. Normal text input currently generates synthetic governed/receipt/evidence strings.
-3. Provider/model binding is not demonstrated by the Textual product surface.
-4. No-argument `lbe` does not currently dispatch to `textual_tui.run_tui` in `product_entry.py`.
-5. `cli.py` still records the previous decision that Python/Textual was removed in favor of the Cline CLI/SDK surface, so the visible product technology/composition is internally contradictory.
-6. Installed PTY/ConPTY clean exit and restart/resume require claim-matched live proof.
+Real Windows PTY acceptance was executed against the canonical Rust/Ratatui release binary:
+
+```text
+C:\Users\prave\AppData\Local\Temp\opencode\lbe-tui-canon-clone\target\release\lbe.exe
+```
+
+Session:
+
+```text
+session   = sess_lbe_accept_001
+workspace = workspace_fac63b08febbb29c
+mode      = coding
+permission= write_allowed
+policy    = permissive
+provider  = LM Studio
+model     = google/gemma-4-e4b
+```
+
+Proven:
+
+1. Real PTY render: `LETTERBLACK ENGINE · CONNECTED · AGENT WALL · ACT LIVE`.
+2. Authoritative workspace/session/runtime policy projection.
+3. Live provider/model projection and 11-provider discovery.
+4. Real governed conversational turn through `workspace.read`.
+5. Real persisted ToolReceipt/evidence projection.
+6. Interactive approval -> ALLOW.
+7. Interactive rejection -> DENY.
+8. Clean Ctrl+D PTY exit.
+9. Restart/resume of the same persisted session.
+10. Persisted DB rows for session/turn/completion evidence.
+
+The test turn intentionally requested only a read. Deterministic completion later returned `VALIDATION_FAILED` because no source change existed. This is valid LBE completion behavior and does not negate the successful governed tool round trip.
 
 ## Required final verdicts
 
-| # | Verdict | Required evidence |
-|---:|---|---|
-| 1 | INSTALLED_PTY_CONPTY | Real installed PTY/ConPTY launch |
-| 2 | FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH | Fresh terminal: only `lbe` |
-| 3 | REAL_RUNTIME_ATTACHMENT | Authoritative session/runtime state, not PREVIEW |
-| 4 | PROVIDER_MODEL_BINDING | Live Cline provider/auth/model -> LBE session |
-| 5 | GOVERNED_CODING_FLOW | Real coding/tool round trip through LBE |
-| 6 | RECEIPT_EVIDENCE_PROJECTION | Persisted ToolReceipt/evidence IDs resolve |
-| 7 | CLEAN_TERMINAL_EXIT | Terminal restored after exit |
-| 8 | INSTALLED_RESTART_RESUME | Same workspace/session resumes |
-| 9 | FINAL_PRODUCT_ACCEPTANCE | All required verdicts PASS |
+| # | Verdict | Status | Evidence |
+|---:|---|---|---|
+| 1 | INSTALLED_PTY_CONPTY | PASS | Real Windows PTY capture |
+| 2 | FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH | **UNVERIFIED** | Direct release-binary path was used; fresh terminal `lbe` resolution still required |
+| 3 | REAL_RUNTIME_ATTACHMENT | PASS | CONNECTED / AGENT WALL / authoritative session |
+| 4 | PROVIDER_MODEL_BINDING | PASS | LM Studio / google/gemma-4-e4b |
+| 5 | GOVERNED_CODING_FLOW | PASS | Real governed `workspace.read` round trip |
+| 6 | RECEIPT_EVIDENCE_PROJECTION | PASS | Persisted receipt/evidence identifiers projected |
+| 7 | CLEAN_TERMINAL_EXIT | PASS | Ctrl+D clean exit |
+| 8 | INSTALLED_RESTART_RESUME | PASS | sess_lbe_accept_001 restored |
+| 9 | FINAL_PRODUCT_ACCEPTANCE | BLOCKED | Only verdict #2 remains |
 
-## Product direction
+## Sole remaining proof
 
-```text
-USER -> lbe
-     -> LBE coding IDE CLI/TUI
-     -> Cline mechanics underneath
-     -> LBE runtime authority
+From a fresh terminal, prove:
+
+```powershell
+Get-Command lbe -All
+lbe
 ```
 
-A skin-only shell, preview runtime, source-presence check, or fabricated receipt/evidence display cannot satisfy this gate.
+The resolved installed `lbe` entrypoint must launch the same canonical LBE-owned Rust/Ratatui product surface and reach the authoritative runtime. A direct invocation of `target\release\lbe.exe` is not enough for this one verdict.
+
+No additional runtime/UI implementation defect is currently proven.
