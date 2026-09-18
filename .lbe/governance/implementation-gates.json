@@ -72,12 +72,12 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "FINAL_PRODUCT_SINGLE_COMMAND_INSTALLER_CONTRACT_FAIL",
+    "status": "RUNTIME_AND_BARE_COMMAND_PASS__CANONICAL_INSTALLER_CONTRACT_FAIL",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
-        "status": "FAIL",
-        "evidence": "Fresh-terminal diagnostic 2026-09-18: resolution order is %APPDATA%\\npm\\lbe, %APPDATA%\\npm\\lbe.cmd, then Python312\\Scripts\\lbe.exe. The npm @letterblack/lbe shim is broken because it targets missing node_modules\\@letterblack\\lbe\\bin\\lbe.js; Python lbe.exe is the backend CLI, not Rust/Ratatui. Canonical Rust client exists and is PTY-proven but no stable installed PATH entry resolves `lbe` to it. Existing tools/lbe_product_integration.ps1 installer copies Rust lbe.exe to %LOCALAPPDATA%\\LetterBlack\\LBE and creates lbe-launch.ps1 but does not install an authoritative PATH command.",
-        "required_fix": "Repair the existing product installer/launcher owner: install one stable zero-argument-capable `lbe` command that bootstraps the combined LBE runtime and launches the installed Rust/Ratatui client; explicitly handle stale npm/Python command collisions. Do not use cargo install as the product installer and do not create an ad-hoc local shim outside the package owner."
+        "status": "PASS",
+        "evidence": "Fresh-terminal acceptance 2026-09-18: bare `lbe` resolved first through C:\\Users\\prave\\AppData\\Roaming\\npm\\lbe(.ps1/.cmd) and launched the canonical Rust/Ratatui binary. Real WinPTY showed LETTERBLACK ENGINE, CONNECTED / AGENT WALL / ACT LIVE, authoritative session sess_lbe_accept_001, live LM Studio google/gemma-4-e4b, 11-provider discovery, and clean Ctrl+D exit. This proves command-name invocation behavior on the tested machine.",
+        "qualification": "The winning npm shims were manually rewired and target C:\\Users\\prave\\AppData\\Local\\Temp\\opencode\\lbe-tui-canon-clone\\target\\release\\lbe.exe. This is not yet a durable installer-owned product entrypoint."
       },
       "REAL_RUNTIME_ATTACHMENT": {
         "status": "PASS",
@@ -109,7 +109,7 @@
       },
       "FINAL_PRODUCT_ACCEPTANCE": {
         "status": "BLOCKED",
-        "evidence": "All live runtime/UI/PTY sub-verdicts are now proven except FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH. Final acceptance requires one fresh-terminal proof that the installed command name `lbe` resolves to and launches this canonical Rust/Ratatui product path, not direct execution of target\\release\\lbe.exe."
+        "evidence": "Interactive/runtime acceptance and fresh-shell bare-command behavior pass on the tested machine, but the canonical installer/launcher contract remains unproven because the winning shims were manually rewired to an ephemeral Temp build. Final distributable/installed-product acceptance remains blocked on installer-owned durable command resolution."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
         "status": "PASS",
@@ -120,6 +120,11 @@
           "tui_default_state": "e22d3ef5acc46814558d92ccaba7a7b232d9921c"
         },
         "required_fix": "NONE. Closed. Do not reopen without contradictory runtime evidence."
+      },
+      "CANONICAL_INSTALLER_LAUNCHER_CONTRACT": {
+        "status": "FAIL",
+        "evidence": "Canonical tools/lbe_product_integration.ps1 has not been shown to install/own the winning PATH entrypoint. The accepted bare command currently depends on manually edited npm-global shim files and an ephemeral Temp build path; original npm shims were backed up as *.bak. The stale @letterblack/lbe installation remains a junction to C:\\Agents-Memory-Tool-v6-integration and lacks package.json/bin/lbe.js.",
+        "required_fix": "Update the canonical combined product installer so it installs one durable PATH-owned `lbe` command pointing to the installed LetterBlack LBE root (not Temp or a dirty worktree), migrates/neutralizes stale npm/Python collisions explicitly, then reinstall and repeat fresh-terminal resolution/PTY smoke."
       }
     },
     "next_phase": null
