@@ -72,7 +72,7 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "MODE_POLICY_EXACT_HEAD_REVALIDATION_FAILED_REPAIR_PENDING_RECHECK",
+    "status": "MODE_POLICY_TUI_DEFAULT_STATE_REPAIR_PENDING_RECHECK",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "UNVERIFIED",
@@ -112,12 +112,13 @@
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
         "status": "FAIL",
-        "evidence": "Exact-head validation mode-policy-exact-head-revalidation-001 failed on backend 905030cb and TUI 7c41dfab. Backend mode path raised NameError because ModeRequest/resolve_mode were not imported; provider-list test also had a stale singleton expectation. TUI cargo fmt failed and 26 tests failed; one deterministic replay mismatch was found in AgentMode::next ordering versus canonical tests. Narrow follow-up fixes are now committed, but exact-head validation has not yet been rerun.",
+        "evidence": "Backend exact-head validation at cc005495 passed 125/125. TUI exact-head validation at 2eb57eb failed 26 tests plus rustfmt. Source inspection identified a common default-state regression: App::default() used Landing+Audit while canonical tests/snapshot expect the active ACT shell. Canonical TUI commit e22d3ef5acc46814558d92ccaba7a7b232d9921c repairs App::default() to Welcome+Build. This repair is unverified until exact-head rerun.",
         "follow_up_commits": {
           "backend": "24e3cacf1e2899df0d28beffe27ed1a71a583b08",
-          "tui": "2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf"
+          "tui": "2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf",
+          "tui_default_state": "e22d3ef5acc46814558d92ccaba7a7b232d9921c"
         },
-        "required_fix": "Rerun focused backend tests and full Rust check/test/fmt against the new exact canonical heads. If Rust still fails, capture the exact failing test names/assertions before any further source changes. Then rerun bounded runtime validation."
+        "required_fix": "Rerun clean-export TUI tests against e22d3ef5. Capture surviving failures exactly. Handle rustfmt as a separate mechanical patch only after behavioral tests are characterized. Run bounded-runtime-validation-003 only after tests and fmt are green."
       }
     },
     "next_phase": null
