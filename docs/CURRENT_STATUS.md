@@ -170,6 +170,28 @@ installed end-to-end product proof           = OPEN
 final LBE visual/runtime acceptance           = OPEN
 ```
 
+## Runtime-proven mode-policy blocker — 2026-09-18
+
+Bounded probe `bounded-runtime-validation-001` completed successfully and **proved a product failure**:
+
+```text
+persisted launcher session = audit / read_only / audit
+
+ACT requested by Rust  -> expected coding         -> backend effective audit -> FAIL
+PLAN requested by Rust -> expected investigation  -> backend effective audit -> FAIL
+AUDIT requested by Rust-> expected audit          -> backend effective audit -> PASS
+
+RealLbeWrapper SetMode = unsupported
+visible Rust Audit label = PLAN compatibility, not a distinct AUDIT surface
+provider turn probe = BLOCKED_BY_PROVIDER_ENVIRONMENT
+```
+
+Classification:
+
+`MODE_POLICY = RUNTIME_PROVEN_FAIL_CURRENT_IMPLEMENTATION`
+
+The patch must not simply change the launcher default to `coding/write_allowed/development`, because product mode and authorization are separate. ACT may request coding behavior only when existing LBE policy/permission authority permits it; presentation state must not grant write authority.
+
 ## Current single job
 
 ```text
@@ -182,7 +204,7 @@ Do the following in order:
 2. Preserve and adapt the existing HTML/React LBE layout/interaction work as the visual contract; do not copy its simulated state.
 3. Keep Cline headless behind LBE for reasoning/provider/model/tool-proposal/continuation mechanics; do not restore a copied Cline UI merely for product presentation.
 4. Validate the source-level `tools/lbe_product_integration.ps1` reconciliation committed at `cebd8cf7751b2cdeb8a76fb0dcc2e0bc0c8f58e5`; repair only claim-matched failures. Cline UI checks are now reference-only/non-blocking and the product build/package path remains Rust + headless Cline worker.
-5. Reconcile PLAN/ACT/AUDIT to backend mode/policy/permission owners without inventing authority in the launcher.
+5. Repair the runtime-proven PLAN/ACT/AUDIT defect: add one LBE-owned product-mode transition seam so ACT/PLAN/AUDIT resolve to coding/investigation/audit without presentation code granting permission. Preserve fail-closed behavior when ACT lacks existing write authority.
 6. Prove one installed real-terminal path: `lbe` -> Rust LBE shell -> real provider turn -> governed tool/approval -> ToolReceipt/evidence -> continuation -> persistence/resume -> deterministic completion -> clean terminal restoration.
 7. Only then close final product acceptance.
 
