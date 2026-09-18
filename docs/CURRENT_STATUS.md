@@ -322,3 +322,27 @@ C:\Users\prave\AppData\Local\Temp\opencode\lbe-tui-canon-clone\target\release\lb
 
 Final product acceptance still requires one fresh-terminal proof that typing only `lbe` resolves through the installed package/launcher to this canonical Rust/Ratatui product surface. No further runtime/UI implementation defect is currently proven.
 
+
+
+## Installed LBE command acceptance update — 2026-09-18
+
+The tested machine now has a working durable product installation at:
+
+```text
+C:\Users\prave\AppData\Local\LetterBlack\LBE
+```
+
+Fresh-shell `lbe` resolves first to `bin\lbe.cmd`, launches the installed Rust/Ratatui client, attaches the authoritative runtime, restores the persisted session/provider state, and tears down without a retained client process.
+
+Classification:
+
+```text
+installed machine behavior              = PASS
+bare lbe command                        = PASS
+runtime/UI/provider/tool/approval/PTTY  = PASS
+canonical installer source provenance   = PENDING
+final canonical product acceptance      = BLOCKED ONLY ON SOURCE CANONICALIZATION
+```
+
+The remaining task is not another runtime repair. Publish the exact installer/launcher behavior that produced the accepted installation to canonical `tools/lbe_product_integration.ps1`, rebuild/reinstall from that exact `main`, and repeat only the lightweight fresh-shell command smoke.
+
