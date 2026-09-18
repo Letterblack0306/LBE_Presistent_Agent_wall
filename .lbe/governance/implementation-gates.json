@@ -72,7 +72,7 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "BLOCKED_BY_MODE_POLICY_PRODUCT_MAPPING",
+    "status": "MODE_POLICY_CANONICALIZED_REVALIDATION_PENDING",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "UNVERIFIED",
@@ -111,9 +111,9 @@
         "evidence": "Cannot close until the Rust/Ratatui client is the actual packaged/installed `lbe` surface, projects authoritative LBE state, uses headless Cline reasoning/provider mechanics without native Cline authority, and passes full PTY/ConPTY lifecycle acceptance."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
-        "status": "FAIL",
-        "evidence": "bounded-runtime-validation-001 proved launcher session audit/read_only/audit forces ACT and PLAN to backend audit; RealLbeWrapper SetMode is unsupported and visible AUDIT is not distinct. ACT expected coding and PLAN expected investigation both mismatch effective audit.",
-        "required_fix": "Add an LBE-owned PLAN/ACT/AUDIT transition/mapping seam. UI mode selection must not manufacture write permission; ACT must fail closed or remain non-mutating unless existing LBE permission/policy authority permits coding."
+        "status": "UNVERIFIED",
+        "evidence": "Local candidate bounded-runtime-validation-002 previously passed. The same semantics are now committed to canonical GitHub main: backend f7e09491c2142778ccead48611ed4c63d0da30d9 and TUI 7c41dfab251e2da6226d4682e9c5b1ea00afa3f6. Exact-head local revalidation is still required before PASS.",
+        "required_fix": "Fetch the exact canonical backend/TUI heads without destroying unrelated local work, then rerun focused backend tests, cargo check/test/fmt, and bounded-runtime-validation-002. Only exact-head PASS may close this slice."
       }
     },
     "next_phase": null
