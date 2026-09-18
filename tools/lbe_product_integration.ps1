@@ -174,15 +174,18 @@ function Test-IntegrationContracts {
     $childProductTests = Get-SourceText -Root $AgentRoot -Path "tests/test_child_agent_product_seam.py" -SourceMode $SourceMode -AllowMissing
     $historyTests = Get-SourceText -Root $AgentRoot -Path "tests/test_operational_history.py" -SourceMode $SourceMode -AllowMissing
 
-    # Rust/Ratatui remains a reference/integration client. It is still checked for boundary drift,
-    # but it is no longer treated as the primary LBE product surface.
+    # Rust/Ratatui is the canonical visible LBE product client selected by the product owner
+    # on 2026-09-18. It remains projection/control only; all authority-bearing consequences
+    # continue through the canonical Agent Wall owners.
     $wrapper = Get-SourceText -Root $ClientRoot -Path "src/wrapper.rs" -SourceMode $SourceMode
     $types = Get-SourceText -Root $ClientRoot -Path "src/types.rs" -SourceMode $SourceMode
     $app = Get-SourceText -Root $ClientRoot -Path "src/app.rs" -SourceMode $SourceMode
     $main = Get-SourceText -Root $ClientRoot -Path "src/main.rs" -SourceMode $SourceMode
     $requests = Get-SourceText -Root $ClientRoot -Path "src/requests.rs" -SourceMode $SourceMode
 
-    # The active product surface uses bundled Cline CLI mechanics under LBE branding and authority.
+    # Cline CLI/OpenTUI source is optional reference/reuse material only. The product does not
+    # require a copied Cline UI tree. Headless Cline reasoning/provider mechanics are owned by
+    # the Agent Wall cline_worker path.
     $clineAdapter = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/lbe-tool-adapter.ts" -SourceMode $SourceMode -AllowMissing
     $clineRunAgent = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/run-agent.ts" -SourceMode $SourceMode -AllowMissing
     $clineAdapterTests = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/lbe-tool-adapter.test.ts" -SourceMode $SourceMode -AllowMissing
@@ -327,32 +330,32 @@ function Test-IntegrationContracts {
     $checks.Add((New-ContractCheck -Id "lbe.child_agent.test_contract" -Passed ([bool]$childProofPresent) -Classification $(if ($childProofPresent) { "TEST_PROOF_PRESENT" } else { "MISSING" }) -Detail "Focused product-seam and lifecycle-owner regression tests must be present."))
 
     $clineSurfacePresent = $clineAdapter -and $clineRunAgent -and $clineAdapterTests
-    $checks.Add((New-ContractCheck -Id "cline.embedded_surface.present" -Passed ([bool]$clineSurfacePresent) -Classification $(if ($clineSurfacePresent) { "PRESENT" } else { "MISSING" }) -Detail "Bundled Cline CLI mechanics are the active LBE CLI/TUI implementation surface; absence blocks current product proof."))
+    $checks.Add((New-ContractCheck -Id "cline.embedded_surface.present" -Blocking $false -Passed ([bool]$clineSurfacePresent) -Classification $(if ($clineSurfacePresent) { "PRESENT" } else { "MISSING" }) -Detail "Reference-only Cline CLI adapter/source presence. Absence does not block the selected Rust/Ratatui product surface; headless Cline runtime proof belongs to the Agent Wall worker/provider path."))
 
     $clineSpawnBinding = $clineSurfacePresent -and
         $clineAdapter.Contains("child_agent") -and
         $clineAdapter.Contains("spawn_operation_id") -and
         $clineRunAgent.Contains("child_agent_spawn")
-    $checks.Add((New-ContractCheck -Id "cline.child_spawn.lbe_admission" -Passed ([bool]$clineSpawnBinding) -Classification $(if ($clineSpawnBinding) { "BOUND_TO_LBE" } else { "MISSING" }) -Detail "Cline delegated-agent execution must cross the LBE child_agent admission seam before child execution."))
+    $checks.Add((New-ContractCheck -Id "cline.child_spawn.lbe_admission" -Blocking $false -Passed ([bool]$clineSpawnBinding) -Classification $(if ($clineSpawnBinding) { "BOUND_TO_LBE" } else { "MISSING" }) -Detail "Cline delegated-agent execution must cross the LBE child_agent admission seam before child execution."))
 
     $governedChildSurface = $clineSpawnBinding -and
         $clineAdapter.Contains("childAgentGovernedToolSurface") -and
         $clineAdapter.Contains("createLbeToolProxies") -and
         -not $clineAdapter.Contains("createBuiltinTools(") -and
         -not $clineRunAgent.Contains("createBuiltinTools(")
-    $checks.Add((New-ContractCheck -Id "cline.child_tools.lbe_only" -Passed ([bool]$governedChildSurface) -Classification $(if ($governedChildSurface) { "FAIL_CLOSED" } else { "BYPASS_RISK" }) -Detail "Delegated children must receive only LBE-governed proxy tools; native Cline tool construction must not be reachable from the LBE child integration seam."))
+    $checks.Add((New-ContractCheck -Id "cline.child_tools.lbe_only" -Blocking $false -Passed ([bool]$governedChildSurface) -Classification $(if ($governedChildSurface) { "FAIL_CLOSED" } else { "BYPASS_RISK" }) -Detail "Delegated children must receive only LBE-governed proxy tools; native Cline tool construction must not be reachable from the LBE child integration seam."))
 
     $recursiveSpawnGuard = $clineSpawnBinding -and
         $clineAdapter.Contains("LBE_ALLOW_RECURSIVE_SPAWN") -and
         ($clineAdapter.Contains("depth") -or $clineAdapter.Contains("DEPTH"))
-    $checks.Add((New-ContractCheck -Id "cline.child_spawn.recursion_default_deny" -Passed ([bool]$recursiveSpawnGuard) -Classification $(if ($recursiveSpawnGuard) { "GUARDED" } else { "UNPROVEN" }) -Detail "Recursive child spawning must remain denied by default unless explicitly authorized by the LBE integration policy."))
+    $checks.Add((New-ContractCheck -Id "cline.child_spawn.recursion_default_deny" -Blocking $false -Passed ([bool]$recursiveSpawnGuard) -Classification $(if ($recursiveSpawnGuard) { "GUARDED" } else { "UNPROVEN" }) -Detail "Recursive child spawning must remain denied by default unless explicitly authorized by the LBE integration policy."))
 
     $lifecycleCalls = $clineSpawnBinding -and
         $clineAdapter.Contains("started") -and
         $clineAdapter.Contains("complete") -and
         $clineAdapter.Contains("failed") -and
         $clineAdapter.Contains("cancel")
-    $checks.Add((New-ContractCheck -Id "cline.child_spawn.lifecycle_projection" -Passed ([bool]$lifecycleCalls) -Classification $(if ($lifecycleCalls) { "PRESENT" } else { "PARTIAL" }) -Detail "Cline child execution must project started and terminal outcomes through LBE."))
+    $checks.Add((New-ContractCheck -Id "cline.child_spawn.lifecycle_projection" -Blocking $false -Passed ([bool]$lifecycleCalls) -Classification $(if ($lifecycleCalls) { "PRESENT" } else { "PARTIAL" }) -Detail "Cline child execution must project started and terminal outcomes through LBE."))
 
     $uiFilesPresent = $clineWelcome -and $clineKeyboard -and $clineOnboarding -and $clineStatusBar -and $clineRoot -and $clineIdentity
     $visibleUi = @($clineWelcome, $clineKeyboard, $clineOnboarding, $clineStatusBar, $clineRoot, $clineIdentity) -join [Environment]::NewLine
@@ -363,7 +366,7 @@ function Test-IntegrationContracts {
         $visibleUi.Contains("Lockstep Boundry Engine") -and
         $visibleUi.Contains("LETTERBLACK")
     $brandingPass = $uiFilesPresent -and ($brandingLeaks.Count -eq 0) -and $identityPresent
-    $checks.Add((New-ContractCheck -Id "lbe.ui.branding_contract" -Passed ([bool]$brandingPass) -Classification $(if ($brandingPass) { "LBE_ONLY" } elseif (-not $uiFilesPresent) { "MISSING" } else { "FAIL" }) -Detail $(if ($brandingLeaks.Count) { "Visible Cline branding leaks: $($brandingLeaks -join ', ')" } elseif (-not $identityPresent) { "Required LBE / Lockstep Boundry Engine / LETTERBLACK identity markers are incomplete." } else { "Active CLI/TUI surface is LBE-branded." })))
+    $checks.Add((New-ContractCheck -Id "lbe.ui.branding_contract" -Blocking $false -Passed ([bool]$brandingPass) -Classification $(if ($brandingPass) { "LBE_ONLY" } elseif (-not $uiFilesPresent) { "MISSING" } else { "FAIL" }) -Detail $(if ($brandingLeaks.Count) { "Visible Cline branding leaks: $($brandingLeaks -join ', ')" } elseif (-not $identityPresent) { "Required LBE / Lockstep Boundry Engine / LETTERBLACK identity markers are incomplete." } else { "Active CLI/TUI surface is LBE-branded." })))
 
     # Branding alone is insufficient. The accepted LBE surface must not retain the
     # recognizable Cline centered hero/composer composition. Structural acceptance
@@ -386,18 +389,18 @@ function Test-IntegrationContracts {
     )
     $lbeStructuralPass = $visualFilesPresent -and ($clineHeroMarkerCount -lt 3) -and -not ($lbeStructuralMarkers -contains $false)
     $visualDetail = if (-not $visualFilesPresent) {
-        "Required Cline/LBE visual source files are missing."
+        "Reference Cline/LBE visual source files are absent; this is non-blocking for the selected Rust/Ratatui product surface."
     } elseif ($clineHeroMarkerCount -ge 3) {
-        "UI still retains the recognizable centered Cline hero/composer composition; branding/color changes are not sufficient."
+        "Reference Cline UI retains its upstream hero/composer composition; this no longer determines product visual acceptance."
     } elseif ($lbeStructuralMarkers -contains $false) {
-        "LBE minimal runtime-shell markers are incomplete: [I] composer, bouncing activity, bounded/collapsible process stream, and context projection are required."
+        "Reference Cline UI does not contain the complete LBE shell markers; product acceptance is evaluated on the Rust/Ratatui client."
     } else {
-        "LBE visual shell is structurally distinct from the upstream Cline home composition."
+        "Reference Cline UI contains the historical LBE shell markers; this is informational only."
     }
-    $checks.Add((New-ContractCheck -Id "lbe.ui.structural_differentiation" -Passed ([bool]$lbeStructuralPass) -Classification $(if ($lbeStructuralPass) { "DISTINCT_LBE_SHELL" } else { "FAIL" }) -Detail $visualDetail))
+    $checks.Add((New-ContractCheck -Id "lbe.ui.structural_differentiation" -Blocking $false -Passed ([bool]$lbeStructuralPass) -Classification $(if ($lbeStructuralPass) { "DISTINCT_LBE_SHELL" } else { "FAIL" }) -Detail $visualDetail))
 
     $teamPremature = $clineWelcome -and $clineWelcome.Contains("Start the task with agent team")
-    $checks.Add((New-ContractCheck -Id "lbe.ui.subagent_exposure" -Passed (-not [bool]$teamPremature) -Classification $(if ($teamPremature) { "PREMATURE_EXPOSURE" } else { "NOT_EXPOSED" }) -Detail "Do not advertise /team as generally available until installed governed child-agent acceptance passes."))
+    $checks.Add((New-ContractCheck -Id "lbe.ui.subagent_exposure" -Blocking $false -Passed (-not [bool]$teamPremature) -Classification $(if ($teamPremature) { "PREMATURE_EXPOSURE" } else { "NOT_EXPOSED" }) -Detail "Do not advertise /team as generally available until installed governed child-agent acceptance passes."))
 
     return @($checks)
 }
@@ -453,25 +456,25 @@ function Invoke-Proof {
     }
     $clineRoot = Join-Path $TuiStage "cline\apps\cli"
     if (-not (Test-Path -LiteralPath $clineRoot -PathType Container)) {
-        $proofs.Add([pscustomobject]@{ id = "cline.subagent_tests"; status = "BLOCKED"; exit_code = $null; command = "npx vitest"; output = @("bundled Cline CLI source missing: $clineRoot") })
-        $proofs.Add([pscustomobject]@{ id = "cline.typecheck"; status = "BLOCKED"; exit_code = $null; command = "npm run typecheck"; output = @("bundled Cline CLI source missing") })
+        $proofs.Add([pscustomobject]@{ id = "cline.reference_tests"; status = "SKIP"; blocking = $false; exit_code = $null; command = "npx vitest"; output = @("reference Cline CLI source absent; not required by canonical Rust/Ratatui product surface") })
+        $proofs.Add([pscustomobject]@{ id = "cline.reference_typecheck"; status = "SKIP"; blocking = $false; exit_code = $null; command = "npm run typecheck"; output = @("reference Cline CLI source absent; not required by canonical Rust/Ratatui product surface") })
     }
     else {
         $npx = Get-Command npx -ErrorAction SilentlyContinue
         if (-not $npx) {
-            $proofs.Add([pscustomobject]@{ id = "cline.subagent_tests"; status = "BLOCKED"; exit_code = $null; command = "npx"; output = @("npx not found") })
+            $proofs.Add([pscustomobject]@{ id = "cline.reference_tests"; status = "BLOCKED"; blocking = $false; exit_code = $null; command = "npx"; output = @("npx not found; reference-only check") })
         }
         else {
             $clineTests = Invoke-Native -FilePath $npx.Source -WorkingDirectory $clineRoot -Arguments @("vitest", "run", "src/runtime/lbe-tool-adapter.test.ts", "src/runtime/run-agent.test.ts")
-            $proofs.Add([pscustomobject]@{ id = "cline.subagent_tests"; status = $(if ($clineTests.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $clineTests.exit_code; command = $clineTests.command; output = $clineTests.output })
+            $proofs.Add([pscustomobject]@{ id = "cline.reference_tests"; status = $(if ($clineTests.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $false; exit_code = $clineTests.exit_code; command = $clineTests.command; output = $clineTests.output })
         }
         $npm = Get-Command npm -ErrorAction SilentlyContinue
         if (-not $npm) {
-            $proofs.Add([pscustomobject]@{ id = "cline.typecheck"; status = "BLOCKED"; exit_code = $null; command = "npm"; output = @("npm not found") })
+            $proofs.Add([pscustomobject]@{ id = "cline.reference_typecheck"; status = "BLOCKED"; blocking = $false; exit_code = $null; command = "npm"; output = @("npm not found; reference-only check") })
         }
         else {
             $typecheck = Invoke-Native -FilePath $npm.Source -WorkingDirectory $clineRoot -Arguments @("run", "typecheck")
-            $proofs.Add([pscustomobject]@{ id = "cline.typecheck"; status = $(if ($typecheck.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $typecheck.exit_code; command = $typecheck.command; output = $typecheck.output })
+            $proofs.Add([pscustomobject]@{ id = "cline.reference_typecheck"; status = $(if ($typecheck.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $false; exit_code = $typecheck.exit_code; command = $typecheck.command; output = $typecheck.output })
         }
     }
 
@@ -719,7 +722,7 @@ if ($Mode -in @("prove", "build", "package")) {
     $proofs = Invoke-Proof -AgentStage $agentStage -TuiStage $tuiStage
 }
 
-$proofPass = if ($proofs.Count -eq 0) { $false } else { @($proofs | Where-Object { $_.status -ne "PASS" }).Count -eq 0 }
+$proofPass = if ($proofs.Count -eq 0) { $false } else { @($proofs | Where-Object { ($_.blocking -ne $false) -and $_.status -ne "PASS" }).Count -eq 0 }
 
 if ($Mode -in @("build", "package")) {
     if (-not $structuralPass) { throw "Product build blocked: structural integration checks failed." }
@@ -771,17 +774,17 @@ $manifest = [ordered]@{
         rule = "check/prove may validate the assembled worktree; build/package are forced to origin/main and cannot package uncommitted state."
     }
     authority = [ordered]@{
-        rule = "Agent Wall is the runtime/governance authority. The LBE CLI/TUI uses bundled Cline mechanics for cognition/provider/model/agent execution. Rust/Ratatui is a reference/integration client. This script owns no runtime decision."
+        rule = "Agent Wall is the runtime/governance authority. The LBE-owned Rust/Ratatui client is the canonical visible product surface. Headless Cline mechanics provide cognition/provider/model/continuation behind LBE. This script owns no runtime decision."
         agent_wall = $agent
         lbe_cli_repository = $tui
-        rust_reference_client = [ordered]@{ repository = $TuiRepository; role = "REFERENCE_INTEGRATION_CLIENT"; path = "src/" }
+        rust_product_client = [ordered]@{ repository = $TuiRepository; role = "CANONICAL_VISIBLE_PRODUCT_CLIENT"; path = "src/" }
     }
     product_surface = [ordered]@{
         name = "LBE CLI/TUI"
         full_name = "Lockstep Boundry Engine"
         brand = "LETTERBLACK"
-        mechanics = "bundled Cline CLI"
-        rule = "Cline implementation names may exist internally, but user-facing product identity is LBE and all capability/consequence authority remains with LBE."
+        mechanics = "Rust/Ratatui visible client + headless Cline reasoning/provider worker"
+        rule = "User-facing product identity and presentation are LBE-owned. Cline remains headless internal mechanics only; all capability/consequence authority remains with LBE."
     }
     cline_upstream_reference = [ordered]@{
         repository = $ClineReferenceRepository
