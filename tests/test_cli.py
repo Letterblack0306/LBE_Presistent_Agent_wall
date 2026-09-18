@@ -10,6 +10,7 @@ from lbe_guard_inspector.memory.completion_evidence import TaskCompletionEvidenc
 from lbe_guard_inspector.runtime.completion_gate import CompletionRequirement, TaskCompletionContract
 from lbe_guard_inspector.runtime.completion_runtime import CodingCompletionRuntime
 from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
+from lbe_guard_inspector.runtime.mode_controller import ModeRequest, resolve_mode
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -225,6 +226,95 @@ def test_session_continue_rehydrates_existing_runtime_identity(tmp_path: Path, c
     assert payload["session"]["mode"] == "audit"
     assert payload["session"]["provider_id"] == "openai-compatible"
     assert payload["context"]["checkpoint"]["active_constraints"] == ["do not mutate"]
+
+
+def test_session_mode_transition_cases(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+
+    read_only = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="read-only-session",
+        mode="audit",
+        permission="read_only",
+        runtime_policy="audit",
+    )
+
+    code = main([
+        "session", "mode",
+        "--database", str(database),
+        "--session-id", "read-only-session",
+        "--mode", "investigation",
+    ])
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["accepted"] is True
+    assert payload["mode"] == "investigation"
+    assert payload["permission"] == "read_only"
+    assert payload["runtime_policy"] == "permissive"
+    assert "modify" not in resolve_mode(ModeRequest(
+        intent="diagnose_failure",
+        permission="read_only",
+        runtime_policy="permissive",
+    )).capabilities
+
+    code = main([
+        "session", "mode",
+        "--database", str(database),
+        "--session-id", "read-only-session",
+        "--mode", "audit",
+    ])
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["accepted"] is True
+    assert payload["mode"] == "audit"
+    assert payload["runtime_policy"] == "audit"
+
+    before = read_only.store.load_session_state(session_id="read-only-session")
+    assert before is not None
+    code = main([
+        "session", "mode",
+        "--database", str(database),
+        "--session-id", "read-only-session",
+        "--mode", "coding",
+    ])
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["accepted"] is False
+    assert payload["status"] == "PERMISSION_REQUIRED"
+    after = read_only.store.load_session_state(session_id="read-only-session")
+    assert after is not None
+    assert after.mode == before.mode
+    assert after.permission == before.permission
+    assert after.runtime_policy == before.runtime_policy
+
+    writable = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="write-session",
+        mode="audit",
+        permission="write_allowed",
+        runtime_policy="audit",
+    )
+    code = main([
+        "session", "mode",
+        "--database", str(database),
+        "--session-id", "write-session",
+        "--mode", "coding",
+    ])
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["accepted"] is True
+    assert payload["mode"] == "coding"
+    assert payload["permission"] == "write_allowed"
+    assert payload["runtime_policy"] == "permissive"
+    stored = writable.store.load_session_state(session_id="write-session")
+    assert stored is not None
+    assert stored.mode == "coding"
+    assert stored.permission == "write_allowed"
 
 
 def test_provider_list_reads_registered_adapters_without_building_provider(capsys) -> None:
