@@ -93,3 +93,31 @@ lbe
 The resolved installed `lbe` entrypoint must launch the same canonical LBE-owned Rust/Ratatui product surface and reach the authoritative runtime. A direct invocation of `target\release\lbe.exe` is not enough for this one verdict.
 
 No additional runtime/UI implementation defect is currently proven.
+
+
+## Installed command acceptance update — 2026-09-18
+
+Machine acceptance now proves the desired installed command path:
+
+```text
+fresh terminal
+-> lbe
+-> C:\Users\prave\AppData\Local\LetterBlack\LBE\bin\lbe.cmd
+-> lbe-launch.ps1
+-> installed lbe.exe
+-> Rust/Ratatui
+-> authoritative LBE runtime
+```
+
+Observed PASS:
+- stale global npm `@letterblack/lbe` removed;
+- `LetterBlack\LBE\bin` is first effective LBE PATH entry;
+- bare `lbe` launches the Rust/Ratatui product;
+- authoritative session/provider/model state projects correctly;
+- session `sess_lbe_accept_001` resumes from installed state;
+- no retained `lbe.exe` process remains after teardown.
+
+This closes the **machine installed-command behavior** requirement.
+
+Canonical source provenance remains open. Current GitHub `main` at the time of this update does not yet contain the installer logic that creates `bin\lbe.cmd`, prepends the user PATH, and provides the tested durable zero-argument launcher contract. Because the governance rule requires the accepted implementation to equal canonical `main`, final canonical acceptance remains blocked only on publishing that already-proven installer behavior and reproducing the smoke test from that exact head.
+
