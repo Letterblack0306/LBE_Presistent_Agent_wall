@@ -290,3 +290,35 @@ UI can grant permission = false
 
 This closes the mode-policy defect. Do not reopen it without contradictory runtime evidence. Final product acceptance remains open and moves to the installed `lbe` interactive path (provider/model, governed turn/tool/approval/receipt projection, PTY/ConPTY clean exit, restart/resume).
 
+
+## Real WinPTY installed-product acceptance — 2026-09-18
+
+A real Windows PTY run of the canonical Rust/Ratatui release binary produced claim-matched live evidence for the product runtime path.
+
+Proven PASS:
+
+- real LBE Rust/Ratatui render with authoritative connected runtime/session/workspace/mode/policy state;
+- live LM Studio provider/model projection (`google/gemma-4-e4b`) and 11-provider discovery;
+- real governed conversational turn using `workspace.read`;
+- real ToolReceipt + evidence reference projection;
+- interactive authorization approve and reject;
+- clean Ctrl+D PTY exit;
+- restart/resume of persisted session `sess_lbe_accept_001`;
+- persisted DB evidence for the governed turn/completion records.
+
+The bounded read-only turn ended in `VALIDATION_FAILED` because it intentionally produced no source change. That is consistent with deterministic completion authority and is not treated as a governed-execution failure.
+
+Remaining blocker:
+
+```text
+FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH = UNVERIFIED
+```
+
+The PTY harness invoked the canonical release binary by full path:
+
+```text
+C:\Users\prave\AppData\Local\Temp\opencode\lbe-tui-canon-clone\target\release\lbe.exe
+```
+
+Final product acceptance still requires one fresh-terminal proof that typing only `lbe` resolves through the installed package/launcher to this canonical Rust/Ratatui product surface. No further runtime/UI implementation defect is currently proven.
+
