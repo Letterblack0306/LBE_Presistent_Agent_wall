@@ -72,11 +72,12 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "INSTALLED_SINGLE_COMMAND_LAUNCH_ONLY_BLOCKER",
+    "status": "FINAL_PRODUCT_SINGLE_COMMAND_INSTALLER_CONTRACT_FAIL",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
-        "status": "UNVERIFIED",
-        "evidence": "The 2026-09-18 WinPTY acceptance drove the canonical Rust release binary directly at C:\\Users\\prave\\AppData\\Local\\Temp\\opencode\\lbe-tui-canon-clone\\target\\release\\lbe.exe. It did not prove a fresh terminal resolving and invoking only `lbe` through the installed package/launcher."
+        "status": "FAIL",
+        "evidence": "Fresh-terminal diagnostic 2026-09-18: resolution order is %APPDATA%\\npm\\lbe, %APPDATA%\\npm\\lbe.cmd, then Python312\\Scripts\\lbe.exe. The npm @letterblack/lbe shim is broken because it targets missing node_modules\\@letterblack\\lbe\\bin\\lbe.js; Python lbe.exe is the backend CLI, not Rust/Ratatui. Canonical Rust client exists and is PTY-proven but no stable installed PATH entry resolves `lbe` to it. Existing tools/lbe_product_integration.ps1 installer copies Rust lbe.exe to %LOCALAPPDATA%\\LetterBlack\\LBE and creates lbe-launch.ps1 but does not install an authoritative PATH command.",
+        "required_fix": "Repair the existing product installer/launcher owner: install one stable zero-argument-capable `lbe` command that bootstraps the combined LBE runtime and launches the installed Rust/Ratatui client; explicitly handle stale npm/Python command collisions. Do not use cargo install as the product installer and do not create an ad-hoc local shim outside the package owner."
       },
       "REAL_RUNTIME_ATTACHMENT": {
         "status": "PASS",
