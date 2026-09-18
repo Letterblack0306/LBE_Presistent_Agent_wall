@@ -261,3 +261,32 @@ TUI = 2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf
 
 These commits are **UNVERIFIED** until the exact-head suite and bounded runtime probe pass again. No further Rust test failures should be patched without their exact names/assertions.
 
+
+## Mode-policy exact-head closure — 2026-09-18
+
+`MODE_POLICY_PRODUCT_MAPPING = PASS`
+
+Exact-head evidence:
+
+```text
+backend = cc0054950153a8c41a48ee0ba60f2675833f7cce
+backend tests = 125 passed / 0 failed
+
+TUI = 58104bae1cebd2be04fa1d5544b2ebfce90fe8ff
+cargo check = PASS
+cargo fmt -- --check = PASS
+cargo test = 202 passed / 0 failed / 2 ignored
+
+bounded-runtime-validation-003 = PASS
+
+PLAN + read_only  -> investigation
+AUDIT + read_only -> audit
+ACT + read_only   -> PERMISSION_REQUIRED; persisted state unchanged
+ACT + write_allowed -> coding
+Real SetMode = supported
+visible AUDIT = distinct
+UI can grant permission = false
+```
+
+This closes the mode-policy defect. Do not reopen it without contradictory runtime evidence. Final product acceptance remains open and moves to the installed `lbe` interactive path (provider/model, governed turn/tool/approval/receipt projection, PTY/ConPTY clean exit, restart/resume).
+
