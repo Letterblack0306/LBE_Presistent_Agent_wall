@@ -72,43 +72,43 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "MODE_POLICY_PASS__INSTALLED_PRODUCT_ACCEPTANCE_OPEN",
+    "status": "INSTALLED_SINGLE_COMMAND_LAUNCH_ONLY_BLOCKER",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "UNVERIFIED",
-        "evidence": "`lbe` is the installed entrypoint, but current product_entry.py does not dispatch no-argument launch to textual_tui.py; it delegates to cli.main."
+        "evidence": "The 2026-09-18 WinPTY acceptance drove the canonical Rust release binary directly at C:\\Users\\prave\\AppData\\Local\\Temp\\opencode\\lbe-tui-canon-clone\\target\\release\\lbe.exe. It did not prove a fresh terminal resolving and invoking only `lbe` through the installed package/launcher."
       },
       "REAL_RUNTIME_ATTACHMENT": {
-        "status": "FAIL",
-        "evidence": "textual_tui.py initializes runtime as PREVIEW and does not attach the authoritative live session/runtime path."
+        "status": "PASS",
+        "evidence": "Real WinPTY capture projected CONNECTED / AGENT WALL / ACT LIVE with authoritative workspace, session sess_lbe_accept_001, coding/write_allowed/permissive policy, and live runtime state."
       },
       "PROVIDER_MODEL_BINDING": {
-        "status": "UNVERIFIED",
-        "evidence": "The Textual surface does not demonstrate live Cline provider/auth/model binding to the authoritative LBE session."
+        "status": "PASS",
+        "evidence": "Real PTY projected LM Studio / google/gemma-4-e4b and startup provider discovery of 11 providers against live LM Studio at 127.0.0.1:1234."
       },
       "GOVERNED_CODING_FLOW": {
-        "status": "FAIL",
-        "evidence": "textual_tui.py currently synthesizes governed-turn text, ToolReceipt IDs, and Evidence labels instead of invoking the canonical governed coding runtime."
+        "status": "PASS",
+        "evidence": "Real conversational turn requested workspace.read on sample.txt through the governed tool path and returned a real completed operation/receipt/evidence projection. Completion validation then correctly failed because the bounded read-only prompt produced no source change; that does not negate governed-turn execution."
       },
       "RECEIPT_EVIDENCE_PROJECTION": {
-        "status": "FAIL",
-        "evidence": "The Textual surface fabricates receipt/evidence display strings rather than projecting persisted authoritative records."
+        "status": "PASS",
+        "evidence": "Real PTY projected tool.completed for workspace.read with receipt receipt-fecb13df09154dabaa4643997a107790 and evidence workspace:workspace_fac63b08febbb29c:sample.txt; persisted DB rows also contained the governed turn and completion evidence."
       },
       "CLEAN_TERMINAL_EXIT": {
-        "status": "UNVERIFIED",
-        "evidence": "Ctrl+Q and /quit handlers exist in source; installed PTY/ConPTY clean-exit behavior still requires live terminal proof."
+        "status": "PASS",
+        "evidence": "Ctrl+D with empty composer exited the real WinPTY process cleanly (isalive False) with no crash; restart also exited cleanly."
       },
       "INSTALLED_RESTART_RESUME": {
-        "status": "UNVERIFIED",
-        "evidence": "No claim-matched installed restart/resume proof is present in canonical source evidence."
+        "status": "PASS",
+        "evidence": "The same canonical release binary relaunched against sess_lbe_accept_001, projected SESSION restored, retained workspace/provider/model state, and exited cleanly again. This proves runtime restart/resume for the tested binary/session; installed command-name launch remains separately unverified."
       },
       "STRUCTURAL_LBE_UI": {
-        "status": "ACTIVE",
-        "evidence": "Explicit 2026-09-18 product-owner decision selects the existing LBE-owned Rust/Ratatui client as the canonical visible product implementation. Structural implementation and real-terminal acceptance remain open."
+        "status": "PASS",
+        "evidence": "Real PTY rendered the LBE-owned Rust/Ratatui surface with LETTERBLACK ENGINE, authoritative runtime/session/workspace/provider/model/mode/policy footer, governed turn timeline, approval UI, and no synthetic preview state."
       },
       "FINAL_PRODUCT_ACCEPTANCE": {
         "status": "BLOCKED",
-        "evidence": "Cannot close until the Rust/Ratatui client is the actual packaged/installed `lbe` surface, projects authoritative LBE state, uses headless Cline reasoning/provider mechanics without native Cline authority, and passes full PTY/ConPTY lifecycle acceptance."
+        "evidence": "All live runtime/UI/PTY sub-verdicts are now proven except FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH. Final acceptance requires one fresh-terminal proof that the installed command name `lbe` resolves to and launches this canonical Rust/Ratatui product path, not direct execution of target\\release\\lbe.exe."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
         "status": "PASS",
