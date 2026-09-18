@@ -188,9 +188,9 @@ provider turn probe = BLOCKED_BY_PROVIDER_ENVIRONMENT
 
 Classification:
 
-`MODE_POLICY = RUNTIME_PROVEN_FAIL_CURRENT_IMPLEMENTATION`
+`MODE_POLICY = CANONICALIZED_REVALIDATION_PENDING`
 
-The patch must not simply change the launcher default to `coding/write_allowed/development`, because product mode and authorization are separate. ACT may request coding behavior only when existing LBE policy/permission authority permits it; presentation state must not grant write authority.
+The runtime-proven repair semantics are now committed to canonical GitHub main: backend `f7e09491c2142778ccead48611ed4c63d0da30d9` and TUI `7c41dfab251e2da6226d4682e9c5b1ea00afa3f6`. The gate remains open until `bounded-runtime-validation-002` and the focused backend/Rust checks pass again on those exact revisions. ACT still may request coding behavior only when existing LBE permission authority permits it; presentation state cannot grant write authority.
 
 ## Current single job
 
