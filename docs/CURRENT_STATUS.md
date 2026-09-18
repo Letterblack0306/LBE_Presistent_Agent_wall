@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-09-17
+Updated: 2026-09-18
 
 ## Authority
 
@@ -14,62 +14,80 @@ Canonical backend workspace: `C:\Agents-Memory-Tool-v6-integration`
 
 Product entrypoint: `lbe`
 
-Embedded client/mechanics workspace: `C:\LBE-TUI-Lab`
+Canonical visible terminal implementation workspace: `C:\LBE-TUI-Lab`
+
+## Current product-owner decision — 2026-09-18
+
+The product owner explicitly selected the existing LBE-owned Rust/Ratatui terminal work as the canonical visible CLI/TUI implementation instead of copying or rebranding the upstream Cline product UI.
+
+```text
+PRODUCT / BRAND               = LBE / LetterBlack
+VISIBLE TERMINAL UI           = LBE-owned Rust/Ratatui
+VISUAL / INTERACTION CONTRACT = existing LBE HTML/React work (reference/specification, not runtime truth)
+REASONING / PROVIDER ENGINE   = headless Cline mechanics behind LBE
+RUNTIME / GOVERNANCE          = LBE Agent Wall
+```
+
+Cline remains selected for reasoning, planning, provider/model, tool-proposal, continuation, and response-composition mechanics. It is no longer the selected visible client/product shell.
 
 ## Current machine state — READ FIRST
 
 ```text
 active_plan      = docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md
 active_phase     = INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE
-active_slice     = FINAL_PRODUCT_SOURCE_RECONCILIATION
+active_slice     = LBE_OWNED_RUST_TUI_PRODUCT_SURFACE
 status           = OPEN
 implementation  = ALLOWED
 next_phase       = LOCKED UNTIL PASS
 publication      = LOCKED
-selected_agent   = Cline
+selected_agent   = Cline (headless reasoning/provider mechanics)
 ```
 
 Current machine execution classification:
 
 ```text
-ACTIVE_EXECUTION_PLAN = BLOCKED_BY_SOURCE_CONTRADICTION
+ACTIVE_EXECUTION_PLAN = OPEN_RUST_TUI_CANONICALIZATION
 ```
 
-The contradiction is not a missing LBE runtime owner. It is a final-product source/surface mismatch:
-
-- canonical backend/runtime owners are already established;
-- the machine gate still finds the Python/Textual surface in `lbe_guard_inspector/textual_tui.py` to be PREVIEW/synthetic for final-product claims;
-- the selected final reasoning/client surface is Cline under LBE authority;
-- final acceptance cannot close until canonical source/launcher/package behavior resolves to the selected Cline-backed product path and the visible UI is accepted in a real terminal.
+The previous client-source contradiction is resolved at the product-decision layer. Remaining work is implementation and acceptance, not another Cline-vs-Rust technology decision.
 
 ## Accepted product architecture
 
 ```text
 USER
-  -> `lbe` LBE-branded CLI/TUI product entrypoint
-  -> embedded Cline reasoning/client mechanics
+  -> `lbe`
+  -> LBE-owned Rust/Ratatui terminal shell
+  -> RealLbeWrapper / canonical LBE product-entry boundary
+  -> headless Cline reasoning/provider/model/continuation mechanics
   -> LBE session/workspace identity
   -> mode/policy
   -> authorization
   -> governed tool execution
   -> ToolReceipt / evidence
-  -> persisted continuation / recovery
+  -> provider continuation
+  -> persistence / recovery
   -> deterministic validation / completion
-  -> client projection
+  -> truthful LBE terminal projection
 ```
 
 Ownership is fixed:
 
 ```text
-Cline owns:
-- reasoning
-- planning
-- tool proposals
-- continuation mechanics
-- response composition
-- presentation/client interaction
+LBE Rust/Ratatui client owns:
+- visible LetterBlack/LBE presentation
+- keyboard/input interaction
+- terminal layout and timeline projection
+- approval presentation
+- projection of authoritative runtime state
 
-LBE owns:
+Cline owns headless mechanics only:
+- reasoning/planning
+- provider/model interaction
+- tool proposals
+- continuation
+- response composition
+
+LBE runtime owns:
 - workspace/session/turn identity
 - provider/model policy truth
 - authorization
@@ -81,26 +99,23 @@ LBE owns:
 - completion truth
 ```
 
-No second provider gateway, session store, authorization engine, tool executor, receipt authority, evidence authority, persistence owner, or completion authority may be introduced.
+No second provider gateway, session store, authorization engine, tool executor, receipt/evidence authority, persistence owner, or completion authority may be introduced.
 
 ## Current user-facing product surface
 
-Accepted path:
+Accepted visible implementation path:
 
 ```text
-source/package = C:\LBE-TUI-Lab\cline\apps\cli
-launcher       = C:\LBE-TUI-Lab\run-cline-lbe.ps1
+source/client  = C:\LBE-TUI-Lab\src\
+launcher       = C:\LBE-TUI-Lab\lbe-cli.ps1 / installed `lbe` composition
 runtime        = LBE Agent Wall
+reasoning      = headless governed Cline worker / @cline/agents mechanics
+visual contract= LBE HTML/React reference artifacts and canonical UI contract
 ```
 
-Rust/Ratatui remains reference/integration only:
+The former copied/local Cline CLI/OpenTUI tree and `run-cline-lbe.ps1` are reference/historical integration material, not the required visible product surface.
 
-```text
-C:\LBE-TUI-Lab\src
-C:\LBE-TUI-Lab\run-lbe.bat
-```
-
-Python/Textual remains runnable/reference material but is not accepted as the final product surface while it remains PREVIEW/synthetic for coding/receipt/evidence claims.
+Python/Textual remains runnable/reference material but is not the final product UI.
 
 ## Proven current runtime evidence
 
@@ -128,46 +143,47 @@ Therefore the older claim that the accepted Cline client is simply "missing" is 
 
 ## LBE visual surface status
 
-Current visual acceptance is **NOT ACCEPTED**.
+The visual direction is now **SELECTED, NOT YET ACCEPTED**.
 
-Observed real-terminal UI still retained the recognizable Cline centered hero/composer composition. Logo, label, color, and left-rail changes are not sufficient for final LBE visual acceptance.
-
-Required structural LBE shell:
+Required structural LBE shell remains:
 
 ```text
 persistent LBE/workspace/model/mode/git/context header
 conversation + execution in one timeline
-active operation shows at most ~3 emitted runtime lines
-single expand action reveals full emitted process history
-completed operations collapse to one summary line
-[I] composer identity with active-process motion
-context-window usage projection
-no permanent centered Cline hero/TrackedRobot-style landing composition
+active operation shows a bounded human-readable live status area
+completed operations collapse to concise summaries
+[I] composer identity with runtime-driven activity
+real context-window usage projection
+PLAN / ACT / AUDIT
+no Cline product branding or centered upstream hero composition
+no fabricated runtime/evidence state
 ```
 
 Classification:
 
 ```text
-LBE branding                         = IMPLEMENTED
-color/theme differentiation          = IMPLEMENTED
-structural visual differentiation    = NOT ACCEPTED
-final LBE visual surface             = OPEN
+LBE-owned Rust/Ratatui technology selection = ACCEPTED
+existing Rust implementation                 = IMPLEMENTED / NEEDS CANONICALIZATION
+HTML/React visual contract reuse             = ACCEPTED_REFERENCE
+headless Cline reasoning mechanics           = ACCEPTED / EXISTING
+installed end-to-end product proof           = OPEN
+final LBE visual/runtime acceptance           = OPEN
 ```
 
 ## Current single job
 
 ```text
-FINAL_PRODUCT_SOURCE_RECONCILIATION
+LBE_OWNED_RUST_TUI_PRODUCT_SURFACE
 ```
 
 Do the following in order:
 
-1. Keep Cline as the selected user-facing reasoning/client surface under LBE authority.
-2. Do not promote `textual_tui.py` PREVIEW/synthetic receipt/evidence behavior to final-product acceptance.
-3. Reconcile canonical product source/launcher/package ownership so the selected Cline path is the actual final product path rather than an external/local-only assumption.
-4. Replace the skin-only Cline visual composition with the structurally distinct LBE shell described above.
-5. Run the accepted product from a real TTY/ConPTY terminal against the live LBE runtime.
-6. Prove one complete path: session -> provider/model -> turn -> governed tool -> authorization -> ToolReceipt/evidence -> continuation -> validation/completion -> clean exit/terminal restoration.
+1. Treat the Rust/Ratatui client in `C:\LBE-TUI-Lab\src\` as the canonical visible LBE terminal implementation.
+2. Preserve and adapt the existing HTML/React LBE layout/interaction work as the visual contract; do not copy its simulated state.
+3. Keep Cline headless behind LBE for reasoning/provider/model/tool-proposal/continuation mechanics; do not restore a copied Cline UI merely for product presentation.
+4. Reconcile `tools/lbe_product_integration.ps1` so contract/proof/build/package/installed-launch targets all match the Rust canonical client plus headless Cline worker composition.
+5. Reconcile PLAN/ACT/AUDIT to backend mode/policy/permission owners without inventing authority in the launcher.
+6. Prove one installed real-terminal path: `lbe` -> Rust LBE shell -> real provider turn -> governed tool/approval -> ToolReceipt/evidence -> continuation -> persistence/resume -> deterministic completion -> clean terminal restoration.
 7. Only then close final product acceptance.
 
 ## Stop conditions
