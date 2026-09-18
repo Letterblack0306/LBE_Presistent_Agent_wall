@@ -69,13 +69,13 @@ The technology/product decision is settled; implementation and package compositi
 Rust/Ratatui selected as canonical visible client  ACCEPTED
 LBE visual contract / HTML reuse                   ACCEPTED_REFERENCE
 Cline headless reasoning/provider mechanics        ACCEPTED
-current product integration script                 NEEDS_RECONCILIATION
+current product integration script                 SOURCE_RECONCILED / VALIDATION_PENDING
 installed one-command Rust LBE product             UNVERIFIED
 real PTY/ConPTY lifecycle                          UNVERIFIED
 final product acceptance                           BLOCKED
 ```
 
-`tools/lbe_product_integration.ps1` currently contains contradictory historical assumptions: some checks require a bundled Cline CLI/TUI while its build/package path already installs the Rust `lbe.exe`. Reconcile that owner to the new explicit product decision instead of rebuilding a copied Cline product UI.
+`tools/lbe_product_integration.ps1` was source-reconciled at `cebd8cf7751b2cdeb8a76fb0dcc2e0bc0c8f58e5`: copied Cline UI checks are reference-only/non-blocking, while the product build/package path remains the Rust `lbe.exe` plus governed headless Cline worker. Claim-matched validation remains required before acceptance.
 
 ## 5. Current single job
 
@@ -89,7 +89,7 @@ Required implementation sequence:
 2. Adapt the existing LBE HTML/React visual hierarchy and interactions into Rust where useful; never import simulated state.
 3. Preserve RealLbeWrapper/product-entry routing to LBE owners.
 4. Keep Cline headless through the governed worker/provider path; remove product dependence on a system-installed or copied visible Cline CLI.
-5. Reconcile the product integration verifier/builder so proof target, build target, package target, and installed launcher target all reference the same Rust client composition.
+5. Validate the reconciled product integration verifier/builder so proof target, build target, package target, and installed launcher target all reference the same Rust client composition; fix only observed failures.
 6. Implement/verify the locked LBE shell: compact header, unified timeline, [I] composer, real context usage, PLAN/ACT/AUDIT, concise approvals, no normal-user governance dump.
 7. Reconcile user-facing PLAN/ACT/AUDIT with backend mode/policy/permission owners explicitly; do not hard-code unsafe authority.
 8. Build/package/install from canonical source and prove the real terminal path.
