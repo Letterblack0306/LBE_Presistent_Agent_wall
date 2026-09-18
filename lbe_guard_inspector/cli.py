@@ -113,6 +113,14 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--task-id", required=True)
     validate.set_defaults(handler=_session_validate)
 
+    mode_cmd = session_commands.add_parser(
+        "mode", help="Update persisted session mode under LBE policy authority"
+    )
+    _add_database_argument(mode_cmd)
+    mode_cmd.add_argument("--session-id", required=True)
+    mode_cmd.add_argument("--mode", required=True, choices=_MODES)
+    mode_cmd.set_defaults(handler=_session_mode)
+
     provider = commands.add_parser("provider", help="Inspect or select reasoning providers")
     provider_commands = provider.add_subparsers(dest="provider_command", required=True)
     provider_list = provider_commands.add_parser("list", help="List registered providers")
@@ -368,6 +376,76 @@ def _session_validate(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _session_mode(args: argparse.Namespace) -> dict[str, Any]:
+    """Apply a user-requested product mode through existing LBE policy authority.
+
+    The request may change the persisted mode/runtime-policy tuple, but it never
+    grants or changes permission. Coding therefore fails closed unless the
+    persisted permission already authorizes coding.
+    """
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    requested_mode = str(args.mode)
+    permission = state.permission or "read_only"
+
+    intent_by_mode = {
+        "coding": "fix_issue",
+        "investigation": "diagnose_failure",
+        "audit": "audit_workspace",
+    }
+    policy_by_mode = {
+        "coding": "permissive",
+        "investigation": "permissive",
+        "audit": "audit",
+    }
+    requested_policy = policy_by_mode[requested_mode]
+    decision = resolve_mode(
+        ModeRequest(
+            intent=intent_by_mode[requested_mode],
+            permission=permission,
+            runtime_policy=requested_policy,
+            workspace_root=state.canonical_workspace_root,
+        )
+    )
+
+    if decision.mode != requested_mode:
+        status = (
+            "PERMISSION_REQUIRED"
+            if requested_mode == "coding" and permission in {"read_only", "audit_only"}
+            else "MODE_TRANSITION_DENIED"
+        )
+        return {
+            "action": "session.mode",
+            "session_id": state.session_id,
+            "accepted": False,
+            "status": status,
+            "requested_mode": requested_mode,
+            "mode": state.mode,
+            "permission": state.permission,
+            "runtime_policy": state.runtime_policy,
+            "resolved_mode": decision.mode,
+            "rationale": decision.rationale,
+        }
+
+    runtime = _runtime_from_state(database=args.database, state=state)
+    updated = runtime.configure_session(
+        mode=decision.mode,
+        runtime_policy=requested_policy,
+    )
+    return {
+        "action": "session.mode",
+        "session_id": updated.session_id,
+        "accepted": True,
+        "status": "APPLIED",
+        "requested_mode": requested_mode,
+        "mode": updated.mode,
+        "permission": updated.permission,
+        "runtime_policy": updated.runtime_policy,
+        "resolved_mode": decision.mode,
+        "rationale": decision.rationale,
+    }
+
+
 def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
     del args
     registry = default_provider_registry()
@@ -431,8 +509,6 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .project_profiler import ProjectProfiler
     from .guard_catalog import select_guard_catalog
     from .runtime.agent_guidance import build_agent_guidance
-    from .runtime.mode_controller import ModeRequest, resolve_mode
-
     if args.session_id is None:
         missing = [name for name in ("workspace", "project_workspace_id", "mode") if not getattr(args, name, None)]
         if missing:
