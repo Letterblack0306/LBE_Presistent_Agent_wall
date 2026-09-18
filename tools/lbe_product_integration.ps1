@@ -522,9 +522,9 @@ function Write-Launcher {
     param([string]$PackageRoot)
     $launcher = @'
 param(
-    [Parameter(Mandatory)][string]$Project,
-    [Parameter(Mandatory)][string]$Database,
-    [Parameter(Mandatory)][string]$ProviderConfig,
+    [string]$Project,
+    [string]$Database,
+    [string]$ProviderConfig,
     [string]$CapabilityRegistry,
     [string]$SessionId,
     [ValidateSet("build", "plan", "audit")][string]$Agent = "build",
@@ -536,21 +536,61 @@ param(
 $ErrorActionPreference = "Stop"
 $client = Join-Path $InstallRoot "lbe.exe"
 $python = Join-Path $InstallRoot "venv\Scripts\python.exe"
+
+# Informational flags must pass through to the installed client without
+# requiring a full runtime/session/provider bootstrap. They can arrive either
+# as unbound $args or positionally bound to $Project / $Model.
+$informational = @('--version', '-V', '--help', '-h')
+$infoArg = $null
+foreach ($candidate in @($args) + @($Project) + @($Model)) {
+    if ($informational -contains $candidate) { $infoArg = $candidate; break }
+}
+if ($infoArg) {
+    if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
+    & $client --version
+    exit $LASTEXITCODE
+}
+
 $mcpConfigPath = Join-Path $InstallRoot "config\mcp.json"
 if (Test-Path -LiteralPath $mcpConfigPath -PathType Leaf) {
     $mcp = Get-Content -LiteralPath $mcpConfigPath -Raw | ConvertFrom-Json
     if ($mcp.python) { $env:LBE_BIRDEYE_MCP_PYTHON = [string]$mcp.python }
     if ($mcp.server) { $env:LBE_BIRDEYE_MCP_SERVER = [string]$mcp.server }
 }
+
+# Installed runtime.json supplies the state/config defaults so the launcher is
+# usable with zero mandatory arguments. Every default is composed from the
+# installed tree, never from npm or any other package owner.
+$runtimeConfig = $null
+$runtimeConfigPath = Join-Path $InstallRoot "config\runtime.json"
+if (Test-Path -LiteralPath $runtimeConfigPath -PathType Leaf) {
+    $runtimeConfig = Get-Content -LiteralPath $runtimeConfigPath -Raw | ConvertFrom-Json
+}
+
+if (-not $Project) { $Project = (Get-Location).Path }
+$workspaceFull = [IO.Path]::GetFullPath($Project)
+if (-not (Test-Path -LiteralPath $workspaceFull -PathType Container)) { throw "Project workspace missing: $workspaceFull" }
+
+if (-not $Database) {
+    if ($runtimeConfig -and $runtimeConfig.database) { $Database = [string]$runtimeConfig.database }
+    else { $Database = Join-Path $InstallRoot "state\lbe.sqlite3" }
+}
+if (-not $ProviderConfig) {
+    if ($env:LBE_PROVIDER_CONFIG) { $ProviderConfig = $env:LBE_PROVIDER_CONFIG }
+    elseif ($runtimeConfig -and $runtimeConfig.provider_configuration) { $ProviderConfig = [string]$runtimeConfig.provider_configuration }
+    elseif (Test-Path -LiteralPath (Join-Path $InstallRoot "config\provider-config.json") -PathType Leaf) { $ProviderConfig = Join-Path $InstallRoot "config\provider-config.json" }
+}
+if (-not $CapabilityRegistry -and $runtimeConfig -and $runtimeConfig.capability_registry) { $CapabilityRegistry = [string]$runtimeConfig.capability_registry }
+if (-not $SessionId -and $env:LBE_SESSION_ID) { $SessionId = $env:LBE_SESSION_ID }
+
 if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Installed LBE Python runtime missing: $python" }
-if (-not (Test-Path -LiteralPath $Project -PathType Container)) { throw "Project workspace missing: $Project" }
 if (-not (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) { throw "Provider config missing: $ProviderConfig" }
 
 $env:LBE_RUNTIME = "real"
 $env:LBE_WALL_ROOT = $InstallRoot
 $env:LBE_WALL_PYTHON = $python
-$env:LBE_TARGET_WORKSPACE = [IO.Path]::GetFullPath($Project)
+$env:LBE_TARGET_WORKSPACE = $workspaceFull
 $env:LBE_WALL_DATABASE = [IO.Path]::GetFullPath($Database)
 $env:LBE_PROVIDER_CONFIG = [IO.Path]::GetFullPath($ProviderConfig)
 if ($CapabilityRegistry) {
@@ -577,7 +617,8 @@ param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE"),
     [string]$BirdEyeServer,
     [string]$BirdEyePython,
-    [string]$Project
+    [string]$Project,
+    [string]$ProviderConfig
 )
 $ErrorActionPreference = "Stop"
 $venv = Join-Path $InstallRoot "venv"
@@ -624,7 +665,24 @@ if (-not (Test-Path -LiteralPath $registryPath -PathType Leaf)) {
     database = (Join-Path $InstallRoot "state\lbe.sqlite3")
     capability_registry = $registryPath
     mcp_configuration = (Join-Path $config "mcp.json")
+    provider_configuration = (Join-Path $config "provider-config.json")
 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $config "runtime.json") -Encoding UTF8
+$installedProviderConfig = Join-Path $config "provider-config.json"
+if ($ProviderConfig -and (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) {
+    Copy-Item -LiteralPath $ProviderConfig -Destination $installedProviderConfig -Force
+    Write-Host "Installed provider configuration: $installedProviderConfig"
+}
+elseif (-not (Test-Path -LiteralPath $installedProviderConfig -PathType Leaf)) {
+    @{
+        endpoint = "http://127.0.0.1:1234/v1/chat/completions"
+        model = "google/gemma-4-e4b"
+        timeout_seconds = 120
+    } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $installedProviderConfig -Encoding UTF8
+    Write-Host "Generated default provider configuration (127.0.0.1:1234): $installedProviderConfig"
+}
+else {
+    Write-Host "Provider configuration already present: $installedProviderConfig"
+}
 $site = & $python -c "import pathlib,lbe_guard_inspector; print(pathlib.Path(lbe_guard_inspector.__file__).parent)"
 if ($LASTEXITCODE -ne 0) { throw "Unable to resolve installed LBE package" }
 $workerTarget = Join-Path $site "runtime\cline_worker"
@@ -636,6 +694,57 @@ Write-Host "Runtime CLI: $(Join-Path $venv 'Scripts\lbe.exe')"
 Write-Host "Rust client: $(Join-Path $InstallRoot 'lbe.exe')"
 Write-Host "Real-runtime launcher: $(Join-Path $InstallRoot 'lbe-launch.ps1')"
 Write-Host "MCP configuration: $(Join-Path $config 'mcp.json') [$mcpStatus]"
+
+# --- Installed single-command contract: bin\lbe.cmd -> lbe-launch.ps1 -> lbe.exe ---
+$binDir = Join-Path $InstallRoot "bin"
+New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+$binCmd = Join-Path $binDir "lbe.cmd"
+@"
+@ECHO off
+SETLOCAL
+SET "LBE_INSTALL_ROOT=$InstallRoot"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%LBE_INSTALL_ROOT%\lbe-launch.ps1" %*
+ENDLOCAL
+"@ | Set-Content -LiteralPath $binCmd -Encoding ASCII
+$binCmdFull = [IO.Path]::GetFullPath($binCmd)
+if (-not (Test-Path -LiteralPath $binCmdFull -PathType Leaf)) { throw "Unable to create authoritative entrypoint: $binCmdFull" }
+
+# Prepend %LOCALAPPDATA%\LetterBlack\LBE\bin to the user PATH, idempotently.
+# Per product contract, never write into npm's shim directory and never
+# replace the global Python console script. The LetterBlack bin dir merely
+# wins resolution order.
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if (-not $userPath) { $userPath = "" }
+$userPathEntries = @($userPath -split ';' | Where-Object { $_ -and $_.Trim() })
+$binFull = [IO.Path]::GetFullPath($binDir)
+if ($userPathEntries -notcontains $binFull) {
+    $userPathEntries = @($binFull) + @($userPathEntries)
+    [Environment]::SetEnvironmentVariable("Path", ($userPathEntries -join ";"), "User")
+    Write-Host "Prepended user PATH entry: $binFull"
+}
+else {
+    Write-Host "User PATH entry already present (idempotent): $binFull"
+}
+
+# Detect existing lbe collisions and report them explicitly without replacing.
+$collisions = @()
+$allLbe = Get-Command lbe -All -ErrorAction SilentlyContinue
+foreach ($entry in $allLbe) {
+    $src = ""
+    try { $src = $entry.Source } catch { $src = [string]$entry.CommandType }
+    $isCanonical = ($src -and $src -like "$binFull\lbe.cmd*")
+    if (-not $isCanonical) {
+        $collisions += $src
+    }
+}
+if ($collisions.Count -gt 0) {
+    Write-Host "Installed lbe collisions detected (NOT silently replaced):"
+    foreach ($c in $collisions) { Write-Host "  - $c" }
+}
+else {
+    Write-Host "No competing installed lbe entrypoints detected."
+}
+Write-Host "Authoritative PATH entrypoint: $binCmdFull"
 '@
     Set-Content -LiteralPath (Join-Path $PackageRoot "install.ps1") -Value $installer -Encoding UTF8
 }
