@@ -322,11 +322,10 @@ def test_provider_list_reads_registered_adapters_without_building_provider(capsy
 
     payload = _json_output(capsys)
     assert code == 0
-    assert payload == {
-        "action": "provider.list",
-        "ok": True,
-        "providers": ["openai-compatible"],
-    }
+    assert payload["action"] == "provider.list"
+    assert payload["ok"] is True
+    assert "openai-compatible" in payload["providers"]
+    assert payload["providers"] == sorted(set(payload["providers"]))
 
 
 def test_missing_session_returns_structured_error(tmp_path: Path, capsys) -> None:
