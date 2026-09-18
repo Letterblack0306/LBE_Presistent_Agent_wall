@@ -24,6 +24,7 @@ from .provider_registry import default_provider_registry
 from .reasoning_config import load_provider_config
 from .reasoning_runtime import build_provider_controller
 from .runtime.completion_runtime import CodingCompletionRuntime
+from .runtime.mode_controller import ModeRequest, resolve_mode
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 from .session_lifecycle import LbeSessionService
 
