@@ -181,7 +181,7 @@ Do the following in order:
 1. Treat the Rust/Ratatui client in `C:\LBE-TUI-Lab\src\` as the canonical visible LBE terminal implementation.
 2. Preserve and adapt the existing HTML/React LBE layout/interaction work as the visual contract; do not copy its simulated state.
 3. Keep Cline headless behind LBE for reasoning/provider/model/tool-proposal/continuation mechanics; do not restore a copied Cline UI merely for product presentation.
-4. Reconcile `tools/lbe_product_integration.ps1` so contract/proof/build/package/installed-launch targets all match the Rust canonical client plus headless Cline worker composition.
+4. Validate the source-level `tools/lbe_product_integration.ps1` reconciliation committed at `cebd8cf7751b2cdeb8a76fb0dcc2e0bc0c8f58e5`; repair only claim-matched failures. Cline UI checks are now reference-only/non-blocking and the product build/package path remains Rust + headless Cline worker.
 5. Reconcile PLAN/ACT/AUDIT to backend mode/policy/permission owners without inventing authority in the launcher.
 6. Prove one installed real-terminal path: `lbe` -> Rust LBE shell -> real provider turn -> governed tool/approval -> ToolReceipt/evidence -> continuation -> persistence/resume -> deterministic completion -> clean terminal restoration.
 7. Only then close final product acceptance.
