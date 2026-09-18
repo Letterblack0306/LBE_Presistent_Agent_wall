@@ -72,7 +72,7 @@
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "MODE_POLICY_RUSTFMT_ONLY_BLOCKER",
+    "status": "MODE_POLICY_PASS__INSTALLED_PRODUCT_ACCEPTANCE_OPEN",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "UNVERIFIED",
@@ -111,14 +111,14 @@
         "evidence": "Cannot close until the Rust/Ratatui client is the actual packaged/installed `lbe` surface, projects authoritative LBE state, uses headless Cline reasoning/provider mechanics without native Cline authority, and passes full PTY/ConPTY lifecycle acceptance."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
-        "status": "FAIL",
-        "evidence": "Backend exact-head validation is green (125/125 at cc005495). TUI behavioral validation is now green at e22d3ef5: cargo check PASS; cargo test 202 passed / 0 failed / 2 ignored. All prior 26 failures disappeared after App::default() was corrected to Welcome+Build. The only remaining source gate is cargo fmt -- --check, which still fails on five Rust files. A behavior-neutral rustfmt delta was generated locally, hash 60041f23558452f52f5e70bceb1d816cc6d7ade56f1f90201a84633765e729b4, and tests remained 202/0/2 after formatting.",
+        "status": "PASS",
+        "evidence": "Exact-head proof: backend cc0054950153a8c41a48ee0ba60f2675833f7cce tests 125/125; TUI 58104bae1cebd2be04fa1d5544b2ebfce90fe8ff cargo check PASS, cargo fmt -- --check PASS, cargo test 202 passed / 0 failed / 2 ignored; bounded-runtime-validation-003 PASS. PLAN+read_only -> investigation, AUDIT+read_only -> audit, ACT+read_only -> PERMISSION_REQUIRED with persisted state unchanged, ACT+write_allowed -> coding, Real SetMode supported, AUDIT distinct, UI cannot grant permission.",
         "follow_up_commits": {
           "backend": "24e3cacf1e2899df0d28beffe27ed1a71a583b08",
           "tui": "2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf",
           "tui_default_state": "e22d3ef5acc46814558d92ccaba7a7b232d9921c"
         },
-        "required_fix": "Publish only the exact mechanical rustfmt delta for src/main.rs, src/tests.rs, src/types.rs, src/ui.rs, and src/wrapper.rs; prove cargo fmt -- --check, cargo check, and cargo test on the resulting canonical head; then run bounded-runtime-validation-003. Do not alter behavior while formatting."
+        "required_fix": "NONE. Closed. Do not reopen without contradictory runtime evidence."
       }
     },
     "next_phase": null
