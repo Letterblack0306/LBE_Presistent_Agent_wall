@@ -134,3 +134,21 @@ The canonical UI remains the minimal LBE shell defined by GPT-K: compact header,
 FINAL_PRODUCT_ACCEPTANCE remains BLOCKED
 until the selected Rust/Ratatui LBE client is the actual packaged/installed `lbe` surface and the full real-terminal governed lifecycle is proven.
 ```
+
+## Mode-policy exact-head closure
+
+`MODE_POLICY_PRODUCT_MAPPING = PASS`
+
+Proof:
+- backend `cc0054950153a8c41a48ee0ba60f2675833f7cce`: 125/125 focused tests;
+- TUI `58104bae1cebd2be04fa1d5544b2ebfce90fe8ff`: cargo check PASS, rustfmt check PASS, 202 passed / 0 failed / 2 ignored;
+- `bounded-runtime-validation-003`: PASS;
+- PLAN/read-only -> investigation;
+- AUDIT/read-only -> audit;
+- ACT/read-only -> permission required with no persisted mutation;
+- ACT/write_allowed -> coding;
+- visible AUDIT distinct;
+- UI cannot grant permission.
+
+This gate is closed. Final installed product acceptance is still open.
+
