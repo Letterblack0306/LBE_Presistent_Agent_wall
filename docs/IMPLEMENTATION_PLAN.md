@@ -230,3 +230,15 @@ Until then:
 FINAL_PRODUCT_ACCEPTANCE = BLOCKED
 PUBLICATION = LOCKED
 ```
+
+## Final product acceptance status — 2026-09-18
+
+```text
+LBE_OWNED_RUST_TUI_PRODUCT_SURFACE = COMPLETE
+FINAL_PRODUCT_ACCEPTANCE           = PASS
+CANONICAL_INSTALLER_CONTRACT       = PASS
+INSTALLED_SINGLE_COMMAND_LAUNCH    = PASS
+```
+
+The implementation/acceptance plan for the installed LBE product is complete. Further work, if any, belongs to separately authorized release/publication or new product intents.
+
