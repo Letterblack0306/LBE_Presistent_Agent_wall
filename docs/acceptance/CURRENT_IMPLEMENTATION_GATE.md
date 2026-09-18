@@ -78,6 +78,20 @@ real PTY/ConPTY acceptance                  UNVERIFIED
 FINAL_PRODUCT_ACCEPTANCE                    BLOCKED
 ```
 
+## Runtime-proven mode-policy failure
+
+Probe: `bounded-runtime-validation-001`
+
+```text
+ACT   expected coding        / effective audit = FAIL
+PLAN  expected investigation / effective audit = FAIL
+AUDIT expected audit         / effective audit = PASS
+real SetMode supported                         = false
+visible AUDIT distinct                         = false
+```
+
+This is now a blocking implementation defect. The fix must preserve LBE permission/policy authority; selecting ACT in the UI is not itself permission to write.
+
 ## Current single job
 
 ```text
