@@ -346,3 +346,22 @@ final canonical product acceptance      = BLOCKED ONLY ON SOURCE CANONICALIZATIO
 
 The remaining task is not another runtime repair. Publish the exact installer/launcher behavior that produced the accepted installation to canonical `tools/lbe_product_integration.ps1`, rebuild/reinstall from that exact `main`, and repeat only the lightweight fresh-shell command smoke.
 
+
+## Final installed product acceptance — PASS — 2026-09-18
+
+The LBE installed product gate is closed.
+
+```text
+FINAL_PRODUCT_ACCEPTANCE = PASS
+backend canonical installer = 09b5c1cd28806d4381fabaa4723191494f2bc32f
+Rust/Ratatui client         = 58104bae1cebd2be04fa1d5544b2ebfce90fe8ff
+installed root              = %LOCALAPPDATA%\LetterBlack\LBE
+fresh-shell entrypoint      = %LOCALAPPDATA%\LetterBlack\LBE\bin\lbe.cmd
+```
+
+The product was rebuilt/reinstalled from the exact canonical backend head and the fresh-shell `lbe` path was revalidated against the installed runtime. All defined runtime/UI/provider/tool/receipt/approval/mode-policy/PTY/restart/resume/launcher verdicts pass.
+
+No installed-product acceptance blocker remains.
+
+Publication remains a separate governed process and is not authorized by this acceptance result.
+
