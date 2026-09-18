@@ -3,10 +3,10 @@
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
   "active_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
-  "status": "OPEN",
-  "implementation_allowed": true,
+  "status": "PASS",
+  "implementation_allowed": false,
   "architecture_changes_allowed": true,
-  "next_phase_locked": true,
+  "next_phase_locked": false,
   "required_status_for_advance": "PASS",
   "selected_reasoning_agent": {
     "name": "Cline",
@@ -65,18 +65,18 @@
   },
   "closure": {
     "status": "CLOSED",
-    "last_completed_slice": "PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION",
-    "last_completed_intent": "LBE-INTENT-PARENT-CONTINUATION-DEEP-CORRELATION-001",
-    "checkpoint": "docs/acceptance/PARENT_CONTINUATION_AND_DEEP_CORRELATION_ACCEPTANCE_CHECKPOINT.md",
-    "next_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
+    "last_completed_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
+    "last_completed_intent": "LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001",
+    "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
+    "next_slice": "NONE",
     "publication": "LOCKED"
   },
   "active_execution_plan": {
-    "status": "INSTALLED_PRODUCT_PASS__CANONICAL_INSTALLER_SOURCE_PENDING",
+    "status": "PASS",
     "ordered_slices": {
       "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
         "status": "PASS",
-        "evidence": "Fresh-terminal installed-product acceptance 2026-09-18: Get-Command lbe -All resolves first to C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd, which launches installed lbe-launch.ps1 -> installed lbe.exe. Bare `lbe` renders LETTERBLACK ENGINE, CONNECTED / AGENT WALL / ACT LIVE, restores sess_lbe_accept_001, projects LM Studio / google/gemma-4-e4b, and tears down without retained lbe.exe processes."
+        "evidence": "Fresh-shell post-provenance acceptance on 2026-09-18: Get-Command lbe -All resolves first to C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd. Bare `lbe` launches installed lbe-launch.ps1 -> installed Rust/Ratatui lbe.exe, renders LETTERBLACK ENGINE / CONNECTED / AGENT WALL / ACT LIVE, restores sess_lbe_accept_001, projects live LM Studio google/gemma-4-e4b, and completes clean teardown."
       },
       "REAL_RUNTIME_ATTACHMENT": {
         "status": "PASS",
@@ -107,8 +107,8 @@
         "evidence": "Real PTY rendered the LBE-owned Rust/Ratatui surface with LETTERBLACK ENGINE, authoritative runtime/session/workspace/provider/model/mode/policy footer, governed turn timeline, approval UI, and no synthetic preview state."
       },
       "FINAL_PRODUCT_ACCEPTANCE": {
-        "status": "BLOCKED",
-        "evidence": "All functional installed-runtime, PTY, provider/model, governed tool, receipt/evidence, approval/reject, exit, resume, mode-policy, and bare-command behaviors are proven PASS on the tested machine. Final canonical product acceptance is blocked only because the durable installer/launcher behavior is not yet represented in canonical GitHub main as required by implementation_head_must_equal_main."
+        "status": "PASS",
+        "evidence": "All defined final-product verdicts pass: canonical Rust/Ratatui surface, authoritative real runtime attachment, live provider/model, governed tool round trip, persisted ToolReceipt/evidence, interactive approve/reject, mode-policy mapping, clean PTY lifecycle, restart/resume, fresh-shell bare `lbe`, and canonical installer/source provenance. Installed lbe.exe SHA256 6E794AF5E2F2E869D0F02F7CCB25EAD105956E9C05EC67ECE43F76F58B4BAB8F matches the canonical built client reported in the acceptance run."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {
         "status": "PASS",
@@ -121,9 +121,9 @@
         "required_fix": "NONE. Closed. Do not reopen without contradictory runtime evidence."
       },
       "CANONICAL_INSTALLER_LAUNCHER_CONTRACT": {
-        "status": "UNVERIFIED",
-        "evidence": "The tested machine now has the desired stable installation root, authoritative bin\\lbe.cmd PATH entry, removed stale npm package/shims, and working zero-argument launcher. However canonical GitHub main 85de0ffc7c37b2978b2e9b07d8079505656bf64a still has tools/lbe_product_integration.ps1 that copies lbe.exe/lbe-launch.ps1 but does not create bin\\lbe.cmd, prepend user PATH, or implement the tested zero-argument durable launcher contract. Therefore installed behavior is proven, but its canonical source provenance is not.",
-        "required_fix": "Publish the exact installer/launcher changes that produced the proven %LOCALAPPDATA%\\LetterBlack\\LBE installation to canonical tools/lbe_product_integration.ps1 (and only any directly required tests/docs), then rebuild/reinstall from that exact main and repeat the lightweight fresh-shell Get-Command/lbe smoke. No runtime/UI/mode-policy changes are required."
+        "status": "PASS",
+        "evidence": "Canonical backend main 09b5c1cd28806d4381fabaa4723191494f2bc32f publishes the installed command contract in tools/lbe_product_integration.ps1: zero-mandatory-argument launcher defaults from installed runtime.json, provider configuration under the install root, bin\\lbe.cmd generation, idempotent user-PATH prepend, and explicit collision reporting without overwriting npm/Python owners. Product was rebuilt/reinstalled from this exact canonical head and revalidated.",
+        "required_fix": "NONE. Closed."
       }
     },
     "next_phase": null
