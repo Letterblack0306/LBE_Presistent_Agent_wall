@@ -90,7 +90,7 @@ real SetMode supported                         = false
 visible AUDIT distinct                         = false
 ```
 
-This is now a blocking implementation defect. The fix must preserve LBE permission/policy authority; selecting ACT in the UI is not itself permission to write.
+The repair is now present on canonical GitHub main (backend `f7e09491c2142778ccead48611ed4c63d0da30d9`, TUI `7c41dfab251e2da6226d4682e9c5b1ea00afa3f6`). It is **UNVERIFIED on the exact canonical heads** until the focused backend/Rust checks and `bounded-runtime-validation-002` are rerun after fetching those revisions. Selecting ACT in the UI is still not itself permission to write.
 
 ## Current single job
 
