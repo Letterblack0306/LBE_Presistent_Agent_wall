@@ -4,7 +4,7 @@ param(
     [ValidateSet("auto", "worktree", "origin-main")]
     [string]$SourceMode = "auto",
     [string]$AgentWallRoot = "C:\Agents-Memory-Tool-v6-integration",
-    [string]$TuiRoot = "C:\LBE-TUI-Lab",
+    [string]$TuiRoot = (Join-Path $AgentWallRoot "apps\lbe-terminal"),
     [string]$OutputRoot = (Join-Path $PSScriptRoot "..\dist\product-integration"),
     [switch]$NoFetch
 )
@@ -13,8 +13,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $AgentWallRepository = "Letterblack0306/LBE_Presistent_Agent_wall"
-$TuiRepository = "Letterblack0306/LBE_Agents_wall_Intigration"
 $SchemaVersion = 2
+$ClientCratePath = "apps\lbe-terminal"
 $ClineReferenceRepository = "cline/cline"
 $ClineReferenceCommit = "952df213ee654633fb3f7abda23a1c1b24e92d7f"
 $ClineReferenceFiles = @(
@@ -177,29 +177,32 @@ function Test-IntegrationContracts {
     # Rust/Ratatui is the canonical visible LBE product client selected by the product owner
     # on 2026-09-18. It remains projection/control only; all authority-bearing consequences
     # continue through the canonical Agent Wall owners.
-    $wrapper = Get-SourceText -Root $ClientRoot -Path "src/wrapper.rs" -SourceMode $SourceMode
-    $types = Get-SourceText -Root $ClientRoot -Path "src/types.rs" -SourceMode $SourceMode
-    $app = Get-SourceText -Root $ClientRoot -Path "src/app.rs" -SourceMode $SourceMode
-    $main = Get-SourceText -Root $ClientRoot -Path "src/main.rs" -SourceMode $SourceMode
-    $requests = Get-SourceText -Root $ClientRoot -Path "src/requests.rs" -SourceMode $SourceMode
+    # Single-project topology: the client crate is colocated at apps\lbe-terminal in the Agent Wall
+    # repository, so client source paths are prefixed with the crate directory.
+    $wrapper = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/src/wrapper.rs" -SourceMode $SourceMode
+    $types = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/src/types.rs" -SourceMode $SourceMode
+    $app = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/src/app.rs" -SourceMode $SourceMode
+    $main = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/src/main.rs" -SourceMode $SourceMode
+    $requests = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/src/requests.rs" -SourceMode $SourceMode
 
     # Cline CLI/OpenTUI source is optional reference/reuse material only. The product does not
     # require a copied Cline UI tree. Headless Cline reasoning/provider mechanics are owned by
-    # the Agent Wall cline_worker path.
-    $clineAdapter = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/lbe-tool-adapter.ts" -SourceMode $SourceMode -AllowMissing
-    $clineRunAgent = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/run-agent.ts" -SourceMode $SourceMode -AllowMissing
-    $clineAdapterTests = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/runtime/lbe-tool-adapter.test.ts" -SourceMode $SourceMode -AllowMissing
-    $clineWelcome = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/interactive-welcome.ts" -SourceMode $SourceMode -AllowMissing
-    $clineKeyboard = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/keyboard-map.ts" -SourceMode $SourceMode -AllowMissing
-    $clineOnboarding = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/views/onboarding/screens.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineStatusBar = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/status-bar.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineRoot = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/root.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineIdentity = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/lbe-identity.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineHome = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/views/home-view.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineChat = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/views/chat-view.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineInput = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/input-bar.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineMessages = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/chat-message-list.tsx" -SourceMode $SourceMode -AllowMissing
-    $clineLoader = Get-SourceText -Root $ClientRoot -Path "cline/apps/cli/src/tui/components/letterblack-loader.tsx" -SourceMode $SourceMode -AllowMissing
+    # the Agent Wall cline_worker path. Reference paths are intentionally retired from the
+    # consolidated single-project layout; these optional reads resolve to $null when absent.
+    $clineAdapter = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/runtime/lbe-tool-adapter.ts" -SourceMode $SourceMode -AllowMissing
+    $clineRunAgent = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/runtime/run-agent.ts" -SourceMode $SourceMode -AllowMissing
+    $clineAdapterTests = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/runtime/lbe-tool-adapter.test.ts" -SourceMode $SourceMode -AllowMissing
+    $clineWelcome = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/interactive-welcome.ts" -SourceMode $SourceMode -AllowMissing
+    $clineKeyboard = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/keyboard-map.ts" -SourceMode $SourceMode -AllowMissing
+    $clineOnboarding = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/views/onboarding/screens.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineStatusBar = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/components/status-bar.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineRoot = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/root.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineIdentity = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/components/lbe-identity.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineHome = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/views/home-view.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineChat = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/views/chat-view.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineInput = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/components/input-bar.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineMessages = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/components/chat-message-list.tsx" -SourceMode $SourceMode -AllowMissing
+    $clineLoader = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/cline/apps/cli/src/tui/components/letterblack-loader.tsx" -SourceMode $SourceMode -AllowMissing
 
     $checks = [System.Collections.Generic.List[object]]::new()
 
@@ -359,7 +362,7 @@ function Test-IntegrationContracts {
 
     $uiFilesPresent = $clineWelcome -and $clineKeyboard -and $clineOnboarding -and $clineStatusBar -and $clineRoot -and $clineIdentity
     $visibleUi = @($clineWelcome, $clineKeyboard, $clineOnboarding, $clineStatusBar, $clineRoot, $clineIdentity) -join [Environment]::NewLine
-    $brandingLeaks = @("Welcome to Cline", "Exit Cline", "Cline Hub", "ClinePass:") | Where-Object { $visibleUi.Contains($_) }
+    $brandingLeaks = @(@("Welcome to Cline", "Exit Cline", "Cline Hub", "ClinePass:") | Where-Object { $visibleUi.Contains($_) })
     $identityPresent = $uiFilesPresent -and
         $visibleUi.Contains("Welcome to LBE") -and
         $visibleUi.Contains("Exit LBE") -and
@@ -380,12 +383,12 @@ function Test-IntegrationContracts {
         '<TrackedRobot',
         '<strong>What can I do for you?</strong>'
     )
-    $clineHeroMarkerCount = @($clineHeroMarkers | Where-Object { $clineHome.Contains($_) }).Count
+    $clineHeroMarkerCount = @($clineHeroMarkers | Where-Object { $clineHome -and $clineHome.Contains($_) }).Count
     $lbeStructuralMarkers = @(
-        $clineInput.Contains("[I]"),
-        ($clineLoader.Contains("bounce") -or $clineLoader.Contains("direction")),
-        ($clineMessages.Contains("3") -and ($clineMessages.Contains("expand") -or $clineMessages.Contains("collapsed"))),
-        ($clineHome.Contains("context") -or $clineStatusBar.Contains("context"))
+        [bool]($clineInput -and $clineInput.Contains("[I]")),
+        [bool]($clineLoader -and ($clineLoader.Contains("bounce") -or $clineLoader.Contains("direction"))),
+        [bool]($clineMessages -and $clineMessages.Contains("3") -and ($clineMessages.Contains("expand") -or $clineMessages.Contains("collapsed"))),
+        [bool](($clineHome -and $clineHome.Contains("context")) -or ($clineStatusBar -and $clineStatusBar.Contains("context")))
     )
     $lbeStructuralPass = $visualFilesPresent -and ($clineHeroMarkerCount -lt 3) -and -not ($lbeStructuralMarkers -contains $false)
     $visualDetail = if (-not $visualFilesPresent) {
@@ -449,8 +452,8 @@ function Invoke-Proof {
         $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = "BLOCKED"; exit_code = $null; command = "cargo"; output = @("cargo not found") })
     }
     else {
-        $tui = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("test", "--locked")
-        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = $(if ($tui.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $tui.exit_code; command = $tui.command; output = $tui.output })
+        $tuiTest = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("test", "--locked")
+        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = $(if ($tuiTest.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $tuiTest.exit_code; command = $tuiTest.command; output = $tuiTest.output })
         $fmt = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("fmt", "--", "--check")
         $proofs.Add([pscustomobject]@{ id = "tui.cargo_fmt"; status = $(if ($fmt.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $fmt.exit_code; command = $fmt.command; output = $fmt.output })
     }
@@ -802,17 +805,28 @@ function Test-PackageArchive {
 }
 
 $agent = Assert-Workspace -Root $AgentWallRoot -Repository $AgentWallRepository
-$tui = Assert-Workspace -Root $TuiRoot -Repository $TuiRepository
 
 if ($agent.worktree_count -ne 1) { throw "Agent Wall must have exactly one registered worktree; found $($agent.worktree_count)." }
-if ($tui.worktree_count -ne 1) { throw "LBE TUI must have exactly one registered worktree; found $($tui.worktree_count)." }
 
-$contracts = Test-IntegrationContracts -AgentRoot $AgentWallRoot -ClientRoot $TuiRoot -SourceMode $SourceMode
+# Single-project topology: the Rust/Ratatui client crate is colocated at apps\lbe-terminal in the
+# Agent Wall repository. No separate TUI workspace/repository is required to build, launch,
+# install, test, or operate the product.
+$clientCrateProbe = if ($SourceMode -eq "worktree") {
+    (Test-Path -LiteralPath (Join-Path $AgentWallRoot "apps\lbe-terminal\Cargo.toml") -PathType Leaf)
+}
+else {
+    (Invoke-Git -Root $AgentWallRoot -Arguments @("show", "origin/main:apps/lbe-terminal/Cargo.toml") -AllowFailure).exit_code -eq 0
+}
+if (-not $clientCrateProbe) {
+    throw "Rust client crate missing in Agent Wall repository: apps\lbe-terminal ($SourceMode)"
+}
+
+$contracts = Test-IntegrationContracts -AgentRoot $AgentWallRoot -ClientRoot $AgentWallRoot -SourceMode $SourceMode
 $structuralPass = @($contracts | Where-Object { $_.blocking -and -not $_.passed }).Count -eq 0
 
 New-Item -ItemType Directory -Path $OutputRoot -Force | Out-Null
 $stageRoot = Join-Path $OutputRoot "_staging"
-$agentStage = Join-Path $stageRoot "agent-wall"
+$agentStage = if ($Mode -eq "check") { $AgentWallRoot } else { Join-Path $stageRoot "agent-wall" }
 $tuiStage = Join-Path $stageRoot "lbe-tui"
 $proofs = @()
 $build = $null
@@ -826,7 +840,7 @@ if ($Mode -in @("prove", "build", "package")) {
     }
     else {
         Export-OriginMain -Root $AgentWallRoot -Destination $agentStage
-        Export-OriginMain -Root $TuiRoot -Destination $tuiStage
+        $tuiStage = Join-Path $agentStage "apps\lbe-terminal"
     }
     $proofs = Invoke-Proof -AgentStage $agentStage -TuiStage $tuiStage
 }
@@ -842,20 +856,77 @@ if ($Mode -in @("build", "package")) {
     Write-Launcher -PackageRoot $packageRoot
 }
 
+function Get-GateField {
+    param(
+        [object]$Target,
+        [string]$Name
+    )
+    if ($null -eq $Target) { return $null }
+    $prop = $Target.PSObject.Properties[$Name]
+    if ($null -eq $prop) { return $null }
+    return $prop.Value
+}
+
+function Get-GateStringField {
+    param(
+        [object]$Target,
+        [string]$Name,
+        [string]$Default = ""
+    )
+    $value = Get-GateField -Target $Target -Name $Name
+    if ($null -eq $value) { return $Default }
+    return [string]$value
+}
+
 $machineGatePath = Join-Path $agentStage ".lbe\governance\implementation-gates.json"
 if (-not (Test-Path -LiteralPath $machineGatePath -PathType Leaf)) {
     throw "Machine execution gate missing: $machineGatePath"
 }
 $machineGate = Get-Content -LiteralPath $machineGatePath -Raw | ConvertFrom-Json
-if (-not $machineGate.active_execution_plan) {
+$machineExecutionPlan = Get-GateField -Target $machineGate -Name "active_execution_plan"
+if ($null -eq $machineExecutionPlan) {
     throw "Machine execution gate does not declare active_execution_plan."
 }
-$machineExecutionPlan = $machineGate.active_execution_plan
-$orderedMachineSlices = @($machineExecutionPlan.ordered_slices | Sort-Object order)
+
+# Normalize ordered_slices regardless of legacy array form or current object-dict form.
+$rawOrderedSlices = Get-GateField -Target $machineExecutionPlan -Name "ordered_slices"
+$orderedMachineSlices = @()
+if ($null -ne $rawOrderedSlices) {
+    if ($rawOrderedSlices -is [System.Collections.IEnumerable] -and $rawOrderedSlices -isnot [string]) {
+        $index = 0
+        foreach ($item in $rawOrderedSlices) {
+            $orderedMachineSlices += [pscustomobject]@{
+                slice_id = Get-GateStringField -Target $item -Name "slice_id" -Default ("slice-$index")
+                order = Get-GateStringField -Target $item -Name "order" -Default ("{0:D4}" -f $index)
+                status = Get-GateStringField -Target $item -Name "status" -Default "UNVERIFIED"
+            }
+            $index++
+        }
+    }
+    elseif ($rawOrderedSlices.PSObject.Properties) {
+        $index = 0
+        foreach ($prop in $rawOrderedSlices.PSObject.Properties) {
+            $orderedMachineSlices += [pscustomobject]@{
+                slice_id = $prop.Name
+                order = ("{0:D4}" -f $index)
+                status = Get-GateStringField -Target $prop.Value -Name "status" -Default "UNVERIFIED"
+            }
+            $index++
+        }
+    }
+}
+$orderedMachineSlices = @($orderedMachineSlices | Sort-Object -Property order)
 $pendingMachineSlices = @($orderedMachineSlices | Where-Object { $_.status -ne "PASS" })
 $currentMachineSlice = @($pendingMachineSlices | Select-Object -First 1)
 $currentMachineSliceId = if ($currentMachineSlice.Count -eq 0) { "GATE_CLOSURE" } else { [string]$currentMachineSlice[0].slice_id }
 $currentMachineSliceStatus = if ($currentMachineSlice.Count -eq 0) { "READY_FOR_GATE_EVALUATION" } else { [string]$currentMachineSlice[0].status }
+
+# Gate fields introduced in the current gate schema are optional; read them defensively.
+$gateId = Get-GateStringField -Target $machineExecutionPlan -Name "gate_id" -Default ((Get-GateStringField -Target $machineGate -Name "active_phase") + "/" + $currentMachineSliceId)
+$objective = Get-GateStringField -Target $machineExecutionPlan -Name "objective" -Default (Get-GateStringField -Target $machineGate -Name "active_phase")
+$continuationPolicyValue = Get-GateField -Target (Get-GateField -Target $machineGate -Name "agent_continuation_policy") -Name "mode"
+$continuationPolicy = if ($null -eq $continuationPolicyValue) { "declared_only" } else { [string]$continuationPolicyValue }
+$nextGateAfterPass = Get-GateStringField -Target $machineExecutionPlan -Name "next_gate_after_pass"
 
 $manifest = [ordered]@{
     schema_version = $SchemaVersion
@@ -863,17 +934,17 @@ $manifest = [ordered]@{
     generated_at = [DateTimeOffset]::UtcNow.ToString("o")
     generator = "tools/lbe_product_integration.ps1"
     machine_execution = [ordered]@{
-        gate_id = [string]$machineExecutionPlan.gate_id
-        objective = [string]$machineExecutionPlan.objective
+        gate_id = $gateId
+        objective = $objective
         current_slice = $currentMachineSliceId
         current_slice_status = $currentMachineSliceStatus
-        continuation_policy = [string]$machineGate.agent_continuation_policy.mode
+        continuation_policy = $continuationPolicy
         ordered_slices = $orderedMachineSlices
         pending_slices = @($pendingMachineSlices | ForEach-Object { [string]$_.slice_id })
         pending_count = $pendingMachineSlices.Count
-        always_visible_pending = @($machineExecutionPlan.always_visible_pending)
-        out_of_scope = @($machineExecutionPlan.out_of_scope)
-        next_gate_after_pass = [string]$machineExecutionPlan.next_gate_after_pass
+        always_visible_pending = @((Get-GateField -Target $machineExecutionPlan -Name "always_visible_pending"))
+        out_of_scope = @((Get-GateField -Target $machineExecutionPlan -Name "out_of_scope"))
+        next_gate_after_pass = $nextGateAfterPass
         rule = "PENDING/IMPLEMENTED/UNVERIFIED continue through the declared plan when runnable; FAIL/BLOCKED remain visible; only PASS advances."
     }
     mode = $Mode
@@ -883,10 +954,9 @@ $manifest = [ordered]@{
         rule = "check/prove may validate the assembled worktree; build/package are forced to origin/main and cannot package uncommitted state."
     }
     authority = [ordered]@{
-        rule = "Agent Wall is the runtime/governance authority. The LBE-owned Rust/Ratatui client is the canonical visible product surface. Headless Cline mechanics provide cognition/provider/model/continuation behind LBE. This script owns no runtime decision."
+        rule = "Agent Wall is the runtime/governance authority. The LBE-owned Rust/Ratatui client is the canonical visible product surface, colocated in the Agent Wall repository at apps\lbe-terminal. Headless Cline mechanics provide cognition/provider/model/continuation behind LBE. This script owns no runtime decision."
         agent_wall = $agent
-        lbe_cli_repository = $tui
-        rust_product_client = [ordered]@{ repository = $TuiRepository; role = "CANONICAL_VISIBLE_PRODUCT_CLIENT"; path = "src/" }
+        rust_product_client = [ordered]@{ repository = $AgentWallRepository; role = "CANONICAL_VISIBLE_PRODUCT_CLIENT"; path = "apps/lbe-terminal/src/" }
     }
     product_surface = [ordered]@{
         name = "LBE CLI/TUI"
@@ -940,12 +1010,12 @@ Write-Host "=== LETTERBLACK PRODUCT INTEGRATION ==="
 Write-Host "Mode: $Mode"
 Write-Host "Verification source:      $SourceMode ($SourceRef)"
 Write-Host "Agent Wall origin/main: $($agent.origin_main)"
-Write-Host "Rust TUI origin/main:     $($tui.origin_main)"
+Write-Host "Rust client crate:        apps\lbe-terminal (in-repo, no separate TUI origin/main)"
 Write-Host "Structural integration:   $structuralPass"
 Write-Host "Proof pass:               $proofPass"
-Write-Host "Machine gate:             $($machineExecutionPlan.gate_id)"
+Write-Host "Machine gate:             $gateId"
 Write-Host "Machine current slice:    $currentMachineSliceId [$currentMachineSliceStatus]"
-Write-Host "Continuation policy:      $($machineGate.agent_continuation_policy.mode)"
+Write-Host "Continuation policy:      $continuationPolicy"
 Write-Host "Pending machine slices:   $($pendingMachineSlices.Count)"
 if ($pendingMachineSlices.Count -gt 0) {
     Write-Host "Pending IDs:               $((@($pendingMachineSlices | ForEach-Object { $_.slice_id })) -join ', ')"

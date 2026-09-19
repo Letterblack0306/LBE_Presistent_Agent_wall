@@ -1,0 +1,1238 @@
+use std::time::Duration;
+
+use ratatui::style::Color;
+
+use crate::{browser_chat::BrowserChatProjection, memory::MemoryProjection};
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ProjectTruthProjection {
+    pub(crate) schema_version: String,
+    pub(crate) projection_type: String,
+    pub(crate) generated_at: String,
+    pub(crate) workspace_id: String,
+    pub(crate) read_only: bool,
+    pub(crate) data: ProjectTruthData,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ProjectTruthData {
+    pub(crate) workspace_root: String,
+    pub(crate) target_project_root: String,
+    pub(crate) configured_root_id: Option<String>,
+    pub(crate) project_types: Vec<String>,
+    pub(crate) signals: Vec<ProjectTruthSignal>,
+    pub(crate) confidence: serde_json::Number,
+    pub(crate) outcome: String,
+    pub(crate) missing_evidence: Vec<String>,
+    pub(crate) profile_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ProjectTruthSignal {
+    pub(crate) path: String,
+    pub(crate) sha256: String,
+    pub(crate) project_type: String,
+    pub(crate) pack: String,
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+pub(crate) const MIN_WIDTH: u16 = 60;
+pub(crate) const MIN_HEIGHT: u16 = 18;
+pub(crate) const OUTER_REVEAL: Duration = Duration::from_millis(100);
+pub(crate) const FRAME_REVEAL: Duration = Duration::from_millis(300);
+pub(crate) const BRACKETS_REVEAL: Duration = Duration::from_millis(700);
+pub(crate) const BAR_REVEAL: Duration = Duration::from_millis(1100);
+pub(crate) const SLOGAN_REVEAL: Duration = Duration::from_millis(1300);
+pub(crate) const BAR_BLINK_START: Duration = Duration::from_millis(1400);
+pub(crate) const BAR_BLINK_HALF_PERIOD: Duration = Duration::from_millis(450);
+pub(crate) const TYPE_CURSOR_HALF_PERIOD: Duration = Duration::from_millis(450);
+
+pub(crate) const LOGO: [&str; 17] = [
+    "███████████████████████████████████████",
+    "██                                   ██",
+    "██   #############################   ██",
+    "██   #                           #   ██",
+    "██   #   ********     ********   #   ██",
+    "██   #   *         *         *   #   ██",
+    "██   #   *         *         *   #   ██",
+    "██   #   *         *         *   #   ██",
+    "██   #   *         *         *   #   ██",
+    "██   #   *         *         *   #   ██",
+    "██   #   *         *         *   #   ██",
+    "██   #   *         *         *   #   ██",
+    "██   #   ********     ********   #   ██",
+    "██   #                           #   ██",
+    "██   #############################   ██",
+    "██                                   ██",
+    "███████████████████████████████████████",
+];
+
+pub(crate) const MINIMAL_LOGO: [&str; 7] = [
+    "_____________",
+    "      |  __   __  |",
+    "      | |   |   | |",
+    "      | |   |   | |",
+    "      | |   |   | |",
+    "      | |__ | __| |",
+    "      |___________|",
+];
+
+// ---------------------------------------------------------------------------
+// Palette
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy)]
+pub(crate) struct Palette {
+    pub(crate) bg: Color,
+    pub(crate) ink: Color,
+    pub(crate) muted: Color,
+    pub(crate) faint: Color,
+    pub(crate) line: Color,
+    pub(crate) red: Color,
+    pub(crate) green: Color,
+    pub(crate) amber: Color,
+    pub(crate) logo_outer: Color,
+}
+
+pub(crate) const PALETTE: Palette = Palette {
+    bg: Color::Rgb(13, 15, 18),
+    ink: Color::Rgb(232, 235, 239),
+    muted: Color::Rgb(139, 146, 156),
+    faint: Color::Rgb(92, 98, 107),
+    line: Color::Rgb(43, 48, 56),
+    red: Color::Rgb(217, 74, 74),
+    green: Color::Rgb(79, 209, 139),
+    amber: Color::Rgb(224, 168, 79),
+    logo_outer: Color::Rgb(55, 65, 81),
+};
+
+// ---------------------------------------------------------------------------
+// Phase
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Phase {
+    Landing,
+    Welcome,
+    PatchReview {
+        path: String,
+        expected_sha256: String,
+        replacement_content: String,
+    },
+    AwaitingApproval {
+        approval_id: String,
+        proposal: String,
+    },
+    Running,
+    Interrupted,
+    Completed,
+    Failed,
+    TimedOut,
+    Aborted,
+    Rejected,
+}
+
+impl Phase {
+    pub(crate) fn from_session_status(status: SessionStatus) -> Self {
+        match status {
+            SessionStatus::Idle | SessionStatus::WaitingForInput => Self::Welcome,
+            SessionStatus::Running => Self::Running,
+            SessionStatus::WaitingForApproval => Self::Welcome,
+            SessionStatus::Interrupted => Self::Interrupted,
+            SessionStatus::Completed => Self::Completed,
+            SessionStatus::Failed => Self::Failed,
+            SessionStatus::TimedOut => Self::TimedOut,
+            SessionStatus::Aborted => Self::Aborted,
+            SessionStatus::Rejected => Self::Rejected,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ExecutionStatus {
+    Pending,
+    WaitingForApproval,
+    Running,
+    Validating,
+    Interrupted,
+    Completed,
+    Failed,
+    TimedOut,
+    Aborted,
+    Rejected,
+}
+
+impl ExecutionStatus {
+    pub(crate) fn is_terminal(self) -> bool {
+        matches!(
+            self,
+            Self::Completed | Self::Failed | Self::TimedOut | Self::Aborted | Self::Rejected
+        )
+    }
+
+    pub(crate) fn session_status(self) -> SessionStatus {
+        match self {
+            Self::Pending => SessionStatus::Idle,
+            Self::WaitingForApproval => SessionStatus::WaitingForApproval,
+            Self::Running | Self::Validating => SessionStatus::Running,
+            Self::Interrupted => SessionStatus::Interrupted,
+            Self::Completed => SessionStatus::Completed,
+            Self::Failed => SessionStatus::Failed,
+            Self::TimedOut => SessionStatus::TimedOut,
+            Self::Aborted => SessionStatus::Aborted,
+            Self::Rejected => SessionStatus::Rejected,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AgentMode
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AgentMode {
+    /// Build / act: the agent may run governed tools and mutate state when
+    /// explicitly authorized by the session. This is the LBE equivalent of
+    /// Cline's "act" mode.
+    Build,
+    /// Read-only audit: inspect evidence, list findings, never mutate.
+    Audit,
+    /// Plan-only: investigate and propose, no execution.
+    Plan,
+}
+
+impl AgentMode {
+    pub(crate) fn next(self) -> Self {
+        match self {
+            Self::Plan => Self::Build,
+            Self::Build => Self::Audit,
+            Self::Audit => Self::Plan,
+        }
+    }
+
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Build => "ACT",
+            Self::Plan => "PLAN",
+            Self::Audit => "AUDIT",
+        }
+    }
+
+    /// Long form used in the TUI status line and command palette.
+    pub(crate) fn long_label(self) -> &'static str {
+        match self {
+            Self::Build => "Act (executes with authorization)",
+            Self::Plan => "Plan (investigate, no mutation)",
+            Self::Audit => "Audit (read-only audit evidence)",
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Child Agent – Cline → LBE spawn admission
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+pub(crate) enum ChildAgentStatus {
+    /// Spawn requested, awaiting LBE governance authorization.
+    Pending,
+    /// Authorized by LBE governance.
+    Authorized,
+    /// Execution has actually begun through LBE lifecycle.
+    Running,
+    /// Completed successfully.
+    Completed,
+    /// Failed with error.
+    Failed,
+    /// Rejected by LBE governance.
+    Rejected,
+    /// Cancelled before completion.
+    Cancelled,
+}
+
+impl ChildAgentStatus {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Pending => "PENDING",
+            Self::Authorized => "AUTHORIZED",
+            Self::Running => "RUNNING",
+            Self::Completed => "COMPLETED",
+            Self::Failed => "FAILED",
+            Self::Rejected => "REJECTED",
+            Self::Cancelled => "CANCELLED",
+        }
+    }
+
+    pub(crate) fn is_terminal(self) -> bool {
+        matches!(
+            self,
+            Self::Completed | Self::Failed | Self::Rejected | Self::Cancelled
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ChildAgentRun {
+    pub(crate) child_agent_run_id: String,
+    pub(crate) correlation_id: String,
+    pub(crate) parent_session_id: Option<String>,
+    pub(crate) child_session_id: Option<String>,
+    pub(crate) status: ChildAgentStatus,
+    pub(crate) child_tools: Vec<String>,
+    pub(crate) started_at: Option<String>,
+    pub(crate) completed_at: Option<String>,
+    pub(crate) receipt_id: Option<String>,
+    pub(crate) evidence_ref: Option<String>,
+    pub(crate) authorization_rationale: Option<String>,
+    /// Whether recursive child spawn is explicitly authorized by LBE governance.
+    pub(crate) recursive_spawn_authorized: bool,
+}
+
+impl ChildAgentRun {
+    pub(crate) fn new(correlation_id: String, parent_session_id: String) -> Self {
+        Self {
+            child_agent_run_id: format!("child_{}", correlation_id),
+            correlation_id,
+            parent_session_id: Some(parent_session_id),
+            child_session_id: None,
+            status: ChildAgentStatus::Pending,
+            child_tools: Vec::new(),
+            started_at: None,
+            completed_at: None,
+            receipt_id: None,
+            evidence_ref: None,
+            authorization_rationale: None,
+            recursive_spawn_authorized: false,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// RuntimeConnection
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RuntimeConnection {
+    Mock,
+    Disconnected,
+    Connecting,
+    Connected,
+    Reconnecting,
+    Lost,
+}
+
+impl RuntimeConnection {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Mock => "MOCK / NOT CONNECTED",
+            Self::Disconnected => "DISCONNECTED",
+            Self::Connecting => "CONNECTING",
+            Self::Connected => "CONNECTED",
+            Self::Reconnecting => "RECONNECTING",
+            Self::Lost => "CONNECTION LOST",
+        }
+    }
+
+    pub(crate) fn marker(self) -> &'static str {
+        match self {
+            Self::Connected => "●",
+            Self::Connecting | Self::Reconnecting => "◐",
+            Self::Mock | Self::Disconnected | Self::Lost => "○",
+        }
+    }
+
+    pub(crate) fn color(self) -> Color {
+        match self {
+            Self::Connected => PALETTE.green,
+            Self::Connecting | Self::Reconnecting => PALETTE.amber,
+            Self::Lost => PALETTE.red,
+            Self::Mock | Self::Disconnected => PALETTE.faint,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// LbeSnapshot
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LbeSnapshot {
+    pub(crate) runtime_id: Option<String>,
+    pub(crate) runtime_mode: RuntimeMode,
+    pub(crate) attached_client_count: usize,
+    pub(crate) lineage: SessionLineage,
+    pub(crate) session_id: Option<String>,
+    pub(crate) session_state: SessionStatus,
+    pub(crate) sessions: Vec<SessionSummary>,
+    pub(crate) turn_id: Option<String>,
+    pub(crate) workspace_id: Option<String>,
+    pub(crate) workspace_label: String,
+    pub(crate) project_truth: Option<ProjectTruthProjection>,
+    pub(crate) session_context: Option<SessionContextProjection>,
+    pub(crate) provenance: Option<ProvenanceProjection>,
+    pub(crate) validation: Option<ValidationProjection>,
+    pub(crate) model_id: String,
+    pub(crate) model_family: String,
+    pub(crate) effort_label: Option<String>,
+    pub(crate) context_used: usize,
+    pub(crate) context_capacity: usize,
+    pub(crate) compaction_available: bool,
+    pub(crate) compaction_state: CompactionState,
+    pub(crate) latest_checkpoint: Option<CheckpointDescriptor>,
+    pub(crate) retry_count: u32,
+    pub(crate) retry_limit: u32,
+    pub(crate) timeout_seconds: u64,
+    pub(crate) elapsed_seconds: u64,
+    pub(crate) active_execution_id: Option<String>,
+    pub(crate) execution_status: Option<ExecutionStatus>,
+    pub(crate) diagnostics: Vec<DiagnosticCheck>,
+    pub(crate) active_mode: AgentMode,
+    pub(crate) connection: RuntimeConnection,
+    pub(crate) providers: Vec<ProviderProjection>,
+    pub(crate) models: Vec<ModelDescriptor>,
+    pub(crate) selected_model: Option<ModelRef>,
+    pub(crate) memory: MemoryProjection,
+    pub(crate) browser_chat: BrowserChatProjection,
+    pub(crate) child_agents: Vec<ChildAgentRun>,
+}
+
+impl Default for LbeSnapshot {
+    fn default() -> Self {
+        Self {
+            runtime_id: Some("runtime_mock_tui".to_owned()),
+            runtime_mode: RuntimeMode::Mock,
+            attached_client_count: 0,
+            lineage: SessionLineage {
+                root_session_id: "sess_mock_7f31".to_owned(),
+                parent_session_id: None,
+                origin: SessionOrigin::User,
+            },
+            session_id: Some("sess_mock_7f31".to_owned()),
+            session_state: SessionStatus::Idle,
+            sessions: vec![SessionSummary {
+                session_id: "sess_mock_7f31".to_owned(),
+                status: SessionStatus::Idle,
+                origin: SessionOrigin::User,
+                parent_session_id: None,
+            }],
+            turn_id: Some("turn_mock_0".to_owned()),
+            workspace_id: Some("workspace_mock_lbe_tui_lab".to_owned()),
+            workspace_label: r"C:\Users\".to_owned(),
+            project_truth: None,
+            session_context: None,
+            provenance: None,
+            validation: None,
+            model_id: "Model ID".to_owned(),
+            model_family: "Gemini".to_owned(),
+            effort_label: Some("low".to_owned()),
+            context_used: 2,
+            context_capacity: 10,
+            compaction_available: true,
+            compaction_state: CompactionState::Idle,
+            latest_checkpoint: None,
+            retry_count: 0,
+            retry_limit: 3,
+            timeout_seconds: 900,
+            elapsed_seconds: 0,
+            active_execution_id: None,
+            execution_status: None,
+            diagnostics: mock_diagnostics(),
+            active_mode: AgentMode::Build,
+            connection: RuntimeConnection::Mock,
+            providers: mock_provider_catalog(),
+            models: mock_model_catalog(),
+            selected_model: Some(ModelRef {
+                provider_id: ProviderId::Gemini,
+                model_id: "gemini-2.5-flash-preview".to_owned(),
+            }),
+            memory: MemoryProjection::default(),
+            browser_chat: BrowserChatProjection::default(),
+            child_agents: Vec::new(),
+        }
+    }
+}
+// ---------------------------------------------------------------------------
+// RuntimeMode
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RuntimeMode {
+    Mock,
+    Local,
+    Hub,
+    Detached,
+}
+
+impl RuntimeMode {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Mock => "MOCK",
+            Self::Local => "LOCAL",
+            Self::Hub => "HUB",
+            Self::Detached => "DETACHED",
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Provider types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum ProviderId {
+    OpenAi,
+    OpenAiNative,
+    Anthropic,
+    Gemini,
+    Bedrock,
+    Vertex,
+    Mistral,
+    OpenAiCompatible,
+    LmStudio,
+    Ollama,
+    OpenRouter,
+    OpenCode,
+}
+
+impl ProviderId {
+    pub(crate) fn cli_name(self) -> &'static str {
+        match self {
+            Self::OpenAi => "openai",
+            Self::OpenAiNative => "openai-native",
+            Self::Anthropic => "anthropic",
+            Self::Gemini => "gemini",
+            Self::Bedrock => "bedrock",
+            Self::Vertex => "vertex",
+            Self::Mistral => "mistral",
+            Self::OpenAiCompatible => "openai-compatible",
+            Self::LmStudio => "lm-studio",
+            Self::Ollama => "ollama",
+            Self::OpenRouter => "openrouter",
+            Self::OpenCode => "opencode",
+        }
+    }
+
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::OpenAi => "OpenAI",
+            Self::OpenAiNative => "OpenAI native",
+            Self::Anthropic => "Anthropic",
+            Self::Gemini => "Google Gemini",
+            Self::Bedrock => "AWS Bedrock",
+            Self::Vertex => "Google Vertex",
+            Self::Mistral => "Mistral",
+            Self::OpenAiCompatible => "OpenAI-compatible",
+            Self::LmStudio => "LM Studio",
+            Self::Ollama => "Ollama",
+            Self::OpenRouter => "OpenRouter",
+            Self::OpenCode => "OpenCode",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CredentialRef(String);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ProviderConfig {
+    pub(crate) provider_id: ProviderId,
+    pub(crate) base_url: Option<String>,
+    pub(crate) credential_ref: Option<CredentialRef>,
+    pub(crate) headers: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AuthState {
+    NotConfigured,
+    Configured,
+    Validating,
+    Ready,
+    Error,
+}
+
+impl AuthState {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::NotConfigured => "NOT CONFIGURED",
+            Self::Configured => "CONFIGURED",
+            Self::Validating => "VALIDATING",
+            Self::Ready => "READY",
+            Self::Error => "AUTH ERROR",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProviderHealth {
+    Unknown,
+    Ready,
+    Offline,
+    Error,
+}
+
+impl ProviderHealth {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Unknown => "UNKNOWN",
+            Self::Ready => "READY",
+            Self::Offline => "OFFLINE",
+            Self::Error => "ERROR",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ProviderCapabilities {
+    pub(crate) streaming: bool,
+    pub(crate) tools: bool,
+    pub(crate) reasoning: bool,
+    pub(crate) images: bool,
+    pub(crate) prompt_caching: bool,
+    pub(crate) max_context: Option<u32>,
+    pub(crate) max_output: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelRef {
+    pub(crate) provider_id: ProviderId,
+    pub(crate) model_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelDescriptor {
+    pub(crate) provider_id: ProviderId,
+    pub(crate) model_id: String,
+    pub(crate) display_name: String,
+    pub(crate) context_window: Option<u32>,
+    pub(crate) max_output_tokens: Option<u32>,
+    pub(crate) capabilities: ProviderCapabilities,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ProviderProjection {
+    pub(crate) provider_id: ProviderId,
+    pub(crate) auth_state: AuthState,
+    pub(crate) health: ProviderHealth,
+    pub(crate) is_local: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Model / Provider intermediate types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Message {
+    pub(crate) role: String,
+    pub(crate) content: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ToolDefinition {
+    pub(crate) name: String,
+    pub(crate) description: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelRequest {
+    pub(crate) model: ModelRef,
+    pub(crate) messages: Vec<Message>,
+    pub(crate) tools: Vec<ToolDefinition>,
+    pub(crate) stream: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum ModelEvent {
+    ResponseStarted { generation_id: String },
+    TextDelta { text: String },
+    ReasoningDelta { text: String },
+    ToolCallStarted { call_id: String, tool_name: String },
+    ToolCallArgumentsDelta { call_id: String, delta: String },
+    ToolCallCompleted { call_id: String },
+    UsageUpdated { usage: Usage },
+    ResponseCompleted { reason: FinishReason },
+    ProviderError(ProviderError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Usage {
+    pub(crate) input_tokens: u64,
+    pub(crate) output_tokens: u64,
+    pub(crate) cached_tokens: Option<u64>,
+    pub(crate) cost_micros: Option<u64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FinishReason {
+    Stop,
+    ToolCall,
+    Length,
+    Cancelled,
+    Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ProviderError {
+    pub(crate) provider_id: ProviderId,
+    pub(crate) code: Option<String>,
+    pub(crate) message: String,
+}
+
+// ---------------------------------------------------------------------------
+// SessionContextProjection — authoritative Agent Wall product export
+// ---------------------------------------------------------------------------
+
+/// Opaque owner payload from Agent Wall.
+///
+/// The `payload` field is owned by the Agent Wall and is not reinterpreted
+/// by the TUI. This wrapper provides structural validation only.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct OpaqueOwnerPayload {
+    pub(crate) owner_payload_version: String,
+    pub(crate) opaque: bool,
+    pub(crate) payload: serde_json::Value,
+}
+
+/// A single item in the session transcript.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct SessionTranscriptItem {
+    pub(crate) sequence: u64,
+    pub(crate) kind: String,
+    pub(crate) status: String,
+    pub(crate) text: String,
+    pub(crate) event_id: String,
+    #[serde(default)]
+    pub(crate) item_id: Option<String>,
+}
+
+/// Session state from the session_context projection.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct SessionContextState {
+    pub(crate) session_id: String,
+    pub(crate) project_workspace_id: String,
+    pub(crate) canonical_workspace_root: String,
+    pub(crate) mode: String,
+    #[serde(default)]
+    pub(crate) permission: Option<String>,
+    #[serde(default)]
+    pub(crate) runtime_policy: Option<String>,
+    #[serde(default)]
+    pub(crate) provider_id: Option<String>,
+    #[serde(default)]
+    pub(crate) provider_model: Option<String>,
+    #[serde(default)]
+    pub(crate) active_profile_id: Option<String>,
+    #[serde(default)]
+    pub(crate) permission_policy_id: Option<String>,
+    #[serde(default)]
+    pub(crate) evidence_policy_id: Option<String>,
+    #[serde(default)]
+    pub(crate) checkpoint_id: Option<String>,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
+}
+
+/// Workspace state from the session_context projection.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct SessionContextWorkspace {
+    pub(crate) project_workspace_id: String,
+    pub(crate) canonical_root: String,
+    pub(crate) branch: String,
+    pub(crate) head: String,
+    pub(crate) status_short: Vec<String>,
+}
+
+/// Top-level data in the session_context projection.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct SessionContextData {
+    pub(crate) session: SessionContextState,
+    pub(crate) workspace: SessionContextWorkspace,
+    #[serde(default)]
+    pub(crate) task: Option<OpaqueOwnerPayload>,
+    #[serde(default)]
+    pub(crate) checkpoint: Option<OpaqueOwnerPayload>,
+    #[serde(default)]
+    pub(crate) checkpoint_revalidation: Option<OpaqueOwnerPayload>,
+    #[serde(default)]
+    pub(crate) verified_facts: Vec<OpaqueOwnerPayload>,
+    #[serde(default)]
+    pub(crate) active_constraints: Vec<OpaqueOwnerPayload>,
+    #[serde(default)]
+    pub(crate) recent_failures: Vec<OpaqueOwnerPayload>,
+    pub(crate) transcript: Vec<SessionTranscriptItem>,
+}
+
+/// Authoritative session_context projection from the Agent Wall product CLI.
+///
+/// This is a read-only product-level export; the TUI does not fabricate,
+/// mutate, or reinterpret the opaque owner payloads within.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct SessionContextProjection {
+    pub(crate) schema_version: String,
+    pub(crate) projection_type: String,
+    pub(crate) generated_at: String,
+    pub(crate) workspace_id: String,
+    pub(crate) session_id: String,
+    pub(crate) read_only: bool,
+    pub(crate) data: SessionContextData,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ProvenanceProjection {
+    pub(crate) schema_version: String,
+    pub(crate) projection_type: String,
+    pub(crate) generated_at: String,
+    pub(crate) workspace_id: String,
+    pub(crate) session_id: Option<String>,
+    pub(crate) read_only: bool,
+    pub(crate) data: ProvenanceData,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ValidationProjection {
+    pub(crate) schema_version: String,
+    pub(crate) projection_type: String,
+    pub(crate) generated_at: String,
+    pub(crate) workspace_id: String,
+    pub(crate) session_id: String,
+    pub(crate) read_only: bool,
+    pub(crate) data: ValidationData,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ValidationData {
+    pub(crate) task_id: String,
+    pub(crate) operation_id: String,
+    pub(crate) mode: ValidationMode,
+    pub(crate) requirements: Vec<ValidationRequirement>,
+    pub(crate) policies: Vec<ValidationPolicy>,
+    pub(crate) evidence: Vec<ValidationEvidence>,
+    pub(crate) task_status: Option<ValidationTaskStatus>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ValidationMode {
+    Coding,
+    Audit,
+    Investigation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ValidationRequirement {
+    pub(crate) requirement_id: String,
+    pub(crate) evidence_kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ValidationPolicy {
+    pub(crate) policy_id: String,
+    pub(crate) operation_id: String,
+    pub(crate) applicable_mode: ValidationMode,
+    pub(crate) evidence_kind: String,
+    pub(crate) command: Vec<String>,
+    pub(crate) timeout_seconds: serde_json::Number,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ValidationEvidence {
+    pub(crate) evidence_id: String,
+    pub(crate) kind: String,
+    pub(crate) status: ValidationEvidenceStatus,
+    pub(crate) producer_id: String,
+    pub(crate) operation_id: String,
+    pub(crate) details: OpaqueOwnerPayload,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+pub(crate) enum ValidationEvidenceStatus {
+    #[serde(rename = "PASS")]
+    Pass,
+    #[serde(rename = "FAIL")]
+    Fail,
+    #[serde(rename = "STALE")]
+    Stale,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ValidationTaskStatus {
+    Created,
+    Running,
+    Completed,
+    Failed,
+    Blocked,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ProvenanceData {
+    pub(crate) session_id: Option<String>,
+    pub(crate) task_id: Option<String>,
+    pub(crate) sources: Vec<OpaqueOwnerPayload>,
+    pub(crate) events: Vec<ProvenanceEvent>,
+    pub(crate) evidence_ids: Option<Vec<String>>,
+    pub(crate) staleness: ProvenanceStaleness,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub(crate) struct ProvenanceEvent {
+    pub(crate) event_id: String,
+    pub(crate) sequence: u64,
+    pub(crate) event_type: String,
+    pub(crate) turn_id: String,
+    pub(crate) item_id: Option<String>,
+    pub(crate) provider_id: Option<String>,
+    pub(crate) model_id: Option<String>,
+    pub(crate) provider_request_id: Option<String>,
+    pub(crate) provider_item_id: Option<String>,
+    pub(crate) provider_tool_call_id: Option<String>,
+    pub(crate) lbe_call_id: Option<String>,
+    pub(crate) runtime_operation_id: Option<String>,
+    pub(crate) tool_receipt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ProvenanceStaleness {
+    Current,
+    Stale,
+    Unknown,
+}
+
+// ---------------------------------------------------------------------------
+// Mock catalog data
+// ---------------------------------------------------------------------------
+
+pub(crate) fn mock_provider_catalog() -> Vec<ProviderProjection> {
+    vec![
+        ProviderProjection {
+            provider_id: ProviderId::Gemini,
+            auth_state: AuthState::Ready,
+            health: ProviderHealth::Ready,
+            is_local: false,
+        },
+        ProviderProjection {
+            provider_id: ProviderId::OpenAi,
+            auth_state: AuthState::NotConfigured,
+            health: ProviderHealth::Unknown,
+            is_local: false,
+        },
+        ProviderProjection {
+            provider_id: ProviderId::Anthropic,
+            auth_state: AuthState::NotConfigured,
+            health: ProviderHealth::Unknown,
+            is_local: false,
+        },
+        ProviderProjection {
+            provider_id: ProviderId::LmStudio,
+            auth_state: AuthState::Ready,
+            health: ProviderHealth::Ready,
+            is_local: true,
+        },
+        ProviderProjection {
+            provider_id: ProviderId::Ollama,
+            auth_state: AuthState::NotConfigured,
+            health: ProviderHealth::Offline,
+            is_local: true,
+        },
+    ]
+}
+
+pub(crate) fn mock_model_catalog() -> Vec<ModelDescriptor> {
+    vec![ModelDescriptor {
+        provider_id: ProviderId::Gemini,
+        model_id: "gemini-2.5-flash-preview".to_owned(),
+        display_name: "Gemini 2.5 Flash Preview".to_owned(),
+        context_window: Some(1_000_000),
+        max_output_tokens: Some(65_536),
+        capabilities: ProviderCapabilities {
+            streaming: true,
+            tools: true,
+            reasoning: true,
+            images: true,
+            prompt_caching: true,
+            max_context: Some(1_000_000),
+            max_output: Some(65_536),
+        },
+    }]
+}
+// ---------------------------------------------------------------------------
+// Session types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SessionStatus {
+    Idle,
+    Running,
+    WaitingForApproval,
+    WaitingForInput,
+    Interrupted,
+    Completed,
+    Failed,
+    TimedOut,
+    Aborted,
+    Rejected,
+}
+
+impl SessionStatus {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Idle => "IDLE",
+            Self::Running => "RUNNING",
+            Self::WaitingForApproval => "WAITING FOR APPROVAL",
+            Self::WaitingForInput => "WAITING FOR INPUT",
+            Self::Interrupted => "INTERRUPTED",
+            Self::Completed => "COMPLETED",
+            Self::Failed => "FAILED",
+            Self::TimedOut => "TIMED OUT",
+            Self::Aborted => "ABORTED",
+            Self::Rejected => "REJECTED",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SessionOrigin {
+    User,
+    Automation,
+    Subagent,
+    Team,
+}
+
+impl SessionOrigin {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Automation => "automation",
+            Self::Subagent => "subagent",
+            Self::Team => "team",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SessionLineage {
+    pub(crate) root_session_id: String,
+    pub(crate) parent_session_id: Option<String>,
+    pub(crate) origin: SessionOrigin,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SessionSummary {
+    pub(crate) session_id: String,
+    pub(crate) status: SessionStatus,
+    pub(crate) origin: SessionOrigin,
+    pub(crate) parent_session_id: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// CompactionState
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CompactionState {
+    Idle,
+    Suggested,
+    Running,
+    Completed,
+    Failed,
+}
+
+impl CompactionState {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Idle => "IDLE",
+            Self::Suggested => "SUGGESTED",
+            Self::Running => "RUNNING",
+            Self::Completed => "COMPLETED",
+            Self::Failed => "FAILED",
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CheckpointDescriptor
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CheckpointDescriptor {
+    pub(crate) checkpoint_id: String,
+    pub(crate) created_at: String,
+    pub(crate) workspace_revision: String,
+    pub(crate) changed_files: Vec<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DiagnosticStatus {
+    Pass,
+    Warning,
+    Fail,
+}
+
+impl DiagnosticStatus {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Pass => "PASS",
+            Self::Warning => "WARNING",
+            Self::Fail => "FAIL",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DiagnosticCheck {
+    pub(crate) id: String,
+    pub(crate) category: String,
+    pub(crate) status: DiagnosticStatus,
+    pub(crate) message: String,
+    pub(crate) remediation_available: bool,
+}
+
+pub(crate) fn mock_diagnostics() -> Vec<DiagnosticCheck> {
+    vec![
+        DiagnosticCheck {
+            id: "runtime.mock".to_owned(),
+            category: "runtime".to_owned(),
+            status: DiagnosticStatus::Warning,
+            message: "Mock runtime only; no canonical wall attached.".to_owned(),
+            remediation_available: false,
+        },
+        DiagnosticCheck {
+            id: "terminal.termina".to_owned(),
+            category: "terminal".to_owned(),
+            status: DiagnosticStatus::Pass,
+            message: "Termina UI contract preview is active.".to_owned(),
+            remediation_available: false,
+        },
+    ]
+}
+
+// ---------------------------------------------------------------------------
+// MockPanel
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MockPanel {
+    Account,
+    Activity,
+    Provider,
+    Model,
+    Mcp,
+    Tools,
+    History,
+    Session,
+    Evidence,
+    Receipts,
+    Status,
+    Memory,
+    Browser,
+    Processes,
+    Undo,
+    Changes,
+    Doctor,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspaceEntry {
+    pub(crate) name: String,
+    pub(crate) path: String,
+    pub(crate) entry_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspaceListing {
+    pub(crate) path: String,
+    pub(crate) entries: Vec<WorkspaceEntry>,
+    pub(crate) evidence_ref: Option<String>,
+    pub(crate) receipt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspaceFile {
+    pub(crate) path: String,
+    pub(crate) content: String,
+    pub(crate) content_sha256: String,
+    pub(crate) evidence_ref: Option<String>,
+    pub(crate) receipt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspaceGlobMatch {
+    pub(crate) path: String,
+    pub(crate) entry_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspaceGlob {
+    pub(crate) pattern: String,
+    pub(crate) matches: Vec<WorkspaceGlobMatch>,
+    pub(crate) evidence_ref: Option<String>,
+    pub(crate) receipt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct WorkspaceSearch {
+    pub(crate) query: String,
+    pub(crate) indexed_result_count: u64,
+    pub(crate) current_result_count: u64,
+    pub(crate) results: Vec<serde_json::Value>,
+    pub(crate) evidence_ref: Option<String>,
+    pub(crate) receipt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspacePatch {
+    pub(crate) path: String,
+    pub(crate) created: bool,
+    pub(crate) updated: bool,
+    pub(crate) bytes: u64,
+    pub(crate) before_sha256: String,
+    pub(crate) sha256: String,
+    pub(crate) patch: String,
+    pub(crate) evidence_ref: Option<String>,
+    pub(crate) receipt_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EvidenceProjection {
+    pub(crate) reference: String,
+    pub(crate) source: String,
+    pub(crate) session_id: Option<String>,
+    pub(crate) execution_id: Option<String>,
+    pub(crate) tool_id: Option<String>,
+    pub(crate) summary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ReceiptProjection {
+    pub(crate) receipt_id: String,
+    pub(crate) source: String,
+    pub(crate) session_id: Option<String>,
+    pub(crate) execution_id: Option<String>,
+    pub(crate) tool_id: Option<String>,
+    pub(crate) status: String,
+    pub(crate) evidence_ref: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct McpIntegration {
+    pub(crate) integration_id: String,
+    pub(crate) adapter_id: String,
+    pub(crate) tool_id: String,
+    pub(crate) description: String,
+    pub(crate) enabled: bool,
+    pub(crate) credential_ref_configured: bool,
+    pub(crate) availability: String,
+    pub(crate) rationale: String,
+    pub(crate) access_class: String,
+    pub(crate) network_behavior: String,
+    pub(crate) risk_class: String,
+    pub(crate) timeout_seconds: f64,
+    pub(crate) retry_policy: String,
+}

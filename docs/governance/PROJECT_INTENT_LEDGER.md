@@ -755,3 +755,24 @@ MACHINE_SLICE: NONE — explicit user-authorized documentation-governance bootst
 SUPERSEDES: none
 RESULT: ACTIVE
 ```
+
+## INTENT LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001
+
+```text
+INTENT_ID: LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001
+STATUS: COMPLETED
+REQUEST: Deliver the usable LBE product interface as the LBE-owned Rust/RatatuI client colocated at apps/lbe-terminal, projecting the real persisted session, provider, capability, receipt, evidence, and control state behind LBE authority.
+WHY: The product identity is LBE and its canonical visible client surface is the LBE-owned Rust/RatatuI terminal projection that must expose the real persisted session, provider, capability, receipt, evidence, and control state.
+AFFECTED_STRUCTURE: apps/lbe-terminal/,lbe_guard_inspector/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+EXISTING_OWNER: LBE runtime; SessionMemoryRuntimeBridge; WorkspaceMemoryStore; ProviderRegistry; PersistentTurnControl; ToolRegistry; ToolReceipt; persisted evidence and completion owners.
+DESIRED_RESULT: A runnable LBE-owned Rust/RatatuI terminal client colocated at apps/lbe-terminal exposes a clear conversation surface, persisted session/provider state, capability visibility, streaming/runtime feedback, receipt/evidence detail, and keyboard controls without acquiring execution or authorization authority.
+NON_GOALS: No lbe-tui activation; no independent provider transport; no independent session identity; no native shell execution; no second runtime, persistence, authorization, receipt, evidence, or completion owner; no publication; no branch or worktree creation.
+REUSE_DECISION: REUSE approved interaction, continuation, event, streaming, layout, and branding mechanics from reference input; preserve LBE runtime and authority owners.
+AUTHORITY_IMPACT: LBE interface remains a projection/control surface; no new authority.
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,apps/lbe-terminal/,tests/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
+REQUIRED_EVIDENCE: canonical Rust/RatatuI launch, persisted session projection, provider and capability projection, receipt/evidence detail, keyboard controls, focused UI tests, full regression, real local launch.
+MACHINE_SLICE: LBE_OWNED_RUST_TUI_PRODUCT_SURFACE
+SUPERSEDES: none
+RESULT: PASS
+COMPLETION_CHECKPOINT: docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md
+```

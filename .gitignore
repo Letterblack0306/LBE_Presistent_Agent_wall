@@ -90,6 +90,10 @@ secrets*
 *.avi
 *.mkv
 
+# === Rust / Cargo ===
+/apps/lbe-terminal/target/
+/apps/lbe-terminal/*.log
+
 # === lbe-core (separate repository — reference material only) ===
 lbe-core/
 

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
+  "active_slice": "COMPLETED",
   "status": "PASS",
   "implementation_allowed": false,
   "architecture_changes_allowed": true,
