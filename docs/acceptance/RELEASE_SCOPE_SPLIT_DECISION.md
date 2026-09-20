@@ -134,11 +134,15 @@ dispatched here.
 
 ## 5. Unresolved items (require governance-level decision)
 
-1. Provenance gap: accepted client `58104bae` missing from `C:\LBE-TUI-Lab` HEAD `5a49d87`;
-   PROVENANCE counts (176/26/2) vs CURRENT_STATUS counts (202/0/2) irreconcilable.
-2. Canonical client workspace conflict (`config.json` retired vs 4 sources still citing
-   `C:\LBE-TUI-Lab` / `C:\LBE-TUI-Lab\src`) — declared OUT OF SCOPE, not resolved.
-3. `implementation-gates.json:554` stale `canonical_client_workspace` — flagged for approval.
+1. ~~Provenance gap: accepted client `58104bae` missing from `C:\LBE-TUI-Lab` HEAD `5a49d87`;
+   PROVENANCE counts (176/26/2) vs CURRENT_STATUS counts (202/0/2) irreconcilable.~~ →
+   **RESOLVED BY §6** (retired evidence; `C:\LBE-TUI-Lab` removed).
+2. ~~Canonical client workspace conflict (`config.json` retired vs 4 sources still citing
+   `C:\LBE-TUI-Lab` / `C:\LBE-TUI-Lab\src`) — declared OUT OF SCOPE, not resolved.~~ →
+   **RESOLVED BY §6** (canonical = `apps/lbe-terminal` in main; retired sources were already
+   historical and are no longer cited as truth).
+3. ~~`implementation-gates.json:554` stale `canonical_client_workspace` — flagged for approval.~~ →
+   **RESOLVED BY §6** (updated to `C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal`).
 4. Two miswritten launcher-contract tests added at HEAD (`test_product_launcher_contract.py`) that
    assert a contract never present in `tools/lbe_product_integration.ps1`; must be corrected to the
    accepted `bin\lbe.cmd`/`config\runtime.json` contract or removed.
@@ -146,3 +150,61 @@ dispatched here.
    modules exist (`user_state.py`, `credential_store.py`) but were never wired into `cli.py`
    (`provider add`, migrate, `cli.WindowsCredentialStore`); require a wiring/removal decision.
 6. Intermittent wheel-contract test under full-suite conditions.
+
+## 6. Sole-source-of-truth policy: `main` HEAD only (governance directive, 2026-09-20)
+
+**Directive (user, explicit):** everything must live on `main` HEAD; nothing may live in any other
+tree or branch; `main` HEAD is the only acceptable source of truth.
+
+**DECISION — `main` HEAD is the single source of truth for LBE.** Consequences, applied here:
+
+1. **Canonical client workspace is the main-repo path.** `apps/lbe-terminal` inside the canonical
+   repository is the LBE-owned Rust/Ratatui terminal client. `C:\LBE-TUI-Lab` and
+   `C:\LBE-TUI-Lab\src` are retired migration roots, not runtime truth
+   (`config.json` already records this). `.lbe/governance/implementation-gates.json:554`
+   `canonical_client_workspace` updated to `C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal`
+   (previously flagged; approved by this directive).
+2. **No commit other than `main` HEAD is authoritative.** All other branches (local and remote on
+   `origin`, `jannath`, `release-fork`) are deleted; only each remote's `main` remains. Their
+   history is preserved only as deleted-refs record in this document, never as truth.
+3. **`58104bae` and `C:\LBE-TUI-Lab` are retired evidence.** Any reference to them in recorded
+   acceptance docs (`CURRENT_STATUS.md`, `CURRENT_IMPLEMENTATION_GATE.md`, `IMPLEMENTATION_PLAN.md`)
+   is historical only and no longer describes the canonical tree. The provenance gap is resolved by
+   retirement rather than by restoring the missing commit.
+4. **The `C:\LBE-TUI-Lab` tree is removed** (its content is migrated, byte-identical, into
+   `apps/lbe-terminal` at main; see `apps/lbe-terminal/PROVENANCE.md`). Uncommitted local edits
+   there are discarded.
+
+### Deleted local branches (main-only retained)
+
+`agent/cli-agent-integration-contract`, `agent/cli-control-plane`, `agent/cli-evidence-policy`,
+`agent/cli-exit-proof`, `agent/cli-validation`, `agent/cli-validation-evidence`,
+`agent/completion-evidence-persistence`, `agent/llm-reasoning-planners`,
+`agent/r2-runtime-persistence-reconcile-v2`, `agent/r3-runtime-reasoning-integration`,
+`agent/r4-checkpoint-resume-rehydration`, `agent/r5-bounded-retry-recovery`,
+`agent/r6a-provider-abstraction`, `agent/r6b-mode-policy-engine`, `agent/r6c-authorization-resolver`,
+`agent/r6d-context-assembly`, `agent/r6e-governed-tool-orchestration`,
+`agent/r6f-completion-validation-gate`, `agents/tui-redesign-incomplete-features`,
+`chore/cline-workspace-discipline`, `ci/pr56-billing-isolation`, `ci/workflow-activation`,
+`design/authority-ownership-inspector-contract`,
+`feat/authority-ownership-evidence-extractor-integration`, `feat/c4-cli-runtime-surfaces`,
+`feat/c5-governed-coding-execution`, `feat/minimum-release-readiness`,
+`feat/persistent-runtime-reasoning-integration`, `feat/persistent-runtime-session-task-state`,
+`feat/reasoning-explanation-layer`, `feat/reasoning-investigation-planner`,
+`feat/reasoning-proposal-controller-integration`, `feat/reasoning-proposal-layer`,
+`fork/actions-register`, `release/python-runtime-v2.0.1`, `release/python-runtime-v2.0.2`,
+`release/register-pypi-workflow`, `worktree-cleanup-review`.
+
+### Deleted remote branches (each remote's `main` kept)
+
+- `origin`: all `agent/*`, `chore/*`, `cleanup/*`, `design/*`, `docs/*`, `feat/*`, `fix/*`,
+  `release/*`, `worktree-cleanup-review` tracking refs are pruned.
+- `jannath`: `ci/pr56-billing-isolation` pruned.
+- `release-fork`: all non-`main` tracking refs pruned.
+
+### Retired tree
+
+`C:\LBE-TUI-Lab` (separate git repo, HEAD `5a49d87`, origin
+`git@github-letterblack:...LBE_Agents_wall_Intigration.git`, dirty working files:
+`Agent.md`, `CLEANUP_PLAN.md`, `WHAT_IS_LBE.md` deleted; `Docs/*`, `build_errors.txt`,
+`src/*` modified) — removed on 2026-09-20.

@@ -551,7 +551,7 @@
     "status": "AUTHORIZED_RUST_TUI_PRODUCT_SURFACE",
     "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_18",
     "implementation_technology": "Rust/Ratatui",
-    "canonical_client_workspace": "C:/LBE-TUI-Lab/src",
+    "canonical_client_workspace": "C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal",
     "visual_contract": "Existing LBE HTML/React work and canonical GPT-K LBE_TERMINAL_TUI_UI_PLAN.md are reference/specification inputs; browser prototypes are not runtime truth.",
     "reasoning_mechanics": "Cline remains selected headless reasoning/planning/provider/model/tool-proposal/continuation/response-composition source behind LBE.",
     "scope": [
