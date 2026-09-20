@@ -22,6 +22,9 @@ pub(crate) enum UserRequest {
         message: String,
     },
     RefreshRuntimeSnapshot,
+    RefreshChildAgents {
+        turn_id: String,
+    },
     RefreshMcpRegistry,
     QueryBirdEye {
         tool: String,
