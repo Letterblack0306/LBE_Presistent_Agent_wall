@@ -18,6 +18,7 @@ from typing import Callable, Mapping
 from .external_capabilities import (
     ExternalCapabilityKind,
     ExternalCapabilityRegistration,
+    build_birdeye_mcp_handler,
 )
 from .tool_orchestration import (
     ToolAccessClass,
@@ -216,6 +217,46 @@ class InstalledCapabilityRegistry:
                 )
             )
         return tuple(registrations)
+
+
+def built_in_adapter_factories(
+    registry: InstalledCapabilityRegistry,
+) -> dict[str, Callable[[InstalledCapabilityRecord], ToolHandler]]:
+    """Return concrete host-owned adapters that LBE can materialize safely.
+
+    The persisted registry describes *what* is installed. This function owns
+    the bounded mapping to implementations that ship with LBE. Unknown adapters
+    remain UNAVAILABLE rather than being guessed or executed generically.
+    """
+    if not isinstance(registry, InstalledCapabilityRegistry):
+        raise TypeError("registry must be InstalledCapabilityRegistry")
+
+    factories: dict[str, Callable[[InstalledCapabilityRecord], ToolHandler]] = {}
+    for record in registry.records:
+        if (
+            record.kind is ExternalCapabilityKind.MCP
+            and record.adapter_id.startswith("mcp.birdeye")
+            and record.tool_id.startswith("mcp.birdeye.")
+        ):
+            tool_name = record.tool_id.removeprefix("mcp.birdeye.").strip()
+            if not tool_name:
+                continue
+
+            def birdeye_factory(
+                candidate: InstalledCapabilityRecord,
+                *,
+                expected_adapter: str = record.adapter_id,
+                expected_tool: str = record.tool_id,
+                tool: str = tool_name,
+            ) -> ToolHandler:
+                if candidate.adapter_id != expected_adapter:
+                    raise ValueError("BirdEye adapter identity changed during materialization")
+                if candidate.tool_id != expected_tool:
+                    raise ValueError("BirdEye tool identity changed during materialization")
+                return build_birdeye_mcp_handler(tool)
+
+            factories[record.adapter_id] = birdeye_factory
+    return factories
 
 
 class InstalledCapabilityRegistryStore:
