@@ -550,10 +550,37 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
         if config.model != state.provider_model:
             raise ValueError("provider config model must match persisted session model")
         if state.mode == AgentMode.CODING.value:
-            from .runtime.governed_coding import GovernedProviderReasoningController
+            from .runtime.governed_coding import build_governed_coding_controller
+            from .runtime.installed_capability_registry import (
+                InstalledCapabilityRegistryStore,
+                built_in_adapter_factories,
+            )
+
             runtime = _runtime_from_state(database=args.database, state=state)
-            controller = GovernedProviderReasoningController(runtime=runtime, provider_id=state.provider_id, provider_config=config)
-            provider_runtime = BackgroundProviderTurnRuntime(history=history, foreground=GovernedCodingTurnRuntime(history=history, gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)))
+            external_capabilities = ()
+            registry_path = os.environ.get("LBE_CAPABILITY_REGISTRY")
+            if registry_path:
+                installed_registry = InstalledCapabilityRegistryStore(registry_path).load()
+                external_capabilities = installed_registry.materialize(
+                    built_in_adapter_factories(installed_registry)
+                )
+            controller = build_governed_coding_controller(
+                runtime=runtime,
+                provider_id=state.provider_id,
+                provider_config=config,
+                engine_id=state.reasoning_engine,
+                external_capabilities=external_capabilities,
+            )
+            provider_runtime = BackgroundProviderTurnRuntime(
+                history=history,
+                foreground=GovernedCodingTurnRuntime(
+                    history=history,
+                    gateway=GovernedAgentGateway(
+                        runtime=runtime,
+                        reasoning_controller=controller,
+                    ),
+                ),
+            )
         else:
             from .reasoning_runtime import build_provider_controller
             controller, _ = build_provider_controller(
