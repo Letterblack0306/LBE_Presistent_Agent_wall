@@ -91,22 +91,29 @@ pub(crate) struct Palette {
     pub(crate) muted: Color,
     pub(crate) faint: Color,
     pub(crate) line: Color,
+    pub(crate) info: Color,
+    pub(crate) agent: Color,
     pub(crate) red: Color,
     pub(crate) green: Color,
     pub(crate) amber: Color,
     pub(crate) logo_outer: Color,
 }
 
+// "Void Signal": semantic colors stay meaningful in text/ASCII fallbacks.
+// Background #070A0F; main text #DCE7F5; cyan system; violet agent;
+// green success; amber warning; rose error/deny.
 pub(crate) const PALETTE: Palette = Palette {
-    bg: Color::Rgb(13, 15, 18),
-    ink: Color::Rgb(232, 235, 239),
-    muted: Color::Rgb(139, 146, 156),
-    faint: Color::Rgb(92, 98, 107),
-    line: Color::Rgb(43, 48, 56),
-    red: Color::Rgb(217, 74, 74),
-    green: Color::Rgb(79, 209, 139),
-    amber: Color::Rgb(224, 168, 79),
-    logo_outer: Color::Rgb(55, 65, 81),
+    bg: Color::Rgb(7, 10, 15),
+    ink: Color::Rgb(220, 231, 245),
+    muted: Color::Rgb(138, 154, 175),
+    faint: Color::Rgb(105, 120, 139),
+    line: Color::Rgb(39, 49, 61),
+    info: Color::Rgb(89, 225, 255),
+    agent: Color::Rgb(183, 160, 255),
+    red: Color::Rgb(255, 122, 144),
+    green: Color::Rgb(111, 231, 176),
+    amber: Color::Rgb(255, 209, 102),
+    logo_outer: Color::Rgb(66, 78, 94),
 };
 
 // ---------------------------------------------------------------------------
