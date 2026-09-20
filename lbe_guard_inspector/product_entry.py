@@ -853,7 +853,7 @@ def _build_child_agent_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "action",
-        choices=("create", "started", "complete", "failed", "cancel"),
+        choices=("list", "create", "started", "complete", "failed", "cancel"),
     )
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
@@ -901,6 +901,21 @@ def _child_agent(argv: Sequence[str]) -> int:
         tools = json.loads(args.child_tools) if args.child_tools else []
         if not isinstance(tools, list):
             raise ValueError("--child-tools must be a JSON array")
+        if args.action == "list":
+            turn = history.get_turn(turn_id=args.turn_id)
+            if turn is None or turn.session_id != args.session_id:
+                raise ValueError("child_agent list turn does not belong to the requested session")
+            payload = {
+                "ok": True,
+                "session_id": args.session_id,
+                "turn_id": args.turn_id,
+                "child_agents": [
+                    _serialize_child_agent_run(run)
+                    for run in history.child_agent_runs_for_turn(turn_id=args.turn_id)
+                ],
+            }
+            _cli._emit(payload, args.format)
+            return 0
         if args.action == "create":
             required = {
                 "--correlation-id": args.correlation_id,
