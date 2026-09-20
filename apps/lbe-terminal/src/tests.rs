@@ -5266,3 +5266,19 @@ fn workspace_patch_payload_requires_complete_governed_result() {
     }))
     .unwrap();
 }
+
+
+#[test]
+fn real_wrapper_requires_connected_runtime_for_session_memory_recall() {
+    let mut wrapper = RealLbeWrapper::new();
+    let error = wrapper
+        .submit(
+            UserRequest::RecallSessionMemory {
+                query: "recent".to_owned(),
+                limit: 10,
+            },
+            Instant::now(),
+        )
+        .expect_err("real memory recall requires an attached LBE runtime");
+    assert!(error.message.contains("requires a connected LBE runtime"));
+}
