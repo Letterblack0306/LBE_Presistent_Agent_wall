@@ -693,6 +693,10 @@ class GovernedProviderReasoningController:
             raise ValueError("provider identity does not match persisted session")
         if runtime.session_state.provider_model != provider_config.model.strip():
             raise ValueError("provider model does not match persisted session")
+        if runtime.session_state.reasoning_engine not in {None, "native-lbe"}:
+            raise ValueError(
+                "governed coding controller requires the native-lbe reasoning engine"
+            )
 
         state = runtime.session_state
         decision = resolve_mode(ModeRequest(
@@ -796,6 +800,7 @@ class GovernedProviderReasoningController:
             "turn_id": turn_id,
             "provider_id": self._provider_id,
             "provider_model": self._provider_config.model.strip(),
+            "reasoning_engine": "native-lbe",
             "governed_tool_receipts": receipt_payload,
             "provider_output": provider_output,
             "agent_guidance": self._guidance.audit_payload(),
@@ -819,6 +824,7 @@ class GovernedProviderReasoningController:
             workspace_profile={
                 "mode": "coding",
                 "provider_id": self._provider_id,
+                "reasoning_engine": "native-lbe",
                 "governed_tools": [spec.tool_id for spec in self._registry.specs()],
                 "native_mutation_tools": [],
             },
