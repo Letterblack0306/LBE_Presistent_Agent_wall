@@ -1151,15 +1151,22 @@ impl LbeWrapper for MockLbeWrapper {
                 });
             }
             UserRequest::ConfigureProvider {
+                profile_name,
                 provider_id,
-                base_url,
+                model,
+                endpoint,
+                timeout_seconds,
                 credential_ref,
+                activate: _,
             } => {
-                if base_url.as_deref().is_some_and(str::is_empty)
-                    || credential_ref.as_deref().is_some_and(str::is_empty)
+                if profile_name.trim().is_empty()
+                    || model.trim().is_empty()
+                    || endpoint.trim().is_empty()
+                    || timeout_seconds <= 0.0
+                    || credential_ref.as_deref().is_some_and(|value| value.trim().is_empty())
                 {
                     return Err(LbeError::new(
-                        "provider configuration values must not be blank",
+                        "provider profile values must not be blank and timeout must be positive",
                     ));
                 }
                 let provider = self
@@ -1209,29 +1216,9 @@ impl LbeWrapper for MockLbeWrapper {
                     providers: self.snapshot.providers.clone(),
                 });
             }
-            UserRequest::RemoveProvider { provider_id } => {
-                let index = self
-                    .snapshot
-                    .providers
-                    .iter()
-                    .position(|provider| provider.provider_id == provider_id)
-                    .ok_or_else(|| {
-                        LbeError::new(format!(
-                            "provider {} is not in the mock catalog",
-                            provider_id.label()
-                        ))
-                    })?;
-                self.snapshot.providers.remove(index);
-                self.snapshot
-                    .models
-                    .retain(|model| model.provider_id != provider_id);
-                if self
-                    .snapshot
-                    .selected_model
-                    .as_ref()
-                    .is_some_and(|model| model.provider_id == provider_id)
-                {
-                    self.snapshot.selected_model = None;
+            UserRequest::RemoveProvider { profile_name } => {
+                if profile_name.trim().is_empty() {
+                    return Err(LbeError::new("provider profile name must not be blank"));
                 }
                 self.emit(LbeEvent::ProviderCatalogDiscovered {
                     providers: self.snapshot.providers.clone(),
@@ -2973,6 +2960,108 @@ impl RealLbeWrapper {
                 runs: self.snapshot.child_agents.clone(),
             });
         Ok(())
+    }
+
+    fn configure_real_provider(
+        &mut self,
+        profile_name: &str,
+        provider_id: ProviderId,
+        model: &str,
+        endpoint: &str,
+        timeout_seconds: f64,
+        credential_ref: Option<&str>,
+        activate: bool,
+    ) -> Result<(), LbeError> {
+        self.require_connected()?;
+        if profile_name.trim().is_empty() || model.trim().is_empty() || endpoint.trim().is_empty() {
+            return Err(LbeError::new("provider profile name, model, and endpoint are required"));
+        }
+        if timeout_seconds <= 0.0 {
+            return Err(LbeError::new("provider timeout must be positive"));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+        let mut command = configured_lbe_command(&python, &wall_root);
+        command.current_dir(&wall_root).args([
+            "-m",
+            "lbe_guard_inspector.product_entry",
+            "--format",
+            "json",
+            "provider",
+            "add",
+            "--name",
+            profile_name,
+            "--provider",
+            provider_id.cli_name(),
+            "--model",
+            model,
+            "--endpoint",
+            endpoint,
+            "--timeout-seconds",
+            &timeout_seconds.to_string(),
+        ]);
+        if let Some(credential_ref) = credential_ref {
+            command.args(["--credential-id", credential_ref]);
+        }
+        if activate {
+            command.arg("--use");
+        }
+        let output = command
+            .output()
+            .map_err(|error| LbeError::new(format!("provider profile configuration failed: {error}")))?;
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid provider.add JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("provider profile configuration failed");
+            return Err(LbeError::new(message));
+        }
+        self.refresh_provider_catalog()
+    }
+
+    fn remove_real_provider_profile(&mut self, profile_name: &str) -> Result<(), LbeError> {
+        self.require_connected()?;
+        if profile_name.trim().is_empty() {
+            return Err(LbeError::new("provider profile name must not be blank"));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "provider",
+                "remove",
+                "--name",
+                profile_name,
+            ])
+            .output()
+            .map_err(|error| LbeError::new(format!("provider profile removal failed: {error}")))?;
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid provider.remove JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("provider profile removal failed");
+            return Err(LbeError::new(message));
+        }
+        self.refresh_provider_catalog()
     }
 
     fn validate_real_provider(&mut self, provider_id: ProviderId) -> Result<(), LbeError> {
@@ -5004,13 +5093,29 @@ impl LbeWrapper for RealLbeWrapper {
             UserRequest::ListSessions => self.list_real_sessions(),
             UserRequest::ResumeSession { session_id } => self.resume_real_session(session_id),
             UserRequest::CloseSession { .. } => self.unsupported_real_request("session closing"),
-            UserRequest::ConfigureProvider { .. } => {
-                self.unsupported_real_request("provider configuration")
-            }
+            UserRequest::ConfigureProvider {
+                profile_name,
+                provider_id,
+                model,
+                endpoint,
+                timeout_seconds,
+                credential_ref,
+                activate,
+            } => self.configure_real_provider(
+                &profile_name,
+                provider_id,
+                &model,
+                &endpoint,
+                timeout_seconds,
+                credential_ref.as_deref(),
+                activate,
+            ),
             UserRequest::ValidateProvider { provider_id } => {
                 self.validate_real_provider(provider_id)
             }
-            UserRequest::RemoveProvider { .. } => self.unsupported_real_request("provider removal"),
+            UserRequest::RemoveProvider { profile_name } => {
+                self.remove_real_provider_profile(&profile_name)
+            },
             UserRequest::RefreshRuntimeSnapshot => {
                 self.require_connected()?;
                 self.attach()
