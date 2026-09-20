@@ -17,6 +17,7 @@ from .reasoning_provider import ProviderConfig
 class ProviderHealthResult:
     provider_id: str
     model_id: str
+    engine_id: str
     status: str
     capabilities: ProviderCapabilities
 
@@ -25,6 +26,7 @@ def check_provider_health(
     *,
     provider_id: str,
     provider_config: ProviderConfig,
+    engine_id: str | None = None,
     provider_registry: ProviderRegistry | None = None,
 ) -> ProviderHealthResult:
     """Probe one registered provider against the bounded planning contract."""
@@ -34,7 +36,11 @@ def check_provider_health(
     if not isinstance(registry, ProviderRegistry):
         raise TypeError("provider_registry must be a ProviderRegistry")
 
-    handle = registry.build(provider_id=provider_id, config=provider_config)
+    handle = registry.build(
+        provider_id=provider_id,
+        config=provider_config,
+        engine_id=engine_id,
+    )
     handle.backend.plan(
         ReasoningRequest(
             problem="Provider capability check. Return a minimal valid planning response.",
@@ -48,6 +54,7 @@ def check_provider_health(
     return ProviderHealthResult(
         provider_id=handle.descriptor.provider_id,
         model_id=handle.descriptor.model_id,
+        engine_id=handle.engine_id,
         status="READY",
         capabilities=handle.descriptor.capabilities,
     )
