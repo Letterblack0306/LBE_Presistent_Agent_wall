@@ -2720,6 +2720,7 @@ fn mcp_registry_event_replaces_retained_metadata_and_projects_it_in_mcp_panel() 
         integrations: vec![McpIntegration {
             integration_id: "mcp-files".to_owned(),
             adapter_id: "mcp.files.local".to_owned(),
+            kind: "mcp".to_owned(),
             tool_id: "mcp.files.read".to_owned(),
             description: "Local MCP file inspection".to_owned(),
             enabled: true,
@@ -2737,8 +2738,8 @@ fn mcp_registry_event_replaces_retained_metadata_and_projects_it_in_mcp_panel() 
     assert_eq!(app.mcp_schema_version, 1);
     assert_eq!(app.mcp_integrations.len(), 1);
     let text = mock_panel_text_for_app(MockPanel::Mcp, &app).to_string();
-    assert!(text.contains("CONNECTED · authoritative LBE MCP projection"));
-    assert!(text.contains("mcp-files · mcp.files.read · UNAVAILABLE"));
+    assert!(text.contains("CONNECTED · authoritative LBE extension projection"));
+    assert!(text.contains("mcp-files · mcp · mcp.files.read · UNAVAILABLE"));
     assert!(text.contains("execution, or authorization state"));
 }
 
