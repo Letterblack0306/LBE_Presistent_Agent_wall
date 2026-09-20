@@ -776,3 +776,28 @@ SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md
 ```
+
+## INTENT LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001
+
+```text
+INTENT_ID: LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001
+STATUS: ACTIVE
+REQUEST: Transition LBE's reasoning/runtime layer from Cline-as-required-owner to Cline-as-one-supported-engine-adapter, with engine-neutral authorized/default/selected/fallback model and provider-binding separation behind LBE-owned authority.
+WHY: The current architecture encodes Cline privilege at the composition/import level (module-scope cline_reasoning_provider import -> cline_stdio_bridge) even though Cline is already optional at the runtime-path level. The audit identified this as the first code defect and the architecture change as coherent but not presently implementable under the current gate. This intent authorizes the governance/index/gate transition so the implementation can proceed lawfully.
+GLOBAL_INVARIANTS: KEEP Cline working. DO NOT make Cline the definition of provider support. DO NOT require every provider to have a native LBE implementation immediately. ALLOW multiple engine implementations for the same provider. PREFER an existing native LBE backend when already proven. MIGRATE provider routes incrementally. LBE session/policy/authorization/execution/receipt/persistence/validation/completion remain unchanged regardless of engine. NO silent engine fallback. NO silent provider fallback. Cline absence must eventually degrade only Cline-backed capabilities, not LBE Core.
+LBE_AUTHORITY_UNCHANGED: LBE remains the sole authority for session/workspace identity, provider policy truth, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion. Reasoning engines own cognition/continuation/tool-proposal mechanics; LBE owns the authority boundary.
+ENGINE_NEUTRAL_MODEL: selected_reasoning_agent becomes engine-neutral authorized/default/selected/fallback model. Cline is one supported engine, not the required engine. Native provider bindings are allowed behind the same LBE authority boundary.
+REQUIRED_EVIDENCE_REPLACEMENT: Replace headless_cline_provider_turn with engine-neutral governed-turn proof, while retaining Cline regression proof to ensure no regression.
+NON_GOALS: independent provider transport outside LBE-owned engine/provider bindings; silent engine/provider fallback; publication without separate authorization; branch/worktree creation; changes to the canonical client workspace (C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal); changes to existing working Cline-backed routes without regression proof.
+FIRST_CODE_CHANGE: After governance opens the slice, make the module-scope cline_reasoning_provider import optional/feature-scoped as the first implementation change, proving Cline-absent LBE initialization before re-pointing any provider bindings.
+AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/ (reasoning runtime, provider registry, cline adapter imports), .lbe/governance/implementation-gates.json, PROJECT_INDEX.md, docs/governance/PROJECT_INTENT_LEDGER.md
+EXISTING_OWNER: LBE runtime owners; existing Cline adapter mechanics under LBE authority; engine/provider binding owner (new structural responsibility per PROJECT_INDEX.md).
+DESIRED_RESULT: LBE initializes and operates through an engine-neutral reasoning runtime. Cline is one supported adapter. Provider bindings are engine/provider-scoped behind LBE authority. No silent fallback. Cline regression proof retained.
+REUSE_DECISION: REUSE existing LBE runtime, authorization, execution, receipt, evidence, persistence, validation, and completion owners. REUSE existing Cline adapter as one supported engine. ADAPT the provider registry and reasoning runtime to be engine-neutral with optional/supported Cline import.
+AUTHORITY_IMPACT: LBE authority unchanged. Reasoning engine/provider bindings become a distinct structural responsibility owned by LBE runtime + engine/provider binding owner. Cline mechanics remain under LBE authority.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/, .lbe/governance/, PROJECT_INDEX.md, docs/governance/
+REQUIRED_EVIDENCE: engine-neutral LBE initialization proof; Cline-absent LBE initialization proof; Cline regression proof; provider binding structure registered in PROJECT_INDEX.md; gate amendment record; focused tests for engine-neutral runtime; full regression.
+MACHINE_SLICE: REASONING_ENGINE_PROVIDER_BINDING_SEPARATION
+RESULT: AUTHORIZED (pending implementation)
+AUTHORIZATION: EXPLICIT_USER_AUTHORIZATION_2026_09_20
+```\n

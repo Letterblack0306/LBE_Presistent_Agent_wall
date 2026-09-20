@@ -2,17 +2,22 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "COMPLETED",
-  "status": "PASS",
-  "implementation_allowed": false,
+  "active_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
+  "status": "OPEN",
+  "implementation_allowed": true,
   "architecture_changes_allowed": true,
-  "next_phase_locked": false,
+  "next_phase_locked": true,
   "required_status_for_advance": "PASS",
   "selected_reasoning_agent": {
-    "name": "Cline",
-    "source": "https://github.com/cline/cline",
-    "status": "USER_SELECTED",
-    "boundary": "Cline owns reasoning, planning, tool proposals, continuation, and response composition; LBE owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion."
+    "model": "engine-neutral authorized/default/selected/fallback",
+    "status": "ENGINE_NEUTRAL",
+    "boundary": "Reasoning engines own cognition, planning, tool proposals, continuation, and response composition; LBE owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion. Cline is one supported reasoning engine adapter, not the required reasoning owner.",
+    "supported_engines": {
+      "cline": {
+        "status": "SUPPORTED_ADAPTER",
+        "note": "Existing Cline adapter remains available; Cline regression proof retained"
+      }
+    }
   },
   "blocking_statuses": [
     "FAIL",
@@ -59,16 +64,16 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001",
-    "owner": "LBE-owned Rust/Ratatui presentation client over existing LBE runtime/session/provider-policy/authorization/ToolRegistry/GovernedToolOrchestrator/receipt/evidence/persistence/validation/completion owners, with headless Cline reasoning/provider/model/continuation mechanics",
-    "index_revision": "PENDING_REHASH_AFTER_2026_09_18_PRODUCT_OWNER_DECISION"
+    "intent_id": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
+    "owner": "LBE runtime + engine/provider binding owner; reasoning engine registry, provider bindings, and Cline-as-one-engine mechanics behind LBE authority",
+    "index_revision": "0AB8E68E824959E538A5637A57A95680783B1768D7924E20276FE7EB08B64745"
   },
   "closure": {
-    "status": "CLOSED",
+    "status": "OPEN",
     "last_completed_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
     "last_completed_intent": "LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001",
     "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "NONE",
+    "next_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
     "publication": "LOCKED"
   },
   "active_execution_plan": {
@@ -124,6 +129,40 @@
         "status": "PASS",
         "evidence": "Canonical backend main 09b5c1cd28806d4381fabaa4723191494f2bc32f publishes the installed command contract in tools/lbe_product_integration.ps1: zero-mandatory-argument launcher defaults from installed runtime.json, provider configuration under the install root, bin\\lbe.cmd generation, idempotent user-PATH prepend, and explicit collision reporting without overwriting npm/Python owners. Product was rebuilt/reinstalled from this exact canonical head and revalidated.",
         "required_fix": "NONE. Closed."
+      },
+      "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION": {
+        "status": "AUTHORIZED",
+        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_20",
+        "scope": [
+          "engine-neutral reasoning runtime",
+          "optional/supported Cline adapter (not required owner)",
+          "provider binding separation behind LBE authority",
+          "native provider bindings for OpenAI-compatible, Anthropic, Gemini, LM Studio",
+          "engine-neutral governed-turn evidence (replacing headless_cline_provider_turn)",
+          "Cline regression proof retention",
+          "no silent engine/provider fallback",
+          "capability truth from ProviderModelCapabilitySnapshot/normalize_provider_descriptor"
+        ],
+        "required_evidence": [
+          "engine-neutral LBE initialization proof",
+          "Cline-absent LBE initialization proof",
+          "Cline regression proof (existing routes preserved)",
+          "provider binding structure registered in PROJECT_INDEX.md",
+          "gate amendment record",
+          "focused tests for engine-neutral runtime",
+          "full regression"
+        ],
+        "non_goals": [
+          "independent provider transport outside LBE-owned engine/provider bindings",
+          "silent engine fallback",
+          "silent provider fallback",
+          "changes to canonical client workspace (apps/lbe-terminal)",
+          "publication without separate authorization",
+          "branch/worktree creation"
+        ],
+        "first_code_change": "Make module-scope cline_reasoning_provider import optional/feature-scoped; prove Cline-absent LBE initialization before re-pointing provider bindings",
+        "implementation_allowed": true,
+        "completion_checkpoint": "docs/acceptance/REASONING_ENGINE_PROVIDER_BINDING_SEPARATION_CHECKPOINT.md"
       }
     },
     "next_phase": null
@@ -553,7 +592,7 @@
     "implementation_technology": "Rust/Ratatui",
     "canonical_client_workspace": "C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal",
     "visual_contract": "Existing LBE HTML/React work and canonical GPT-K LBE_TERMINAL_TUI_UI_PLAN.md are reference/specification inputs; browser prototypes are not runtime truth.",
-    "reasoning_mechanics": "Cline remains selected headless reasoning/planning/provider/model/tool-proposal/continuation/response-composition source behind LBE.",
+    "reasoning_mechanics": "Cline is one supported headless reasoning/planning/provider/model/tool-proposal/continuation/response-composition engine adapter behind LBE; engine-neutral reasoning runtime with optional/supported Cline adapter.",
     "scope": [
       "lbe_owned_terminal_layout",
       "conversation_work_timeline",
@@ -567,7 +606,7 @@
     "required_evidence": [
       "canonical_rust_client_build",
       "real_lbe_runtime_attachment",
-      "headless_cline_provider_turn",
+      "engine_neutral_governed_turn",
       "authoritative_provider_model_projection",
       "governed_tool_and_approval_flow",
       "tool_receipt_and_evidence_projection",
@@ -575,7 +614,8 @@
       "plan_act_audit_policy_mapping",
       "clean_pty_conpty_exit",
       "restart_resume",
-      "installed_single_command_lbe_launch"
+      "installed_single_command_lbe_launch",
+      "cline_regression_proof"
     ],
     "product_identity": "LBE",
     "reference_inputs": [
@@ -583,14 +623,13 @@
       "Cline interaction patterns where useful",
       "upstream Cline CLI/OpenTUI as reference only"
     ],
-    "authority_boundary": "Rust/Ratatui owns presentation/input only; Cline owns headless cognition/provider continuation mechanics; LBE owns session/workspace identity, provider policy truth, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion.",
+    "authority_boundary": "Rust/Ratatui owns presentation/input only; reasoning engines own headless cognition/provider continuation mechanics; LBE owns session/workspace identity, provider policy truth, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion.",
     "non_goals": [
       "copied or rebranded Cline product UI as a requirement",
       "native Cline session or persistence authority",
       "native Cline mutation/shell/MCP authority",
       "browser/HTML prototype as runtime truth",
       "Python/Textual final-product UI",
-      "independent provider transport",
       "independent session identity",
       "new runtime authority",
       "publication without separate authorization",
