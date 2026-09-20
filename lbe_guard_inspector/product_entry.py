@@ -84,6 +84,7 @@ def _build_start_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--provider", help="Provider identity for a new session")
     parser.add_argument("--model", help="Provider model for a new session")
+    parser.add_argument("--engine", help="Reasoning engine binding for a new session")
     parser.add_argument("--profile", help="Existing profile identity persisted on the new session")
     parser.add_argument("--permission-policy")
     parser.add_argument("--evidence-policy")
@@ -163,6 +164,10 @@ def _turn(argv: Sequence[str]) -> int:
         history = SessionOperationalHistory(store=store)
         runtime = _cli._runtime_from_state(database=args.database, state=state)
         if state.mode == "coding" and state.permission not in {"read_only", "audit_only"}:
+            if state.reasoning_engine not in {None, "native-lbe"}:
+                raise ValueError(
+                    "governed coding tool loop currently requires the native-lbe reasoning engine"
+                )
             controller = GovernedProviderReasoningController(
                 runtime=runtime, provider_id=state.provider_id, provider_config=config
             )
@@ -174,6 +179,7 @@ def _turn(argv: Sequence[str]) -> int:
             controller, _ = build_provider_controller(
                 provider_id=state.provider_id,
                 provider_config=config,
+                engine_id=state.reasoning_engine,
             )
             provider_runtime = GovernedProviderTurnRuntime(
                 history=history,
@@ -341,6 +347,7 @@ def _start(argv: Sequence[str]) -> int:
                 "--mode": args.mode,
                 "--provider": args.provider,
                 "--model": args.model,
+                "--engine": args.engine,
                 "--profile": args.profile,
                 "--permission-policy": args.permission_policy,
                 "--evidence-policy": args.evidence_policy,
