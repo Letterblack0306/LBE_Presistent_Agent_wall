@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -518,11 +519,21 @@ def test_product_tool_executes_argument_only_installed_capability(
 
 def test_workspace_tool_still_requires_path_after_generic_extension_support(
     tmp_path: Path,
+    monkeypatch,
     capsys,
 ) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     database = tmp_path / "lbe.sqlite"
+    monkeypatch.setattr(
+        product_entry.Context,
+        "load",
+        staticmethod(
+            lambda: SimpleNamespace(
+                roots=[SimpleNamespace(path=workspace.resolve(), name="test-root")]
+            )
+        ),
+    )
     from lbe_guard_inspector.memory.models import SessionState
 
     WorkspaceMemoryStore(database).save_session_state(
