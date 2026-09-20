@@ -1425,6 +1425,42 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                 "Open through the app-aware renderer for projected command activity.".to_owned(),
             ],
         ),
+        MockPanel::Agents => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
+            let mut rows = vec![
+                if connected {
+                    "CONNECTED · authoritative delegated-run projection".to_owned()
+                } else {
+                    format!("{} · delegated-run projection", snapshot.connection.label())
+                },
+                format!("Projected child runs {}", snapshot.child_agents.len()),
+                String::new(),
+            ];
+            if snapshot.child_agents.is_empty() {
+                rows.push("No delegated child-agent runs projected.".to_owned());
+            } else {
+                for run in &snapshot.child_agents {
+                    rows.push(format!(
+                        "{} · {} · parent {} · child {}",
+                        run.status.label(),
+                        run.child_agent_run_id,
+                        run.parent_session_id,
+                        run.child_session_id.as_deref().unwrap_or("not started")
+                    ));
+                    rows.push(format!(
+                        "  tools {} · receipt {} · evidence {}",
+                        if run.child_tools.is_empty() {
+                            "none".to_owned()
+                        } else {
+                            run.child_tools.join(", ")
+                        },
+                        run.receipt_id.as_deref().unwrap_or("none"),
+                        run.evidence_ref.as_deref().unwrap_or("none")
+                    ));
+                }
+            }
+            ("Agents / delegated work", rows)
+        }
         MockPanel::History => (
             "History",
             vec![
@@ -1506,7 +1542,11 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
         MockPanel::Status => (
             "Status",
             vec![
-                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned(),
+                if snapshot.connection == RuntimeConnection::Connected {
+                    "CONNECTED · authoritative LBE projection".to_owned()
+                } else {
+                    format!("{} · UI projection", snapshot.connection.label())
+                },
                 format!(
                     "Runtime {} · {} · attached clients {}",
                     snapshot.runtime_id.as_deref().unwrap_or("not attached"),
@@ -1522,7 +1562,24 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                     snapshot.elapsed_seconds,
                     snapshot.timeout_seconds
                 ),
-                "All values are mock projections; no runtime is attached.".to_owned(),
+                format!(
+                    "Engine {} · provider/model {}",
+                    snapshot
+                        .session_context
+                        .as_ref()
+                        .and_then(|context| context.data.session.reasoning_engine.as_deref())
+                        .unwrap_or("not selected"),
+                    snapshot
+                        .selected_model
+                        .as_ref()
+                        .map(|model| format!("{} / {}", model.provider_id.label(), model.model_id))
+                        .unwrap_or_else(|| snapshot.model_id.clone())
+                ),
+                if snapshot.connection == RuntimeConnection::Connected {
+                    "State is projected from the attached LBE runtime.".to_owned()
+                } else {
+                    "No live runtime is attached; unavailable values stay explicit.".to_owned()
+                },
             ],
         ),
         MockPanel::Memory => {
