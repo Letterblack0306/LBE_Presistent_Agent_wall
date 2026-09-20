@@ -65,10 +65,13 @@ def test_registry_round_trip_persists_metadata_and_opaque_credential_ref(tmp_pat
     assert loaded.records[0].public_payload()["credential_ref_configured"] is True
 
 
-def test_all_five_external_kinds_are_valid_registry_records() -> None:
+def test_all_external_kinds_are_valid_registry_records() -> None:
     records = (
         _record(),
+        _record(integration_id="skill-x", adapter_id="skill.x", kind=ExternalCapabilityKind.SKILL, tool_id="skill.x.invoke"),
         _record(integration_id="plugin-x", adapter_id="plugin.x", kind=ExternalCapabilityKind.PLUGIN, tool_id="plugin.x.inspect"),
+        _record(integration_id="hook-x", adapter_id="hook.x", kind=ExternalCapabilityKind.HOOK, tool_id="hook.x.run"),
+        _record(integration_id="connector-x", adapter_id="connector.x", kind=ExternalCapabilityKind.CONNECTOR, tool_id="connector.x.query"),
         _record(integration_id="subagent-x", adapter_id="subagent.x", kind=ExternalCapabilityKind.SUBAGENT, tool_id="subagent.x.run"),
         _record(integration_id="network-x", adapter_id="network.x", kind=ExternalCapabilityKind.NETWORK, tool_id="network.x.query", network_behavior=ToolNetworkBehavior.REQUIRED),
         _record(integration_id="hosted-x", adapter_id="hosted.x", kind=ExternalCapabilityKind.HOSTED_SERVICE, tool_id="hosted.x.query", network_behavior=ToolNetworkBehavior.REQUIRED),
@@ -214,3 +217,48 @@ def test_write_record_materializes_with_modify_authority() -> None:
     registration = registry.materialize({record.adapter_id: lambda _record: (lambda _request: ToolExecutionResult(output={}))})[0]
     assert registration.access_class is ToolAccessClass.WRITE
     assert registration.capability == "modify"
+
+
+def test_registry_management_upsert_enable_disable_remove(tmp_path: Path) -> None:
+    store = InstalledCapabilityRegistryStore(tmp_path / "capabilities.json")
+    first = _record()
+    registry = store.upsert(first)
+    assert [item.integration_id for item in registry.records] == ["mcp-files"]
+
+    replacement = InstalledCapabilityRecord(
+        integration_id="mcp-files",
+        adapter_id="mcp.files.local.v2",
+        kind=ExternalCapabilityKind.MCP,
+        tool_id="mcp.files.search",
+        description="replacement",
+        required_arguments=("query",),
+    )
+    registry = store.upsert(replacement)
+    assert len(registry.records) == 1
+    assert registry.records[0].adapter_id == "mcp.files.local.v2"
+
+    registry = store.set_enabled("mcp-files", False)
+    assert registry.records[0].enabled is False
+    registry = store.set_enabled("mcp-files", True)
+    assert registry.records[0].enabled is True
+
+    registry = store.remove("mcp-files")
+    assert registry.records == ()
+    with pytest.raises(KeyError, match="not registered"):
+        store.remove("mcp-files")
+
+
+def test_parse_record_supports_skill_hook_and_connector_kinds() -> None:
+    for kind, prefix in (
+        ("skill", "skill"),
+        ("hook", "hook"),
+        ("connector", "connector"),
+    ):
+        record = InstalledCapabilityRegistryStore.parse_record({
+            "integration_id": f"{kind}-demo",
+            "adapter_id": f"{prefix}.demo",
+            "kind": kind,
+            "tool_id": f"{prefix}.demo.run",
+            "description": f"{kind} demo",
+        })
+        assert record.kind.value == kind
