@@ -1046,6 +1046,11 @@ impl LbeWrapper for MockLbeWrapper {
                     "runtime snapshot refresh is unavailable in mock mode",
                 ));
             }
+            UserRequest::RefreshChildAgents { .. } => {
+                self.emit(LbeEvent::ChildAgentRunsUpdated {
+                    runs: self.snapshot.child_agents.clone(),
+                });
+            }
             UserRequest::RefreshMcpRegistry => {
                 self.emit(LbeEvent::McpRegistryUpdated {
                     schema_version: 1,
@@ -2803,6 +2808,62 @@ impl RealLbeWrapper {
             .push_back(LbeEvent::ProviderDiscoveryCompleted {
                 providers: provider_ids,
             });
+        Ok(())
+    }
+
+    fn refresh_child_agents(&mut self, turn_id: &str) -> Result<(), LbeError> {
+        self.require_connected()?;
+        if turn_id.trim().is_empty() {
+            return Err(LbeError::new("delegated-run refresh requires a turn_id"));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .wall_database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .or_else(|| self.session_id.clone())
+            .ok_or_else(|| LbeError::new("LBE session is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "child-agent",
+                "list",
+                "--database",
+            ])
+            .arg(database)
+            .args(["--session-id", &session_id, "--turn-id", turn_id, "--format", "json"])
+            .output()
+            .map_err(|error| LbeError::new(format!("delegated-run listing failed: {error}")))?;
+        let payload = parse_workspace_payload(&output.stdout, "child-agent.list")?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("delegated-run listing was rejected by LBE");
+            return Err(LbeError::new(message));
+        }
+        let runs: Vec<ChildAgentRun> = serde_json::from_value(
+            payload
+                .get("child_agents")
+                .cloned()
+                .ok_or_else(|| LbeError::new("child-agent.list omitted child_agents"))?,
+        )
+        .map_err(|error| LbeError::new(format!("invalid delegated-run projection: {error}")))?;
+        self.snapshot.child_agents = runs.clone();
+        self.pending_events
+            .push_back(LbeEvent::ChildAgentRunsUpdated { runs });
         Ok(())
     }
 
@@ -4843,6 +4904,9 @@ impl LbeWrapper for RealLbeWrapper {
             UserRequest::RefreshRuntimeSnapshot => {
                 self.require_connected()?;
                 self.attach()
+            }
+            UserRequest::RefreshChildAgents { turn_id } => {
+                self.refresh_child_agents(&turn_id)
             }
             UserRequest::RefreshMcpRegistry => {
                 self.require_connected()?;
