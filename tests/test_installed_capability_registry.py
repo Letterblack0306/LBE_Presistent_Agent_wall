@@ -10,6 +10,7 @@ from lbe_guard_inspector.runtime.installed_capability_registry import (
     InstalledCapabilityRecord,
     InstalledCapabilityRegistry,
     InstalledCapabilityRegistryStore,
+    built_in_adapter_factories,
 )
 from lbe_guard_inspector.runtime.tool_orchestration import (
     ToolAccessClass,
@@ -262,3 +263,40 @@ def test_parse_record_supports_skill_hook_and_connector_kinds() -> None:
             "description": f"{kind} demo",
         })
         assert record.kind.value == kind
+
+
+def test_birdeye_installed_record_resolves_to_builtin_factory_without_execution() -> None:
+    record = InstalledCapabilityRecord(
+        integration_id="birdeye-workspace-search",
+        adapter_id="mcp.birdeye.workspace-search",
+        kind=ExternalCapabilityKind.MCP,
+        tool_id="mcp.birdeye.search_workspace",
+        description="Search BirdEye workspace index",
+        enabled=True,
+        required_arguments=("arguments",),
+        access_class=ToolAccessClass.READ,
+        network_behavior=ToolNetworkBehavior.NONE,
+        risk_class=ToolRiskClass.LOW,
+    )
+    registry = InstalledCapabilityRegistry(records=(record,))
+    factories = built_in_adapter_factories(registry)
+    assert set(factories) == {record.adapter_id}
+    statuses = registry.statuses(factories)
+    assert statuses[0].availability == "AVAILABLE"
+    registrations = registry.materialize(factories)
+    assert len(registrations) == 1
+    assert registrations[0].tool_id == "mcp.birdeye.search_workspace"
+    assert callable(registrations[0].handler)
+
+
+def test_unknown_installed_adapter_remains_unavailable() -> None:
+    record = InstalledCapabilityRecord(
+        integration_id="skill-unknown",
+        adapter_id="skill.unknown",
+        kind=ExternalCapabilityKind.SKILL,
+        tool_id="skill.unknown.invoke",
+        description="Unknown host skill adapter",
+    )
+    registry = InstalledCapabilityRegistry(records=(record,))
+    assert built_in_adapter_factories(registry) == {}
+    assert registry.statuses({})[0].availability == "UNAVAILABLE"
