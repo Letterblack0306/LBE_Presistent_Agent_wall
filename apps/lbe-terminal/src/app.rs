@@ -216,6 +216,15 @@ impl App {
         self.should_quit
     }
 
+    /// Advance to a phase reached through a runtime event. The Landing gate is
+    /// passed only when the user presses Enter; async events defer until then.
+    fn advance_phase(&mut self, phase: Phase) {
+        if self.phase == Phase::Landing {
+            return;
+        }
+        self.phase = phase;
+    }
+
     pub(crate) fn handle_key(
         &mut self,
         key: KeyEvent,
@@ -1009,14 +1018,14 @@ impl App {
                 self.transcript.clear();
                 self.transcript_scroll = None;
                 self.panel = None;
-                self.phase = Phase::Welcome;
+                self.advance_phase(Phase::Welcome);
                 self.transcript
                     .push(format!("SESSION  started · {session_id}"));
             }
             LbeEvent::SessionRestored { session_id } => {
                 self.transcript_scroll = None;
                 self.panel = None;
-                self.phase = Phase::Welcome;
+                self.advance_phase(Phase::Welcome);
                 self.transcript
                     .push(format!("SESSION  restored · {session_id}"));
             }
@@ -1038,7 +1047,7 @@ impl App {
             } => {
                 if connection != RuntimeConnection::Connected && self.pending_patch.is_some() {
                     self.pending_patch = None;
-                    self.phase = Phase::Welcome;
+                    self.advance_phase(Phase::Welcome);
                     self.transcript.push(
                         "PATCH  authorization cancelled · runtime is not connected".to_owned(),
                     );
@@ -1061,7 +1070,7 @@ impl App {
                 if !matches!(self.phase, Phase::AwaitingApproval { .. })
                     || status != SessionStatus::WaitingForApproval
                 {
-                    self.phase = Phase::from_session_status(status);
+                    self.advance_phase(Phase::from_session_status(status));
                 }
             }
             LbeEvent::SnapshotUpdated { snapshot } => {
@@ -1532,14 +1541,14 @@ impl App {
                 self.snapshot.execution_status = Some(ExecutionStatus::Interrupted);
                 self.transcript
                     .push(format!("RUNTIME  execution interrupted · {reason}"));
-                self.phase = Phase::Interrupted;
+                self.advance_phase(Phase::Interrupted);
             }
             LbeEvent::ExecutionResumed { execution_id } if self.owns_execution(&execution_id) => {
                 self.snapshot.session_state = SessionStatus::Running;
                 self.snapshot.execution_status = Some(ExecutionStatus::Running);
                 self.transcript
                     .push(format!("RUNTIME  execution resumed · {execution_id}"));
-                self.phase = Phase::Running;
+                self.advance_phase(Phase::Running);
             }
             LbeEvent::TimeoutWarning {
                 elapsed_seconds,
@@ -1563,7 +1572,7 @@ impl App {
                 self.snapshot.timeout_seconds = timeout_seconds;
                 self.transcript
                     .push(format!("TIMEOUT  reached · {timeout_seconds}s"));
-                self.phase = Phase::TimedOut;
+                self.advance_phase(Phase::TimedOut);
                 self.active_execution_id = None;
             }
             LbeEvent::DiagnosticsUpdated { checks } => {
@@ -1641,7 +1650,7 @@ impl App {
                 }
                 self.snapshot.turn_id = Some(turn_id);
                 self.snapshot.session_state = SessionStatus::Completed;
-                self.phase = Phase::Completed;
+                self.advance_phase(Phase::Completed);
                 self.transcript
                     .push(format!("TURN  completed ? {event_id}"));
             }
@@ -1668,10 +1677,10 @@ impl App {
                 approval_id,
                 proposal,
             } => {
-                self.phase = Phase::AwaitingApproval {
+                self.advance_phase(Phase::AwaitingApproval {
                     approval_id,
                     proposal: format!("TASK APPROVAL · {proposal}"),
-                };
+                });
                 self.active_execution_id = None;
             }
             LbeEvent::AuthorizationRequired {
@@ -1693,10 +1702,10 @@ impl App {
                 self.last_authorization_capability = Some(capability.clone());
                 self.last_authorization_verdict = Some("REQUIRED".to_owned());
                 self.last_authorization_rationale = Some(rationale.clone());
-                self.phase = Phase::AwaitingApproval {
+                self.advance_phase(Phase::AwaitingApproval {
                     approval_id,
                     proposal: format!("AUTHORIZATION REQUIRED · {capability} · {rationale}"),
-                };
+                });
                 self.active_execution_id = Some(operation_id);
             }
             LbeEvent::AuthorizationResolved {
@@ -1723,7 +1732,7 @@ impl App {
                     "AUTHORIZATION  {verdict} · {operation_id} · {approval_id} · {rationale}"
                 ));
                 if verdict == "ALLOW" {
-                    self.phase = Phase::Welcome;
+                    self.advance_phase(Phase::Welcome);
                 } else if verdict == "REQUIRE_APPROVAL" || verdict == "ESCALATE" {
                     self.phase = Phase::AwaitingApproval {
                         approval_id,
@@ -1731,18 +1740,18 @@ impl App {
                     };
                 } else {
                     self.pending_patch = None;
-                    self.phase = Phase::Rejected;
+                    self.advance_phase(Phase::Rejected);
                 }
                 self.active_execution_id = None;
             }
             LbeEvent::PlanUpdated { text } => {
                 self.transcript.push(format!("PLAN  {text}"));
-                self.phase = Phase::Welcome;
+                self.advance_phase(Phase::Welcome);
             }
             LbeEvent::AuditVerdict { verdict } => {
                 self.audit_verdict = Some(verdict.clone());
                 self.transcript.push(format!("AUDIT  {verdict}"));
-                self.phase = Phase::Welcome;
+                self.advance_phase(Phase::Welcome);
             }
             LbeEvent::ToolRequested {
                 execution_id,
@@ -1830,7 +1839,7 @@ impl App {
                 }
                 self.transcript
                     .push(format!("lbe runtime  EXECUTION STARTED · {execution_id}"));
-                self.phase = Phase::Running;
+                self.advance_phase(Phase::Running);
             }
             LbeEvent::AgentRequestedCompletion { execution_id }
                 if self.owns_execution(&execution_id) =>
@@ -1864,7 +1873,7 @@ impl App {
                 // user prompt can enter the real LBE turn path.
                 if self.last_tool_name.as_deref() == Some("workspace.list") {
                     self.active_execution_id = None;
-                    self.phase = Phase::Welcome;
+                    self.advance_phase(Phase::Welcome);
                 }
             }
             LbeEvent::ValidationStarted { execution_id } if self.owns_execution(&execution_id) => {
@@ -1890,7 +1899,7 @@ impl App {
                 self.transcript.push(format!(
                     "LBE RUNTIME  COMPLETION ACCEPTED · {execution_id} · receipt {receipt}"
                 ));
-                self.phase = Phase::Completed;
+                self.advance_phase(Phase::Completed);
                 self.active_execution_id = None;
             }
             LbeEvent::ExecutionRejected { approval_id } => {
@@ -1901,7 +1910,7 @@ impl App {
                 }
                 self.transcript
                     .push("LBE RUNTIME  REJECTED · no execution occurred.".to_owned());
-                self.phase = Phase::Rejected;
+                self.advance_phase(Phase::Rejected);
             }
             LbeEvent::SessionMemoryIndexed {
                 session_id,

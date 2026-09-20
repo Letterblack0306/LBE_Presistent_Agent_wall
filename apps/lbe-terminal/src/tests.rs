@@ -192,6 +192,7 @@ fn drain_wrapper(wrapper: &mut MockLbeWrapper, now: Instant) -> Vec<LbeEvent> {
 #[test]
 fn proposal_approval_lifecycle_reaches_receipt() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
@@ -784,6 +785,7 @@ fn interrupted_execution_is_explicit_and_cannot_continue_until_resumed() {
 #[test]
 fn interrupted_runtime_event_projects_to_interrupted_ui_phase() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.reduce_lbe_event(LbeEvent::ExecutionStarted {
         execution_id: "exec_interrupt_ui".to_owned(),
     });
@@ -932,6 +934,7 @@ fn approval_ids_are_unique_and_replay_is_rejected() {
 #[test]
 fn stale_execution_events_do_not_mutate_a_new_active_execution() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.reduce_lbe_event(LbeEvent::ExecutionStarted {
         execution_id: "exec_a".to_owned(),
     });
@@ -992,6 +995,7 @@ fn foreign_tool_and_command_events_do_not_project_into_active_execution() {
 #[test]
 fn snapshot_and_attachment_events_do_not_change_execution_ownership() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.reduce_lbe_event(LbeEvent::ExecutionStarted {
         execution_id: "exec_a".to_owned(),
     });
@@ -1012,6 +1016,7 @@ fn snapshot_and_attachment_events_do_not_change_execution_ownership() {
 #[test]
 fn escape_rejects_only_a_pending_proposal() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
     app.input = "inspect workspace".to_owned();
@@ -1091,6 +1096,7 @@ fn continuation_requires_the_active_session_and_projects_assistant_text() {
 #[test]
 fn new_command_requests_a_runtime_owned_session_and_projects_lineage() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = MockLbeWrapper::default();
     app.transcript.push("old transcript".to_owned());
     let previous_session_id = app.snapshot.session_id.clone();
@@ -1155,6 +1161,7 @@ fn real_wrapper_rejects_list_sessions_while_disconnected() {
 #[test]
 fn resume_command_requests_runtime_owned_session_restore() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = MockLbeWrapper::default();
     let original_session = app.snapshot.session_id.clone().unwrap();
 
@@ -2620,6 +2627,7 @@ fn provider_refresh_emits_discovery_and_validation_lifecycle() {
 #[test]
 fn session_lineage_and_checkpoint_project_into_their_panels() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
@@ -2737,6 +2745,7 @@ fn mcp_registry_event_replaces_retained_metadata_and_projects_it_in_mcp_panel() 
 #[test]
 fn execution_projects_checkpoint_and_command_streams_without_spawning_a_process() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
     wrapper
@@ -2795,6 +2804,7 @@ fn plan_and_audit_submissions_do_not_enter_execution_flow() {
         input: "inspect architecture".to_owned(),
         ..App::default()
     };
+    plan.phase = Phase::Welcome;
     plan.submit_or_approve(&mut wrapper, now);
     plan.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
     assert_eq!(plan.phase, Phase::Welcome);
@@ -2805,6 +2815,7 @@ fn plan_and_audit_submissions_do_not_enter_execution_flow() {
         input: "inspect workspace".to_owned(),
         ..App::default()
     };
+    audit.phase = Phase::Welcome;
     audit.submit_or_approve(&mut wrapper, now);
     audit.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
     assert_eq!(audit.phase, Phase::Welcome);
@@ -2863,6 +2874,33 @@ fn landing_phase_is_the_default_entry_gate() {
     assert!(!app.should_quit());
     app.handle_key(KeyCode::Function(2).into(), &mut wrapper, now);
     assert_eq!(app.panel, None);
+
+    app.handle_key(KeyCode::Enter.into(), &mut wrapper, now);
+    assert_eq!(app.phase, Phase::Welcome);
+}
+
+#[test]
+fn landing_gate_holds_against_runtime_events() {
+    let mut app = App::default();
+    let mut wrapper = MockLbeWrapper::default();
+    let now = Instant::now();
+    assert_eq!(app.phase, Phase::Landing);
+
+    app.reduce_lbe_event(LbeEvent::SessionRestored {
+        session_id: "sess_live_0001".to_owned(),
+    });
+    app.reduce_lbe_event(LbeEvent::ExecutionStarted {
+        execution_id: "exec_0001".to_owned(),
+    });
+    app.reduce_lbe_event(LbeEvent::LbeCompletionAccepted {
+        execution_id: "exec_0001".to_owned(),
+        receipt_id: Some("receipt_0001".to_owned()),
+    });
+    assert_eq!(
+        app.phase,
+        Phase::Landing,
+        "landing gate must hold until Enter"
+    );
 
     app.handle_key(KeyCode::Enter.into(), &mut wrapper, now);
     assert_eq!(app.phase, Phase::Welcome);
@@ -4933,6 +4971,7 @@ fn ctrl_d_with_nonempty_input_does_not_quit() {
 fn ctrl_c_while_running_requests_abort_without_quitting() {
     let now = Instant::now();
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
 
