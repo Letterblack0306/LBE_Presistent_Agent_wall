@@ -1,7 +1,7 @@
 use crate::{
     app::App,
     events::{LbeEvent, ToolRisk, ValidationStatus},
-    headless_prompt,
+    headless_prompt, parse_cli,
     requests::{LbeError, UserRequest},
     types::*,
     ui::{mock_panel_text_for_app, *},
@@ -15,7 +15,7 @@ use crate::{
 };
 
 use ratatui::termina::event::{KeyCode, KeyEvent, Modifiers};
-use ratatui::{backend::TestBackend, Terminal};
+use ratatui::{backend::TestBackend, style::Color, Terminal};
 use std::time::{Duration, Instant};
 
 struct RecordingWrapper {
@@ -59,14 +59,58 @@ fn executed_receipt_contract_accepts_and_normalizes_a_non_empty_receipt() {
 }
 
 #[test]
-fn headless_prompt_collects_arguments_after_no_tui_and_ignores_json_flag() {
+fn headless_prompt_collects_arguments_after_no_tui_and_ignores_presentation_flags() {
     let arguments = vec![
         "--no-tui".to_owned(),
         "inspect".to_owned(),
         "workspace".to_owned(),
         "--json".to_owned(),
+        "--no-animation".to_owned(),
+        "--ascii".to_owned(),
     ];
     assert_eq!(headless_prompt(&arguments).unwrap(), "inspect workspace");
+}
+
+#[test]
+fn cli_accepts_plain_ascii_and_reduced_motion_for_headless_runs() {
+    let arguments = vec![
+        "run".to_owned(),
+        "inspect".to_owned(),
+        "workspace".to_owned(),
+        "--plain".to_owned(),
+        "--no-animation".to_owned(),
+        "--ascii".to_owned(),
+    ];
+    let (command, options) = parse_cli(&arguments).unwrap();
+    assert_eq!(command, Some("run"));
+    assert_eq!(options.prompt.as_deref(), Some("inspect workspace"));
+    assert!(options.plain);
+    assert!(options.no_animation);
+    assert!(options.ascii);
+    assert!(!options.json);
+}
+
+#[test]
+fn cli_rejects_conflicting_headless_output_formats() {
+    let arguments = vec![
+        "run".to_owned(),
+        "inspect".to_owned(),
+        "--plain".to_owned(),
+        "--json".to_owned(),
+    ];
+    let error = parse_cli(&arguments).unwrap_err();
+    assert!(error.to_string().contains("mutually exclusive"));
+}
+
+#[test]
+fn void_signal_palette_keeps_semantic_roles_distinct() {
+    assert_eq!(PALETTE.bg, Color::Rgb(7, 10, 15));
+    assert_eq!(PALETTE.ink, Color::Rgb(220, 231, 245));
+    assert_eq!(PALETTE.info, Color::Rgb(89, 225, 255));
+    assert_eq!(PALETTE.agent, Color::Rgb(183, 160, 255));
+    assert_eq!(PALETTE.green, Color::Rgb(111, 231, 176));
+    assert_eq!(PALETTE.amber, Color::Rgb(255, 209, 102));
+    assert_eq!(PALETTE.red, Color::Rgb(255, 122, 144));
 }
 
 #[test]
