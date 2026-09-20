@@ -729,3 +729,33 @@ def test_session_validate_rejects_task_without_persisted_contract(tmp_path: Path
     assert code == 2
     assert payload["error"] == "ValueError"
     assert "completion contract" in payload["message"]
+
+
+def test_memory_recall_returns_revalidated_session_memory(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+    )
+    memory_id = runtime.adapter.record_file_hash(relative_path="tracked.txt")
+
+    code = main([
+        "memory", "recall",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--query", "tracked.txt",
+        "--limit", "5",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["ok"] is True
+    assert payload["action"] == "memory.recall"
+    assert payload["session_id"] == "session-1"
+    assert [record["memory_id"] for record in payload["records"]] == [memory_id]
+    assert payload["records"][0]["memory_type"] == "workspace_fact"
+    assert payload["records"][0]["validation_status"] == "verified"
