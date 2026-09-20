@@ -143,3 +143,23 @@ def test_active_profile_resolves_credential_only_inside_provider_config(
     assert config.model == "model-a"
     assert config.api_key == "resolved-secret"
     assert "resolved-secret" not in (root / "runtime-state.json").read_text(encoding="utf-8")
+
+
+def test_cli_provider_remove_deletes_named_profile_and_clears_active_selection(
+    tmp_path, capsys
+) -> None:
+    root = tmp_path / "user-state"
+    state = UserStateStore(root)
+    state.save_profile(
+        "local",
+        ProviderProfile("local", "model-a", "http://127.0.0.1:1234/v1", 10, None),
+        activate=True,
+    )
+
+    assert main(["provider", "remove", "--state-root", str(root), "--name", "local"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["action"] == "provider.remove"
+    assert payload["profile"]["name"] == "local"
+    assert payload["active_profile"] is None
+    assert UserStateStore(root).profiles() == {}
