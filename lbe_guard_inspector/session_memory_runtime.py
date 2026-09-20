@@ -64,6 +64,7 @@ class SessionMemoryRuntimeBridge:
         active_profile_id: str | None = None,
         permission_policy_id: str | None = None,
         evidence_policy_id: str | None = None,
+        reasoning_engine: str | None = None,
     ) -> None:
         clean_session = session_id.strip()
         if not clean_session:
@@ -99,6 +100,9 @@ class SessionMemoryRuntimeBridge:
                 evidence_policy_id if existing is None else existing.evidence_policy_id
             ),
             checkpoint_id=None if existing is None else existing.checkpoint_id,
+            reasoning_engine=(
+                reasoning_engine if existing is None else existing.reasoning_engine
+            ),
             created_at=existing.created_at if existing is not None else SessionState.__dataclass_fields__["created_at"].default_factory(),
             updated_at=existing.updated_at if existing is not None else SessionState.__dataclass_fields__["updated_at"].default_factory(),
         )
@@ -123,6 +127,7 @@ class SessionMemoryRuntimeBridge:
         active_profile_id: str | None = None,
         permission_policy_id: str | None = None,
         evidence_policy_id: str | None = None,
+        reasoning_engine: str | None = None,
     ) -> SessionState:
         current = self.store.load_session_state(session_id=self.session_id)
         if current is None:
@@ -150,6 +155,9 @@ class SessionMemoryRuntimeBridge:
                 current.evidence_policy_id if evidence_policy_id is None else evidence_policy_id
             ),
             checkpoint_id=current.checkpoint_id,
+            reasoning_engine=(
+                current.reasoning_engine if reasoning_engine is None else reasoning_engine
+            ),
             created_at=current.created_at,
             updated_at=current.updated_at,
         )
