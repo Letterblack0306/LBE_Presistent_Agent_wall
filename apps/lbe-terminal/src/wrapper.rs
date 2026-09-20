@@ -2988,6 +2988,7 @@ impl RealLbeWrapper {
         self.pending_events
             .push_back(LbeEvent::MemoryRecallStarted { query: query.to_owned() });
 
+        let limit_arg = limit.to_string();
         let output = configured_lbe_command(&python, &wall_root)
             .current_dir(&wall_root)
             .args([
