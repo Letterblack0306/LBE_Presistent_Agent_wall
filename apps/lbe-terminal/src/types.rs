@@ -524,7 +524,7 @@ impl ProviderId {
             Self::Vertex => "vertex",
             Self::Mistral => "mistral",
             Self::OpenAiCompatible => "openai-compatible",
-            Self::LmStudio => "lm-studio",
+            Self::LmStudio => "lmstudio",
             Self::Ollama => "ollama",
             Self::OpenRouter => "openrouter",
             Self::OpenCode => "opencode",
