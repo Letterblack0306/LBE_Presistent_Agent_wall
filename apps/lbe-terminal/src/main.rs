@@ -374,7 +374,12 @@ fn headless_prompt(arguments: &[String]) -> io::Result<String> {
         .iter()
         .skip_while(|argument| argument.as_str() != "--no-tui")
         .skip(1)
-        .filter(|argument| argument.as_str() != "--json")
+        .filter(|argument| {
+            !matches!(
+                argument.as_str(),
+                "--json" | "--plain" | "--no-animation" | "--ascii"
+            )
+        })
         .cloned()
         .collect::<Vec<_>>()
         .join(" ");
