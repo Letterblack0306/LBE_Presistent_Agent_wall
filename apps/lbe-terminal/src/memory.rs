@@ -11,7 +11,7 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SessionMemoryRef {
     pub(crate) session_id: String,
-    pub(crate) session_hash: Option<String>,
+    pub(crate) session_hash: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
