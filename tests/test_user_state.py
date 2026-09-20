@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import lbe_guard_inspector.cli as cli
 from lbe_guard_inspector.cli import main
 from lbe_guard_inspector.user_state import ProviderProfile, UserStateStore
 
@@ -82,3 +83,63 @@ def test_cli_provider_migrate_uses_explicit_config_and_never_emits_secret(tmp_pa
     persisted = UserStateStore(root).profiles()["cloud"]
     assert persisted.credential_id == "cloud-key"
     assert "legacy-secret" not in (root / "runtime-state.json").read_text(encoding="utf-8")
+
+
+def test_cli_provider_active_projects_metadata_without_secret(tmp_path, capsys) -> None:
+    root = tmp_path / "user-state"
+    state = UserStateStore(root)
+    state.save_profile(
+        "cloud",
+        ProviderProfile(
+            "openai-compatible",
+            "model-a",
+            "https://provider.example/v1/chat/completions",
+            10,
+            "cloud-key",
+        ),
+        activate=True,
+    )
+
+    assert main(["provider", "active", "--state-root", str(root)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["action"] == "provider.active"
+    assert payload["active_profile"] == "cloud"
+    assert payload["profile"]["credential_id"] == "cloud-key"
+    assert "api_key" not in json.dumps(payload)
+
+
+def test_active_profile_resolves_credential_only_inside_provider_config(
+    tmp_path, monkeypatch
+) -> None:
+    root = tmp_path / "user-state"
+    UserStateStore(root).save_profile(
+        "cloud",
+        ProviderProfile(
+            "openai-compatible",
+            "model-a",
+            "https://provider.example/v1/chat/completions",
+            10,
+            "cloud-key",
+        ),
+        activate=True,
+    )
+
+    class FakeCredentialStore:
+        def get(self, credential_id: str) -> str:
+            assert credential_id == "cloud-key"
+            return "resolved-secret"
+
+    monkeypatch.setattr(cli, "WindowsCredentialStore", FakeCredentialStore)
+
+    profile_name, config = cli.resolve_provider_config(
+        provider_config=None,
+        state_root=str(root),
+        profile_name=None,
+        expected_provider_id="openai-compatible",
+    )
+
+    assert profile_name == "cloud"
+    assert config.model == "model-a"
+    assert config.api_key == "resolved-secret"
+    assert "resolved-secret" not in (root / "runtime-state.json").read_text(encoding="utf-8")
