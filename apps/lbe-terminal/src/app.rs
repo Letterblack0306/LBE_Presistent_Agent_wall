@@ -113,7 +113,8 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
         ("/sessions", "list and resume sessions"),
         ("/history", "show persisted session history"),
         ("/agents", "show delegated child-agent runs"),
-        ("/mcp", "refresh MCP registry"),
+        ("/extensions", "refresh MCP, skills, plugins, hooks and connectors"),
+        ("/mcp", "refresh extension registry (MCP alias)"),
         ("/tools", "inspect the last governed tool projection"),
         ("/processes", "inspect process activity"),
         ("/activity", "show runtime event activity"),
@@ -687,7 +688,7 @@ impl App {
                     .unwrap_or(0);
                 Some(MockPanel::Model)
             }
-            "/mcp" => {
+            "/mcp" | "/extensions" | "/skills" | "/plugins" | "/hooks" | "/connectors" => {
                 self.apply_wrapper_result(
                     wrapper.submit(UserRequest::RefreshMcpRegistry, Instant::now()),
                 );
