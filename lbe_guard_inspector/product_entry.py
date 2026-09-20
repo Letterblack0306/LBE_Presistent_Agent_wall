@@ -332,7 +332,7 @@ def _build_tool_parser() -> argparse.ArgumentParser:
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--workspace-id", required=True)
     parser.add_argument("--workspace", required=True)
-    parser.add_argument("--path", required=True)
+    parser.add_argument("--path", help="Workspace path/pattern/query for built-in workspace tools")
     parser.add_argument("--content")
     parser.add_argument("--expected-sha256")
     parser.add_argument("--command-id")
@@ -621,6 +621,18 @@ def _tool(argv: Sequence[str]) -> int:
                 birdeye_mcp_tool_spec(birdeye_tool),
                 build_birdeye_mcp_handler(birdeye_tool),
             )
+
+        path_required_tools = {
+            "workspace.read",
+            "workspace.list",
+            "workspace.glob",
+            "workspace.search",
+            "workspace.patch",
+        }
+        if args.tool_id in path_required_tools and (
+            args.path is None or not str(args.path).strip()
+        ):
+            raise ValueError(f"{args.tool_id} requires --path")
 
         if args.tool_id.startswith("mcp.birdeye."):
             if args.arguments is None:
