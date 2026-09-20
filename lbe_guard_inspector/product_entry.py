@@ -27,6 +27,7 @@ from .runtime.mode_controller import ModeRequest, resolve_mode
 from .runtime.external_capabilities import (
     birdeye_mcp_tool_spec,
     build_birdeye_mcp_handler,
+    register_external_capabilities,
 )
 from .runtime.authorization_resolver import (
     AuthorizationDecision,
@@ -34,7 +35,10 @@ from .runtime.authorization_resolver import (
     AuthorizationVerdict,
     resolve_authorization,
 )
-from .runtime.installed_capability_registry import InstalledCapabilityRegistryStore
+from .runtime.installed_capability_registry import (
+    InstalledCapabilityRegistryStore,
+    built_in_adapter_factories,
+)
 from .runtime.tool_orchestration import (
     GovernedToolOrchestrator,
     ToolAccessClass,
@@ -59,6 +63,16 @@ from .runtime.governed_coding import (
     workspace_patch_spec,
 )
 from agent import Context
+
+
+def _installed_external_capabilities() -> tuple[object, ...]:
+    """Materialize only host-owned adapters from the configured installed registry."""
+    registry_path = os.environ.get("LBE_CAPABILITY_REGISTRY")
+    if not registry_path:
+        return ()
+    registry = InstalledCapabilityRegistryStore(registry_path).load()
+    factories = built_in_adapter_factories(registry)
+    return tuple(registry.materialize(factories))
 
 
 def _build_start_parser() -> argparse.ArgumentParser:
@@ -154,7 +168,7 @@ def _turn(argv: Sequence[str]) -> int:
         from .persistent_turn_control import PersistentTurnControl
         from .provider_turn_runtime import GovernedCodingTurnRuntime, GovernedProviderTurnRuntime
         from .reasoning_runtime import build_provider_controller
-        from .runtime.governed_coding import GovernedProviderReasoningController
+        from .runtime.governed_coding import build_governed_coding_controller
 
         store = _cli.WorkspaceMemoryStore(args.database)
         state = _cli._require_session(store, args.session_id)
@@ -164,12 +178,12 @@ def _turn(argv: Sequence[str]) -> int:
         history = SessionOperationalHistory(store=store)
         runtime = _cli._runtime_from_state(database=args.database, state=state)
         if state.mode == "coding" and state.permission not in {"read_only", "audit_only"}:
-            if state.reasoning_engine not in {None, "native-lbe"}:
-                raise ValueError(
-                    "governed coding tool loop currently requires the native-lbe reasoning engine"
-                )
-            controller = GovernedProviderReasoningController(
-                runtime=runtime, provider_id=state.provider_id, provider_config=config
+            controller = build_governed_coding_controller(
+                runtime=runtime,
+                provider_id=state.provider_id,
+                provider_config=config,
+                engine_id=state.reasoning_engine,
+                external_capabilities=_installed_external_capabilities(),
             )
             provider_runtime = GovernedCodingTurnRuntime(
                 history=history,
@@ -425,7 +439,7 @@ def _capabilities(argv: Sequence[str]) -> int:
             registry = store.load()
             changed = None
 
-        statuses = registry.statuses({})
+        statuses = registry.statuses(built_in_adapter_factories(registry))
         payload = {
             "action": f"capabilities.{args.action}",
             "schema_version": registry.schema_version,
@@ -594,7 +608,14 @@ def _tool(argv: Sequence[str]) -> int:
         registry.register(workspace_search_spec(), build_workspace_search_handler(EvidenceService()))
         registry.register(workspace_patch_spec(), build_workspace_patch_handler())
         registry.register(process_run_registered_spec(), build_process_run_registered_handler())
-        if args.tool_id.startswith("mcp.birdeye."):
+
+        installed = _installed_external_capabilities()
+        if installed:
+            register_external_capabilities(registry, installed)
+
+        # Keep the existing direct BirdEye path working even when no installed
+        # capability registry has been configured yet.
+        if args.tool_id.startswith("mcp.birdeye.") and registry.get(args.tool_id) is None:
             birdeye_tool = args.tool_id.removeprefix("mcp.birdeye.")
             registry.register(
                 birdeye_mcp_tool_spec(birdeye_tool),
@@ -604,7 +625,14 @@ def _tool(argv: Sequence[str]) -> int:
         if args.tool_id.startswith("mcp.birdeye."):
             if args.arguments is None:
                 raise ValueError("--arguments is required for BirdEye MCP tools")
-            arguments = {"arguments": json.loads(args.arguments)}
+            decoded_arguments = json.loads(args.arguments)
+            if not isinstance(decoded_arguments, dict):
+                raise ValueError("--arguments must decode to a JSON object")
+            arguments = (
+                decoded_arguments
+                if "arguments" in decoded_arguments
+                else {"arguments": decoded_arguments}
+            )
         elif args.tool_id == "workspace.glob":
             arguments = {"pattern": args.path}
         elif args.tool_id == "workspace.search":
@@ -617,6 +645,11 @@ def _tool(argv: Sequence[str]) -> int:
             }
         elif args.tool_id == "process.run_registered":
             arguments = {"command_id": args.command_id}
+        elif registry.get(args.tool_id) is not None and args.arguments is not None:
+            decoded_arguments = json.loads(args.arguments)
+            if not isinstance(decoded_arguments, dict):
+                raise ValueError("--arguments must decode to a JSON object")
+            arguments = decoded_arguments
         else:
             arguments = {"path": args.path}
 
