@@ -113,6 +113,7 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
         ("/sessions", "list and resume sessions"),
         ("/history", "show persisted session history"),
         ("/agents", "show delegated child-agent runs"),
+        ("/agent-cancel", "cancel a delegated child-agent run"),
         ("/extensions", "refresh MCP, skills, plugins, hooks and connectors"),
         ("/mcp", "refresh extension registry (MCP alias)"),
         ("/tools", "inspect the last governed tool projection"),
@@ -705,6 +706,26 @@ impl App {
                 } else {
                     self.transcript.push(
                         "SYSTEM  delegated-run projection requires an active turn.".to_owned(),
+                    );
+                }
+                Some(MockPanel::Agents)
+            }
+            "/agent-cancel" => {
+                if argument.is_empty() {
+                    self.transcript.push(
+                        "SYSTEM  usage: /agent-cancel <child-agent-run-id>".to_owned(),
+                    );
+                } else if let Some(turn_id) = self.snapshot.turn_id.clone() {
+                    self.apply_wrapper_result(wrapper.submit(
+                        UserRequest::CancelChildAgent {
+                            turn_id,
+                            child_agent_run_id: argument.to_owned(),
+                        },
+                        Instant::now(),
+                    ));
+                } else {
+                    self.transcript.push(
+                        "SYSTEM  delegated-run cancellation requires an active turn.".to_owned(),
                     );
                 }
                 Some(MockPanel::Agents)
