@@ -169,6 +169,12 @@ class ProviderRegistry:
     def engine_ids(self) -> tuple[str, ...]:
         return tuple(sorted({engine_id for _, engine_id in self._bindings}))
 
+    def default_engine_for_provider(self, provider_id: str) -> str | None:
+        clean_id = _provider_id(provider_id)
+        if clean_id not in self.provider_ids():
+            raise KeyError(f"provider is not registered: {clean_id}")
+        return self._defaults.get(clean_id)
+
     def engines_for_provider(self, provider_id: str) -> tuple[str, ...]:
         clean_id = _provider_id(provider_id)
         return tuple(
@@ -366,26 +372,26 @@ def default_provider_registry() -> ProviderRegistry:
         default=True,
     )
 
-    # LM Studio speaks an OpenAI-compatible protocol. Keep the existing Cline
-    # route explicitly available while making the native binding the default.
-    registry.register_binding(
-        engine_id=NATIVE_LBE_ENGINE_ID,
-        provider_id="lmstudio",
-        factory=native_openai_compatible_factory("lmstudio"),
-        default=True,
-    )
-    registry.register_binding(
-        engine_id=CLINE_ENGINE_ID,
-        provider_id="lmstudio",
-        factory=cline_factory("lmstudio"),
-    )
+    # LM Studio, Ollama, and OpenRouter expose OpenAI-compatible chat
+    # transports. Native LBE bindings are usable without Cline, while the
+    # existing Cline routes stay available as explicit alternatives.
+    for provider_id in ("lmstudio", "ollama", "openrouter"):
+        registry.register_binding(
+            engine_id=NATIVE_LBE_ENGINE_ID,
+            provider_id=provider_id,
+            factory=native_openai_compatible_factory(provider_id),
+            default=True,
+        )
+        registry.register_binding(
+            engine_id=CLINE_ENGINE_ID,
+            provider_id=provider_id,
+            factory=cline_factory(provider_id),
+        )
 
     for provider_id in (
         "openai-native",
         "vertex",
         "bedrock",
-        "ollama",
-        "openrouter",
         "opencode",
     ):
         registry.register_binding(
