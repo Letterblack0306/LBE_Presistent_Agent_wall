@@ -2769,21 +2769,19 @@ impl RealLbeWrapper {
         let checks = provider_ids
             .iter()
             .filter_map(|provider_id| {
-                let provider_config = self.provider_config.as_ref()?;
-                let output = configured_lbe_command(&python, &wall_root)
-                    .current_dir(&wall_root)
-                    .args([
-                        "-m",
-                        "lbe_guard_inspector.product_entry",
-                        "provider",
-                        "check",
-                        "--provider",
-                        provider_id.cli_name(),
-                        "--provider-config",
-                    ])
-                    .arg(provider_config)
-                    .output()
-                    .ok()?;
+                let mut command = configured_lbe_command(&python, &wall_root);
+                command.current_dir(&wall_root).args([
+                    "-m",
+                    "lbe_guard_inspector.product_entry",
+                    "provider",
+                    "check",
+                    "--provider",
+                    provider_id.cli_name(),
+                ]);
+                if let Some(provider_config) = self.provider_config.as_ref() {
+                    command.arg("--provider-config").arg(provider_config);
+                }
+                let output = command.output().ok()?;
                 let payload = serde_json::from_slice::<serde_json::Value>(&output.stdout).ok()?;
                 Some((*provider_id, payload))
             })
@@ -2994,10 +2992,6 @@ impl RealLbeWrapper {
             .wall_root
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
-        let provider_config = self
-            .provider_config
-            .clone()
-            .ok_or_else(|| LbeError::new("LBE_PROVIDER_CONFIG is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
@@ -3015,9 +3009,10 @@ impl RealLbeWrapper {
                 "check",
                 "--provider",
                 provider_id.cli_name(),
-                "--provider-config",
-            ])
-            .arg(provider_config);
+            ]);
+        if let Some(provider_config) = self.provider_config.as_ref() {
+            command.arg("--provider-config").arg(provider_config);
+        }
         if let Some(engine_id) = self
             .snapshot
             .session_context
@@ -3391,14 +3386,11 @@ impl RealLbeWrapper {
             .clone()
             .or_else(|| self.snapshot.session_id.clone())
             .ok_or_else(|| LbeError::new("LBE_SESSION_ID is not configured"))?;
-        let provider_config = self
-            .provider_config
-            .clone()
-            .ok_or_else(|| LbeError::new("LBE_PROVIDER_CONFIG is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
-        let output = configured_lbe_command(&python, &wall_root)
+        let mut command = configured_lbe_command(&python, &wall_root);
+        command
             .current_dir(&wall_root)
             .args([
                 "-m",
@@ -3407,15 +3399,12 @@ impl RealLbeWrapper {
                 "--database",
             ])
             .arg(database)
-            .args([
-                "--session-id",
-                &session_id,
-                "--text",
-                intent,
-                "--provider-config",
-            ])
-            .arg(provider_config)
-            .args(["--format", "json"])
+            .args(["--session-id", &session_id, "--text", intent]);
+        if let Some(provider_config) = self.provider_config.as_ref() {
+            command.arg("--provider-config").arg(provider_config);
+        }
+        command.args(["--format", "json"]);
+        let output = command
             .output()
             .map_err(|error| LbeError::new(format!("turn bridge launch failed: {error}")))?;
         let payload = parse_workspace_payload(&output.stdout, "turn")?;
