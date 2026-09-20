@@ -95,3 +95,90 @@ def test_legacy_cli_commands_still_delegate(monkeypatch) -> None:
     code = product_entry.main(["provider", "list"])
     assert code == 17
     assert calls == [["provider", "list"]]
+
+
+def test_capabilities_install_enable_disable_and_remove(tmp_path: Path, capsys) -> None:
+    registry = tmp_path / "capabilities.json"
+    definition = {
+        "integration_id": "skill-review",
+        "adapter_id": "skill.review",
+        "kind": "skill",
+        "tool_id": "skill.review.invoke",
+        "description": "Review current workspace evidence",
+        "enabled": True,
+        "required_arguments": ["query"],
+        "optional_arguments": [],
+        "access_class": "read",
+        "network_behavior": "none",
+        "risk_class": "low",
+        "timeout_seconds": 30.0,
+        "retry_policy": "none",
+    }
+
+    code = product_entry.main([
+        "capabilities",
+        "install",
+        "--registry",
+        str(registry),
+        "--definition",
+        json.dumps(definition),
+    ])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["action"] == "capabilities.install"
+    assert payload["changed_integration_id"] == "skill-review"
+    assert payload["integrations"][0]["kind"] == "skill"
+
+    code = product_entry.main([
+        "capabilities", "disable", "--registry", str(registry),
+        "--integration-id", "skill-review",
+    ])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["integrations"][0]["enabled"] is False
+    assert payload["integrations"][0]["availability"] == "DISABLED"
+
+    code = product_entry.main([
+        "capabilities", "enable", "--registry", str(registry),
+        "--integration-id", "skill-review",
+    ])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["integrations"][0]["enabled"] is True
+
+    code = product_entry.main([
+        "capabilities", "remove", "--registry", str(registry),
+        "--integration-id", "skill-review",
+    ])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["count"] == 0
+
+
+def test_capabilities_install_supports_definition_file(tmp_path: Path, capsys) -> None:
+    registry = tmp_path / "capabilities.json"
+    definition_path = tmp_path / "connector.json"
+    definition_path.write_text(json.dumps({
+        "integration_id": "connector-demo",
+        "adapter_id": "connector.demo",
+        "kind": "connector",
+        "tool_id": "connector.demo.query",
+        "description": "Demo connector",
+    }), encoding="utf-8")
+
+    code = product_entry.main([
+        "capabilities", "install", "--registry", str(registry),
+        "--definition", "@" + str(definition_path),
+    ])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["integrations"][0]["kind"] == "connector"
+
+
+def test_capabilities_management_fails_closed_for_missing_identity(tmp_path: Path, capsys) -> None:
+    registry = tmp_path / "capabilities.json"
+    code = product_entry.main(["capabilities", "disable", "--registry", str(registry)])
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is False
+    assert "--integration-id" in payload["message"]
