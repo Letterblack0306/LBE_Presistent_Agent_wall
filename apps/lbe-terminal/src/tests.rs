@@ -192,6 +192,7 @@ fn drain_wrapper(wrapper: &mut MockLbeWrapper, now: Instant) -> Vec<LbeEvent> {
 #[test]
 fn proposal_approval_lifecycle_reaches_receipt() {
     let mut app = App::default();
+    app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
     app.input = "inspect workspace".to_owned();
@@ -1011,6 +1012,7 @@ fn snapshot_and_attachment_events_do_not_change_execution_ownership() {
 #[test]
 fn escape_rejects_only_a_pending_proposal() {
     let mut app = App::default();
+    app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
     app.input = "inspect workspace".to_owned();
     let now = Instant::now();
@@ -1820,6 +1822,7 @@ fn foreign_duplicate_and_disconnect_authorization_events_cannot_release_patch() 
 #[test]
 fn opened_file_scroll_keys_move_through_the_read_only_buffer() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.reduce_lbe_event(LbeEvent::WorkspaceReadReady {
         path: "src/lib.rs".to_owned(),
         content: "one\ntwo\nthree\nfour\n".to_owned(),
@@ -1841,6 +1844,8 @@ fn opened_file_scroll_keys_move_through_the_read_only_buffer() {
 #[test]
 fn transcript_scroll_keys_support_explicit_navigation_and_follow_tail() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.agent_mode = AgentMode::Build;
     app.transcript = (0..20).map(|index| format!("line {index}")).collect();
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
@@ -1861,6 +1866,8 @@ fn transcript_scroll_keys_support_explicit_navigation_and_follow_tail() {
 #[test]
 fn transcript_navigation_preserves_input_history_when_composer_has_text() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.agent_mode = AgentMode::Build;
     app.input_history = vec!["first".to_owned(), "second".to_owned()];
     app.input = "draft".to_owned();
     app.transcript = vec!["event".to_owned()];
@@ -1874,6 +1881,7 @@ fn transcript_navigation_preserves_input_history_when_composer_has_text() {
 #[test]
 fn model_picker_navigates_and_selects_only_from_the_discovered_catalog() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.snapshot.models = vec![
         ModelDescriptor {
             provider_id: ProviderId::Gemini,
@@ -1936,6 +1944,7 @@ fn model_picker_navigates_and_selects_only_from_the_discovered_catalog() {
 #[test]
 fn model_picker_escape_closes_without_selecting() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let original = app.snapshot.selected_model.clone();
     app.panel = Some(MockPanel::Model);
     let mut wrapper = MockLbeWrapper::default();
@@ -1964,6 +1973,7 @@ fn checkpoint_panel_compare_projects_changed_files_through_lbe() {
     );
     let checkpoint_event = wrapper.poll_event(Instant::now()).unwrap().unwrap();
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.reduce_lbe_event(checkpoint_event);
     let checkpoint = wrapper
         .snapshot()
@@ -2032,6 +2042,7 @@ fn checkpoint_restore_is_requested_then_blocked_without_local_mutation() {
     );
     let checkpoint_event = wrapper.poll_event(Instant::now()).unwrap().unwrap();
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.reduce_lbe_event(checkpoint_event);
     let _ = drain_wrapper(&mut wrapper, now + Duration::from_millis(300));
     let before = app
@@ -2609,6 +2620,7 @@ fn provider_refresh_emits_discovery_and_validation_lifecycle() {
 #[test]
 fn session_lineage_and_checkpoint_project_into_their_panels() {
     let mut app = App::default();
+    app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
     app.input = "inspect workspace".to_owned();
@@ -2819,21 +2831,47 @@ fn tab_cycles_the_visible_agent_modes() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
-    assert_eq!(app.agent_mode, AgentMode::Build);
+    assert_eq!(app.agent_mode, AgentMode::Audit);
     app.handle_key(KeyCode::Tab.into(), &mut wrapper, now);
     app.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
     assert_eq!(app.agent_mode, AgentMode::Plan);
     app.handle_key(KeyCode::Tab.into(), &mut wrapper, now);
     app.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
-    assert_eq!(app.agent_mode, AgentMode::Audit);
+    assert_eq!(app.agent_mode, AgentMode::Build);
     app.handle_key(KeyCode::Tab.into(), &mut wrapper, now);
     app.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
-    assert_eq!(app.agent_mode, AgentMode::Build);
+    assert_eq!(app.agent_mode, AgentMode::Audit);
+}
+
+#[test]
+fn landing_phase_is_the_default_entry_gate() {
+    let mut app = App::default();
+    let mut wrapper = MockLbeWrapper::default();
+    let now = Instant::now();
+    assert_eq!(app.phase, Phase::Landing);
+    assert_eq!(app.agent_mode, AgentMode::Audit);
+
+    app.handle_key(KeyCode::Char('?').into(), &mut wrapper, now);
+    assert!(!app.show_shortcuts);
+    app.handle_key(KeyCode::Char('q').into(), &mut wrapper, now);
+    assert!(!app.should_quit());
+    app.handle_key(
+        KeyEvent::new(KeyCode::Char('d'), Modifiers::CONTROL),
+        &mut wrapper,
+        now,
+    );
+    assert!(!app.should_quit());
+    app.handle_key(KeyCode::Function(2).into(), &mut wrapper, now);
+    assert_eq!(app.panel, None);
+
+    app.handle_key(KeyCode::Enter.into(), &mut wrapper, now);
+    assert_eq!(app.phase, Phase::Welcome);
 }
 
 #[test]
 fn question_mark_toggles_the_shortcut_reference() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
     app.handle_key(KeyCode::Char('?').into(), &mut wrapper, now);
@@ -2868,6 +2906,8 @@ fn welcome_frame_prioritizes_home_controls_at_80_by_24() {
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
     let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.agent_mode = AgentMode::Build;
     terminal
         .draw(|frame| draw(frame, &app))
         .expect("frame should render");
@@ -2896,6 +2936,7 @@ fn audit_mode_renders_a_real_read_only_projection_screen() {
     let backend = TestBackend::new(100, 30);
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.agent_mode = AgentMode::Audit;
     app.activity_log.push("WorkspaceListingReady".to_owned());
     terminal
@@ -2930,8 +2971,10 @@ fn audit_mode_renders_a_real_read_only_projection_screen() {
 fn compact_frame_keeps_the_workflow_usable_at_60_by_18() {
     let backend = TestBackend::new(60, 18);
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
     terminal
-        .draw(|frame| draw(frame, &App::default()))
+        .draw(|frame| draw(frame, &app))
         .expect("compact frame should render");
     let rendered = terminal
         .backend()
@@ -2949,8 +2992,10 @@ fn compact_frame_keeps_the_workflow_usable_at_60_by_18() {
 fn compact_height_keeps_the_workflow_usable_at_80_by_18() {
     let backend = TestBackend::new(80, 18);
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
     terminal
-        .draw(|frame| draw(frame, &App::default()))
+        .draw(|frame| draw(frame, &app))
         .expect("compact-height frame should render");
     let rendered = terminal
         .backend()
@@ -2975,6 +3020,7 @@ fn populated_panels_render_without_overflow_at_the_compact_terminal_size() {
         let backend = TestBackend::new(60, 18);
         let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
         let mut app = App::default();
+        app.phase = Phase::Welcome;
         app.panel = Some(panel);
         terminal
             .draw(|frame| draw(frame, &app))
@@ -2996,6 +3042,7 @@ fn opened_file_projection_renders_read_only_content_and_provenance() {
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     app.reduce_lbe_event(LbeEvent::WorkspaceReadReady {
         path: "src/main.rs".to_owned(),
         content: "fn main() {}\n".to_owned(),
@@ -3023,6 +3070,7 @@ fn opened_file_projection_renders_read_only_content_and_provenance() {
 #[test]
 fn workspace_listing_supports_keyboard_cursor_and_real_open_requests() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = RecordingWrapper::new();
     app.reduce_lbe_event(LbeEvent::WorkspaceListingReady {
         path: ".".to_owned(),
@@ -3058,6 +3106,7 @@ fn workspace_listing_supports_keyboard_cursor_and_real_open_requests() {
 #[test]
 fn workspace_directory_enter_requests_a_real_listing() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = RecordingWrapper::new();
     app.reduce_lbe_event(LbeEvent::WorkspaceListingReady {
         path: ".".to_owned(),
@@ -3083,6 +3132,7 @@ fn workspace_directory_enter_requests_a_real_listing() {
 #[test]
 fn function_keys_open_provider_and_model_catalogs() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = RecordingWrapper::new();
     let now = Instant::now();
 
@@ -3103,6 +3153,7 @@ fn function_keys_open_provider_and_model_catalogs() {
 #[test]
 fn command_palette_runs_existing_lbe_commands() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = RecordingWrapper::new();
     let now = Instant::now();
 
@@ -3175,8 +3226,10 @@ fn context_meter_uses_blocks_for_used_and_marks_for_remaining() {
 fn below_minimum_size_shows_an_honest_fallback() {
     let backend = TestBackend::new(59, 17);
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
     terminal
-        .draw(|frame| draw(frame, &App::default()))
+        .draw(|frame| draw(frame, &app))
         .expect("frame should render");
     let rendered = terminal
         .backend()
@@ -4818,6 +4871,7 @@ fn validation_enums_use_strict_wire_values() {
 #[test]
 fn q_with_empty_input_requests_application_quit() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = MockLbeWrapper::default();
 
     app.handle_key(
@@ -4846,6 +4900,7 @@ fn ctrl_c_while_idle_requests_application_quit() {
 #[test]
 fn ctrl_d_with_empty_input_requests_application_quit() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = MockLbeWrapper::default();
 
     app.handle_key(
@@ -4878,6 +4933,7 @@ fn ctrl_d_with_nonempty_input_does_not_quit() {
 fn ctrl_c_while_running_requests_abort_without_quitting() {
     let now = Instant::now();
     let mut app = App::default();
+    app.agent_mode = AgentMode::Build;
     let mut wrapper = MockLbeWrapper::default();
 
     app.input = "inspect workspace".to_owned();
