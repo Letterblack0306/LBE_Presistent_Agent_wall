@@ -24,6 +24,7 @@ from .memory.operational_history import SessionOperationalHistory
 from .provider_health import check_provider_health
 from .provider_registry import default_provider_registry
 from .reasoning_config import load_provider_config
+from .reasoning_provider import ProviderConfig
 from .reasoning_runtime import build_provider_controller
 from .runtime.completion_runtime import CodingCompletionRuntime
 from .runtime.mode_controller import ModeRequest, resolve_mode
@@ -136,7 +137,9 @@ def build_parser() -> argparse.ArgumentParser:
         "check", help="Check a provider against the structured reasoning contract"
     )
     provider_check.add_argument("--provider", required=True)
-    provider_check.add_argument("--provider-config", required=True)
+    provider_check.add_argument("--provider-config")
+    provider_check.add_argument("--state-root")
+    provider_check.add_argument("--profile")
     provider_check.add_argument("--engine")
     provider_check.set_defaults(handler=_provider_check)
 
@@ -180,6 +183,12 @@ def build_parser() -> argparse.ArgumentParser:
     provider_migrate.add_argument("--credential-id")
     provider_migrate.add_argument("--use", action="store_true")
     provider_migrate.set_defaults(handler=_provider_migrate)
+
+    provider_active = provider_commands.add_parser(
+        "active", help="Show the active per-user provider profile without exposing credentials"
+    )
+    provider_active.add_argument("--state-root")
+    provider_active.set_defaults(handler=_provider_active)
 
     _add_mode_command(commands, "code", AgentMode.CODING, "Run a governed coding task")
     _add_mode_command(commands, "audit", AgentMode.AUDIT, "Run a governed read-only audit task")
@@ -508,8 +517,64 @@ def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _resolve_user_provider_config(
+    *,
+    state_root: str | None,
+    profile_name: str | None,
+    expected_provider_id: str | None = None,
+) -> tuple[str, ProviderProfile, ProviderConfig]:
+    store = UserStateStore(state_root)
+    selected = profile_name or store.active_profile_name()
+    if selected is None:
+        raise ValueError("no active provider profile is configured")
+    profiles = store.profiles()
+    profile = profiles.get(selected)
+    if profile is None:
+        raise ValueError(f"provider profile not found: {selected}")
+    if expected_provider_id is not None and profile.provider_id != expected_provider_id:
+        raise ValueError(
+            "provider profile does not match requested provider: "
+            f"{profile.provider_id} != {expected_provider_id}"
+        )
+    api_key = None
+    if profile.credential_id is not None:
+        api_key = WindowsCredentialStore().get(profile.credential_id)
+    return (
+        selected,
+        profile,
+        ProviderConfig(
+            endpoint=profile.endpoint,
+            model=profile.model,
+            timeout_seconds=profile.timeout_seconds,
+            api_key=api_key,
+        ),
+    )
+
+
+def resolve_provider_config(
+    *,
+    provider_config: str | None,
+    state_root: str | None = None,
+    profile_name: str | None = None,
+    expected_provider_id: str | None = None,
+) -> tuple[str | None, ProviderConfig]:
+    if provider_config is not None:
+        return None, load_provider_config(provider_config)
+    selected, _profile, config = _resolve_user_provider_config(
+        state_root=state_root,
+        profile_name=profile_name,
+        expected_provider_id=expected_provider_id,
+    )
+    return selected, config
+
+
 def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
-    config = load_provider_config(args.provider_config)
+    profile_name, config = resolve_provider_config(
+        provider_config=args.provider_config,
+        state_root=args.state_root,
+        profile_name=args.profile,
+        expected_provider_id=args.provider,
+    )
     result = check_provider_health(
         provider_id=args.provider,
         provider_config=config,
@@ -522,6 +587,7 @@ def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
         "engine_id": result.engine_id,
         "status": result.status,
         "capabilities": asdict(result.capabilities),
+        "profile": profile_name,
     }
 
 
@@ -588,6 +654,21 @@ def _provider_migrate(args: argparse.Namespace) -> dict[str, Any]:
         "profile": _provider_profile_payload(args.name, profile),
         "active_profile": store.active_profile_name(),
         "legacy_config_removal_required": config.api_key is not None,
+    }
+
+
+def _provider_active(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    name = store.active_profile_name()
+    if name is None:
+        raise ValueError("no active provider profile is configured")
+    profile = store.profiles().get(name)
+    if profile is None:
+        raise ValueError(f"provider profile not found: {name}")
+    return {
+        "action": "provider.active",
+        "profile": _provider_profile_payload(name, profile),
+        "active_profile": name,
     }
 
 
