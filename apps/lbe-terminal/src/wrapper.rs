@@ -4656,6 +4656,7 @@ fn parse_mcp_registry_payload(
             Ok(McpIntegration {
                 integration_id: field("integration_id")?,
                 adapter_id: field("adapter_id")?,
+                kind: field("kind")?,
                 tool_id: field("tool_id")?,
                 description: field("description")?,
                 enabled: item
