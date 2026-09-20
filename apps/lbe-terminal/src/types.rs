@@ -730,6 +730,8 @@ pub(crate) struct SessionContextState {
     pub(crate) evidence_policy_id: Option<String>,
     #[serde(default)]
     pub(crate) checkpoint_id: Option<String>,
+    #[serde(default)]
+    pub(crate) reasoning_engine: Option<String>,
     pub(crate) created_at: String,
     pub(crate) updated_at: String,
 }
@@ -1133,6 +1135,7 @@ pub(crate) enum MockPanel {
     Memory,
     Browser,
     Processes,
+    Agents,
     Undo,
     Changes,
     Doctor,
