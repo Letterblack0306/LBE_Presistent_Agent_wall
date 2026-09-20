@@ -216,6 +216,17 @@ tree or branch; `main` HEAD is the only acceptable source of truth.
 - `jannath`: `ci/pr56-billing-isolation` pruned.
 - `release-fork`: all non-`main` tracking refs pruned.
 
+> **2026-09-20 remote-recovery audit:** Exact SHAs for deleted `origin` branches were recovered
+> from two authoritative server-side sources: GitHub pull-request head refs (`refs/pull/*/head`,
+> 52 PRs, 50 matching branch names) and existing local tips. Result: **51 of 75** deleted `origin`
+> branch names map to exact commit SHAs (`lbe_restore_final_map.txt`). The remaining **24** have no
+> surviving exact tip anywhere (no PR head, no local object, no commit subject/merge reference) —
+> those SHAs were lost with server-side deletion and are recorded as unresolvable. Remote **restore
+> was not executed**: origin's `LBE main-only remote ref lock` ruleset (`creation` + `update` rules,
+> all refs except `main`) blocks branch re-creation, and the decision was to leave the ruleset
+> intact. `origin`, `jannath`, `release-fork` therefore remain main-only. The 51 recovered SHAs are
+> preserved locally for any future re-creation if the lock is ever lifted.
+
 ### Retired tree
 
 `C:\LBE-TUI-Lab` (separate git repo, HEAD `5a49d87`, origin
