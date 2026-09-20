@@ -17,6 +17,7 @@ from .context import (
     rehydrate_context,
 )
 from .integration import SessionMemoryAdapter
+from .operational_history import ChildAgentRun, ChildAgentStatus
 from .models import (
     CompactionCheckpoint,
     MemoryRecord,
@@ -32,6 +33,8 @@ from .store import WorkspaceMemoryStore
 
 __all__ = [
     "CandidateClaim",
+    "ChildAgentRun",
+    "ChildAgentStatus",
     "CompactionCheckpoint",
     "MemoryPromoter",
     "MemoryRecord",

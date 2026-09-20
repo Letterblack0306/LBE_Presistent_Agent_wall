@@ -839,6 +839,115 @@ def _authorization(argv: Sequence[str]) -> int:
     _cli._emit(payload, args.format)
     return 0
 
+def _build_child_agent_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="lbe child-agent",
+        description="Admit and drive one delegated LBE child agent through the canonical child lifecycle owner",
+    )
+    parser.add_argument(
+        "action",
+        choices=("create", "started", "complete", "failed", "cancel"),
+    )
+    parser.add_argument("--database", required=True)
+    parser.add_argument("--session-id", required=True)
+    parser.add_argument("--turn-id", required=True)
+    parser.add_argument("--correlation-id")
+    parser.add_argument("--parent-agent")
+    parser.add_argument("--child-agent-run-id")
+    parser.add_argument("--child-session-id")
+    parser.add_argument("--child-tools", help="JSON array of LBE-governed tool ids granted to the child")
+    parser.add_argument("--recursive-spawn", action="store_true")
+    parser.add_argument("--receipt-id")
+    parser.add_argument("--evidence-ref")
+    parser.add_argument("--authorization-rationale")
+    parser.add_argument("--format", choices=("json", "text"), default="json")
+    return parser
+
+
+def _serialize_child_agent_run(run: object) -> dict[str, object]:
+    return {
+        "child_agent_run_id": run.child_agent_run_id,
+        "turn_id": run.turn_id,
+        "session_id": run.session_id,
+        "correlation_id": run.correlation_id,
+        "parent_agent": run.parent_agent,
+        "status": run.status.value,
+        "child_tools": list(run.child_tools),
+        "child_session_id": run.child_session_id,
+        "started_at": run.started_at,
+        "completed_at": run.completed_at,
+        "receipt_id": run.receipt_id,
+        "evidence_ref": run.evidence_ref,
+        "authorization_rationale": run.authorization_rationale,
+        "recursive_spawn_authorized": run.recursive_spawn_authorized,
+    }
+
+
+def _child_agent(argv: Sequence[str]) -> int:
+    parser = _build_child_agent_parser()
+    args = parser.parse_args(list(argv))
+    try:
+        from .memory.operational_history import ChildAgentStatus, SessionOperationalHistory
+
+        store = _cli.WorkspaceMemoryStore(args.database)
+        history = SessionOperationalHistory(store=store)
+        tools = json.loads(args.child_tools) if args.child_tools else []
+        if not isinstance(tools, list):
+            raise ValueError("--child-tools must be a JSON array")
+        if args.action == "create":
+            required = {
+                "--correlation-id": args.correlation_id,
+                "--parent-agent": args.parent_agent,
+            }
+            missing = [name for name, value in required.items() if not value]
+            if missing:
+                raise ValueError("child_agent create requires " + ", ".join(missing))
+        else:
+            if not args.child_agent_run_id:
+                raise ValueError("--child-agent-run-id is required for child_agent " + args.action)
+        terminal = {
+            "complete": ChildAgentStatus.COMPLETED,
+            "failed": ChildAgentStatus.FAILED,
+            "cancel": ChildAgentStatus.CANCELLED,
+        }
+        if args.action == "create":
+            run = history.create_child_agent_run(
+                session_id=args.session_id,
+                turn_id=args.turn_id,
+                correlation_id=args.correlation_id,
+                parent_agent=args.parent_agent,
+                child_tools=tuple(str(tool) for tool in tools),
+                recursive_spawn_authorized=args.recursive_spawn,
+                authorization_rationale=args.authorization_rationale,
+            )
+        elif args.action == "started":
+            run = history.start_child_agent_run(
+                session_id=args.session_id,
+                turn_id=args.turn_id,
+                child_agent_run_id=args.child_agent_run_id,
+                child_session_id=args.child_session_id,
+            )
+        else:
+            run = history.finalize_child_agent_run(
+                session_id=args.session_id,
+                turn_id=args.turn_id,
+                child_agent_run_id=args.child_agent_run_id,
+                status=terminal[args.action],
+                receipt_id=args.receipt_id,
+                evidence_ref=args.evidence_ref,
+                authorization_rationale=args.authorization_rationale,
+            )
+        payload = {
+            "ok": True,
+            "child_agent": _serialize_child_agent_run(run),
+        }
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError, KeyError, json.JSONDecodeError) as exc:
+        _cli._emit({"ok": False, "error": type(exc).__name__, "message": str(exc)}, args.format)
+        return 2
+    _cli._emit(payload, args.format)
+    return 0
+
+
 def _dispatch_product_command(values: list[str], command: str) -> int:
     command_index = values.index(command)
     prefix = values[:command_index]
@@ -863,13 +972,15 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
         return _tool(suffix)
     if command == "authorization":
         return _authorization(suffix)
+    if command == "child-agent":
+        return _child_agent(suffix)
     raise AssertionError(f"unsupported product command: {command}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
 
-    product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization") if command in values]
+    product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization", "child-agent") if command in values]
     if not product_commands:
         return _cli.main(values)
     if len(product_commands) > 1:
