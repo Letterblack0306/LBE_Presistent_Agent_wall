@@ -2274,7 +2274,7 @@ fn provider_panel_text(app: &App) -> Text<'static> {
 
 fn mcp_panel_text(app: &App) -> Text<'static> {
     let mut lines = vec![Line::from(Span::styled(
-        "MCP",
+        "Extensions / MCP",
         Style::default()
             .fg(PALETTE.ink)
             .add_modifier(Modifier::BOLD),
@@ -2282,27 +2282,30 @@ fn mcp_panel_text(app: &App) -> Text<'static> {
     lines.push(Line::from(format!(
         "{} · registry schema v{} · metadata-only projection",
         if app.snapshot.connection == RuntimeConnection::Connected {
-            "CONNECTED · authoritative LBE MCP projection"
+            "CONNECTED · authoritative LBE extension projection"
         } else {
-            "MCP registry unavailable"
+            "Extension registry unavailable"
         },
         app.mcp_schema_version
     )));
     lines.push(Line::from(Span::styled(
-        "No MCP transport, execution, or authorization state is retained here.",
+        "Registry metadata only; transport, execution, authorization and completion remain runtime-owned.",
         Style::default().fg(PALETTE.faint),
     )));
     lines.push(Line::default());
     if app.mcp_integrations.is_empty() {
         lines.push(Line::from(Span::styled(
-            "No MCP integrations are registered.",
+            "No extensions are registered.",
             Style::default().fg(PALETTE.muted),
         )));
     } else {
         for integration in &app.mcp_integrations {
             lines.push(Line::from(format!(
-                "{} · {} · {}",
-                integration.integration_id, integration.tool_id, integration.availability
+                "{} · {} · {} · {}",
+                integration.integration_id,
+                integration.kind,
+                integration.tool_id,
+                integration.availability
             )));
             lines.push(Line::from(format!(
                 "  adapter {} · enabled {} · credential configured {}",
