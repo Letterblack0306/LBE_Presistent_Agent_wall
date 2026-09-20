@@ -43,6 +43,8 @@ class WorkspaceMemoryStore:
                 connection.execute("ALTER TABLE session_state ADD COLUMN permission TEXT")
             if "runtime_policy" not in columns:
                 connection.execute("ALTER TABLE session_state ADD COLUMN runtime_policy TEXT")
+            if "reasoning_engine" not in columns:
+                connection.execute("ALTER TABLE session_state ADD COLUMN reasoning_engine TEXT")
 
     def upsert(self, record: MemoryRecord) -> MemoryRecord:
         values = record.as_dict()
@@ -431,9 +433,9 @@ class WorkspaceMemoryStore:
                 INSERT INTO session_state (
                     session_id, project_workspace_id, canonical_workspace_root,
                     mode, permission, runtime_policy, provider_id, provider_model, active_profile_id,
-                    permission_policy_id, evidence_policy_id, checkpoint_id,
+                    permission_policy_id, evidence_policy_id, checkpoint_id, reasoning_engine,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(session_id) DO UPDATE SET
                     project_workspace_id=excluded.project_workspace_id,
                     canonical_workspace_root=excluded.canonical_workspace_root,
@@ -446,6 +448,7 @@ class WorkspaceMemoryStore:
                     permission_policy_id=excluded.permission_policy_id,
                     evidence_policy_id=excluded.evidence_policy_id,
                     checkpoint_id=excluded.checkpoint_id,
+                    reasoning_engine=excluded.reasoning_engine,
                     updated_at=excluded.updated_at
                 """,
                 (
@@ -461,6 +464,7 @@ class WorkspaceMemoryStore:
                     state.permission_policy_id,
                     state.evidence_policy_id,
                     state.checkpoint_id,
+                    state.reasoning_engine,
                     state.created_at,
                     state.updated_at,
                 ),
@@ -488,6 +492,7 @@ class WorkspaceMemoryStore:
             permission_policy_id=row["permission_policy_id"],
             evidence_policy_id=row["evidence_policy_id"],
             checkpoint_id=row["checkpoint_id"],
+            reasoning_engine=row["reasoning_engine"],
             created_at=str(row["created_at"]),
             updated_at=str(row["updated_at"]),
         )
