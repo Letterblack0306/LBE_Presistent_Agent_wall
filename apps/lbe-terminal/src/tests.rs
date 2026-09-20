@@ -67,6 +67,7 @@ fn headless_prompt_collects_arguments_after_no_tui_and_ignores_presentation_flag
         "--json".to_owned(),
         "--no-animation".to_owned(),
         "--ascii".to_owned(),
+        "--no-color".to_owned(),
     ];
     assert_eq!(headless_prompt(&arguments).unwrap(), "inspect workspace");
 }
@@ -87,6 +88,7 @@ fn cli_accepts_plain_ascii_and_reduced_motion_for_headless_runs() {
     assert!(options.plain);
     assert!(options.no_animation);
     assert!(options.ascii);
+    assert!(options.no_color);
     assert!(!options.json);
 }
 
