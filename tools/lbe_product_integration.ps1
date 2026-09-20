@@ -613,6 +613,135 @@ exit $LASTEXITCODE
     Set-Content -LiteralPath (Join-Path $PackageRoot "lbe-launch.ps1") -Value $launcher -Encoding UTF8
 }
 
+function Write-ClineLauncher {
+    param([string]$PackageRoot)
+    $launcher = @'
+param(
+    [string]$Project,
+    [string]$Database,
+    [string]$SessionId,
+    [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE")
+)
+
+$ErrorActionPreference = "Stop"
+$python = Join-Path $InstallRoot "venv\Scripts\python.exe"
+
+# Installed config\mcp.json supplies the BirdEye read-tool server identity, the
+# same source lbe-launch.ps1 uses. The governed add-on shells to that server at
+# the process boundary and never imports the installed BirdEye package in-process.
+$mcpConfigPath = Join-Path $InstallRoot "config\mcp.json"
+if (Test-Path -LiteralPath $mcpConfigPath -PathType Leaf) {
+    $mcp = Get-Content -LiteralPath $mcpConfigPath -Raw | ConvertFrom-Json
+    if ($mcp.python) { $env:LBE_BIRDEYE_MCP_PYTHON = [string]$mcp.python }
+    if ($mcp.server) { $env:LBE_BIRDEYE_MCP_SERVER = [string]$mcp.server }
+}
+
+$runtimeConfig = $null
+$runtimeConfigPath = Join-Path $InstallRoot "config\runtime.json"
+if (Test-Path -LiteralPath $runtimeConfigPath -PathType Leaf) {
+    $runtimeConfig = Get-Content -LiteralPath $runtimeConfigPath -Raw | ConvertFrom-Json
+}
+
+if (-not $Project) { $Project = (Get-Location).Path }
+$workspaceFull = [IO.Path]::GetFullPath($Project)
+if (-not (Test-Path -LiteralPath $workspaceFull -PathType Container)) { throw "Project workspace missing: $workspaceFull" }
+
+if (-not $Database) {
+    if ($runtimeConfig -and $runtimeConfig.database) { $Database = [string]$runtimeConfig.database }
+    else { $Database = Join-Path $InstallRoot "state\lbe.sqlite3" }
+}
+
+# LBE_SESSION_ID is the governed session the add-on binds. Cline session ids are
+# correlation-only and never become an authority owner.
+if (-not $SessionId) { $SessionId = $env:LBE_SESSION_ID }
+if (-not $SessionId) { throw "LBE governed session id is required (create one with 'lbe session create', or set LBE_SESSION_ID)." }
+
+if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Installed LBE Python runtime missing: $python" }
+if (-not (Test-Path -LiteralPath $Database -PathType Leaf)) { throw "LBE wall database missing: $Database" }
+
+$env:LBE_RUNTIME = "real"
+$env:LBE_WALL_ROOT = $InstallRoot
+$env:LBE_WALL_PYTHON = $python
+$env:LBE_TARGET_WORKSPACE = $workspaceFull
+$env:LBE_WALL_DATABASE = [IO.Path]::GetFullPath($Database)
+$env:LBE_SESSION_ID = $SessionId
+
+# --- Workspace-scoped Cline provisioning. Only the project's own .cline tree is
+# written; global ~/.cline settings are never touched. ---
+$clineDir = Join-Path $workspaceFull ".cline"
+$rulesDir = Join-Path $clineDir "rules"
+New-Item -ItemType Directory -Path $rulesDir -Force | Out-Null
+
+$birdeyePython = if ($env:LBE_BIRDEYE_MCP_PYTHON) { $env:LBE_BIRDEYE_MCP_PYTHON } else { $python }
+$birdeyeServer = $env:LBE_BIRDEYE_MCP_SERVER
+if (-not $birdeyeServer) { $birdeyeServer = Join-Path $InstallRoot "mcp\birdeye\mcp_server.py" }
+
+$mcpFilePath = Join-Path $clineDir "mcp.json"
+$projectMcp = $null
+if (Test-Path -LiteralPath $mcpFilePath -PathType Leaf) {
+    $projectMcp = Get-Content -LiteralPath $mcpFilePath -Raw | ConvertFrom-Json
+}
+if ($null -eq $projectMcp -or -not $projectMcp.PSObject.Properties.Name -contains "mcpServers") {
+    $projectMcp = @{ mcpServers = @{} }
+}
+$serverEntry = @{
+    command = $python
+    args = @("-m", "lbe_guard_inspector.runtime.cline_governed_birdeye", "--stdio")
+    autoApprove = @()
+    env = @{
+        LBE_SESSION_ID = $SessionId
+        LBE_WALL_DATABASE = [IO.Path]::GetFullPath($Database)
+        LBE_TARGET_WORKSPACE = $workspaceFull
+        LBE_BIRDEYE_MCP_PYTHON = $birdeyePython
+        LBE_BIRDEYE_MCP_SERVER = $birdeyeServer
+    }
+}
+$projectMcp.mcpServers."lbe-birdeye" = $serverEntry
+$projectMcp | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $mcpFilePath -Encoding UTF8
+
+$rulesLines = @(
+    "# LBE governance (curated by the installed LetterBlack LBE)",
+    "",
+    "- This Cline session is a governed surface of the LBE Agent Wall.",
+    "- Use the lbe-birdeye read tools and the lbe_governed_execute tool for ",
+    "  governed operations; do not bypass them with raw file, shell, or editor ",
+    "  mutations when a governed tool exists.",
+    "- Reads via lbe-birdeye never require approval. Writes through ",
+    "  lbe_governed_execute require explicit Agent Wall approval and produce ",
+    "  deterministic receipts recorded in governed_operations.",
+    "- The Agent Wall - not this Cline session - owns session, provider, ",
+    "  credential, tool, and completion authority.",
+    "- Keep every mutation inside the workspace root reported by ",
+    "  lbe_session_status."
+)
+$rulesContent = ($rulesLines -join "`r`n")
+Set-Content -LiteralPath (Join-Path $rulesDir "lbe-governance.md") -Value $rulesContent -Encoding UTF8
+
+# --- Resolve the global Cline CLI or fail explicitly (never install it). ---
+$cline = $null
+$candidates = @()
+if ($env:APPDATA) {
+    $candidates += (Join-Path $env:APPDATA "npm\cline.cmd")
+    $candidates += (Join-Path $env:APPDATA "npm\cline.cli\cline.cmd")
+    $candidates += (Join-Path $env:APPDATA "npm\@cline\cli\cline.cmd")
+}
+$candidates += "cline.cmd"
+$candidates += "cline"
+foreach ($candidate in $candidates) {
+    if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) { $cline = $candidate; break }
+    $command = Get-Command $candidate -ErrorAction SilentlyContinue
+    if ($command) { $cline = $command.Source; break }
+}
+if (-not $cline) { throw "Cline CLI not found. Install @cline/cli so it resolves, then retry." }
+
+$cliArgs = @("--tui", "-c", $workspaceFull)
+foreach ($extra in $args) { $cliArgs += $extra }
+& $cline @cliArgs
+exit $LASTEXITCODE
+'@
+    Set-Content -LiteralPath (Join-Path $PackageRoot "lbe-cline.ps1") -Value $launcher -Encoding UTF8
+}
+
 function Write-Installer {
     param([string]$PackageRoot)
     $installer = @'
@@ -748,6 +877,21 @@ else {
     Write-Host "No competing installed lbe entrypoints detected."
 }
 Write-Host "Authoritative PATH entrypoint: $binCmdFull"
+
+# --- Governed Cline product surface: bin\lbe-cline.cmd -> lbe-cline.ps1 ---
+$clineLauncher = Join-Path $PSScriptRoot "lbe-cline.ps1"
+if (-not (Test-Path -LiteralPath $clineLauncher -PathType Leaf)) { throw "Cline launcher missing from package: $clineLauncher" }
+Copy-Item -LiteralPath $clineLauncher -Destination (Join-Path $InstallRoot "lbe-cline.ps1") -Force
+$clineBinCmd = Join-Path $binDir "lbe-cline.cmd"
+@"
+@ECHO off
+SETLOCAL
+SET "LBE_INSTALL_ROOT=$InstallRoot"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%LBE_INSTALL_ROOT%\lbe-cline.ps1" %*
+ENDLOCAL
+"@ | Set-Content -LiteralPath $clineBinCmd -Encoding ASCII
+Write-Host "Cline product launcher: $(Join-Path $InstallRoot 'lbe-cline.ps1')"
+Write-Host "Cline entrypoint: $clineBinCmd"
 '@
     Set-Content -LiteralPath (Join-Path $PackageRoot "install.ps1") -Value $installer -Encoding UTF8
 }
@@ -854,6 +998,7 @@ if ($Mode -in @("build", "package")) {
     $build = Build-Product -AgentStage $agentStage -TuiStage $tuiStage -BuildRoot $packageRoot
     Write-Installer -PackageRoot $packageRoot
     Write-Launcher -PackageRoot $packageRoot
+    Write-ClineLauncher -PackageRoot $packageRoot
 }
 
 function Get-GateField {
