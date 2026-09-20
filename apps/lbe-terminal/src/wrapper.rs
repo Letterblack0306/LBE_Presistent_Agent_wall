@@ -2986,6 +2986,7 @@ impl RealLbeWrapper {
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
+        let timeout_seconds_arg = timeout_seconds.to_string();
         let mut command = configured_lbe_command(&python, &wall_root);
         command.current_dir(&wall_root).args([
             "-m",
@@ -3003,7 +3004,7 @@ impl RealLbeWrapper {
             "--endpoint",
             endpoint,
             "--timeout-seconds",
-            &timeout_seconds.to_string(),
+            &timeout_seconds_arg,
         ]);
         if let Some(credential_ref) = credential_ref {
             command.args(["--credential-id", credential_ref]);
