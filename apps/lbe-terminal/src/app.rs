@@ -109,6 +109,8 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
     &[
         ("/status", "runtime, session, provider, engine and context"),
         ("/provider", "refresh and inspect providers"),
+        ("/provider-config", "configure a named provider profile"),
+        ("/provider-remove", "remove a named provider profile"),
         ("/models", "choose a model"),
         ("/sessions", "list and resume sessions"),
         ("/history", "show persisted session history"),
@@ -610,24 +612,44 @@ impl App {
                 Some(MockPanel::Provider)
             }
             "/provider-config" => {
-                let provider_id = match argument.to_ascii_lowercase().as_str() {
+                let args = argument.split_whitespace().collect::<Vec<_>>();
+                let provider_id = args.get(1).and_then(|value| match value.to_ascii_lowercase().as_str() {
                     "gemini" | "google" => Some(ProviderId::Gemini),
                     "openai" => Some(ProviderId::OpenAi),
+                    "openai-native" => Some(ProviderId::OpenAiNative),
                     "anthropic" => Some(ProviderId::Anthropic),
+                    "bedrock" => Some(ProviderId::Bedrock),
+                    "vertex" => Some(ProviderId::Vertex),
+                    "mistral" => Some(ProviderId::Mistral),
+                    "openai-compatible" => Some(ProviderId::OpenAiCompatible),
+                    "lm-studio" => Some(ProviderId::LmStudio),
+                    "ollama" => Some(ProviderId::Ollama),
+                    "openrouter" => Some(ProviderId::OpenRouter),
+                    "opencode" => Some(ProviderId::OpenCode),
                     _ => None,
-                };
-                if let Some(provider_id) = provider_id {
-                    self.apply_wrapper_result(wrapper.submit(
-                        UserRequest::ConfigureProvider {
-                            provider_id,
-                            base_url: None,
-                            credential_ref: Some("opaque-ref".to_owned()),
-                        },
-                        Instant::now(),
-                    ));
+                });
+                if args.len() >= 4 {
+                    if let Some(provider_id) = provider_id {
+                        self.apply_wrapper_result(wrapper.submit(
+                            UserRequest::ConfigureProvider {
+                                profile_name: args[0].to_owned(),
+                                provider_id,
+                                model: args[2].to_owned(),
+                                endpoint: args[3].to_owned(),
+                                timeout_seconds: 30.0,
+                                credential_ref: args.get(4).map(|value| (*value).to_owned()),
+                                activate: true,
+                            },
+                            Instant::now(),
+                        ));
+                    } else {
+                        self.transcript.push(
+                            "SYSTEM  provider-config has an unsupported provider id".to_owned(),
+                        );
+                    }
                 } else {
                     self.transcript.push(
-                        "SYSTEM  usage: /provider-config <gemini|openai|anthropic>".to_owned(),
+                        "SYSTEM  usage: /provider-config <profile> <provider> <model> <endpoint> [credential-id]".to_owned(),
                     );
                 }
                 Some(MockPanel::Provider)
@@ -652,20 +674,16 @@ impl App {
                 Some(MockPanel::Provider)
             }
             "/provider-remove" => {
-                let provider_id = match argument.to_ascii_lowercase().as_str() {
-                    "gemini" | "google" => Some(ProviderId::Gemini),
-                    "openai" => Some(ProviderId::OpenAi),
-                    "anthropic" => Some(ProviderId::Anthropic),
-                    _ => None,
-                };
-                if let Some(provider_id) = provider_id {
-                    self.apply_wrapper_result(
-                        wrapper.submit(UserRequest::RemoveProvider { provider_id }, Instant::now()),
-                    );
+                if argument.is_empty() {
+                    self.transcript
+                        .push("SYSTEM  usage: /provider-remove <profile-name>".to_owned());
                 } else {
-                    self.transcript.push(
-                        "SYSTEM  usage: /provider-remove <gemini|openai|anthropic>".to_owned(),
-                    );
+                    self.apply_wrapper_result(wrapper.submit(
+                        UserRequest::RemoveProvider {
+                            profile_name: argument.to_owned(),
+                        },
+                        Instant::now(),
+                    ));
                 }
                 Some(MockPanel::Provider)
             }
