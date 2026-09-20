@@ -798,6 +798,113 @@ AUTHORITY_IMPACT: LBE authority unchanged. Reasoning engine/provider bindings be
 EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/, docs/acceptance/, .lbe/governance/
 REQUIRED_EVIDENCE: engine-neutral LBE initialization proof; Cline-absent LBE initialization proof; Cline regression proof; provider binding structure registered in PROJECT_INDEX.md; gate amendment record; focused tests for engine-neutral runtime; full regression.
 MACHINE_SLICE: REASONING_ENGINE_PROVIDER_BINDING_SEPARATION
-RESULT: AUTHORIZED (pending implementation)
+RESULT: IMPLEMENTED_STATIC_VALIDATION_PENDING
+IMPLEMENTATION_COMMITS: 39dd7cf9a6194a4931d1c564f43af50d5d8d9f7f, 7685ecae0412a92f7b61f9b5b51011e3125a4f8d
+REFERENCE_CHAIN: GPT-K ai-agents/studies/agent-feature-reference-map-2026-09-20.json -> Cline 9a2512bb9835869d74774da99708a7f9d80b0fe8 sdk/packages/README.md -> OpenCode ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts
+VALIDATION_BLOCKER: GitHub Actions validate jobs fail before any workflow steps on this commit and on both immediately preceding governance-only commits; full regression/runtime proof remains UNVERIFIED.
 AUTHORIZATION: EXPLICIT_USER_AUTHORIZATION_2026_09_20
 ```\n
+
+## INTENT LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001
+
+```text
+INTENT_ID: LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001
+STATUS: PROPOSED (non-authorizing until current active slice completes and machine gate selects this slice)
+REQUEST: Converge LBE tool/capability presentation and permission interaction onto the existing R6C/R6E owners, using exact upstream tool-registry and approval references without creating a second executor.
+WHY: LBE already owns ToolRegistry, resolve_authorization(), GovernedToolOrchestrator and ToolReceipt. Upstreams provide mature tool catalog/visibility/approval patterns that should improve the existing surface rather than replace authority.
+REFERENCE_CHAIN: Cline cline/cline@9a2512bb9835869d74774da99708a7f9d80b0fe8 docs/tools-reference/all-cline-tools.mdx + sdk/packages/core/src/extensions/tools/; OpenCode anomalyco/opencode@ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts + packages/web/src/content/docs/permissions.mdx; Claude Code anthropics/claude-code@7974a70773fa229e4cc65aa1b356cc21f5c216c4 official tools/permissions docs; Antigravity google-antigravity/antigravity-cli@7bb195acaec9e7788df5210d0dc3e15f3cefc6b3 README.md + CHANGELOG.md + official permissions docs.
+AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/tool_orchestration.py,lbe_guard_inspector/runtime/authorization_resolver.py,lbe_guard_inspector/professional_capabilities.py,lbe_guard_inspector/runtime/external_capabilities.py,tests/,apps/lbe-terminal/,docs/governance/PROJECT_INTENT_LEDGER.md,PROJECT_INDEX.md,.lbe/governance/
+EXISTING_OWNER: ToolRegistry; R6C authorization resolver; GovernedToolOrchestrator; ToolReceipt; runtime capability projection; Rust client approval/tool projection.
+DESIRED_RESULT: Tool visibility, capability readiness, approval prompts and tool-result projection are exact and truthful while every mutation/external action still crosses R6C/R6E exactly once.
+NON_GOALS: No native provider/external tool bypass; no second permission engine; no direct upstream executor; no silent auto-approval changes.
+REUSE_DECISION: REUSE LBE owners. ADAPT upstream registry/approval UX and visibility mechanics only.
+AUTHORITY_IMPACT: None; LBE remains sole authorization/execution/receipt owner.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,lbe_guard_inspector/professional_capabilities.py,tests/,apps/lbe-terminal/,docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+REQUIRED_EVIDENCE: exact tool registry projection; allow/deny/escalate zero/once execution proof; capability truth proof; UI approval projection; focused tests; full regression; live acceptance.
+MACHINE_SLICE: GOVERNED_TOOL_PERMISSION_REFERENCE_CONVERGENCE
+RESULT: NOT_STARTED
+```
+
+
+## INTENT LBE-INTENT-SESSION-CHECKPOINT-SUBAGENT-REFERENCE-CONVERGENCE-001
+
+```text
+INTENT_ID: LBE-INTENT-SESSION-CHECKPOINT-SUBAGENT-REFERENCE-CONVERGENCE-001
+STATUS: PROPOSED (non-authorizing until selected by machine gate)
+REQUEST: Preserve and complete LBE session/history/checkpoint/rewind and child-agent/team lifecycle surfaces using exact Cline/OpenCode/Claude/Antigravity references while retaining LBE session and persistence authority.
+WHY: LBE already has persisted sessions, checkpoints, child-agent operational history and Rust session/checkpoint controls. Remaining work should be gap-only and lifecycle-explicit.
+REFERENCE_CHAIN: Cline cline/cline@9a2512bb9835869d74774da99708a7f9d80b0fe8 apps/cli/src/tui/views/history-view.tsx + apps/cli/src/tui/components/dialogs/checkpoint-picker.tsx + sdk/packages/core/src/session/team/ + sdk/packages/core/src/extensions/tools/team/; OpenCode anomalyco/opencode@ebb7b76eca82342642c78645109e865614533827 packages/tui/src/routes/session/index.tsx + subagent-footer.tsx + packages/opencode/src/tool/task.ts; Claude Code anthropics/claude-code@7974a70773fa229e4cc65aa1b356cc21f5c216c4 official subagents/agent-teams/interactive docs; Antigravity google-antigravity/antigravity-cli@7bb195acaec9e7788df5210d0dc3e15f3cefc6b3 CHANGELOG.md + statusline example + official CLI docs.
+AFFECTED_STRUCTURE: lbe_guard_inspector/memory/,lbe_guard_inspector/product_entry.py,lbe_guard_inspector/runtime/,apps/lbe-terminal/,tests/,docs/governance/PROJECT_INTENT_LEDGER.md,PROJECT_INDEX.md,.lbe/governance/
+EXISTING_OWNER: SessionMemoryRuntimeBridge; WorkspaceMemoryStore; checkpoint/recovery owners; ChildAgentRun operational history; canonical Rust client session/checkpoint projection.
+DESIRED_RESULT: Resume/fork/compare/restore/child-run/background lifecycle state is explicit, parent-linked, cancellable and truthfully projected without creating a second session store.
+NON_GOALS: No independent child authority; no hidden recursive session owner; no checkpoint-as-current-truth shortcut.
+REUSE_DECISION: REUSE LBE persistence/session owners; ADAPT upstream navigation, child-session and rewind ergonomics.
+AUTHORITY_IMPACT: None; child workers remain subordinate to LBE session/authorization/completion.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/memory/,lbe_guard_inspector/product_entry.py,lbe_guard_inspector/runtime/,apps/lbe-terminal/,tests/,docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+REQUIRED_EVIDENCE: parent/child identity proof; persisted resume proof; stale checkpoint invalidation; compare/restore proof; cancellation; focused tests; full regression; PTY live acceptance.
+MACHINE_SLICE: SESSION_CHECKPOINT_SUBAGENT_REFERENCE_CONVERGENCE
+RESULT: NOT_STARTED
+```
+
+
+## INTENT LBE-INTENT-EXTENSION-SURFACE-REFERENCE-CONVERGENCE-001
+
+```text
+INTENT_ID: LBE-INTENT-EXTENSION-SURFACE-REFERENCE-CONVERGENCE-001
+STATUS: PROPOSED (non-authorizing until selected by machine gate)
+REQUEST: Complete MCP, skills, plugins and hooks as registered LBE capabilities with one discovery/health/projection path and no provider-controlled execution transport.
+WHY: MCP/external capability registration is already implemented, but skills/plugins/hooks and broader user-facing management are partial. Upstream CLIs provide mature management surfaces.
+REFERENCE_CHAIN: Cline cline/cline@9a2512bb9835869d74774da99708a7f9d80b0fe8 apps/cli/src/commands/mcp.ts + plugin.ts + skill.ts + apps/cli/src/tui/commands/slash-command-registry.ts; OpenCode anomalyco/opencode@ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/mcp/ + skill/ + plugin/ + tool/registry.ts; Claude Code anthropics/claude-code@7974a70773fa229e4cc65aa1b356cc21f5c216c4 plugins/ + official hooks/MCP/skills docs; Antigravity google-antigravity/antigravity-cli@7bb195acaec9e7788df5210d0dc3e15f3cefc6b3 CHANGELOG.md + official CLI features docs.
+AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/external_capabilities.py,lbe_guard_inspector/runtime/installed_capability_registry.py,lbe_guard_inspector/runtime/agent_guidance.py,lbe_guard_inspector/product_entry.py,apps/lbe-terminal/,tests/,docs/governance/PROJECT_INTENT_LEDGER.md,PROJECT_INDEX.md,.lbe/governance/
+EXISTING_OWNER: Governed external capability registration; ToolRegistry/R6C/R6E; installed capability registry; MCP projection.
+DESIRED_RESULT: MCP/skill/plugin/hook entries have explicit source, health, availability and authority class; user-facing management projects those facts and all executable effects remain governed.
+NON_GOALS: No arbitrary provider-supplied command/URL/transport; no skill-as-authority; no plugin bypass.
+REUSE_DECISION: REUSE existing external-capability owner; ADAPT management/discovery patterns.
+AUTHORITY_IMPACT: None.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,lbe_guard_inspector/product_entry.py,apps/lbe-terminal/,tests/,docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+REQUIRED_EVIDENCE: deterministic discovery; malformed entry isolation; health projection; governed execution proof; UI management projection; focused/full regression.
+MACHINE_SLICE: EXTENSION_SURFACE_REFERENCE_CONVERGENCE
+RESULT: NOT_STARTED
+```
+
+
+## INTENT LBE-INTENT-RUST-TUI-REFERENCE-CONVERGENCE-001
+
+```text
+INTENT_ID: LBE-INTENT-RUST-TUI-REFERENCE-CONVERGENCE-001
+STATUS: PROPOSED (non-authorizing until selected by machine gate)
+REQUEST: Gap-fill the existing LBE-owned Rust/Ratatui user surface using exact upstream TUI references for home/chat/status, command palette, slash commands, pickers, diff/review and attention state; preserve every existing working LBE surface.
+WHY: The canonical client already implements transcript, command palette, provider/model/session pickers, MCP/tools/process/activity/evidence/receipts/changes/memory/doctor/help panels, checkpoint compare/restore and authoritative workspace browsing. Work must be gap-driven, not a rewrite.
+REFERENCE_CHAIN: Cline cline/cline@9a2512bb9835869d74774da99708a7f9d80b0fe8 apps/cli/src/tui/views/home-view.tsx + chat-view.tsx + components/status-bar.tsx + components/dialogs/command-palette-items.ts + commands/slash-command-registry.ts + model-selector/ + provider-picker.tsx; OpenCode anomalyco/opencode@ebb7b76eca82342642c78645109e865614533827 packages/tui/src/routes/session/index.tsx + sidebar.tsx + footer.tsx + component/dialog-model.tsx + dialog-provider.tsx + feature-plugins/system/diff-viewer.tsx; Antigravity google-antigravity/antigravity-cli@7bb195acaec9e7788df5210d0dc3e15f3cefc6b3 examples/statusline/statusline.sh + examples/title/title.sh + CHANGELOG.md; Claude Code anthropics/claude-code@7974a70773fa229e4cc65aa1b356cc21f5c216c4 official interactive-mode docs + mods/diff/.
+AFFECTED_STRUCTURE: apps/lbe-terminal/,tests/,docs/governance/PROJECT_INTENT_LEDGER.md,PROJECT_INDEX.md,.lbe/governance/
+EXISTING_OWNER: LBE-owned Rust/Ratatui projection/controller; RealLbeWrapper; existing App state machine; backend authority owners.
+DESIRED_RESULT: One keyboard-first LBE interface truthfully projects mode, engine/provider/model, context, workspace/Git state, approvals, tools, processes, MCP, evidence, receipts, child runs, changes and health; no fake connected state.
+NON_GOALS: No Cline/OpenCode/Claude/Antigravity branding copy; no upstream runtime ownership; no second file/provider/session index; no Electron.
+REUSE_DECISION: REUSE current Rust client; ADAPT only missing interaction/projection mechanics from exact references.
+AUTHORITY_IMPACT: None; client remains projection/control only.
+EXPECTED_PATH_PREFIXES: apps/lbe-terminal/,tests/,docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+REQUIRED_EVIDENCE: feature-by-feature UI tests; actual backend event projection; keyboard/PTY acceptance; narrow/wide layout; no mock/fake success in real mode; full regression.
+MACHINE_SLICE: RUST_TUI_REFERENCE_CONVERGENCE
+RESULT: NOT_STARTED
+```
+
+
+## INTENT LBE-INTENT-HEADLESS-REMOTE-SURFACE-CONVERGENCE-001
+
+```text
+INTENT_ID: LBE-INTENT-HEADLESS-REMOTE-SURFACE-CONVERGENCE-001
+STATUS: PROPOSED (non-authorizing until selected by machine gate)
+REQUEST: Add/normalize headless machine-readable and remote-attach control surfaces over the same LBE session/runtime owner, without creating another agent runtime.
+WHY: LBE already has JSON product-entry operations and a canonical TUI. Upstream CLIs demonstrate headless streams, attach/server, hub/ACP and remote-control patterns that can be adapted behind LBE identity and authority.
+REFERENCE_CHAIN: Cline cline/cline@9a2512bb9835869d74774da99708a7f9d80b0fe8 apps/cli/src/commands/program.ts + apps/cli/src/acp/ + apps/cli/README.md; OpenCode anomalyco/opencode@ebb7b76eca82342642c78645109e865614533827 packages/web/src/content/docs/cli.mdx + packages/opencode/src/cli/cmd/attach.ts + serve.ts + web.ts; Claude Code anthropics/claude-code@7974a70773fa229e4cc65aa1b356cc21f5c216c4 official CLI docs for -p/stream-json/remote-control; Antigravity google-antigravity/antigravity-cli@7bb195acaec9e7788df5210d0dc3e15f3cefc6b3 README.md + CHANGELOG.md + official headless/remote-control docs.
+AFFECTED_STRUCTURE: lbe_guard_inspector/product_entry.py,lbe_guard_inspector/cli.py,lbe_guard_inspector/runtime/,apps/lbe-terminal/,tests/,docs/governance/PROJECT_INTENT_LEDGER.md,PROJECT_INDEX.md,.lbe/governance/
+EXISTING_OWNER: product_entry machine-readable surface; canonical session/workspace/runtime owners; Rust TUI as local client.
+DESIRED_RESULT: Headless JSON/stream and remote clients attach to the same session/turn/authority state, with cancellation, approvals, receipts/evidence and actual engine/provider/model identity preserved.
+NON_GOALS: No unauthenticated remote mutation; no second session store; no remote bypass of R6C/R6E; no hidden fallback.
+REUSE_DECISION: REUSE product_entry/session/control owners; ADAPT transport/client mechanics only.
+AUTHORITY_IMPACT: None.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/product_entry.py,lbe_guard_inspector/cli.py,lbe_guard_inspector/runtime/,apps/lbe-terminal/,tests/,docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+REQUIRED_EVIDENCE: same-session local/headless/remote identity proof; cancellation/approval propagation; JSON event contract; disconnect/reconnect; fail-closed auth; focused/full regression; live multi-client acceptance.
+MACHINE_SLICE: HEADLESS_REMOTE_SURFACE_CONVERGENCE
+RESULT: NOT_STARTED
+```
