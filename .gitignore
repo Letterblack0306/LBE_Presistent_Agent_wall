@@ -5,6 +5,7 @@ __pycache__/
 *.egg-info/
 *.egg
 dist/
+dist_reconcile_tmp/
 build/
 .eggs/
 

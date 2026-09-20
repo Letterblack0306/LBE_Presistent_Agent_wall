@@ -84,6 +84,7 @@ The former `.agent/` and `.cline/` routing files were retired as obsolete local 
 | `docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md` | `ACCEPTANCE_AUTHORITY` | Publication authorization boundary; keep because governance references it. |
 | `docs/acceptance/PUBLICATION_PRECHECK_GATE.md` | `ACCEPTANCE_HISTORY` | Completed publication precheck; preserve as release evidence. |
 | `docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md` | `ACCEPTANCE_AUTHORITY` | Current version-preparation authority; keep because governance references it. |
+| `docs/acceptance/RELEASE_SCOPE_SPLIT_DECISION.md` | `ACCEPTANCE_AUTHORITY` | Decision record separating backend/package release readiness from the deferred visible Rust terminal acceptance; declares canonical-client selection OUT OF SCOPE/UNDECIDED; documents HEAD drift (807 passed/5 failed). Kept because governance references it. |
 | `docs/acceptance/R3_RUNTIME_REASONING_ACCEPTANCE_CHECKPOINT.md` | `ACCEPTANCE_HISTORY` | Closed R3 proof; preserve as historical evidence. |
 | `docs/acceptance/R4_CHECKPOINT_RESUME_ACCEPTANCE_CHECKPOINT.md` | `ACCEPTANCE_HISTORY` | Closed R4 proof; preserve as historical evidence. |
 | `docs/acceptance/R5_BOUNDED_RECOVERY_ACCEPTANCE_CHECKPOINT.md` | `ACCEPTANCE_HISTORY` | Closed R5 proof; preserve as historical evidence. |
