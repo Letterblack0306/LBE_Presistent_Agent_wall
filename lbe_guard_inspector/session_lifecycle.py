@@ -42,7 +42,12 @@ class LbeSessionService:
         return target
 
     def configure_provider(
-        self, *, state: SessionState, provider_id: str, model_id: str
+        self,
+        *,
+        state: SessionState,
+        provider_id: str,
+        model_id: str,
+        engine_id: str | None = None,
     ) -> SessionState:
         clean_provider = provider_id.strip()
         clean_model = model_id.strip()
@@ -51,9 +56,23 @@ class LbeSessionService:
             raise SessionLifecycleError(f"Provider is not registered: {clean_provider}")
         if not clean_model:
             raise SessionLifecycleError("Provider model must not be empty.")
+        selected_engine = (
+            self.provider_registry.default_engine_for_provider(clean_provider)
+            if engine_id is None
+            else engine_id.strip()
+        )
+        if not selected_engine:
+            raise SessionLifecycleError(
+                f"No default reasoning engine is registered for provider: {clean_provider}"
+            )
+        if selected_engine not in self.provider_registry.engines_for_provider(clean_provider):
+            raise SessionLifecycleError(
+                f"Reasoning engine is not registered for provider: {selected_engine}/{clean_provider}"
+            )
         return self._runtime(state).configure_session(
             provider_id=clean_provider,
             provider_model=clean_model,
+            reasoning_engine=selected_engine,
         )
 
     def _require_idle(self, session_id: str, operation: str) -> None:
@@ -78,4 +97,5 @@ class LbeSessionService:
             active_profile_id=state.active_profile_id,
             permission_policy_id=state.permission_policy_id,
             evidence_policy_id=state.evidence_policy_id,
+            reasoning_engine=state.reasoning_engine,
         )
