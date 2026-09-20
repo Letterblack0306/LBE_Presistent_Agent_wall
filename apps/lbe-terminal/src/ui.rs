@@ -532,6 +532,8 @@ fn draw_main_body(frame: &mut Frame, area: Rect, app: &App, split_layout: bool) 
         transcript_text(app)
     } else if app.show_command_palette {
         command_palette_text(app)
+    } else if matches!(app.phase, Phase::AwaitingApproval { .. }) {
+        authorization_gate_text(app)
     } else if let Some(panel) = app.panel {
         mock_panel_text_for_app(panel, app)
     } else if let Phase::PatchReview {
@@ -585,6 +587,82 @@ fn draw_main_body(frame: &mut Frame, area: Rect, app: &App, split_layout: bool) 
             .scroll((scroll, 0)),
         area.inner(Margin::new(if area.width < 72 { 1 } else { 2 }, 0)),
     );
+}
+
+fn authorization_gate_text(app: &App) -> Text<'static> {
+    let proposal = match &app.phase {
+        Phase::AwaitingApproval { proposal, .. } => proposal.as_str(),
+        _ => "approval pending",
+    };
+    let operation = app
+        .last_authorization_operation_id
+        .as_deref()
+        .unwrap_or("not projected");
+    let approval = app
+        .last_authorization_approval_id
+        .as_deref()
+        .unwrap_or("not projected");
+    let capability = app
+        .last_authorization_capability
+        .as_deref()
+        .unwrap_or("task");
+    let rationale = app
+        .last_authorization_rationale
+        .as_deref()
+        .unwrap_or(proposal);
+    let tool = app.last_tool_name.as_deref().unwrap_or("not projected");
+    let input = app.last_tool_input.as_deref().unwrap_or("not projected");
+    let risk = app.last_tool_risk.as_deref().unwrap_or("unknown");
+
+    Text::from(vec![
+        Line::from(Span::styled(
+            "ACTION GATE // AUTHORIZATION REQUIRED",
+            Style::default()
+                .fg(PALETTE.amber)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::default(),
+        Line::from(vec![
+            Span::styled("Capability  ", Style::default().fg(PALETTE.faint)),
+            Span::styled(capability.to_owned(), Style::default().fg(PALETTE.ink)),
+        ]),
+        Line::from(vec![
+            Span::styled("Tool        ", Style::default().fg(PALETTE.faint)),
+            Span::styled(tool.to_owned(), Style::default().fg(PALETTE.info)),
+        ]),
+        Line::from(vec![
+            Span::styled("Input       ", Style::default().fg(PALETTE.faint)),
+            Span::styled(input.to_owned(), Style::default().fg(PALETTE.ink)),
+        ]),
+        Line::from(vec![
+            Span::styled("Risk        ", Style::default().fg(PALETTE.faint)),
+            Span::styled(risk.to_owned(), Style::default().fg(PALETTE.amber)),
+        ]),
+        Line::from(vec![
+            Span::styled("Operation   ", Style::default().fg(PALETTE.faint)),
+            Span::styled(operation.to_owned(), Style::default().fg(PALETTE.muted)),
+        ]),
+        Line::from(vec![
+            Span::styled("Approval    ", Style::default().fg(PALETTE.faint)),
+            Span::styled(approval.to_owned(), Style::default().fg(PALETTE.muted)),
+        ]),
+        Line::default(),
+        Line::from(Span::styled(
+            rationale.to_owned(),
+            Style::default().fg(PALETTE.ink),
+        )),
+        Line::default(),
+        Line::from(Span::styled(
+            "[Enter] allow once    [Esc] deny    [?] shortcuts",
+            Style::default()
+                .fg(PALETTE.amber)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "LBE remains the authorization owner; this screen does not grant session-wide permission.",
+            Style::default().fg(PALETTE.muted),
+        )),
+    ])
 }
 
 fn workspace_patch_text(patch: &WorkspacePatch) -> Text<'static> {
