@@ -59,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--runtime-policy", choices=("audit", "development", "strict", "permissive"), default="audit")
     create.add_argument("--provider")
     create.add_argument("--model")
+    create.add_argument("--engine", help="Reasoning engine binding; defaults to the provider default")
     create.add_argument("--profile")
     create.add_argument("--permission-policy")
     create.add_argument("--evidence-policy")
@@ -80,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     continue_parser.add_argument("--task-id")
     continue_parser.add_argument("--provider")
     continue_parser.add_argument("--model")
+    continue_parser.add_argument("--engine")
     continue_parser.set_defaults(handler=_session_continue)
 
     status = session_commands.add_parser("status", help="Read persisted session status")
@@ -132,6 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     provider_check.add_argument("--provider", required=True)
     provider_check.add_argument("--provider-config", required=True)
+    provider_check.add_argument("--engine")
     provider_check.set_defaults(handler=_provider_check)
 
     provider_select = provider_commands.add_parser(
@@ -141,6 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
     provider_select.add_argument("--session-id", required=True)
     provider_select.add_argument("--provider", required=True)
     provider_select.add_argument("--model", required=True)
+    provider_select.add_argument("--engine")
     provider_select.set_defaults(handler=_provider_select)
 
     _add_mode_command(commands, "code", AgentMode.CODING, "Run a governed coding task")
@@ -176,6 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     tui.add_argument("--runtime-policy", choices=("audit", "development", "strict", "permissive"), default="audit")
     tui.add_argument("--provider", help="Provider identity for a new terminal session")
     tui.add_argument("--model", help="Provider model for a new terminal session")
+    tui.add_argument("--engine", help="Reasoning engine binding for a new terminal session")
     tui.add_argument("--profile")
     tui.add_argument("--permission-policy")
     tui.add_argument("--evidence-policy")
@@ -209,6 +214,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _session_create(args: argparse.Namespace) -> dict[str, Any]:
     workspace = _workspace_root(args.workspace)
     _validate_provider_selection(args.provider, args.model, require_pair=False)
+    reasoning_engine = _resolve_engine_selection(args.provider, args.engine)
     state = SessionState(
         session_id=args.session_id,
         project_workspace_id=args.project_workspace_id,
@@ -221,6 +227,7 @@ def _session_create(args: argparse.Namespace) -> dict[str, Any]:
         active_profile_id=args.profile,
         permission_policy_id=args.permission_policy,
         evidence_policy_id=args.evidence_policy,
+        reasoning_engine=reasoning_engine,
     )
     store = WorkspaceMemoryStore(args.database)
     service = LbeSessionService(
@@ -261,7 +268,7 @@ def _session_continue(args: argparse.Namespace) -> dict[str, Any]:
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
     runtime = _runtime_from_state(database=args.database, state=state)
-    if args.provider is not None or args.model is not None:
+    if args.provider is not None or args.model is not None or args.engine is not None:
         provider_id = state.provider_id if args.provider is None else args.provider
         provider_model = state.provider_model if args.model is None else args.model
         _validate_provider_selection(provider_id, provider_model, require_pair=True)
@@ -272,6 +279,7 @@ def _session_continue(args: argparse.Namespace) -> dict[str, Any]:
             state=state,
             provider_id=provider_id,
             model_id=provider_model,
+            engine_id=args.engine if args.engine is not None else state.reasoning_engine,
         )
         runtime = _runtime_from_state(database=args.database, state=state)
     packet = runtime.start_or_resume(task_id=args.task_id)
@@ -292,6 +300,7 @@ def _session_status(args: argparse.Namespace) -> dict[str, Any]:
         "workspace": state.canonical_workspace_root,
         "provider_id": state.provider_id,
         "provider_model": state.provider_model,
+        "reasoning_engine": state.reasoning_engine,
         "checkpoint_id": state.checkpoint_id,
     }
     if args.task_id:
@@ -453,6 +462,15 @@ def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "action": "provider.list",
         "providers": list(registry.provider_ids()),
+        "engines": list(registry.engine_ids()),
+        "bindings": [
+            {
+                "provider_id": binding.provider_id,
+                "engine_id": binding.engine_id,
+                "default": binding.default,
+            }
+            for binding in registry.bindings()
+        ],
     }
 
 
@@ -461,11 +479,13 @@ def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
     result = check_provider_health(
         provider_id=args.provider,
         provider_config=config,
+        engine_id=args.engine,
     )
     return {
         "action": "provider.check",
         "provider_id": result.provider_id,
         "provider_model": result.model_id,
+        "engine_id": result.engine_id,
         "status": result.status,
         "capabilities": asdict(result.capabilities),
     }
@@ -484,12 +504,14 @@ def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
         state=state,
         provider_id=args.provider,
         model_id=args.model,
+        engine_id=args.engine,
     )
     return {
         "action": "provider.select",
         "session_id": updated.session_id,
         "provider_id": updated.provider_id,
         "provider_model": updated.provider_model,
+        "reasoning_engine": updated.reasoning_engine,
         "workspace": updated.canonical_workspace_root,
         "mode": updated.mode,
         "policy_unchanged": {
@@ -537,6 +559,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
             controller, _ = build_provider_controller(
                 provider_id=state.provider_id,
                 provider_config=config,
+                engine_id=state.reasoning_engine,
             )
             intent = "inspect_workspace" if state.mode == AgentMode.AUDIT.value else "diagnose_failure" if state.mode == AgentMode.INVESTIGATION.value else "inspect_workspace"
             guidance = build_agent_guidance(
@@ -661,12 +684,17 @@ def _run_mode_command(
     controller, handle = build_provider_controller(
         provider_id=state.provider_id,
         provider_config=provider_config,
+        engine_id=state.reasoning_engine,
     )
     if handle.descriptor.provider_id != state.provider_id:
         raise ValueError("provider adapter identity does not match persisted session provider")
     if mode is AgentMode.CODING:
         from .runtime.governed_coding import GovernedProviderReasoningController
 
+        if state.reasoning_engine not in {None, "native-lbe"}:
+            raise ValueError(
+                "governed coding tool loop currently requires the native-lbe reasoning engine"
+            )
         controller = GovernedProviderReasoningController(
             runtime=runtime,
             provider_id=state.provider_id,
@@ -740,7 +768,31 @@ def _runtime_from_state(*, database: str | Path, state: Any) -> SessionMemoryRun
         active_profile_id=state.active_profile_id,
         permission_policy_id=state.permission_policy_id,
         evidence_policy_id=state.evidence_policy_id,
+        reasoning_engine=state.reasoning_engine,
     )
+
+
+def _resolve_engine_selection(provider_id: str | None, engine_id: str | None) -> str | None:
+    if provider_id is None:
+        if engine_id is not None:
+            raise ValueError("reasoning engine requires a provider selection")
+        return None
+    registry = default_provider_registry()
+    clean_provider = str(provider_id).strip()
+    if clean_provider not in registry.provider_ids():
+        raise ValueError(f"provider is not registered: {clean_provider}")
+    selected = (
+        registry.default_engine_for_provider(clean_provider)
+        if engine_id is None
+        else str(engine_id).strip()
+    )
+    if not selected:
+        raise ValueError(f"provider has no default reasoning engine: {clean_provider}")
+    if selected not in registry.engines_for_provider(clean_provider):
+        raise ValueError(
+            f"reasoning engine is not registered for provider: {selected}/{clean_provider}"
+        )
+    return selected
 
 
 def _validate_provider_selection(
