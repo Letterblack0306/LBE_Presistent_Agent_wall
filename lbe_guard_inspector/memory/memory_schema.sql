@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS session_state (
     permission_policy_id TEXT,
     evidence_policy_id TEXT,
     checkpoint_id TEXT,
+    reasoning_engine TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (checkpoint_id) REFERENCES memory_checkpoints(checkpoint_id)
