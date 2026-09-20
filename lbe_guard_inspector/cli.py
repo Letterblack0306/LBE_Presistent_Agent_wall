@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
 from .control_protocol import ControlMethod, ControlRequest
+from .credential_store import WindowsCredentialStore
 from .evidence_service import EvidenceService
 from .memory import SessionState, WorkspaceMemoryStore
 from .memory.operational_history import SessionOperationalHistory
@@ -28,6 +29,7 @@ from .runtime.completion_runtime import CodingCompletionRuntime
 from .runtime.mode_controller import ModeRequest, resolve_mode
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 from .session_lifecycle import LbeSessionService
+from .user_state import ProviderProfile, UserStateStore
 
 
 _MODES = ("coding", "audit", "investigation")
@@ -147,6 +149,37 @@ def build_parser() -> argparse.ArgumentParser:
     provider_select.add_argument("--model", required=True)
     provider_select.add_argument("--engine")
     provider_select.set_defaults(handler=_provider_select)
+
+    provider_add = provider_commands.add_parser(
+        "add", help="Add or update a per-user provider profile without storing secrets in JSON"
+    )
+    provider_add.add_argument("--state-root")
+    provider_add.add_argument("--name", required=True)
+    provider_add.add_argument("--provider", required=True)
+    provider_add.add_argument("--model", required=True)
+    provider_add.add_argument("--endpoint", required=True)
+    provider_add.add_argument("--timeout-seconds", type=float, default=30.0)
+    provider_add.add_argument("--credential-id")
+    provider_add.add_argument("--use", action="store_true")
+    provider_add.set_defaults(handler=_provider_add)
+
+    provider_use = provider_commands.add_parser(
+        "use", help="Select an existing per-user provider profile"
+    )
+    provider_use.add_argument("--state-root")
+    provider_use.add_argument("--name", required=True)
+    provider_use.set_defaults(handler=_provider_use)
+
+    provider_migrate = provider_commands.add_parser(
+        "migrate", help="Migrate one explicit legacy provider config into per-user state"
+    )
+    provider_migrate.add_argument("--state-root")
+    provider_migrate.add_argument("--name", required=True)
+    provider_migrate.add_argument("--provider", required=True)
+    provider_migrate.add_argument("--provider-config", required=True)
+    provider_migrate.add_argument("--credential-id")
+    provider_migrate.add_argument("--use", action="store_true")
+    provider_migrate.set_defaults(handler=_provider_migrate)
 
     _add_mode_command(commands, "code", AgentMode.CODING, "Run a governed coding task")
     _add_mode_command(commands, "audit", AgentMode.AUDIT, "Run a governed read-only audit task")
@@ -489,6 +522,72 @@ def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
         "engine_id": result.engine_id,
         "status": result.status,
         "capabilities": asdict(result.capabilities),
+    }
+
+
+def _provider_profile_payload(name: str, profile: ProviderProfile) -> dict[str, Any]:
+    return {
+        "name": name,
+        "provider_id": profile.provider_id,
+        "model": profile.model,
+        "endpoint": profile.endpoint,
+        "timeout_seconds": profile.timeout_seconds,
+        "credential_id": profile.credential_id,
+    }
+
+
+def _provider_add(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    profile = ProviderProfile(
+        provider_id=args.provider,
+        model=args.model,
+        endpoint=args.endpoint,
+        timeout_seconds=args.timeout_seconds,
+        credential_id=args.credential_id,
+    )
+    store.save_profile(args.name, profile, activate=args.use)
+    return {
+        "action": "provider.add",
+        "profile": _provider_profile_payload(args.name, profile),
+        "active_profile": store.active_profile_name(),
+    }
+
+
+def _provider_use(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    profile = store.select_profile(args.name)
+    return {
+        "action": "provider.use",
+        "profile": _provider_profile_payload(args.name, profile),
+        "active_profile": store.active_profile_name(),
+    }
+
+
+def _provider_migrate(args: argparse.Namespace) -> dict[str, Any]:
+    config = load_provider_config(args.provider_config)
+    credential_id = args.credential_id
+    if config.api_key is not None:
+        if credential_id is None or not str(credential_id).strip():
+            raise ValueError(
+                "--credential-id is required when the legacy provider config contains api_key"
+            )
+        WindowsCredentialStore().put(str(credential_id).strip(), config.api_key)
+        credential_id = str(credential_id).strip()
+
+    profile = ProviderProfile(
+        provider_id=args.provider,
+        model=config.model,
+        endpoint=config.endpoint,
+        timeout_seconds=config.timeout_seconds,
+        credential_id=credential_id,
+    )
+    store = UserStateStore(args.state_root)
+    store.save_profile(args.name, profile, activate=args.use)
+    return {
+        "action": "provider.migrate",
+        "profile": _provider_profile_payload(args.name, profile),
+        "active_profile": store.active_profile_name(),
+        "legacy_config_removal_required": config.api_key is not None,
     }
 
 
