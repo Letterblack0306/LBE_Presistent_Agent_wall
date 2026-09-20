@@ -169,13 +169,27 @@ tree or branch; `main` HEAD is the only acceptable source of truth.
    history is preserved only as deleted-refs record in this document, never as truth.
 3. **`58104bae` and `C:\LBE-TUI-Lab` are retired evidence.** Any reference to them in recorded
    acceptance docs (`CURRENT_STATUS.md`, `CURRENT_IMPLEMENTATION_GATE.md`, `IMPLEMENTATION_PLAN.md`)
-   is historical only and no longer describes the canonical tree. The provenance gap is resolved by
-   retirement rather than by restoring the missing commit.
+   is historical only and no longer describes the canonical tree. Precise finding (verified against
+   the full 40-char SHA with `git cat-file -t`): `58104bae1cebd2be04fa1d5544b2ebfce90fe8ff` was
+   **never an object in this repository** — not deleted, never present. The `PROVENANCE.md`
+   "byte-identical `fc /b` migration" claim therefore establishes **file-content parity only**, not
+   **commit-lineage parity**: byte-for-byte copied files cannot reproduce a git commit object, so the
+   accepted-client commit identity could never have matched here. The comparison point is declared out
+   of scope by retirement, and independently we now know why it could never have matched.
 4. **The `C:\LBE-TUI-Lab` tree is removed** (its content is migrated, byte-identical, into
    `apps/lbe-terminal` at main; see `apps/lbe-terminal/PROVENANCE.md`). Uncommitted local edits
    there are discarded.
 
 ### Deleted local branches (main-only retained)
+
+> **2026-09-20 revision:** After removal, a retrospective audit proved that `2.0.x` release
+> branches and `ci/*` carried unique product source (Cline-sidecar / professional-runtime modules
+> and an `npm/` launcher package) **not present on main**. Per a follow-up user directive
+> ("restore all and review each before deletion"), all recoverable deleted history was restored as
+> **`backup/*` refs** in the local repository (`backup/uc/*` refs persist the full 206-commit
+> unreachable set, making the object store GC-proof). The branch list below is the original
+> deletion record; it is **not** the current ref inventory. No re-deletion happens until each
+> branch is individually reviewed.
 
 `agent/cli-agent-integration-contract`, `agent/cli-control-plane`, `agent/cli-evidence-policy`,
 `agent/cli-exit-proof`, `agent/cli-validation`, `agent/cli-validation-evidence`,
@@ -208,3 +222,25 @@ tree or branch; `main` HEAD is the only acceptable source of truth.
 `git@github-letterblack:...LBE_Agents_wall_Intigration.git`, dirty working files:
 `Agent.md`, `CLEANUP_PLAN.md`, `WHAT_IS_LBE.md` deleted; `Docs/*`, `build_errors.txt`,
 `src/*` modified) — removed on 2026-09-20.
+
+### Retired-tree recovery audit (2026-09-20, post-removal)
+
+Unique-content findings per restored `backup/*` ref, verified by comparing each tip's tree against
+`git ls-tree -r main`:
+
+| Branch (tip) | Unique vs main | Unique product source | Assessment |
+|---|---|---|---|
+| `ci/pr56-billing-isolation` (`40428e1`) | 118 files | 63 — Cline-sidecar (`cline_sidecar_adapter.py`, `cline_llms_compat.py`, `cline_sidecar_readiness.py`), `professional_*` runtimes (continuation/control/completion/history/mutable/provider/session/turn), `runtime/professional_*_backends.py`, `npm/` launcher package | NOT on main; main only has `professional_capabilities.py`/`professional_provider_events.py`/`professional_transcript.py`. **Candidate for cherry-pick/re-integration.** |
+| `ci/workflow-activation` (`4352bd8`) | 116 files | 61 — same professional-runtime + `npm/` family | Same content as `ci/pr56-billing-isolation` minus a few files; superseded by it. |
+| `release/python-runtime-v2.0.1` (`f54021e`) | 112 files | 60 — same | Release-scope fork of the same sidecar/runtime family. |
+| `release/python-runtime-v2.0.2` (`72fdfa2`) | 112 files | 60 — same | Successor of 2.0.1. |
+| `feat/c5-governed-coding-execution` (`4ff65ea`) | 54 files | 16 — `npm/` launcher, `tests/test_c5_coding_execution.py`, `tests/test_installed_wheel_smoke.py` | `npm/` launcher duplicates content also on `ci/*` branches; tests unique. |
+| `agent/cli-validation-evidence` (`f185a3a`) | 30 files | 4 — stale chat-dump artifacts under `tests/test differfence/` | Test debris, no product source. Safe to abandon. |
+| `chore/cline-workspace-discipline` (`f604436`) | 33 files | 4 — same stale chat-dump artifacts | Planning/docs only + stray artifacts. |
+| `design/authority-ownership-inspector-contract` (`ec16716`) | 25 files | 3 — `tests/test_reference_knowledge.py`, `tests/test_workspace_identity.py`, `PATCH_PROJECT_SCOPED_GUARD_RETRIEVAL.md` | Review-candidate tests replaced before completion. |
+| `feat/authority-ownership-evidence-extractor-integration` (`3a1dac8`) | 26 files | 0 | Docs only; superseded. |
+| `feat/persistent-runtime-reasoning-integration` & `feat/persistent-runtime-session-task-state` (`124347e`, same tip) | 30 files | 4 — stale chat-dump artifacts | Same artifact debris. |
+| `fork/actions-register` (`5696ade`) | 30 files | 4 — stale chat-dump artifacts | Workflow registration refresh + debris. |
+
+The `tests/test differfence/` JSON/messages artifacts (`1785460319869_yl0hf`, `1785461332072_pt9mp`)
+recur across most branches — unused chat/turn dumps, no product value.
