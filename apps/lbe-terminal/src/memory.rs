@@ -18,7 +18,7 @@ pub(crate) struct SessionMemoryRef {
 pub(crate) struct MemoryRecord {
     pub(crate) memory_id: String,
     pub(crate) session_id: String,
-    pub(crate) session_hash: String,
+    pub(crate) session_hash: Option<String>,
     pub(crate) turn_id: Option<String>,
     pub(crate) record_type: MemoryRecordType,
     pub(crate) summary: String,
