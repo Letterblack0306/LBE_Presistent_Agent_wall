@@ -386,7 +386,12 @@ def test_discovered_provider_capabilities_normalize_without_inventing_features()
                 support=CapabilitySupport.SUPPORTED,
                 reason="provider metadata declares tool calls",
                 source="provider-model-metadata",
-            )
+            ),
+            "structured_output": CapabilityClaim(
+                support=CapabilitySupport.SUPPORTED,
+                reason="provider metadata declares structured output",
+                source="provider-model-metadata",
+            ),
         },
     )
 
@@ -397,6 +402,7 @@ def test_discovered_provider_capabilities_normalize_without_inventing_features()
     assert descriptor.protocol_family is ProviderProtocolFamily.ANTHROPIC_MESSAGES
     assert descriptor.capabilities.tool_calls is True
     assert descriptor.capabilities.streaming is False
+    assert descriptor.capabilities.structured_output is True
     assert descriptor.capabilities.context_limit == 200000
 
 
@@ -412,6 +418,7 @@ def test_unknown_protocol_discovery_remains_non_executable_metadata():
     assert descriptor.protocol_family is ProviderProtocolFamily.UNKNOWN
     assert descriptor.capabilities.tool_calls is False
     assert descriptor.capabilities.streaming is False
+    assert descriptor.capabilities.structured_output is False
 
 
 def test_provider_registry_import_and_native_build_do_not_require_cline():
