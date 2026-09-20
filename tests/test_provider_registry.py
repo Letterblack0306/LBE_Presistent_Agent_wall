@@ -261,8 +261,6 @@ def test_default_registry_builds_native_lbe_provider_adapters(
         "openai-native",
         "vertex",
         "bedrock",
-        "ollama",
-        "openrouter",
         "opencode",
     ],
 )
@@ -282,15 +280,17 @@ def test_default_registry_preserves_existing_cline_provider_routes(provider_id):
     assert handle.descriptor.provider_id == provider_id
 
 
-def test_lmstudio_has_native_default_and_explicit_cline_regression_binding():
+@pytest.mark.parametrize("provider_id", ["lmstudio", "ollama", "openrouter"])
+def test_openai_compatible_routes_have_native_default_and_explicit_cline_binding(provider_id):
     registry = default_provider_registry()
-    native = registry.build(provider_id="lmstudio", config=config())
+    native = registry.build(provider_id=provider_id, config=config())
     cline = registry.build(
-        provider_id="lmstudio",
+        provider_id=provider_id,
         config=config(),
         engine_id=CLINE_ENGINE_ID,
     )
 
+    assert registry.default_engine_for_provider(provider_id) == NATIVE_LBE_ENGINE_ID
     assert native.engine_id == NATIVE_LBE_ENGINE_ID
     assert isinstance(native.backend, ToolAwareOpenAICompatibleReasoningBackend)
     assert cline.engine_id == CLINE_ENGINE_ID
@@ -463,12 +463,20 @@ def test_provider_registry_import_and_native_build_do_not_require_cline():
         assert lmstudio.engine_id == NATIVE_LBE_ENGINE_ID
         assert "lbe_guard_inspector.cline_reasoning_provider" not in sys.modules
 
+        openrouter = registry.build(provider_id="openrouter", config=cfg)
+        assert openrouter.engine_id == NATIVE_LBE_ENGINE_ID
+        assert "lbe_guard_inspector.cline_reasoning_provider" not in sys.modules
+
         try:
-            registry.build(provider_id="openrouter", config=cfg)
+            registry.build(
+                provider_id="openrouter",
+                config=cfg,
+                engine_id="cline",
+            )
         except ReasoningEngineUnavailableError:
             pass
         else:
-            raise AssertionError("Cline-only binding must fail explicitly")
+            raise AssertionError("explicit Cline binding must fail explicitly")
 
         assert "lbe_guard_inspector.cline_reasoning_provider" not in sys.modules
         """
