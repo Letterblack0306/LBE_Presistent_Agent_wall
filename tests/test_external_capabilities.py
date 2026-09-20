@@ -64,7 +64,10 @@ def _handler(calls: list[str], name: str):
     ("kind", "tool_id", "network_behavior"),
     [
         (ExternalCapabilityKind.MCP, "mcp.read_resource", ToolNetworkBehavior.NONE),
+        (ExternalCapabilityKind.SKILL, "skill.review", ToolNetworkBehavior.NONE),
         (ExternalCapabilityKind.PLUGIN, "plugin.inspect_asset", ToolNetworkBehavior.NONE),
+        (ExternalCapabilityKind.HOOK, "hook.before_tool", ToolNetworkBehavior.NONE),
+        (ExternalCapabilityKind.CONNECTOR, "connector.issue_read", ToolNetworkBehavior.NONE),
         (ExternalCapabilityKind.SUBAGENT, "subagent.review", ToolNetworkBehavior.OPTIONAL),
         (ExternalCapabilityKind.NETWORK, "network.lookup", ToolNetworkBehavior.REQUIRED),
         (ExternalCapabilityKind.HOSTED_SERVICE, "hosted.issue_read", ToolNetworkBehavior.REQUIRED),
