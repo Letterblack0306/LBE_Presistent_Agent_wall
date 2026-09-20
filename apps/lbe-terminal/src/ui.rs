@@ -2417,7 +2417,7 @@ fn capability_marker(enabled: bool) -> &'static str {
     }
 }
 
-fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
+fn welcome_text(available_height: u16, app: &App) -> Text<'static> {
     // The large identity artwork is launch-only. The working surface stays
     // instrument-panel minimal so task state owns the vertical space.
     let mut lines = vec![Line::from(Span::styled(
