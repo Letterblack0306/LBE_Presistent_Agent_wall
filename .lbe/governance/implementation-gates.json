@@ -66,7 +66,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
     "owner": "LBE runtime + engine/provider binding owner; reasoning engine registry, provider bindings, and Cline-as-one-engine mechanics behind LBE authority",
-    "index_revision": "0AB8E68E824959E538A5637A57A95680783B1768D7924E20276FE7EB08B64745"
+    "index_revision": "F170717580305D71954E6C95BC389B26643044AB87E3F72A2E235D743CAE8A6D"
   },
   "closure": {
     "status": "OPEN",
