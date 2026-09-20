@@ -622,7 +622,7 @@ impl App {
                     "vertex" => Some(ProviderId::Vertex),
                     "mistral" => Some(ProviderId::Mistral),
                     "openai-compatible" => Some(ProviderId::OpenAiCompatible),
-                    "lm-studio" => Some(ProviderId::LmStudio),
+                    "lmstudio" | "lm-studio" => Some(ProviderId::LmStudio),
                     "ollama" => Some(ProviderId::Ollama),
                     "openrouter" => Some(ProviderId::OpenRouter),
                     "opencode" => Some(ProviderId::OpenCode),
