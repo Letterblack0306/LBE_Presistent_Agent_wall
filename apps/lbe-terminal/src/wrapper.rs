@@ -1051,6 +1051,29 @@ impl LbeWrapper for MockLbeWrapper {
                     runs: self.snapshot.child_agents.clone(),
                 });
             }
+            UserRequest::CancelChildAgent {
+                child_agent_run_id, ..
+            } => {
+                let run = self
+                    .snapshot
+                    .child_agents
+                    .iter_mut()
+                    .find(|run| run.child_agent_run_id == child_agent_run_id)
+                    .ok_or_else(|| {
+                        LbeError::new(format!(
+                            "delegated child-agent run is not known: {child_agent_run_id}"
+                        ))
+                    })?;
+                if run.status.is_terminal() {
+                    return Err(LbeError::new(format!(
+                        "delegated child-agent run is already terminal: {child_agent_run_id}"
+                    )));
+                }
+                run.status = ChildAgentStatus::Cancelled;
+                self.emit(LbeEvent::ChildAgentRunsUpdated {
+                    runs: self.snapshot.child_agents.clone(),
+                });
+            }
             UserRequest::RefreshMcpRegistry => {
                 self.emit(LbeEvent::McpRegistryUpdated {
                     schema_version: 1,
@@ -2864,6 +2887,93 @@ impl RealLbeWrapper {
         self.snapshot.child_agents = runs.clone();
         self.pending_events
             .push_back(LbeEvent::ChildAgentRunsUpdated { runs });
+        Ok(())
+    }
+
+    fn cancel_child_agent(
+        &mut self,
+        turn_id: &str,
+        child_agent_run_id: &str,
+    ) -> Result<(), LbeError> {
+        self.require_connected()?;
+        if turn_id.trim().is_empty() {
+            return Err(LbeError::new("delegated-run cancellation requires a turn_id"));
+        }
+        if child_agent_run_id.trim().is_empty() {
+            return Err(LbeError::new(
+                "delegated-run cancellation requires a child_agent_run_id",
+            ));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .wall_database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .or_else(|| self.session_id.clone())
+            .ok_or_else(|| LbeError::new("LBE session is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "child-agent",
+                "cancel",
+                "--database",
+            ])
+            .arg(database)
+            .args([
+                "--session-id",
+                &session_id,
+                "--turn-id",
+                turn_id,
+                "--child-agent-run-id",
+                child_agent_run_id,
+                "--format",
+                "json",
+            ])
+            .output()
+            .map_err(|error| {
+                LbeError::new(format!("delegated-run cancellation failed: {error}"))
+            })?;
+        let payload = parse_workspace_payload(&output.stdout, "child-agent.cancel")?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("delegated-run cancellation was rejected by LBE");
+            return Err(LbeError::new(message));
+        }
+        let updated: ChildAgentRun = serde_json::from_value(
+            payload
+                .get("child_agent")
+                .cloned()
+                .ok_or_else(|| LbeError::new("child-agent.cancel omitted child_agent"))?,
+        )
+        .map_err(|error| LbeError::new(format!("invalid delegated-run projection: {error}")))?;
+        if let Some(existing) = self
+            .snapshot
+            .child_agents
+            .iter_mut()
+            .find(|run| run.child_agent_run_id == updated.child_agent_run_id)
+        {
+            *existing = updated;
+        } else {
+            self.snapshot.child_agents.push(updated);
+        }
+        self.pending_events
+            .push_back(LbeEvent::ChildAgentRunsUpdated {
+                runs: self.snapshot.child_agents.clone(),
+            });
         Ok(())
     }
 
@@ -4919,6 +5029,10 @@ impl LbeWrapper for RealLbeWrapper {
             UserRequest::RefreshChildAgents { turn_id } => {
                 self.refresh_child_agents(&turn_id)
             }
+            UserRequest::CancelChildAgent {
+                turn_id,
+                child_agent_run_id,
+            } => self.cancel_child_agent(&turn_id, &child_agent_run_id),
             UserRequest::RefreshMcpRegistry => {
                 self.require_connected()?;
                 self.refresh_mcp_registry()
