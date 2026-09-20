@@ -24,6 +24,9 @@ pub(crate) enum LbeEvent {
     SessionClosed {
         session_id: String,
     },
+    ChildAgentRunsUpdated {
+        runs: Vec<crate::types::ChildAgentRun>,
+    },
     RuntimeAttachmentUpdated {
         connection: RuntimeConnection,
         runtime_id: Option<String>,
