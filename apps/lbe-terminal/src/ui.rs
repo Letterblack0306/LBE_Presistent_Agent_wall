@@ -1444,7 +1444,7 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                         "{} · {} · parent {} · child {}",
                         run.status.label(),
                         run.child_agent_run_id,
-                        run.parent_session_id,
+                        run.parent_session_id.as_deref().unwrap_or("none"),
                         run.child_session_id.as_deref().unwrap_or("not started")
                     ));
                     rows.push(format!(
