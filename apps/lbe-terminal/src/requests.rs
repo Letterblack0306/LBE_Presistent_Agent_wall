@@ -59,15 +59,19 @@ pub(crate) enum UserRequest {
     },
     RefreshProviderCatalog,
     ConfigureProvider {
+        profile_name: String,
         provider_id: ProviderId,
-        base_url: Option<String>,
+        model: String,
+        endpoint: String,
+        timeout_seconds: f64,
         credential_ref: Option<String>,
+        activate: bool,
     },
     ValidateProvider {
         provider_id: ProviderId,
     },
     RemoveProvider {
-        provider_id: ProviderId,
+        profile_name: String,
     },
     SelectModel {
         model: ModelRef,
