@@ -3017,6 +3017,63 @@ fn welcome_frame_prioritizes_home_controls_at_80_by_24() {
 }
 
 #[test]
+fn working_surface_uses_compact_agent_cockpit_instead_of_persistent_logo_art() {
+    let backend = TestBackend::new(100, 30);
+    let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    terminal
+        .draw(|frame| draw(frame, &app))
+        .expect("working frame should render");
+    let rendered = terminal
+        .backend()
+        .buffer()
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+    assert!(rendered.contains("AGENT COCKPIT"));
+    assert!(!rendered.contains("███████████████████████████████████████"));
+}
+
+#[test]
+fn authorization_request_renders_explicit_action_gate_with_scope_and_identity() {
+    let backend = TestBackend::new(100, 30);
+    let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
+    let mut app = App::default();
+    app.phase = Phase::AwaitingApproval {
+        approval_id: "approval-1".to_owned(),
+        proposal: "AUTHORIZATION REQUIRED · modify · patch requested".to_owned(),
+    };
+    app.last_authorization_operation_id = Some("operation-1".to_owned());
+    app.last_authorization_approval_id = Some("approval-1".to_owned());
+    app.last_authorization_capability = Some("modify".to_owned());
+    app.last_authorization_rationale = Some("workspace mutation requires approval".to_owned());
+    app.last_tool_name = Some("workspace.patch".to_owned());
+    app.last_tool_input = Some("src/auth.rs".to_owned());
+    app.last_tool_risk = Some("WRITE".to_owned());
+
+    terminal
+        .draw(|frame| draw(frame, &app))
+        .expect("authorization gate should render");
+    let rendered = terminal
+        .backend()
+        .buffer()
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+
+    assert!(rendered.contains("ACTION GATE // AUTHORIZATION REQUIRED"));
+    assert!(rendered.contains("workspace.patch"));
+    assert!(rendered.contains("src/auth.rs"));
+    assert!(rendered.contains("operation-1"));
+    assert!(rendered.contains("approval-1"));
+    assert!(rendered.contains("[Enter] allow once"));
+    assert!(rendered.contains("[Esc] deny"));
+}
+
+#[test]
 fn audit_mode_renders_a_real_read_only_projection_screen() {
     let backend = TestBackend::new(100, 30);
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
