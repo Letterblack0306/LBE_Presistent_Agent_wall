@@ -1305,7 +1305,10 @@ fn provider_config_command_projects_configured_auth_without_raw_credentials() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
 
-    app.handle_command("/provider-config openai", &mut wrapper);
+    app.handle_command(
+        "/provider-config work openai model-a https://provider.example/v1",
+        &mut wrapper,
+    );
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
         app.reduce_lbe_event(event);
     }
@@ -1328,9 +1331,13 @@ fn real_wrapper_rejects_provider_configuration_while_disconnected() {
     let error = wrapper
         .submit(
             UserRequest::ConfigureProvider {
+                profile_name: "work".to_owned(),
                 provider_id: ProviderId::OpenAi,
-                base_url: None,
-                credential_ref: Some("opaque-ref".to_owned()),
+                model: "model-a".to_owned(),
+                endpoint: "https://provider.example/v1".to_owned(),
+                timeout_seconds: 30.0,
+                credential_ref: None,
+                activate: true,
             },
             Instant::now(),
         )
@@ -1483,25 +1490,20 @@ fn real_wrapper_rejects_provider_validation_while_disconnected() {
 }
 
 #[test]
-fn provider_remove_command_removes_provider_and_models_from_projection() {
+fn provider_remove_command_removes_profile_without_deleting_provider_capability() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
 
-    app.handle_command("/provider-remove openai", &mut wrapper);
+    app.handle_command("/provider-remove work", &mut wrapper);
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
         app.reduce_lbe_event(event);
     }
 
-    assert!(!app
+    assert!(app
         .snapshot
         .providers
         .iter()
         .any(|provider| provider.provider_id == ProviderId::OpenAi));
-    assert!(!app
-        .snapshot
-        .models
-        .iter()
-        .any(|model| model.provider_id == ProviderId::OpenAi));
 }
 
 #[test]
@@ -1510,7 +1512,7 @@ fn real_wrapper_rejects_provider_removal_while_disconnected() {
     let error = wrapper
         .submit(
             UserRequest::RemoveProvider {
-                provider_id: ProviderId::OpenAi,
+                profile_name: "work".to_owned(),
             },
             Instant::now(),
         )
