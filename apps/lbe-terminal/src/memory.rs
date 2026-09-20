@@ -2,11 +2,11 @@
 // Session memory contract
 // ---------------------------------------------------------------------------
 //
-// LOCAL UI MEMORY · NON-CANONICAL · PRE-INTEGRATION
+// TUI MEMORY PROJECTION · NON-CANONICAL
 //
 // The production authority for durable session memory remains the canonical
 // LBE runtime. This module defines the TUI-facing request/event/projection
-// contract used by the mock wrapper until a real LBE memory adapter is wired.
+// contract used by both mock fixtures and the real read-only LBE memory recall adapter.
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SessionMemoryRef {
