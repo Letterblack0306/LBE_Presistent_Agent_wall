@@ -416,3 +416,145 @@ def test_product_entry_approval_bridge_executes_exact_operation_once(
     assert rejected["ok"] is False
     assert "payload" in str(rejected["message"]).lower()
     assert calls == ["op-approved-patch"]
+
+
+def test_product_tool_executes_argument_only_installed_capability(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    from types import SimpleNamespace
+
+    from lbe_guard_inspector.memory.models import SessionState
+    from lbe_guard_inspector.runtime.external_capabilities import (
+        ExternalCapabilityKind,
+        ExternalCapabilityRegistration,
+    )
+    from lbe_guard_inspector.runtime.tool_orchestration import ToolExecutionResult
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    database = tmp_path / "lbe.sqlite"
+    WorkspaceMemoryStore(database).save_session_state(
+        SessionState(
+            session_id="session-extension",
+            project_workspace_id="project-extension",
+            canonical_workspace_root=str(workspace.resolve()),
+            mode="audit",
+            permission="read_only",
+            runtime_policy="audit",
+        )
+    )
+    monkeypatch.setattr(
+        product_entry.Context,
+        "load",
+        staticmethod(
+            lambda: SimpleNamespace(
+                roots=[SimpleNamespace(path=workspace.resolve(), name="test-root")]
+            )
+        ),
+    )
+
+    calls: list[dict[str, object]] = []
+
+    def handler(request):
+        calls.append(dict(request.arguments))
+        return ToolExecutionResult(
+            output={"review": request.arguments["query"]},
+            evidence=(
+                {
+                    "ref": "skill:review:result",
+                    "verified": True,
+                    "metadata": {
+                        "operation_id": request.operation_id,
+                        "tool_id": request.tool_id,
+                    },
+                },
+            ),
+        )
+
+    registration = ExternalCapabilityRegistration(
+        adapter_id="skill.review",
+        kind=ExternalCapabilityKind.SKILL,
+        tool_id="skill.review.invoke",
+        description="Review bounded workspace evidence",
+        handler=handler,
+        required_arguments=("query",),
+    )
+    monkeypatch.setattr(
+        product_entry,
+        "_installed_external_capabilities",
+        lambda: (registration,),
+    )
+
+    code = product_entry.main(
+        [
+            "tool",
+            "skill.review.invoke",
+            "--database",
+            str(database),
+            "--session-id",
+            "session-extension",
+            "--workspace-id",
+            "project-extension",
+            "--workspace",
+            str(workspace),
+            "--arguments",
+            json.dumps({"query": "inspect current state"}),
+            "--operation-id",
+            "op-skill-review",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert code == 0
+    payload = _last_json(capsys)
+    assert payload["status"] == "EXECUTED"
+    assert payload["tool_id"] == "skill.review.invoke"
+    assert payload["output"]["review"] == "inspect current state"
+    assert calls == [{"query": "inspect current state"}]
+
+
+def test_workspace_tool_still_requires_path_after_generic_extension_support(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    database = tmp_path / "lbe.sqlite"
+    from lbe_guard_inspector.memory.models import SessionState
+
+    WorkspaceMemoryStore(database).save_session_state(
+        SessionState(
+            session_id="session-path",
+            project_workspace_id="project-path",
+            canonical_workspace_root=str(workspace.resolve()),
+            mode="audit",
+            permission="read_only",
+            runtime_policy="audit",
+        )
+    )
+
+    code = product_entry.main(
+        [
+            "tool",
+            "workspace.read",
+            "--database",
+            str(database),
+            "--session-id",
+            "session-path",
+            "--workspace-id",
+            "project-path",
+            "--workspace",
+            str(workspace),
+            "--operation-id",
+            "op-read-no-path",
+            "--format",
+            "json",
+        ]
+    )
+    assert code == 2
+    payload = _last_json(capsys)
+    assert payload["ok"] is False
+    assert "requires --path" in str(payload["message"])
