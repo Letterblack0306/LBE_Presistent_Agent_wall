@@ -695,7 +695,19 @@ impl App {
             }
             "/tools" => Some(MockPanel::Tools),
             "/processes" => Some(MockPanel::Processes),
-            "/agents" | "/tasks" => Some(MockPanel::Agents),
+            "/agents" | "/tasks" => {
+                if let Some(turn_id) = self.snapshot.turn_id.clone() {
+                    self.apply_wrapper_result(wrapper.submit(
+                        UserRequest::RefreshChildAgents { turn_id },
+                        Instant::now(),
+                    ));
+                } else {
+                    self.transcript.push(
+                        "SYSTEM  delegated-run projection requires an active turn.".to_owned(),
+                    );
+                }
+                Some(MockPanel::Agents)
+            }
             "/history" => Some(MockPanel::History),
             "/session" => Some(MockPanel::Session),
             "/sessions" => {
@@ -1044,6 +1056,9 @@ impl App {
                 self.session_picker_index = self
                     .session_picker_index
                     .min(self.snapshot.sessions.len().saturating_sub(1));
+            }
+            LbeEvent::ChildAgentRunsUpdated { runs } => {
+                self.snapshot.child_agents = runs;
             }
             LbeEvent::SessionClosed { session_id } => {
                 self.transcript
