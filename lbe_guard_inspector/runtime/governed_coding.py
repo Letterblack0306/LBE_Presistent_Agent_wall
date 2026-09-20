@@ -16,7 +16,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Callable, Mapping
+from typing import Callable, Iterable, Mapping
+from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 from agent import Context, GovernanceError, matches_any, path_allowed
@@ -678,24 +679,37 @@ class _ReceiptTrackingOrchestrator(GovernedToolOrchestrator):
         return receipt
 
 
-class GovernedProviderReasoningController:
-    """Bounded provider tool loop composed over the existing LBE tool owner."""
+class _GovernedCodingControllerBase:
+    """Shared LBE-owned coding authority used by replaceable reasoning engines."""
 
-    def __init__(self, *, runtime: SessionMemoryRuntimeBridge, provider_id: str, provider_config: ProviderConfig) -> None:
+    def __init__(
+        self,
+        *,
+        runtime: SessionMemoryRuntimeBridge,
+        provider_id: str,
+        provider_config: ProviderConfig,
+        engine_id: str,
+        external_capabilities: Iterable[object] = (),
+    ) -> None:
         if not isinstance(runtime, SessionMemoryRuntimeBridge):
             raise TypeError("runtime must be SessionMemoryRuntimeBridge")
         if not isinstance(provider_config, ProviderConfig):
             raise TypeError("provider_config must be ProviderConfig")
         clean_provider = str(provider_id).strip()
+        clean_engine = str(engine_id).strip()
         if not clean_provider:
             raise ValueError("provider_id must be non-empty")
+        if not clean_engine:
+            raise ValueError("engine_id must be non-empty")
         if runtime.session_state.provider_id != clean_provider:
             raise ValueError("provider identity does not match persisted session")
         if runtime.session_state.provider_model != provider_config.model.strip():
             raise ValueError("provider model does not match persisted session")
-        if runtime.session_state.reasoning_engine not in {None, "native-lbe"}:
+        persisted_engine = runtime.session_state.reasoning_engine or "native-lbe"
+        if persisted_engine != clean_engine:
             raise ValueError(
-                "governed coding controller requires the native-lbe reasoning engine"
+                f"reasoning engine does not match persisted session: "
+                f"{clean_engine} != {persisted_engine}"
             )
 
         state = runtime.session_state
@@ -711,6 +725,7 @@ class GovernedProviderReasoningController:
         self._runtime = runtime
         self._provider_id = clean_provider
         self._provider_config = provider_config
+        self._engine_id = clean_engine
         self._context = ToolExecutionContext(
             mode_decision=decision,
             workspace_id=runtime.project_workspace_id,
@@ -718,17 +733,147 @@ class GovernedProviderReasoningController:
             configured_root_id=runtime.project_workspace_id,
         )
         self._governed_mutation_paths: set[str] = set()
+
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
-        registry.register(workspace_create_candidate_text_spec(), build_workspace_create_candidate_text_handler())
+        registry.register(
+            workspace_create_candidate_text_spec(),
+            build_workspace_create_candidate_text_handler(),
+        )
         registry.register(workspace_write_text_spec(), build_workspace_write_text_handler())
         registry.register(process_run_registered_spec(), build_process_run_registered_handler())
         registry.register(git_status_spec(), build_git_status_handler())
-        registry.register(git_stage_paths_spec(), build_git_stage_paths_handler(lambda: frozenset(self._governed_mutation_paths)))
-        registry.register(git_commit_staged_spec(), build_git_commit_staged_handler(lambda: frozenset(self._governed_mutation_paths)))
+        registry.register(
+            git_stage_paths_spec(),
+            build_git_stage_paths_handler(lambda: frozenset(self._governed_mutation_paths)),
+        )
+        registry.register(
+            git_commit_staged_spec(),
+            build_git_commit_staged_handler(lambda: frozenset(self._governed_mutation_paths)),
+        )
         self._registry = registry
-        self._guidance: AgentGuidance = build_agent_guidance(mode_decision=decision, workspace_root=runtime.workspace_root, tools=registry.specs())
+        self._external_capabilities: tuple[object, ...] = ()
+        if external_capabilities:
+            from .external_capabilities import register_external_capabilities
+
+            self._external_capabilities = tuple(
+                register_external_capabilities(self._registry, external_capabilities)
+            )
+        self._rebuild_guidance()
         self._orchestrator = _ReceiptTrackingOrchestrator(registry=registry)
+
+    def _rebuild_guidance(self) -> None:
+        self._guidance = build_agent_guidance(
+            mode_decision=self._context.mode_decision,
+            workspace_root=self._runtime.workspace_root,
+            tools=self._registry.specs(),
+        )
+
+    @property
+    def engine_id(self) -> str:
+        return self._engine_id
+
+    @property
+    def external_capabilities(self) -> tuple[object, ...]:
+        return self._external_capabilities
+
+    def _record_mutation_path(self, receipt: ToolReceipt) -> None:
+        if (
+            receipt.status is ToolReceiptStatus.EXECUTED
+            and (registered := self._registry.get(receipt.tool_id)) is not None
+            and registered.spec.access_class is ToolAccessClass.WRITE
+        ):
+            path = str((receipt.output or {}).get("path", "")).strip()
+            if path:
+                self._governed_mutation_paths.add(path.replace("\\", "/"))
+
+    def _deterministic_result(
+        self,
+        *,
+        turn_id: str,
+        provider_output: str,
+        extra: Mapping[str, object] | None = None,
+    ) -> dict[str, object]:
+        receipts = self._orchestrator.observed_receipts
+        payload: dict[str, object] = {
+            "runtime": "governed_provider",
+            "turn_id": turn_id,
+            "provider_id": self._provider_id,
+            "provider_model": self._provider_config.model.strip(),
+            "reasoning_engine": self._engine_id,
+            "governed_tool_receipts": [_receipt_payload(receipt) for receipt in receipts],
+            "provider_output": provider_output,
+            "agent_guidance": self._guidance.audit_payload(),
+            "governed_mutation_paths": sorted(self._governed_mutation_paths),
+            "external_capabilities": [
+                getattr(item, "audit_payload", lambda: {})()
+                for item in self._external_capabilities
+            ],
+            "direct_native_mutation_tools_exposed": False,
+            "lbe_completion_truth": False,
+        }
+        if extra:
+            payload.update(dict(extra))
+        return payload
+
+    def _mutated(self) -> bool:
+        return any(
+            receipt.status is ToolReceiptStatus.EXECUTED
+            and (registered := self._registry.get(receipt.tool_id)) is not None
+            and registered.spec.access_class is ToolAccessClass.WRITE
+            for receipt in self._orchestrator.observed_receipts
+        )
+
+    def _response(
+        self,
+        *,
+        task_id: str,
+        deterministic_result: Mapping[str, object],
+        outcome: str,
+        error: OrchestrationError | None,
+    ) -> LBEResponse:
+        return LBEResponse(
+            task_id=task_id,
+            workspace_identity={
+                "workspace_id": self._runtime.project_workspace_id,
+                "configured_root_id": self._runtime.project_workspace_id,
+                "target_project_root": str(self._runtime.workspace_root),
+            },
+            workspace_profile={
+                "mode": "coding",
+                "provider_id": self._provider_id,
+                "reasoning_engine": self._engine_id,
+                "governed_tools": [spec.tool_id for spec in self._registry.specs()],
+                "native_mutation_tools": [],
+            },
+            plan=None,
+            deterministic_result=dict(deterministic_result),
+            explanation=None,
+            outcome=outcome,
+            proposal=None,
+            error=error,
+            read_only=not self._mutated(),
+        )
+
+
+class GovernedProviderReasoningController(_GovernedCodingControllerBase):
+    """Native-LBE provider tool loop over the shared LBE coding authority."""
+
+    def __init__(
+        self,
+        *,
+        runtime: SessionMemoryRuntimeBridge,
+        provider_id: str,
+        provider_config: ProviderConfig,
+        external_capabilities: Iterable[object] = (),
+    ) -> None:
+        super().__init__(
+            runtime=runtime,
+            provider_id=provider_id,
+            provider_config=provider_config,
+            engine_id="native-lbe",
+            external_capabilities=external_capabilities,
+        )
         self._adapter = OpenAICompatibleEventAdapter(config=provider_config)
 
     def run(self, request: LBERequest) -> LBEResponse:
@@ -749,93 +894,284 @@ class GovernedProviderReasoningController:
                 events = self._adapter.complete(
                     messages=tuple(messages),
                     provider_id=self._provider_id,
-                    lbe_call_id_for_provider_tool_call=lambda provider_call_id: call_ids.setdefault(provider_call_id, f"lbe-{turn_id}-{len(call_ids) + 1}"),
-                    tools=tuple(_provider_tool_definition(index, spec) for index, spec in enumerate(self._registry.specs())),
+                    lbe_call_id_for_provider_tool_call=lambda provider_call_id: call_ids.setdefault(
+                        provider_call_id,
+                        f"lbe-{turn_id}-{len(call_ids) + 1}",
+                    ),
+                    tools=tuple(
+                        _provider_tool_definition(index, spec)
+                        for index, spec in enumerate(self._registry.specs())
+                    ),
                 )
                 terminal_error = _provider_event_error(events)
                 if terminal_error is not None:
                     break
                 provider_output = _message_text(events) or provider_output
-                calls = tuple(event for event in events if event.event_type is ModelEventType.TOOL_CALL_COMPLETED)
+                calls = tuple(
+                    event
+                    for event in events
+                    if event.event_type is ModelEventType.TOOL_CALL_COMPLETED
+                )
                 if not calls:
-                    if any(event.event_type is ModelEventType.TURN_COMPLETED for event in events):
+                    if any(
+                        event.event_type is ModelEventType.TURN_COMPLETED
+                        for event in events
+                    ):
                         break
-                    terminal_error = OrchestrationError(code="PROVIDER_TURN_INCOMPLETE", message="provider returned neither a completed turn nor an executable tool call")
+                    terminal_error = OrchestrationError(
+                        code="PROVIDER_TURN_INCOMPLETE",
+                        message=(
+                            "provider returned neither a completed turn nor an "
+                            "executable tool call"
+                        ),
+                    )
                     break
                 messages.append(_assistant_tool_message(provider_output, calls))
                 for event in calls:
                     assert event.provider_tool_call_id is not None
                     assert event.tool_name is not None
-                    tool_id = _tool_id_for_provider_name(event.tool_name, self._registry.specs())
+                    tool_id = _tool_id_for_provider_name(
+                        event.tool_name, self._registry.specs()
+                    )
                     receipt = self._orchestrator.invoke(ToolRequest(
                         operation_id=f"{turn_id}:{event.lbe_call_id}",
                         tool_id=tool_id,
                         arguments=dict(event.tool_arguments or {}),
                         context=self._context,
                     ))
-                    if receipt.status is ToolReceiptStatus.EXECUTED and receipt.tool_id in {"workspace.create_candidate_text", "workspace.write_text"}:
-                        path = str((receipt.output or {}).get("path", "")).strip()
-                        if path:
-                            self._governed_mutation_paths.add(path.replace("\\", "/"))
+                    self._record_mutation_path(receipt)
                     messages.append({
                         "role": "tool",
                         "tool_call_id": event.provider_tool_call_id,
-                        "content": json.dumps(_receipt_payload(receipt), ensure_ascii=False, sort_keys=True),
+                        "content": json.dumps(
+                            _receipt_payload(receipt),
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        ),
                     })
             else:
-                terminal_error = OrchestrationError(code="PROVIDER_TOOL_ITERATION_LIMIT", message="provider exceeded the bounded eight-iteration tool loop")
+                terminal_error = OrchestrationError(
+                    code="PROVIDER_TOOL_ITERATION_LIMIT",
+                    message="provider exceeded the bounded eight-iteration tool loop",
+                )
         except Exception as exc:
-            terminal_error = OrchestrationError(code="GOVERNED_PROVIDER_RUNTIME_ERROR", message=f"{type(exc).__name__}: {exc}")
+            terminal_error = OrchestrationError(
+                code="GOVERNED_PROVIDER_RUNTIME_ERROR",
+                message=f"{type(exc).__name__}: {exc}",
+            )
 
-        receipts = self._orchestrator.observed_receipts
-        receipt_payload = [_receipt_payload(receipt) for receipt in receipts]
-        mutated = any(
-            receipt.status is ToolReceiptStatus.EXECUTED
-            and (registered := self._registry.get(receipt.tool_id)) is not None
-            and registered.spec.access_class is ToolAccessClass.WRITE
-            for receipt in receipts
+        deterministic_result = self._deterministic_result(
+            turn_id=turn_id,
+            provider_output=provider_output,
         )
-        deterministic_result = {
-            "runtime": "governed_provider",
-            "turn_id": turn_id,
-            "provider_id": self._provider_id,
-            "provider_model": self._provider_config.model.strip(),
-            "reasoning_engine": "native-lbe",
-            "governed_tool_receipts": receipt_payload,
-            "provider_output": provider_output,
-            "agent_guidance": self._guidance.audit_payload(),
-            "governed_mutation_paths": sorted(self._governed_mutation_paths),
-            "direct_native_mutation_tools_exposed": False,
-            "lbe_completion_truth": False,
-        }
-
         if terminal_error is not None:
-            return self._response(task_id=task_id, deterministic_result=deterministic_result, outcome="ORCHESTRATION_ERROR", read_only=not mutated, error=terminal_error)
-        return self._response(task_id=task_id, deterministic_result=deterministic_result, outcome="COMPLETED", read_only=not mutated, error=None)
-
-    def _response(self, *, task_id: str, deterministic_result: Mapping[str, object], outcome: str, read_only: bool, error: OrchestrationError | None) -> LBEResponse:
-        return LBEResponse(
+            return self._response(
+                task_id=task_id,
+                deterministic_result=deterministic_result,
+                outcome="ORCHESTRATION_ERROR",
+                error=terminal_error,
+            )
+        return self._response(
             task_id=task_id,
-            workspace_identity={
-                "workspace_id": self._runtime.project_workspace_id,
-                "configured_root_id": self._runtime.project_workspace_id,
-                "target_project_root": str(self._runtime.workspace_root),
-            },
-            workspace_profile={
-                "mode": "coding",
-                "provider_id": self._provider_id,
-                "reasoning_engine": "native-lbe",
-                "governed_tools": [spec.tool_id for spec in self._registry.specs()],
-                "native_mutation_tools": [],
-            },
-            plan=None,
-            deterministic_result=dict(deterministic_result),
-            explanation=None,
-            outcome=outcome,
-            proposal=None,
-            error=error,
-            read_only=read_only,
+            deterministic_result=deterministic_result,
+            outcome="COMPLETED",
+            error=None,
         )
+
+
+class GovernedClineCodingController(_GovernedCodingControllerBase):
+    """Cline AgentRuntime transport with the same LBE-owned tool authority."""
+
+    def __init__(
+        self,
+        *,
+        runtime: SessionMemoryRuntimeBridge,
+        provider_id: str,
+        provider_config: ProviderConfig,
+        external_capabilities: Iterable[object] = (),
+        node_executable: str = "node",
+    ) -> None:
+        super().__init__(
+            runtime=runtime,
+            provider_id=provider_id,
+            provider_config=provider_config,
+            engine_id="cline",
+            external_capabilities=external_capabilities,
+        )
+        self._node_executable = node_executable
+
+    def run(self, request: LBERequest) -> LBEResponse:
+        task_id = str(request.task_id or "").strip()
+        if not task_id:
+            raise ValueError("governed coding requires a task_id")
+
+        # Cline remains feature-scoped: importing the adapter/worker occurs only
+        # after an explicitly persisted Cline engine selection.
+        from .cline_stdio_bridge import GovernedClineWorker
+        from .cline_stdio_protocol import BridgeFrame, PROTOCOL_VERSION
+
+        turn_id = f"turn-{uuid4().hex}"
+        session_id = self._runtime.session_id
+        provider_output = ""
+        provider_events: list[dict[str, object]] = []
+        terminal_error: OrchestrationError | None = None
+        worker = GovernedClineWorker(node_executable=self._node_executable)
+
+        provider: dict[str, object] = {
+            "provider_id": self._provider_id,
+            "model_id": self._provider_config.model.strip(),
+            "base_url": _cline_provider_base_url(self._provider_config.endpoint),
+        }
+        if self._provider_config.api_key:
+            provider["api_key"] = self._provider_config.api_key
+
+        start = BridgeFrame(
+            protocol_version=PROTOCOL_VERSION,
+            message_id=f"py-start-{uuid4().hex}",
+            message_type="runtime.start",
+            session_id=session_id,
+            turn_id=turn_id,
+            payload={
+                "provider": provider,
+                "allowed_tools": [
+                    _cline_allowed_tool_definition(spec)
+                    for spec in self._registry.specs()
+                ],
+                "system_prompt": self._guidance.prompt,
+                "max_iterations": 8,
+            },
+        )
+
+        def on_provider_event(frame: object) -> None:
+            payload = dict(getattr(frame, "payload", {}) or {})
+            provider_events.append(payload)
+
+        def on_tool_receipt(_frame: object, receipt: ToolReceipt) -> None:
+            self._record_mutation_path(receipt)
+
+        try:
+            ready = worker.start(start)
+            if ready.payload.get("provider_configured") is not True:
+                raise RuntimeError("Cline AgentRuntime did not configure the provider")
+            result = worker.execute_turn(
+                BridgeFrame(
+                    protocol_version=PROTOCOL_VERSION,
+                    message_id=f"py-turn-{uuid4().hex}",
+                    message_type="turn.execute",
+                    session_id=session_id,
+                    turn_id=turn_id,
+                    payload={"text": request.problem.strip()},
+                ),
+                orchestrator=self._orchestrator,
+                context=self._context,
+                timeout_seconds=max(
+                    60.0, float(self._provider_config.timeout_seconds) + 5.0
+                ),
+                on_provider_event=on_provider_event,
+                on_tool_receipt=on_tool_receipt,
+            )
+            provider_output = str(result.payload.get("output_text") or "")
+            if result.message_type != "turn.completed":
+                terminal_error = OrchestrationError(
+                    code=str(result.payload.get("code") or "CLINE_AGENTRUNTIME_FAILED"),
+                    message=str(
+                        result.payload.get("message")
+                        or "Cline AgentRuntime failed the governed coding turn"
+                    ),
+                )
+        except Exception as exc:
+            terminal_error = OrchestrationError(
+                code="GOVERNED_CLINE_RUNTIME_ERROR",
+                message=f"{type(exc).__name__}: {exc}",
+            )
+        finally:
+            if worker.is_running:
+                try:
+                    worker.shutdown(
+                        BridgeFrame(
+                            protocol_version=PROTOCOL_VERSION,
+                            message_id=f"py-shutdown-{uuid4().hex}",
+                            message_type="runtime.shutdown",
+                            session_id=session_id,
+                            turn_id=turn_id,
+                            payload={},
+                        )
+                    )
+                except Exception:
+                    worker.terminate()
+
+        deterministic_result = self._deterministic_result(
+            turn_id=turn_id,
+            provider_output=provider_output,
+            extra={"provider_events": provider_events},
+        )
+        if terminal_error is not None:
+            return self._response(
+                task_id=task_id,
+                deterministic_result=deterministic_result,
+                outcome="ORCHESTRATION_ERROR",
+                error=terminal_error,
+            )
+        return self._response(
+            task_id=task_id,
+            deterministic_result=deterministic_result,
+            outcome="COMPLETED",
+            error=None,
+        )
+
+
+def build_governed_coding_controller(
+    *,
+    runtime: SessionMemoryRuntimeBridge,
+    provider_id: str,
+    provider_config: ProviderConfig,
+    engine_id: str | None = None,
+    external_capabilities: Iterable[object] = (),
+) -> _GovernedCodingControllerBase:
+    """Compose the persisted engine selection over one shared LBE tool owner."""
+    selected = str(
+        engine_id or runtime.session_state.reasoning_engine or "native-lbe"
+    ).strip()
+    if selected == "native-lbe":
+        return GovernedProviderReasoningController(
+            runtime=runtime,
+            provider_id=provider_id,
+            provider_config=provider_config,
+            external_capabilities=external_capabilities,
+        )
+    if selected == "cline":
+        return GovernedClineCodingController(
+            runtime=runtime,
+            provider_id=provider_id,
+            provider_config=provider_config,
+            external_capabilities=external_capabilities,
+        )
+    raise ValueError(f"unsupported governed coding reasoning engine: {selected}")
+
+
+def _cline_provider_base_url(endpoint: str) -> str:
+    parsed = urlsplit(str(endpoint).strip())
+    suffix = "/chat/completions"
+    path = parsed.path[:-len(suffix)] if parsed.path.endswith(suffix) else parsed.path
+    return urlunsplit((parsed.scheme, parsed.netloc, path.rstrip("/"), parsed.query, ""))
+
+
+def _cline_allowed_tool_definition(spec: ToolSpec) -> dict[str, object]:
+    properties = {
+        name: {"type": "string"}
+        for name in (*spec.required_arguments, *spec.optional_arguments)
+    }
+    return {
+        "tool_id": spec.tool_id,
+        "description": f"LBE governed tool {spec.tool_id}",
+        "input_schema": {
+            "type": "object",
+            "properties": properties,
+            "required": list(spec.required_arguments),
+            "additionalProperties": False,
+        },
+        "timeout_ms": max(1, int(float(spec.timeout_seconds) * 1000)),
+    }
 
 
 def _provider_tool_definition(index: int, spec: ToolSpec) -> dict[str, object]:
