@@ -3312,6 +3312,27 @@ fn command_palette_runs_existing_lbe_commands() {
 }
 
 #[test]
+fn delegated_child_cancel_command_routes_existing_lbe_lifecycle_owner() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.snapshot.turn_id = Some("turn-child-control".to_owned());
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_command("/agent-cancel child-run-1", &mut wrapper);
+
+    assert_eq!(
+        wrapper.requests,
+        vec![UserRequest::CancelChildAgent {
+            turn_id: "turn-child-control".to_owned(),
+            child_agent_run_id: "child-run-1".to_owned(),
+        }]
+    );
+    assert!(command_palette_commands()
+        .iter()
+        .any(|(command, _)| *command == "/agent-cancel"));
+}
+
+#[test]
 fn supplied_logo_keeps_its_fixed_geometry() {
     assert_eq!(LOGO.len(), 17);
     assert!(LOGO.iter().all(|line| line.chars().count() == 39));
