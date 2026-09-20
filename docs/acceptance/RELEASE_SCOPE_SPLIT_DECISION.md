@@ -164,6 +164,13 @@ tree or branch; `main` HEAD is the only acceptable source of truth.
    (`config.json` already records this). `.lbe/governance/implementation-gates.json:554`
    `canonical_client_workspace` updated to `C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal`
    (previously flagged; approved by this directive).
+
+   **Acceptance-test content rule:** acceptance tests (and any derived assertion) are written only
+   against **git-controlled content** — `git show`/`git cat-file`/`git log -S` on the canonical tree.
+   A **backup clone or working-copy copy is treated as phantom, not lineage** (same root-cause class
+   as the retired `C:\LBE-TUI-Lab` / `58104bae` sole-source error: a copied directory is not git
+   truth). Tests may never be transcribed from an uncommitted working-tree snapshot; assertions must
+   trace to a `main` HEAD record.
 2. **No commit other than `main` HEAD is authoritative.** All other branches (local and remote on
    `origin`, `jannath`, `release-fork`) are deleted; only each remote's `main` remains. Their
    history is preserved only as deleted-refs record in this document, never as truth.

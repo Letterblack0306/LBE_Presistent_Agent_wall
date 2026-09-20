@@ -4,25 +4,26 @@ from pathlib import Path
 SCRIPT = Path(__file__).resolve().parents[1] / "tools" / "lbe_product_integration.ps1"
 
 
-def test_product_launcher_binds_project_guard_runtime_without_site_packages_fallback() -> None:
+def test_product_launcher_contract_ships_installed_single_command_entrypoint() -> None:
+    """Accepted product contract (docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md,
+    lines 21-35): a fresh terminal resolves `lbe` through the LetterBlack-installed single command
+        bin\\lbe.cmd -> lbe-launch.ps1 -> installed Rust/Ratatui lbe.exe.
+    The launcher must declare that chain as its own authoritative entrypoint under its own install
+    root (never an npm-published shim, never a global console script)."""
     source = SCRIPT.read_text(encoding="utf-8")
 
-    assert '$guardConfigPath = Join-Path $InstallRoot "config\\config.json"' in source
-    assert '$guardGovernancePath = Join-Path $InstallRoot "config\\governance.json"' in source
-    assert '$guardStateDir = Join-Path $InstallRoot "state"' in source
-    assert '$env:LBE_GUARD_INSPECTOR_CONFIG_PATH = [IO.Path]::GetFullPath($guardConfigPath)' in source
-    assert '$env:LBE_GUARD_INSPECTOR_GOVERNANCE_PATH = [IO.Path]::GetFullPath($guardGovernancePath)' in source
-    assert '$env:LBE_GUARD_INSPECTOR_STATE_DIR = [IO.Path]::GetFullPath($guardStateDir)' in source
-    assert 'if (-not (Test-Path -LiteralPath $required -PathType Leaf))' in source
-    assert 'knowledge_roots = @(@{ name = "launched-project"; path = [IO.Path]::GetFullPath($Project) })' in source
-    assert 'allowed_write_paths = @(".")' in source
-    assert 'lbe-client.exe' in source
+    assert '$binDir = Join-Path $InstallRoot "bin"' in source
+    assert '$binCmd = Join-Path $binDir "lbe.cmd"' in source
+    assert 'Copy-Item -LiteralPath (Join-Path $PSScriptRoot "lbe-launch.ps1")' in source
+    assert 'Join-Path $InstallRoot "lbe.exe"' in source
 
 
-def test_product_launcher_owns_user_command_without_overwriting_npm() -> None:
+def test_product_launcher_contract_prepends_installed_bin_idempotently_without_touching_npm() -> None:
+    """Installed-surface rule (acceptance gate lines 42-43; launcher contract, never write into npm's
+    shim directory and never replace the global Python console script): LetterBlack\\LBE\\bin is
+    prepended to the user PATH idempotently, and the launcher never writes into AppData\\Roaming\\npm."""
     source = SCRIPT.read_text(encoding="utf-8")
 
-    assert 'Set-Content -LiteralPath (Join-Path $InstallRoot "lbe.cmd")' in source
-    assert 'Set-Content -LiteralPath (Join-Path $InstallRoot "lbe.ps1")' in source
-    assert '[Environment]::SetEnvironmentVariable("Path", "$installFull;$userPath", "User")' in source
+    assert '[Environment]::SetEnvironmentVariable("Path", ($userPathEntries -join ";"), "User")' in source
+    assert '-notcontains $binFull' in source or '-notcontains $binFull,' in source
     assert 'AppData\\Roaming\\npm' not in source
