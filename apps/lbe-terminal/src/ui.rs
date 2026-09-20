@@ -33,6 +33,11 @@ pub(crate) fn ascii_mode_enabled() -> bool {
     std::env::var_os("LBE_ASCII").is_some_and(|value| !value.is_empty())
 }
 
+pub(crate) fn no_animation_enabled() -> bool {
+    std::env::var_os("LBE_NO_ANIMATION").is_some_and(|value| !value.is_empty())
+        || std::env::var_os("NO_ANIMATION").is_some_and(|value| !value.is_empty())
+}
+
 pub(crate) fn display_token(
     unicode: &'static str,
     ascii: &'static str,
@@ -705,7 +710,7 @@ fn patch_review_text(
             .map(|(index, line)| {
                 Line::from(Span::styled(
                     format!("+ {:>4}  {line}", index + 1),
-                    Style::default().fg(PALETTE.green),
+                    Style::default().fg(PALETTE.info),
                 ))
             }),
     );
@@ -768,8 +773,10 @@ pub(crate) fn draw_composer(frame: &mut Frame, area: Rect, app: &App, elapsed: D
     };
     let composer_line = match &app.phase {
         Phase::AwaitingApproval { proposal, .. } => Line::from(Span::styled(
-            format!("> {proposal} · Enter approve · Esc reject"),
-            Style::default().fg(PALETTE.amber),
+            format!("AUTH REQUEST · {proposal} · [Enter] allow once · [Esc] deny"),
+            Style::default()
+                .fg(PALETTE.amber)
+                .add_modifier(Modifier::BOLD),
         )),
         Phase::Running => Line::from(Span::styled(
             format!("> Execution in progress {cursor}"),
@@ -781,7 +788,7 @@ pub(crate) fn draw_composer(frame: &mut Frame, area: Rect, app: &App, elapsed: D
         )),
         _ if app.input.is_empty() => Line::from(vec![
             Span::styled("> ", Style::default().fg(PALETTE.ink)),
-            Span::styled(cursor, Style::default().fg(PALETTE.red)),
+            Span::styled(cursor, Style::default().fg(PALETTE.agent)),
             Span::styled(
                 format!(" {}", mode_placeholder(app.agent_mode)),
                 Style::default().fg(PALETTE.muted),
@@ -827,7 +834,7 @@ pub(crate) fn draw_composer(frame: &mut Frame, area: Rect, app: &App, elapsed: D
 pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
     if area.width < 72 || area.height < 3 {
         let hint = if matches!(app.phase, Phase::AwaitingApproval { .. }) {
-            "Enter approve · Esc reject · ? help"
+            "[Enter] allow once · [Esc] deny · ? details"
         } else if matches!(app.phase, Phase::Running) {
             "Ctrl+C abort · ? help"
         } else if app.show_shortcuts {
@@ -867,19 +874,26 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
     } else {
         app.snapshot.context_used.saturating_mul(100) / app.snapshot.context_capacity
     };
+    let engine = app
+        .snapshot
+        .session_context
+        .as_ref()
+        .and_then(|context| context.data.session.reasoning_engine.as_deref())
+        .unwrap_or("engine?");
     let line_one_text = format!(
-        "{} · {} · context {}%",
+        "{} · {} · {} · context {}%",
         match app.agent_mode {
-            AgentMode::Build => "Runtime",
-            AgentMode::Plan => "Plan",
-            AgentMode::Audit => "Audit",
+            AgentMode::Build => "BUILD",
+            AgentMode::Plan => "PLAN",
+            AgentMode::Audit => "AUDIT",
         },
+        engine,
         provider_model,
         context_percent
     );
     frame.render_widget(
         Paragraph::new(truncate_text(&line_one_text, line_one[0].width as usize))
-            .style(Style::default().fg(PALETTE.faint).bg(PALETTE.bg)),
+            .style(Style::default().fg(PALETTE.agent).bg(PALETTE.bg)),
         line_one[0],
     );
     frame.render_widget(
@@ -909,9 +923,14 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
             "LBE boundary unavailable"
         }
     );
+    let branch_style = if app.snapshot.connection == RuntimeConnection::Connected {
+        Style::default().fg(PALETTE.info).bg(PALETTE.bg)
+    } else {
+        Style::default().fg(PALETTE.red).bg(PALETTE.bg)
+    };
     frame.render_widget(
         Paragraph::new(truncate_text(&line_two, rows[1].width as usize))
-            .style(Style::default().fg(PALETTE.red).bg(PALETTE.bg)),
+            .style(branch_style),
         rows[1],
     );
 
@@ -2398,14 +2417,15 @@ fn capability_marker(enabled: bool) -> &'static str {
     }
 }
 
-fn welcome_text(available_height: u16, app: &App) -> Text<'static> {
-    let mut lines = if available_height >= 22 {
-        logo_lines(Duration::from_secs(2))
-    } else if available_height >= 14 {
-        minimal_logo_lines()
-    } else {
-        Vec::new()
-    };
+fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
+    // The large identity artwork is launch-only. The working surface stays
+    // instrument-panel minimal so task state owns the vertical space.
+    let mut lines = vec![Line::from(Span::styled(
+        "AGENT COCKPIT",
+        Style::default()
+            .fg(PALETTE.agent)
+            .add_modifier(Modifier::BOLD),
+    )), Line::default()];
     lines.push(Line::from(Span::styled(
         "What can I do for you?",
         Style::default()
@@ -2555,6 +2575,9 @@ fn logo_lines(elapsed: Duration) -> Vec<Line<'static>> {
 }
 
 pub(crate) fn input_cursor_visible(elapsed: Duration) -> bool {
+    if no_animation_enabled() {
+        return true;
+    }
     (elapsed.as_millis() / TYPE_CURSOR_HALF_PERIOD.as_millis()) % 2 == 0
 }
 
@@ -2573,6 +2596,9 @@ fn minimal_logo_lines() -> Vec<Line<'static>> {
 }
 
 pub(crate) fn logo_cell_visible(row: usize, column: usize, elapsed: Duration) -> bool {
+    if no_animation_enabled() {
+        return true;
+    }
     let outer =
         row == 0 || row == 16 || ((1..=15).contains(&row) && matches!(column, 0 | 1 | 39 | 40));
     let inner_frame = (matches!(row, 2 | 14) && (5..=33).contains(&column))
@@ -2589,6 +2615,9 @@ pub(crate) fn logo_cell_visible(row: usize, column: usize, elapsed: Duration) ->
 }
 
 pub(crate) fn center_bar_visible(elapsed: Duration) -> bool {
+    if no_animation_enabled() {
+        return true;
+    }
     if elapsed < BAR_REVEAL {
         return false;
     }
