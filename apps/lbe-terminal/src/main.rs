@@ -397,7 +397,70 @@ fn headless_prompt_value(prompt: Option<String>) -> io::Result<String> {
     Ok(prompt)
 }
 
-fn emit_headless_event(event: &LbeEvent) -> io::Result<()> {
+fn emit_headless_event(event: &LbeEvent, plain: bool) -> io::Result<()> {
+    if plain {
+        let line = match event {
+            LbeEvent::WrapperError { message } => format!("ERR  {message}"),
+            LbeEvent::AssistantTextDelta { text } => format!("AGENT  {text}"),
+            LbeEvent::ConversationalTurnMessage { text, .. } => format!("AGENT  {text}"),
+            LbeEvent::ConversationalToolReceipt {
+                tool_id,
+                status,
+                receipt_id,
+                ..
+            } => format!(
+                "TOOL  {tool_id} · {status} · receipt {}",
+                receipt_id.as_deref().unwrap_or("none")
+            ),
+            LbeEvent::ConversationalTurnCompleted { turn_id, .. } => {
+                format!("TURN  {turn_id} · completed")
+            }
+            LbeEvent::AuthorizationRequired {
+                capability,
+                approval_id,
+                rationale,
+                ..
+            } => format!(
+                "AUTH  {capability} · approval {approval_id} · {rationale}"
+            ),
+            LbeEvent::AuthorizationResolved {
+                verdict,
+                approval_id,
+                rationale,
+                ..
+            } => format!(
+                "AUTH  {verdict} · approval {approval_id} · {rationale}"
+            ),
+            LbeEvent::ExecutionStarted { execution_id } => {
+                format!("RUN   {execution_id} · started")
+            }
+            LbeEvent::ExecutionCompleted {
+                execution_id,
+                receipt_id,
+            } => format!(
+                "OK    {execution_id} · completed · receipt {}",
+                receipt_id.as_deref().unwrap_or("none")
+            ),
+            LbeEvent::LbeCompletionAccepted {
+                execution_id,
+                receipt_id,
+            } => format!(
+                "DONE  {execution_id} · accepted · receipt {}",
+                receipt_id.as_deref().unwrap_or("none")
+            ),
+            LbeEvent::SnapshotUpdated { snapshot } => format!(
+                "STATE {:?} · session {} · workspace {} · {:?}",
+                snapshot.connection,
+                snapshot.session_id.as_deref().unwrap_or("none"),
+                snapshot.workspace_id.as_deref().unwrap_or("none"),
+                snapshot.session_state
+            ),
+            _ => format!("EVENT {event:?}"),
+        };
+        println!("{line}");
+        return Ok(());
+    }
+
     let value = match event {
         LbeEvent::WrapperError { message } => serde_json::json!({
             "type": "error",
@@ -512,7 +575,17 @@ fn emit_headless_event(event: &LbeEvent) -> io::Result<()> {
     Ok(())
 }
 
-fn emit_headless_result(app: &App, status: &str) -> io::Result<()> {
+fn emit_headless_result(app: &App, status: &str, plain: bool) -> io::Result<()> {
+    if plain {
+        println!(
+            "RESULT {status} · phase {:?} · session {} · turn {}",
+            app.phase,
+            app.snapshot.session_id.as_deref().unwrap_or("none"),
+            app.snapshot.turn_id.as_deref().unwrap_or("none")
+        );
+        return Ok(());
+    }
+
     let value = serde_json::json!({
         "type": "result",
         "status": status,
