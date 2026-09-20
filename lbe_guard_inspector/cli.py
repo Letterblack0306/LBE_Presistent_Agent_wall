@@ -220,6 +220,17 @@ def build_parser() -> argparse.ArgumentParser:
     permissions_show.add_argument("--session-id", required=True)
     permissions_show.set_defaults(handler=_permissions_show)
 
+    memory = commands.add_parser("memory", help="Read validated LBE session memory projections")
+    memory_commands = memory.add_subparsers(dest="memory_command", required=True)
+    memory_recall = memory_commands.add_parser(
+        "recall", help="Recall validated memory for one persisted session"
+    )
+    _add_database_argument(memory_recall)
+    memory_recall.add_argument("--session-id", required=True)
+    memory_recall.add_argument("--query", default="recent")
+    memory_recall.add_argument("--limit", type=int, default=10)
+    memory_recall.set_defaults(handler=_memory_recall)
+
     tui = commands.add_parser("tui", help="Open or create a persisted LBE terminal session")
     _add_database_argument(tui)
     tui.add_argument("--session-id", help="Existing session ID; omit with --workspace to create a new terminal session")
@@ -953,6 +964,37 @@ def _run_mode_command(
         "status": result.status.value,
         "outcome": result.outcome,
         "response": asdict(result.response),
+    }
+
+
+def _memory_recall(args: argparse.Namespace) -> dict[str, Any]:
+    if args.limit < 1:
+        raise ValueError("limit must be a positive integer")
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    packet = runtime.rehydrate(session_id=state.session_id)
+    records = [
+        *packet.get("verified_facts", []),
+        *packet.get("active_constraints", []),
+        *packet.get("recent_failures", []),
+    ]
+    query = str(args.query or "recent").strip().lower()
+    if query and query != "recent":
+        records = [
+            record
+            for record in records
+            if query in json.dumps(record, ensure_ascii=False, sort_keys=True).lower()
+        ]
+    records = records[: min(int(args.limit), 100)]
+    return {
+        "action": "memory.recall",
+        "session_id": state.session_id,
+        "project_workspace_id": state.project_workspace_id,
+        "query": args.query,
+        "records": records,
+        "checkpoint": packet.get("checkpoint"),
+        "checkpoint_revalidation": packet.get("checkpoint_revalidation"),
     }
 
 
