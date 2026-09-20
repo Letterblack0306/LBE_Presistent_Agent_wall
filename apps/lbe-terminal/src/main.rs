@@ -35,6 +35,7 @@ struct CliOptions {
     plain: bool,
     no_animation: bool,
     ascii: bool,
+    no_color: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -60,6 +61,9 @@ fn main() -> io::Result<()> {
     }
     if options.ascii {
         std::env::set_var("LBE_ASCII", "1");
+    }
+    if options.no_color {
+        std::env::set_var("NO_COLOR", "1");
     }
     if command == Some("run") || command == Some("--no-tui") {
         let exit_code = run_headless(options)?;
@@ -116,6 +120,7 @@ fn parse_cli(arguments: &[String]) -> io::Result<(Option<&str>, CliOptions)> {
             }
             "--no-animation" => options.no_animation = true,
             "--ascii" => options.ascii = true,
+            "--no-color" => options.no_color = true,
             "--continue" | "-c" => options.continue_session = true,
             "--auto" => {
                 return Err(io::Error::new(
@@ -377,7 +382,7 @@ fn headless_prompt(arguments: &[String]) -> io::Result<String> {
         .filter(|argument| {
             !matches!(
                 argument.as_str(),
-                "--json" | "--plain" | "--no-animation" | "--ascii"
+                "--json" | "--plain" | "--no-animation" | "--ascii" | "--no-color"
             )
         })
         .cloned()
