@@ -1531,6 +1531,7 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                     format!("{} · delegated-run projection", snapshot.connection.label())
                 },
                 format!("Projected child runs {}", snapshot.child_agents.len()),
+                "Use /agent-cancel <run-id> to request LBE-owned cancellation.".to_owned(),
                 String::new(),
             ];
             if snapshot.child_agents.is_empty() {
