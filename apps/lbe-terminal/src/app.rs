@@ -107,18 +107,27 @@ pub(crate) struct AuditFinding {
 
 pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static str)] {
     &[
+        ("/status", "runtime, session, provider, engine and context"),
         ("/provider", "refresh and inspect providers"),
         ("/models", "choose a model"),
         ("/sessions", "list and resume sessions"),
+        ("/history", "show persisted session history"),
+        ("/agents", "show delegated child-agent runs"),
         ("/mcp", "refresh MCP registry"),
-        ("/tools", "inspect the last tool projection"),
+        ("/tools", "inspect the last governed tool projection"),
         ("/processes", "inspect process activity"),
         ("/activity", "show runtime event activity"),
         ("/evidence", "show evidence references"),
-        ("/receipts", "show ToolReceipts"),
-        ("/changes", "show workspace changes"),
+        ("/receipts", "show governed ToolReceipts"),
+        ("/changes", "show workspace changes and diff state"),
+        ("/undo", "inspect/restore the latest checkpoint"),
+        ("/compact", "compact model context"),
         ("/memory", "recall recent session memory"),
+        ("/browser", "inspect browser-agent connection"),
+        ("/tree", "browse the authoritative workspace"),
+        ("/find", "search the authoritative workspace"),
         ("/doctor", "run diagnostics"),
+        ("/new", "start a new persisted session"),
         ("/help", "show keyboard and command help"),
     ]
 }
@@ -686,6 +695,7 @@ impl App {
             }
             "/tools" => Some(MockPanel::Tools),
             "/processes" => Some(MockPanel::Processes),
+            "/agents" | "/tasks" => Some(MockPanel::Agents),
             "/history" => Some(MockPanel::History),
             "/session" => Some(MockPanel::Session),
             "/sessions" => {
