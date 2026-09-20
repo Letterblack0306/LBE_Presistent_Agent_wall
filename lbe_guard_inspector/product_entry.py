@@ -235,6 +235,7 @@ def _turn(argv: Sequence[str]) -> int:
             "session_id": state.session_id,
             "turn_id": turn_id,
             "mode": state.mode,
+            "provider_profile": profile_name,
             "events": [_serialize_operational_event(event) for event in events],
         }
         if not outcome.accepted:
