@@ -185,11 +185,11 @@ tree or branch; `main` HEAD is the only acceptable source of truth.
 > **2026-09-20 revision:** After removal, a retrospective audit proved that `2.0.x` release
 > branches and `ci/*` carried unique product source (Cline-sidecar / professional-runtime modules
 > and an `npm/` launcher package) **not present on main**. Per a follow-up user directive
-> ("restore all and review each before deletion"), all recoverable deleted history was restored as
-> **`backup/*` refs** in the local repository (`backup/uc/*` refs persist the full 206-commit
-> unreachable set, making the object store GC-proof). The branch list below is the original
-> deletion record; it is **not** the current ref inventory. No re-deletion happens until each
-> branch is individually reviewed.
+> ("restore all and review each before deletion"), all 38 deleted branch names were **recreated
+> locally at their true tips** (11 unmerged tips from recovered objects; merged branches from their
+> in-main landing commits), and the full unreachable set was hardened as `backup/uc/*` refs
+> (206 commits, GC-proof — `git fsck` reports zero unreachable). No re-deletion happens until each
+> branch is individually reviewed. The branch list below is the original deletion record.
 
 `agent/cli-agent-integration-contract`, `agent/cli-control-plane`, `agent/cli-evidence-policy`,
 `agent/cli-exit-proof`, `agent/cli-validation`, `agent/cli-validation-evidence`,
