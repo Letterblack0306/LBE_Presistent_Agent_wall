@@ -1681,8 +1681,13 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ],
         ),
         MockPanel::Memory => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "LOCAL UI MEMORY · NON-CANONICAL · PRE-INTEGRATION".to_owned(),
+                if connected {
+                    "LBE MEMORY · READ-ONLY VALIDATED PROJECTION".to_owned()
+                } else {
+                    "LOCAL UI MEMORY · MOCK / NOT CONNECTED".to_owned()
+                },
                 "Canonical durable memory and verified promotion remain LBE-runtime-owned."
                     .to_owned(),
                 String::new(),
@@ -1707,7 +1712,11 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                 String::new(),
             ];
             if snapshot.memory.recent_records.is_empty() {
-                rows.push("No recalled records projected in the mock TUI.".to_owned());
+                rows.push(if connected {
+                    "No matching validated memory records.".to_owned()
+                } else {
+                    "No recalled records projected in the mock TUI.".to_owned()
+                });
             } else {
                 rows.push("Relevant:".to_owned());
                 rows.extend(snapshot.memory.recent_records.iter().map(|record| {
