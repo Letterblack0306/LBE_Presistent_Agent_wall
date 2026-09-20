@@ -418,17 +418,20 @@ def test_provider_registry_import_and_native_build_do_not_require_cline():
     repo_root = Path(__file__).resolve().parents[1]
     script = textwrap.dedent(
         """
-        import builtins
+        import importlib.abc
         import sys
 
-        real_import = builtins.__import__
+        class BlockCline(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname == "lbe_guard_inspector.cline_reasoning_provider":
+                    raise ModuleNotFoundError(
+                        "cline intentionally unavailable",
+                        name=fullname,
+                    )
+                return None
 
-        def blocked(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "lbe_guard_inspector.cline_reasoning_provider":
-                raise ImportError("cline intentionally unavailable")
-            return real_import(name, globals, locals, fromlist, level)
-
-        builtins.__import__ = blocked
+        sys.meta_path.insert(0, BlockCline())
+        sys.modules.pop("lbe_guard_inspector.cline_reasoning_provider", None)
 
         from lbe_guard_inspector.provider_registry import (
             NATIVE_LBE_ENGINE_ID,
