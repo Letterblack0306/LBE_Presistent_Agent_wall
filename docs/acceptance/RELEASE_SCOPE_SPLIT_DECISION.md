@@ -226,6 +226,17 @@ tree or branch; `main` HEAD is the only acceptable source of truth.
 > all refs except `main`) blocks branch re-creation, and the decision was to leave the ruleset
 > intact. `origin`, `jannath`, `release-fork` therefore remain main-only. The 51 recovered SHAs are
 > preserved locally for any future re-creation if the lock is ever lifted.
+>
+> **Affirmative cross-check (2026-09-20): none of the 24 irrecoverable names overlap any cherry-pick
+> candidate.** The five audit-flagged value branches — `ci/pr56-billing-isolation` (`40428e1`),
+> `ci/workflow-activation` (`4352bd8`), `release/python-runtime-v2.0.1` (`f54021e`),
+> `release/python-runtime-v2.0.2` (`72fdfa2`), `feat/c5-governed-coding-execution` (`4ff65ea`) —
+> are **all still present locally at their exact tips** (verified `rev-parse`). Three of them
+> (`ci/pr56-billing-isolation`, `ci/workflow-activation`, `release/python-runtime-v2.0.2`) simply
+> never lived on `origin` (only on `release-fork` or locally), which is why the origin-only SHA map
+> does not list them; that is a namespace fact, **not** a loss. Conclusion: **no value-bearing work
+> was lost server-side** — every cherry-pick candidate's full history is preserved under `backup/*`
+> and `backup/uc/*` refs.
 
 ### Retired tree
 
