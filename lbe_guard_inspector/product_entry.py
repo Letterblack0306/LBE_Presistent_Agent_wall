@@ -260,12 +260,33 @@ def _control(argv: Sequence[str]) -> int:
 def _build_capabilities_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="lbe capabilities",
-        description="Inspect persisted installed LBE capability configuration without executing adapters",
+        description="Inspect and manage persisted LBE capability configuration without executing adapters",
     )
-    parser.add_argument("action", choices=("list", "validate"))
+    parser.add_argument(
+        "action",
+        choices=("list", "validate", "install", "remove", "enable", "disable"),
+    )
     parser.add_argument("--registry", required=True, help="Path to installed capability registry JSON")
+    parser.add_argument(
+        "--definition",
+        help="JSON object for capabilities install, or @path/to/definition.json",
+    )
+    parser.add_argument("--integration-id", help="Capability identity for remove/enable/disable")
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
+
+
+def _load_capability_definition(value: str | None) -> dict[str, object]:
+    if value is None or not value.strip():
+        raise ValueError("capabilities install requires --definition")
+    raw = value.strip()
+    if raw.startswith("@"):
+        path = Path(raw[1:]).expanduser().resolve()
+        raw = path.read_text(encoding="utf-8")
+    decoded = json.loads(raw)
+    if not isinstance(decoded, dict):
+        raise ValueError("capability definition must be a JSON object")
+    return decoded
 
 
 def _build_export_parser() -> argparse.ArgumentParser:
@@ -388,17 +409,41 @@ def _capabilities(argv: Sequence[str]) -> int:
     args = parser.parse_args(list(argv))
     try:
         store = InstalledCapabilityRegistryStore(args.registry)
-        registry = store.load()
+        if args.action == "install":
+            record = store.parse_record(_load_capability_definition(args.definition))
+            registry = store.upsert(record)
+            changed = record.integration_id
+        elif args.action in {"remove", "enable", "disable"}:
+            if not args.integration_id or not args.integration_id.strip():
+                raise ValueError(f"capabilities {args.action} requires --integration-id")
+            changed = args.integration_id.strip()
+            if args.action == "remove":
+                registry = store.remove(changed)
+            else:
+                registry = store.set_enabled(changed, args.action == "enable")
+        else:
+            registry = store.load()
+            changed = None
+
         statuses = registry.statuses({})
         payload = {
             "action": f"capabilities.{args.action}",
             "schema_version": registry.schema_version,
             "registry": str(store.path),
             "count": len(registry.records),
+            "changed_integration_id": changed,
             "integrations": [status.public_payload() for status in statuses],
             "execution_attempted": False,
         }
-    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
+    except (
+        ValueError,
+        TypeError,
+        FileNotFoundError,
+        RuntimeError,
+        OSError,
+        KeyError,
+        json.JSONDecodeError,
+    ) as exc:
         _cli._emit(
             {"ok": False, "error": type(exc).__name__, "message": str(exc)},
             args.format,
