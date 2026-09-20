@@ -32,6 +32,9 @@ struct CliOptions {
     session_id: Option<String>,
     continue_session: bool,
     json: bool,
+    plain: bool,
+    no_animation: bool,
+    ascii: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -52,6 +55,12 @@ fn main() -> io::Result<()> {
     }
 
     let (command, options) = parse_cli(&arguments)?;
+    if options.no_animation {
+        std::env::set_var("LBE_NO_ANIMATION", "1");
+    }
+    if options.ascii {
+        std::env::set_var("LBE_ASCII", "1");
+    }
     if command == Some("run") || command == Some("--no-tui") {
         let exit_code = run_headless(options)?;
         if exit_code != 0 {
@@ -87,7 +96,26 @@ fn parse_cli(arguments: &[String]) -> io::Result<(Option<&str>, CliOptions)> {
         let argument = arguments[index].as_str();
         match argument {
             "run" | "--no-tui" if command.is_none() => command = Some(argument),
-            "--json" => options.json = true,
+            "--json" => {
+                if options.plain {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "--json and --plain are mutually exclusive",
+                    ));
+                }
+                options.json = true;
+            }
+            "--plain" => {
+                if options.json {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "--json and --plain are mutually exclusive",
+                    ));
+                }
+                options.plain = true;
+            }
+            "--no-animation" => options.no_animation = true,
+            "--ascii" => options.ascii = true,
             "--continue" | "-c" => options.continue_session = true,
             "--auto" => {
                 return Err(io::Error::new(
@@ -222,11 +250,12 @@ fn parse_model(value: &str) -> io::Result<types::ModelRef> {
 
 fn print_help() {
     println!(
-        "LBE (Lockstep Boundary Engine)\n\nUsage:\n  lbe                         Start the TUI\n  lbe [project]               Start the TUI in a project\n  lbe run \"prompt\"           Run a governed task without the TUI\n\nOptions:\n  -m, --model PROVIDER/MODEL  Select a model\n      --agent build|plan|audit\n  -s, --session SESSION_ID    Resume a specific session\n  -c, --continue              Continue the current session\n      --prompt TEXT           Supply the task prompt\n      --json                  Emit headless events as JSON\n  -h, --help                  Show this help\n  -V, --version               Show the version\n\nThe current LBE runtime intentionally rejects --auto, --fork, and --port.\nAuthorization and execution remain governed by LBE."
+        "LBE (Lockstep Boundary Engine)\n\nUsage:\n  lbe                         Start the TUI\n  lbe [project]               Start the TUI in a project\n  lbe run \"prompt\"           Run a governed task without the TUI\n\nOptions:\n  -m, --model PROVIDER/MODEL  Select a model\n      --agent build|plan|audit\n  -s, --session SESSION_ID    Resume a specific session\n  -c, --continue              Continue the current session\n      --prompt TEXT           Supply the task prompt\n      --json                  Emit headless events as JSON\n      --plain                 Emit chronological plain-text headless events\n      --no-animation          Disable cursor/logo animation and reduce repaints\n      --ascii                 Use ASCII-safe terminal glyphs\n  -h, --help                  Show this help\n  -V, --version               Show the version\n\nThe current LBE runtime intentionally rejects --auto, --fork, and --port.\nAuthorization and execution remain governed by LBE."
     );
 }
 
 fn run_headless(options: CliOptions) -> io::Result<i32> {
+    let plain = options.plain;
     let prompt = headless_prompt_value(options.prompt)?;
     let use_real_runtime = !matches!(std::env::var("LBE_RUNTIME").as_deref(), Ok("mock"));
     let mut wrapper = WrapperClient::spawn(use_real_runtime);
@@ -248,7 +277,7 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
             }
             let is_initial_snapshot =
                 !startup_initialized && matches!(event, LbeEvent::SnapshotUpdated { .. });
-            emit_headless_event(&event)?;
+            emit_headless_event(&event, plain)?;
             let is_error = matches!(event, LbeEvent::WrapperError { .. });
             app.reduce_lbe_event(event);
             if is_error {
@@ -320,12 +349,12 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
                 submitted = true;
             }
             if submitted && matches!(app.phase, Phase::Completed) {
-                emit_headless_result(&app, "completed")?;
+                emit_headless_result(&app, "completed", plain)?;
                 wrapper.shutdown();
                 return Ok(0);
             }
             if submitted && matches!(app.phase, Phase::AwaitingApproval { .. }) {
-                emit_headless_result(&app, "approval_required")?;
+                emit_headless_result(&app, "approval_required", plain)?;
                 wrapper.shutdown();
                 return Ok(2);
             }
@@ -335,7 +364,7 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
     }
 
     eprintln!("lbe headless: timed out waiting for governed completion");
-    emit_headless_result(&app, "timeout")?;
+    emit_headless_result(&app, "timeout", plain)?;
     wrapper.shutdown();
     Ok(1)
 }
@@ -562,7 +591,11 @@ fn run(
             continue;
         }
 
-        let animation_wake = Duration::from_millis(225);
+        let animation_wake = if ui::no_animation_enabled() {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_millis(225)
+        };
         let timeout = match (app.next_wake(now), wrapper.next_wake(now), animation_wake) {
             (Some(app_wake), Some(wrapper_wake), animation_wake) => {
                 Some(app_wake.min(wrapper_wake).min(animation_wake))
