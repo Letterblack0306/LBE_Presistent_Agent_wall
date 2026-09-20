@@ -12,12 +12,13 @@ def build_provider_controller(
     *,
     provider_id: str,
     provider_config: ProviderConfig,
+    engine_id: str | None = None,
     provider_registry: ProviderRegistry | None = None,
     controller_kwargs: dict[str, Any] | None = None,
 ) -> tuple[LBERequestController, ProviderHandle]:
-    """Compose one registered provider backend and the existing controller.
+    """Compose one registered engine/provider backend and the existing controller.
 
-    This is dependency composition only. Provider selection does not grant
+    This is dependency composition only. Engine/provider selection does not grant
     workspace authority or alter mode, permission, guard, validation, or
     completion policy.
     """
@@ -29,7 +30,11 @@ def build_provider_controller(
     options = dict(controller_kwargs or {})
     if "backend" in options:
         raise ValueError("controller_kwargs must not override backend")
-    handle = registry.build(provider_id=provider_id, config=provider_config)
+    handle = registry.build(
+        provider_id=provider_id,
+        config=provider_config,
+        engine_id=engine_id,
+    )
     controller = LBERequestController(backend=handle.backend, **options)
     return controller, handle
 
