@@ -1236,6 +1236,7 @@ pub(crate) struct ReceiptProjection {
 pub(crate) struct McpIntegration {
     pub(crate) integration_id: String,
     pub(crate) adapter_id: String,
+    pub(crate) kind: String,
     pub(crate) tool_id: String,
     pub(crate) description: String,
     pub(crate) enabled: bool,
