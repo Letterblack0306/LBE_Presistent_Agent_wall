@@ -10,7 +10,7 @@ use std::{
 
 use crate::{
     events::{LbeEvent, ToolRisk, ValidationStatus},
-    memory::mock_memory_records,
+    memory::{mock_memory_records, MemoryRecord, MemoryRecordType, MemoryTruth},
     requests::{LbeError, UserRequest},
     types::*,
 };
@@ -2514,6 +2514,7 @@ impl RealLbeWrapper {
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
+        let limit_arg = limit.to_string();
         let output = configured_lbe_command(&python, &wall_root)
             .current_dir(&wall_root)
             .args([
@@ -2959,6 +2960,160 @@ impl RealLbeWrapper {
             .push_back(LbeEvent::ChildAgentRunsUpdated {
                 runs: self.snapshot.child_agents.clone(),
             });
+        Ok(())
+    }
+
+    fn recall_real_session_memory(&mut self, query: &str, limit: usize) -> Result<(), LbeError> {
+        self.require_connected()?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .ok_or_else(|| LbeError::new("no authoritative LBE session is attached"))?;
+        if limit < 1 {
+            return Err(LbeError::new("memory recall limit must be positive"));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+
+        self.pending_events
+            .push_back(LbeEvent::MemoryRecallStarted { query: query.to_owned() });
+
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "memory",
+                "recall",
+                "--database",
+            ])
+            .arg(database)
+            .args([
+                "--session-id",
+                &session_id,
+                "--query",
+                query,
+                "--limit",
+                &limit_arg,
+            ])
+            .output()
+            .map_err(|error| LbeError::new(format!("memory recall failed: {error}")))?;
+
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid memory.recall JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("memory recall failed");
+            return Err(LbeError::new(message));
+        }
+        if payload.get("action").and_then(serde_json::Value::as_str) != Some("memory.recall") {
+            return Err(LbeError::new("memory recall returned unexpected action"));
+        }
+        if payload.get("session_id").and_then(serde_json::Value::as_str) != Some(session_id.as_str()) {
+            return Err(LbeError::new("memory recall session identity mismatch"));
+        }
+
+        let raw_records = payload
+            .get("records")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| LbeError::new("memory recall omitted records"))?;
+        let mut records = Vec::with_capacity(raw_records.len());
+        for raw in raw_records {
+            let memory_id = raw
+                .get("memory_id")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| LbeError::new("memory record omitted memory_id"))?
+                .to_owned();
+            let memory_type = raw
+                .get("memory_type")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| LbeError::new("memory record omitted memory_type"))?;
+            let record_type = match memory_type {
+                "workspace_fact" => MemoryRecordType::WorkspaceFact,
+                "task_constraint" => MemoryRecordType::TaskConstraint,
+                "decision" => MemoryRecordType::AgentDecision,
+                "failure_pattern" => MemoryRecordType::FailurePattern,
+                "validation_result" => MemoryRecordType::ValidationResult,
+                "checkpoint" => MemoryRecordType::Checkpoint,
+                "user_preference" => MemoryRecordType::UserPreference,
+                "historical_observation" => MemoryRecordType::HistoricalObservation,
+                other => return Err(LbeError::new(format!("unsupported memory_type: {other}"))),
+            };
+            let truth = match raw
+                .get("validation_status")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| LbeError::new("memory record omitted validation_status"))?
+            {
+                "verified" => MemoryTruth::Verified,
+                "unverified" => MemoryTruth::Unverified,
+                "stale" => MemoryTruth::Stale,
+                "contradicted" => MemoryTruth::Contradicted,
+                "superseded" => MemoryTruth::Superseded,
+                other => return Err(LbeError::new(format!("unsupported memory validation status: {other}"))),
+            };
+            let subject = raw
+                .get("subject")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("");
+            let predicate = raw
+                .get("predicate")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("");
+            let value = raw.get("value").cloned().unwrap_or(serde_json::Value::Null);
+            let summary = format!("{subject} · {predicate} · {value}");
+            let created_at = raw
+                .get("created_at")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("")
+                .to_owned();
+            let content_hash = raw
+                .get("source_hash")
+                .and_then(serde_json::Value::as_str)
+                .map(ToOwned::to_owned);
+
+            records.push(MemoryRecord {
+                memory_id,
+                session_id: session_id.clone(),
+                session_hash: None,
+                turn_id: None,
+                record_type,
+                summary,
+                content_hash,
+                evidence_refs: Vec::new(),
+                receipt_refs: Vec::new(),
+                created_at,
+                truth,
+            });
+        }
+
+        self.snapshot.memory.last_recall_query = Some(query.to_owned());
+        self.snapshot.memory.indexed_sessions = self.snapshot.memory.indexed_sessions.max(1);
+        self.snapshot.memory.indexed_memories = records.len();
+        self.snapshot.memory.recent_records = records.clone();
+        if records.is_empty() {
+            self.pending_events
+                .push_back(LbeEvent::MemoryRecallEmpty { query: query.to_owned() });
+        } else {
+            self.pending_events
+                .push_back(LbeEvent::MemoryRecallResult {
+                    query: query.to_owned(),
+                    records,
+                });
+        }
         Ok(())
     }
 
@@ -5189,8 +5344,10 @@ impl LbeWrapper for RealLbeWrapper {
             }
             UserRequest::CompactContext => self.unsupported_real_request("context compaction"),
             UserRequest::RunDiagnostics => self.run_real_diagnostics(),
-            UserRequest::RecallSessionMemory { .. }
-            | UserRequest::RecallSession { .. }
+            UserRequest::RecallSessionMemory { query, limit } => {
+                self.recall_real_session_memory(&query, limit)
+            }
+            UserRequest::RecallSession { .. }
             | UserRequest::CreateMemoryCheckpoint
             | UserRequest::ForgetSessionMemory { .. } => {
                 self.unsupported_real_request("session memory operations")
