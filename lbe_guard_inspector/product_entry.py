@@ -121,7 +121,9 @@ def _build_turn_parser() -> argparse.ArgumentParser:
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--text", required=True)
-    parser.add_argument("--provider-config", required=True)
+    parser.add_argument("--provider-config")
+    parser.add_argument("--state-root")
+    parser.add_argument("--profile")
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
 
@@ -172,7 +174,12 @@ def _turn(argv: Sequence[str]) -> int:
 
         store = _cli.WorkspaceMemoryStore(args.database)
         state = _cli._require_session(store, args.session_id)
-        config = _cli.load_provider_config(args.provider_config)
+        profile_name, config = _cli.resolve_provider_config(
+            provider_config=args.provider_config,
+            state_root=args.state_root,
+            profile_name=args.profile,
+            expected_provider_id=state.provider_id,
+        )
         if config.model != state.provider_model:
             raise ValueError("provider config model must match persisted session model")
         history = SessionOperationalHistory(store=store)
