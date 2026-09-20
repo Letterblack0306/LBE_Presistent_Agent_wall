@@ -416,13 +416,17 @@ def normalize_provider_descriptor(
         snapshot.capabilities.claim("streaming_text").support
         is CapabilitySupport.SUPPORTED
     )
+    structured_output = (
+        snapshot.capabilities.claim("structured_output").support
+        is CapabilitySupport.SUPPORTED
+    )
     return ProviderDescriptor(
         provider_id=snapshot.capabilities.provider_id,
         model_id=snapshot.capabilities.model_id,
         capabilities=ProviderCapabilities(
             streaming=streaming,
             tool_calls=tool_calls,
-            structured_output=True,
+            structured_output=structured_output,
             context_limit=snapshot.context_window,
         ),
         protocol_family=snapshot.capabilities.protocol_family,
