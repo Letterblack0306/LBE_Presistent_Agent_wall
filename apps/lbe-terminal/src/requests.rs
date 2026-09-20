@@ -25,6 +25,10 @@ pub(crate) enum UserRequest {
     RefreshChildAgents {
         turn_id: String,
     },
+    CancelChildAgent {
+        turn_id: String,
+        child_agent_run_id: String,
+    },
     RefreshMcpRegistry,
     QueryBirdEye {
         tool: String,
