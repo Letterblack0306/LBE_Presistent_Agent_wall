@@ -11,7 +11,7 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SessionMemoryRef {
     pub(crate) session_id: String,
-    pub(crate) session_hash: String,
+    pub(crate) session_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,7 +22,7 @@ pub(crate) struct MemoryRecord {
     pub(crate) turn_id: Option<String>,
     pub(crate) record_type: MemoryRecordType,
     pub(crate) summary: String,
-    pub(crate) content_hash: String,
+    pub(crate) content_hash: Option<String>,
     pub(crate) evidence_refs: Vec<String>,
     pub(crate) receipt_refs: Vec<String>,
     pub(crate) created_at: String,
@@ -44,6 +44,11 @@ pub(crate) enum MemoryRecordType {
     Completion,
     Checkpoint,
     SessionSummary,
+    WorkspaceFact,
+    TaskConstraint,
+    FailurePattern,
+    UserPreference,
+    HistoricalObservation,
 }
 
 impl MemoryRecordType {
@@ -56,6 +61,11 @@ impl MemoryRecordType {
             Self::Completion => "COMPLETION",
             Self::Checkpoint => "CHECKPOINT",
             Self::SessionSummary => "SESSION_SUMMARY",
+            Self::WorkspaceFact => "WORKSPACE_FACT",
+            Self::TaskConstraint => "TASK_CONSTRAINT",
+            Self::FailurePattern => "FAILURE_PATTERN",
+            Self::UserPreference => "USER_PREFERENCE",
+            Self::HistoricalObservation => "HISTORICAL_OBSERVATION",
         }
     }
 }
@@ -119,11 +129,11 @@ pub(crate) fn mock_memory_records(query: &str) -> Vec<MemoryRecord> {
         MemoryRecord {
             memory_id: "mem_mock_session_summary".to_owned(),
             session_id: session_id.clone(),
-            session_hash: session_hash.clone(),
+            session_hash: Some(session_hash.clone()),
             turn_id: Some("turn_mock_0".to_owned()),
             record_type: MemoryRecordType::SessionSummary,
             summary: "Mock TUI session projects runtime-owned memory without becoming canonical storage.".to_owned(),
-            content_hash: "sha256:mock-summary-a812".to_owned(),
+            content_hash: Some("sha256:mock-summary-a812".to_owned()),
             evidence_refs: Vec::new(),
             receipt_refs: Vec::new(),
             created_at: "2026-08-29T00:00:00Z".to_owned(),
@@ -132,11 +142,11 @@ pub(crate) fn mock_memory_records(query: &str) -> Vec<MemoryRecord> {
         MemoryRecord {
             memory_id: "mem_mock_wrapper_boundary".to_owned(),
             session_id: session_id.clone(),
-            session_hash: session_hash.clone(),
+            session_hash: Some(session_hash.clone()),
             turn_id: Some("turn_mock_0".to_owned()),
             record_type: MemoryRecordType::AgentDecision,
             summary: "LbeWrapper remains the integration boundary for runtime and memory recall requests.".to_owned(),
-            content_hash: "sha256:mock-decision-b913".to_owned(),
+            content_hash: Some("sha256:mock-decision-b913".to_owned()),
             evidence_refs: Vec::new(),
             receipt_refs: Vec::new(),
             created_at: "2026-08-29T00:00:00Z".to_owned(),
@@ -145,11 +155,11 @@ pub(crate) fn mock_memory_records(query: &str) -> Vec<MemoryRecord> {
         MemoryRecord {
             memory_id: "mem_mock_validation".to_owned(),
             session_id,
-            session_hash,
+            session_hash: Some(session_hash),
             turn_id: Some("turn_mock_1".to_owned()),
             record_type: MemoryRecordType::ValidationResult,
             summary: "Mock validation receipts can be referenced, but durable verification is runtime-owned.".to_owned(),
-            content_hash: "sha256:mock-validation-c024".to_owned(),
+            content_hash: Some("sha256:mock-validation-c024".to_owned()),
             evidence_refs: vec!["evidence_mock_7f31".to_owned()],
             receipt_refs: vec!["rcpt_demo_7f31".to_owned()],
             created_at: "2026-08-29T00:00:00Z".to_owned(),
