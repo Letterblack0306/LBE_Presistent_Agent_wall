@@ -8,7 +8,7 @@ ExternalCapabilityRegistration -> ToolRegistry -> R6C/R6E path.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import os
 from pathlib import Path
@@ -156,6 +156,40 @@ class InstalledCapabilityRegistry:
                 statuses.append(InstalledCapabilityStatus(record, "AVAILABLE", "host adapter factory is installed; execution still requires governed registration and authorization"))
         return tuple(statuses)
 
+
+    def with_record(self, record: InstalledCapabilityRecord) -> "InstalledCapabilityRegistry":
+        if not isinstance(record, InstalledCapabilityRecord):
+            raise TypeError("record must be InstalledCapabilityRecord")
+        records = [item for item in self.records if item.integration_id != record.integration_id]
+        records.append(record)
+        records.sort(key=lambda item: item.integration_id)
+        return InstalledCapabilityRegistry(records=tuple(records), schema_version=self.schema_version)
+
+    def without(self, integration_id: str) -> "InstalledCapabilityRegistry":
+        clean = str(integration_id).strip()
+        if not clean:
+            raise ValueError("integration_id must be non-empty")
+        records = tuple(item for item in self.records if item.integration_id != clean)
+        if len(records) == len(self.records):
+            raise KeyError(f"installed capability is not registered: {clean}")
+        return InstalledCapabilityRegistry(records=records, schema_version=self.schema_version)
+
+    def with_enabled(self, integration_id: str, enabled: bool) -> "InstalledCapabilityRegistry":
+        clean = str(integration_id).strip()
+        if not clean:
+            raise ValueError("integration_id must be non-empty")
+        found = False
+        records: list[InstalledCapabilityRecord] = []
+        for item in self.records:
+            if item.integration_id == clean:
+                found = True
+                records.append(replace(item, enabled=bool(enabled)))
+            else:
+                records.append(item)
+        if not found:
+            raise KeyError(f"installed capability is not registered: {clean}")
+        return InstalledCapabilityRegistry(records=tuple(records), schema_version=self.schema_version)
+
     def materialize(self, adapter_factories: Mapping[str, Callable[[InstalledCapabilityRecord], ToolHandler]]) -> tuple[ExternalCapabilityRegistration, ...]:
         registrations: list[ExternalCapabilityRegistration] = []
         for status in self.statuses(adapter_factories):
@@ -222,6 +256,26 @@ class InstalledCapabilityRegistryStore:
         finally:
             if temp_path is not None and temp_path.exists():
                 temp_path.unlink(missing_ok=True)
+
+
+    def upsert(self, record: InstalledCapabilityRecord) -> InstalledCapabilityRegistry:
+        registry = self.load().with_record(record)
+        self.save(registry)
+        return registry
+
+    def remove(self, integration_id: str) -> InstalledCapabilityRegistry:
+        registry = self.load().without(integration_id)
+        self.save(registry)
+        return registry
+
+    def set_enabled(self, integration_id: str, enabled: bool) -> InstalledCapabilityRegistry:
+        registry = self.load().with_enabled(integration_id, enabled)
+        self.save(registry)
+        return registry
+
+    @classmethod
+    def parse_record(cls, value: object) -> InstalledCapabilityRecord:
+        return cls._parse_record(value)
 
     @classmethod
     def _reject_secret_fields(cls, value: object, path: str = "$") -> None:
