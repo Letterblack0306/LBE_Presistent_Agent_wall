@@ -31,7 +31,10 @@ from .tool_orchestration import (
 
 class ExternalCapabilityKind(StrEnum):
     MCP = "mcp"
+    SKILL = "skill"
     PLUGIN = "plugin"
+    HOOK = "hook"
+    CONNECTOR = "connector"
     SUBAGENT = "subagent"
     NETWORK = "network"
     HOSTED_SERVICE = "hosted_service"
@@ -39,7 +42,10 @@ class ExternalCapabilityKind(StrEnum):
 
 _KIND_PREFIX: dict[ExternalCapabilityKind, str] = {
     ExternalCapabilityKind.MCP: "mcp.",
+    ExternalCapabilityKind.SKILL: "skill.",
     ExternalCapabilityKind.PLUGIN: "plugin.",
+    ExternalCapabilityKind.HOOK: "hook.",
+    ExternalCapabilityKind.CONNECTOR: "connector.",
     ExternalCapabilityKind.SUBAGENT: "subagent.",
     ExternalCapabilityKind.NETWORK: "network.",
     ExternalCapabilityKind.HOSTED_SERVICE: "hosted.",
