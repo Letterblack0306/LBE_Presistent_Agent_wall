@@ -172,6 +172,7 @@ class SessionState:
     permission_policy_id: str | None = None
     evidence_policy_id: str | None = None
     checkpoint_id: str | None = None
+    reasoning_engine: str | None = None
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
 
@@ -198,6 +199,7 @@ class SessionState:
         self.permission_policy_id = _optional_text(self.permission_policy_id)
         self.evidence_policy_id = _optional_text(self.evidence_policy_id)
         self.checkpoint_id = _optional_text(self.checkpoint_id)
+        self.reasoning_engine = _optional_text(self.reasoning_engine)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -213,6 +215,7 @@ class SessionState:
             "permission_policy_id": self.permission_policy_id,
             "evidence_policy_id": self.evidence_policy_id,
             "checkpoint_id": self.checkpoint_id,
+            "reasoning_engine": self.reasoning_engine,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
