@@ -63,11 +63,12 @@ def test_provider_check_delegates_to_provider_health_owner(tmp_path: Path, capsy
     config = _provider_config(tmp_path)
     calls = []
 
-    def fake_check_provider_health(*, provider_id, provider_config):
-        calls.append((provider_id, provider_config))
+    def fake_check_provider_health(*, provider_id, provider_config, engine_id=None):
+        calls.append((provider_id, provider_config, engine_id))
         return ProviderHealthResult(
             provider_id="openai-compatible",
             model_id="model-a",
+            engine_id="native-lbe",
             status="READY",
             capabilities=ProviderCapabilities(structured_output=True),
         )
