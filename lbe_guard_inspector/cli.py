@@ -190,6 +190,13 @@ def build_parser() -> argparse.ArgumentParser:
     provider_active.add_argument("--state-root")
     provider_active.set_defaults(handler=_provider_active)
 
+    provider_remove = provider_commands.add_parser(
+        "remove", help="Remove one per-user provider profile"
+    )
+    provider_remove.add_argument("--state-root")
+    provider_remove.add_argument("--name", required=True)
+    provider_remove.set_defaults(handler=_provider_remove)
+
     _add_mode_command(commands, "code", AgentMode.CODING, "Run a governed coding task")
     _add_mode_command(commands, "audit", AgentMode.AUDIT, "Run a governed read-only audit task")
     _add_mode_command(
@@ -669,6 +676,16 @@ def _provider_active(args: argparse.Namespace) -> dict[str, Any]:
         "action": "provider.active",
         "profile": _provider_profile_payload(name, profile),
         "active_profile": name,
+    }
+
+
+def _provider_remove(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    removed = store.remove_profile(args.name)
+    return {
+        "action": "provider.remove",
+        "profile": _provider_profile_payload(args.name, removed),
+        "active_profile": store.active_profile_name(),
     }
 
 
