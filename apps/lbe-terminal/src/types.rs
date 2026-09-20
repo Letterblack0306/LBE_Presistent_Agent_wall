@@ -236,6 +236,7 @@ impl AgentMode {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub(crate) enum ChildAgentStatus {
     /// Spawn requested, awaiting LBE governance authorization.
     Pending,
@@ -278,16 +279,24 @@ impl ChildAgentStatus {
 pub(crate) struct ChildAgentRun {
     pub(crate) child_agent_run_id: String,
     pub(crate) correlation_id: String,
+    #[serde(default, alias = "session_id")]
     pub(crate) parent_session_id: Option<String>,
+    #[serde(default)]
     pub(crate) child_session_id: Option<String>,
     pub(crate) status: ChildAgentStatus,
     pub(crate) child_tools: Vec<String>,
+    #[serde(default)]
     pub(crate) started_at: Option<String>,
+    #[serde(default)]
     pub(crate) completed_at: Option<String>,
+    #[serde(default)]
     pub(crate) receipt_id: Option<String>,
+    #[serde(default)]
     pub(crate) evidence_ref: Option<String>,
+    #[serde(default)]
     pub(crate) authorization_rationale: Option<String>,
     /// Whether recursive child spawn is explicitly authorized by LBE governance.
+    #[serde(default)]
     pub(crate) recursive_spawn_authorized: bool,
 }
 
