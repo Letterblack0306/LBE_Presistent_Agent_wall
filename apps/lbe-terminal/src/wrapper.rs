@@ -2893,7 +2893,8 @@ impl RealLbeWrapper {
             .unwrap_or_else(|| PathBuf::from("python"));
         self.pending_events
             .push_back(LbeEvent::ProviderValidationStarted { provider_id });
-        let output = configured_lbe_command(&python, &wall_root)
+        let mut command = configured_lbe_command(&python, &wall_root);
+        command
             .current_dir(&wall_root)
             .args([
                 "-m",
@@ -2906,7 +2907,16 @@ impl RealLbeWrapper {
                 provider_id.cli_name(),
                 "--provider-config",
             ])
-            .arg(provider_config)
+            .arg(provider_config);
+        if let Some(engine_id) = self
+            .snapshot
+            .session_context
+            .as_ref()
+            .and_then(|context| context.data.session.reasoning_engine.as_deref())
+        {
+            command.args(["--engine", engine_id]);
+        }
+        let output = command
             .output()
             .map_err(|error| LbeError::new(format!("provider validation failed: {error}")))?;
         let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
