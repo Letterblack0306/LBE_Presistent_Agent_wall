@@ -169,6 +169,20 @@ def test_cline_and_native_engines_share_lbe_governed_coding_owner(
     assert len(receipts) == 1
     assert receipts[0]["tool_id"] == "workspace.read"
     assert receipts[0]["status"] == "EXECUTED"
+
+    projection = result.deterministic_result["governed_tool_projection"]
+    assert projection == [
+        {
+            "tool_id": "workspace.read",
+            "capability": "inspect",
+            "access_class": "read",
+            "network_behavior": "none",
+            "risk_class": "low",
+            "authorization_verdict": "ALLOW",
+            "authorization_rationale": projection[0]["authorization_rationale"],
+        }
+    ]
+    assert projection[0]["authorization_rationale"]
     assert result.deterministic_result["direct_native_mutation_tools_exposed"] is False
     start = _FakeGovernedClineWorker.last_start
     assert start is not None
