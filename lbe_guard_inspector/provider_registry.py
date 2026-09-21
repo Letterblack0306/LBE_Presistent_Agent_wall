@@ -29,11 +29,15 @@ from .first_party_reasoning_provider import (
 from .professional_capabilities import CapabilitySupport
 from .provider_capability_discovery import (
     ProviderModelCapabilitySnapshot,
+    detect_protocol_family,
     discover_provider_model_capabilities,
 )
 from .professional_provider_events import ProviderProtocolFamily
 from .reasoning_contracts import ReasoningBackend
 from .reasoning_provider import ProviderConfig
+from .runtime.openai_responses_reasoning_backend import (
+    OpenAIResponsesReasoningBackend,
+)
 
 
 NATIVE_LBE_ENGINE_ID = "native-lbe"
@@ -269,15 +273,37 @@ def native_openai_compatible_factory(provider_id: str) -> ProviderFactory:
 
 def openai_factory(config: ProviderConfig) -> ProviderHandle:
     require_api_key(config, "openai")
+    family, evidence = detect_protocol_family(
+        provider_id="openai",
+        endpoint=config.endpoint,
+    )
+    if family is ProviderProtocolFamily.OPENAI_RESPONSES:
+        backend: ReasoningBackend = OpenAIResponsesReasoningBackend(config=config)
+    elif family is ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT:
+        backend = ToolAwareOpenAICompatibleReasoningBackend(config=config)
+    else:
+        raise ValueError(
+            "native-lbe reasoning transport is not implemented for "
+            f"openai protocol {family.value}: {evidence}"
+        )
     return _handle(
         "openai",
         config,
-        ToolAwareOpenAICompatibleReasoningBackend(config=config),
+        backend,
         engine_id=NATIVE_LBE_ENGINE_ID,
     )
 
 
 def anthropic_factory(config: ProviderConfig) -> ProviderHandle:
+    family, evidence = detect_protocol_family(
+        provider_id="anthropic",
+        endpoint=config.endpoint,
+    )
+    if family is not ProviderProtocolFamily.ANTHROPIC_MESSAGES:
+        raise ValueError(
+            "native-lbe reasoning transport is not implemented for "
+            f"anthropic protocol {family.value}: {evidence}"
+        )
     return _handle(
         "anthropic",
         config,
@@ -287,6 +313,15 @@ def anthropic_factory(config: ProviderConfig) -> ProviderHandle:
 
 
 def gemini_factory(config: ProviderConfig) -> ProviderHandle:
+    family, evidence = detect_protocol_family(
+        provider_id="gemini",
+        endpoint=config.endpoint,
+    )
+    if family is not ProviderProtocolFamily.GEMINI_GENERATE_CONTENT:
+        raise ValueError(
+            "native-lbe reasoning transport is not implemented for "
+            f"gemini protocol {family.value}: {evidence}"
+        )
     return _handle(
         "gemini",
         config,
