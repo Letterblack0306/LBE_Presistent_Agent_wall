@@ -1789,24 +1789,41 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             )
         }
         MockPanel::Undo => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "CHECKPOINTS ? PROJECTION ONLY".to_owned(),
-                "[c] compare   [r] request restore   [Esc] close".to_owned(),
+                if connected {
+                    "LBE CHECKPOINT · READ-ONLY PROJECTION".to_owned()
+                } else {
+                    "CHECKPOINTS · MOCK / NOT CONNECTED".to_owned()
+                },
+                if connected {
+                    "[Esc] close · compare/restore not exposed".to_owned()
+                } else {
+                    "[c] compare   [r] request restore   [Esc] close".to_owned()
+                },
                 String::new(),
             ];
             if let Some(checkpoint) = &snapshot.latest_checkpoint {
                 rows.push(format!(
-                    "{} ? {} ? {} file(s) changed",
+                    "{} · {}",
                     checkpoint.checkpoint_id,
-                    checkpoint.created_at,
-                    checkpoint.changed_files.len()
+                    checkpoint.created_at
                 ));
                 rows.push(format!(
                     "workspace revision {}",
                     checkpoint.workspace_revision
                 ));
+                if connected {
+                    rows.push("Changed-file list is not part of the canonical checkpoint projection.".to_owned());
+                } else {
+                    rows.push(format!("{} file(s) changed", checkpoint.changed_files.len()));
+                }
             } else {
-                rows.push("No checkpoint has been created in this mock session.".to_owned());
+                rows.push(if connected {
+                    "No persisted checkpoint exists for this session.".to_owned()
+                } else {
+                    "No checkpoint has been created in this mock session.".to_owned()
+                });
             }
             ("Checkpoints", rows)
         }
@@ -2160,16 +2177,30 @@ pub(crate) fn mock_panel_text_for_app(panel: MockPanel, app: &App) -> Text<'stat
                     .add_modifier(Modifier::BOLD),
             ))];
             lines.push(Line::from(Span::styled(
-                "[c] compare   [r] request restore   [Esc] close",
+                if app.snapshot.connection == RuntimeConnection::Connected {
+                    "[Esc] close · compare/restore not exposed"
+                } else {
+                    "[c] compare   [r] request restore   [Esc] close"
+                },
                 Style::default().fg(PALETTE.faint),
             )));
             if let Some(checkpoint) = &app.snapshot.latest_checkpoint {
                 lines.push(Line::from(format!(
-                    "{} ? {} ? {} file(s) changed",
+                    "{} · {}",
                     checkpoint.checkpoint_id,
-                    checkpoint.created_at,
-                    checkpoint.changed_files.len()
+                    checkpoint.created_at
                 )));
+                if app.snapshot.connection == RuntimeConnection::Connected {
+                    lines.push(Line::from(Span::styled(
+                        "Changed-file list is not part of the canonical checkpoint projection.",
+                        Style::default().fg(PALETTE.muted),
+                    )));
+                } else {
+                    lines.push(Line::from(format!(
+                        "{} file(s) changed",
+                        checkpoint.changed_files.len()
+                    )));
+                }
                 lines.push(Line::from(format!(
                     "workspace revision {}",
                     checkpoint.workspace_revision
