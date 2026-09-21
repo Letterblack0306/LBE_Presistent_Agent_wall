@@ -2277,7 +2277,7 @@ fn mock_provider_catalog_events_and_panels_project_safe_typed_values() {
 }
 
 #[test]
-fn compact_and_doctor_commands_render_mock_runtime_projections() {
+fn compact_command_stays_hidden_until_canonical_payload_exists_and_doctor_still_runs() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
 
@@ -2285,12 +2285,11 @@ fn compact_and_doctor_commands_render_mock_runtime_projections() {
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
         app.reduce_lbe_event(event);
     }
-    assert_eq!(app.snapshot.context_used, 1);
-    assert_eq!(app.snapshot.compaction_state, CompactionState::Completed);
+    assert_ne!(app.snapshot.compaction_state, CompactionState::Completed);
     assert!(app
         .transcript
         .iter()
-        .any(|line| line.contains("CONTEXT  compaction completed")));
+        .any(|line| line.contains("compaction is not exposed until a canonical compaction payload is available")));
 
     app.handle_command("/doctor", &mut wrapper);
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
@@ -5281,4 +5280,19 @@ fn real_wrapper_requires_connected_runtime_for_session_memory_recall() {
         )
         .expect_err("real memory recall requires an attached LBE runtime");
     assert!(error.message.contains("requires a connected LBE runtime"));
+}
+
+
+#[test]
+fn production_command_palette_omits_unwired_restore_compaction_and_browser_controls() {
+    let commands = command_palette_commands()
+        .iter()
+        .map(|(command, _)| *command)
+        .collect::<Vec<_>>();
+
+    assert!(!commands.contains(&"/undo"));
+    assert!(!commands.contains(&"/compact"));
+    assert!(!commands.contains(&"/browser"));
+    assert!(commands.contains(&"/checkpoints"));
+    assert!(commands.contains(&"/memory"));
 }
