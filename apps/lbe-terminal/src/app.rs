@@ -372,10 +372,24 @@ impl App {
             KeyCode::Char('c')
                 if matches!(self.panel, Some(MockPanel::Undo | MockPanel::Changes)) =>
             {
-                self.compare_checkpoint(wrapper)
+                if self.snapshot.connection == RuntimeConnection::Connected {
+                    self.transcript.push(
+                        "CHECKPOINT  comparison is not exposed until the LBE comparison owner is wired"
+                            .to_owned(),
+                    );
+                } else {
+                    self.compare_checkpoint(wrapper);
+                }
             }
             KeyCode::Char('r') if self.panel == Some(MockPanel::Undo) => {
-                self.restore_checkpoint(wrapper)
+                if self.snapshot.connection == RuntimeConnection::Connected {
+                    self.transcript.push(
+                        "CHECKPOINT  restore is not exposed until the LBE restore owner is wired"
+                            .to_owned(),
+                    );
+                } else {
+                    self.restore_checkpoint(wrapper);
+                }
             }
             KeyCode::Up if self.panel == Some(MockPanel::Model) => self.move_model_picker(-1),
             KeyCode::Down if self.panel == Some(MockPanel::Model) => self.move_model_picker(1),
