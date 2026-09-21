@@ -5332,3 +5332,19 @@ fn real_wrapper_requires_connected_runtime_for_checkpoint_compare() {
         .expect_err("checkpoint comparison requires an attached LBE runtime");
     assert!(error.message.contains("requires a connected LBE runtime"));
 }
+
+
+#[test]
+fn connected_close_command_does_not_dispatch_unwired_session_close() {
+    let mut app = App::default();
+    app.snapshot.connection = RuntimeConnection::Connected;
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_command("/close session-2", &mut wrapper);
+
+    assert!(wrapper.requests.is_empty());
+    assert!(app
+        .transcript
+        .iter()
+        .any(|line| line.contains("close is not exposed until the canonical session lifecycle owner supports it")));
+}
