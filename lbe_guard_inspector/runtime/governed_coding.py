@@ -802,6 +802,10 @@ class _GovernedCodingControllerBase:
             "provider_model": self._provider_config.model.strip(),
             "reasoning_engine": self._engine_id,
             "governed_tool_receipts": [_receipt_payload(receipt) for receipt in receipts],
+            "governed_tool_projection": [
+                _governed_tool_projection(receipt, self._registry)
+                for receipt in receipts
+            ],
             "provider_output": provider_output,
             "agent_guidance": self._guidance.audit_payload(),
             "governed_mutation_paths": sorted(self._governed_mutation_paths),
@@ -1197,6 +1201,33 @@ def _provider_tool_definition(index: int, spec: ToolSpec) -> dict[str, object]:
                 "additionalProperties": False,
             },
         },
+    }
+
+
+def _governed_tool_projection(
+    receipt: ToolReceipt,
+    registry: ToolRegistry,
+) -> dict[str, object]:
+    """Project governed tool truth from the existing LBE registry + receipt owners."""
+    registered = registry.get(receipt.tool_id)
+    if registered is None:
+        raise ValueError(
+            f"governed receipt references an unregistered tool: {receipt.tool_id}"
+        )
+    spec = registered.spec
+    authorization = receipt.authorization
+    return {
+        "tool_id": receipt.tool_id,
+        "capability": spec.capability,
+        "access_class": spec.access_class.value,
+        "network_behavior": spec.network_behavior.value,
+        "risk_class": spec.risk_class.value,
+        "authorization_verdict": (
+            None if authorization is None else authorization.verdict.value
+        ),
+        "authorization_rationale": (
+            None if authorization is None else authorization.rationale
+        ),
     }
 
 
