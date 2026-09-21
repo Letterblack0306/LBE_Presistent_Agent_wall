@@ -10,19 +10,23 @@ Canonical base head: 5ad590bd0113d3c336589510de258ac815d6920a
 - Cline is lazy-loaded only for an explicitly selected Cline binding.
 - Native LBE and Cline bindings may coexist for the same provider.
 - Governed coding for both engines reuses the same LBE ToolRegistry, R6C authorization, GovernedToolOrchestrator, ToolReceipt/evidence, workspace/session and completion owners.
-- Native governed coding now fails closed unless the configured endpoint proves the OpenAI-compatible chat/completions protocol actually implemented by OpenAICompatibleEventAdapter.
-- Anthropic Messages, Gemini GenerateContent/Interactions, OpenAI Responses, unknown protocols and future transports are not silently routed through the chat/completions adapter.
+- Native governed coding selects only an explicitly implemented provider-native event adapter from configured protocol evidence.
+- Implemented native governed coding transports now include OpenAI-compatible Chat Completions, Anthropic Messages, Gemini GenerateContent, and OpenAI Responses.
+- Gemini Interactions, unknown protocols and future transports fail closed; no unsupported provider is silently routed through another wire protocol.
+- OpenAI Responses preserves provider response identity, function `call_id`, and `previous_response_id` across tool continuation.
+- Anthropic preserves provider `tool_use.id` through `tool_result`; Gemini preserves provider `functionCall.id` through `functionResponse`.
 - No automatic fallback to Cline or another provider is introduced.
 
 ## Added falsifier coverage
 
 Focused tests now require:
 
-1. native-LBE governed coding rejects Anthropic Messages;
-2. native-LBE governed coding rejects Gemini GenerateContent;
-3. native-LBE governed coding rejects OpenAI Responses;
-4. native-LBE governed coding accepts configured chat/completions routes for OpenAI-compatible, LM Studio, Ollama and OpenRouter;
-5. existing Cline governed coding still uses the same LBE-owned tool/receipt authority.
+1. native-LBE governed coding rejects unimplemented Gemini Interactions and unknown protocols;
+2. native-LBE governed coding accepts Anthropic Messages, Gemini GenerateContent, OpenAI Responses and configured chat/completions routes;
+3. Anthropic tool-use/result correlation preserves the provider tool-use ID;
+4. Gemini function-call/result correlation preserves the provider function-call ID;
+5. OpenAI Responses continuation preserves function call_id and previous_response_id;
+6. existing Cline governed coding still uses the same LBE-owned tool/receipt authority.
 
 ## Acceptance status
 
