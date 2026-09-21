@@ -18,6 +18,7 @@ from ..professional_provider_events import (
 )
 from ..provider_capability_discovery import detect_protocol_family
 from .gemini_event_adapter import GeminiGenerateContentEventAdapter
+from .openai_responses_event_adapter import OpenAIResponsesEventAdapter
 from ..reasoning_provider import (
     JsonTransport,
     ProviderConfig,
@@ -285,6 +286,8 @@ def build_native_provider_event_adapter(
         return AnthropicMessagesEventAdapter(config=config, transport=transport)
     if family is ProviderProtocolFamily.GEMINI_GENERATE_CONTENT:
         return GeminiGenerateContentEventAdapter(config=config, transport=transport)
+    if family is ProviderProtocolFamily.OPENAI_RESPONSES:
+        return OpenAIResponsesEventAdapter(config=config, transport=transport)
     raise ValueError(
         "native-lbe governed coding transport is not implemented for "
         f"{provider_id} protocol {family.value}: {evidence}. "
