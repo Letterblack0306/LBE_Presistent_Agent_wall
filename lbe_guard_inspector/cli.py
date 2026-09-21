@@ -220,6 +220,15 @@ def build_parser() -> argparse.ArgumentParser:
     permissions_show.add_argument("--session-id", required=True)
     permissions_show.set_defaults(handler=_permissions_show)
 
+    checkpoint = commands.add_parser("checkpoint", help="Inspect persisted LBE checkpoints")
+    checkpoint_commands = checkpoint.add_subparsers(dest="checkpoint_command", required=True)
+    checkpoint_latest = checkpoint_commands.add_parser(
+        "latest", help="Read the latest persisted checkpoint for one session"
+    )
+    _add_database_argument(checkpoint_latest)
+    checkpoint_latest.add_argument("--session-id", required=True)
+    checkpoint_latest.set_defaults(handler=_checkpoint_latest)
+
     memory = commands.add_parser("memory", help="Read validated LBE session memory projections")
     memory_commands = memory.add_subparsers(dest="memory_command", required=True)
     memory_recall = memory_commands.add_parser(
@@ -964,6 +973,20 @@ def _run_mode_command(
         "status": result.status.value,
         "outcome": result.outcome,
         "response": asdict(result.response),
+    }
+
+
+def _checkpoint_latest(args: argparse.Namespace) -> dict[str, Any]:
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    packet = runtime.rehydrate(session_id=state.session_id)
+    return {
+        "action": "checkpoint.latest",
+        "session_id": state.session_id,
+        "project_workspace_id": state.project_workspace_id,
+        "checkpoint": packet.get("checkpoint"),
+        "checkpoint_revalidation": packet.get("checkpoint_revalidation"),
     }
 
 
