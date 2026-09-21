@@ -2521,7 +2521,6 @@ impl RealLbeWrapper {
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
-        let limit_arg = limit.to_string();
         let output = configured_lbe_command(&python, &wall_root)
             .current_dir(&wall_root)
             .args([
@@ -2982,7 +2981,7 @@ impl RealLbeWrapper {
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
         let database = self
-            .database
+            .wall_database
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
@@ -3071,7 +3070,7 @@ impl RealLbeWrapper {
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
         let database = self
-            .database
+            .wall_database
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
@@ -3161,7 +3160,7 @@ impl RealLbeWrapper {
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
         let database = self
-            .database
+            .wall_database
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
