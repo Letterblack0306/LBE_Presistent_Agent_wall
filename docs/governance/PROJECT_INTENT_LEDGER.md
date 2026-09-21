@@ -799,9 +799,9 @@ EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py, lbe_guard_insp
 REQUIRED_EVIDENCE: engine-neutral LBE initialization proof; Cline-absent LBE initialization proof; Cline regression proof; provider binding structure registered in PROJECT_INDEX.md; gate amendment record; focused tests for engine-neutral runtime; full regression.
 MACHINE_SLICE: REASONING_ENGINE_PROVIDER_BINDING_SEPARATION
 RESULT: IMPLEMENTED_STATIC_VALIDATION_PENDING
-IMPLEMENTATION_COMMITS: 39dd7cf9a6194a4931d1c564f43af50d5d8d9f7f, 7685ecae0412a92f7b61f9b5b51011e3125a4f8d
+IMPLEMENTATION_COMMITS: 39dd7cf9a6194a4931d1c564f43af50d5d8d9f7f, 7685ecae0412a92f7b61f9b5b51011e3125a4f8d, e28c873d1bd4074cd157141d146487ca0bcff564, e807598361ca5abb41cd2fe94c52d3ae58996d31, aea2deb1a4e5f117f712c8d27ad5cb521756481a, 90f9d2bb49295b50db6570b5f9c861fdcc600c81, e652ec492c87dbb22fedafd79f8e618d89f5b4be, 9b48a9d3ce8106de048779708691a91e3cee22ff, 263382e386c40ab87620880bb6394fd47203c35f, fd501f40b9715bc6f2da073cb8891c7c7cabb25e, d113364613ca78e47bce6a0b9e13af53ef08b5b1, 944b4e65978f149b68ed36d26c404191bcedec74
 REFERENCE_CHAIN: GPT-K ai-agents/studies/agent-feature-reference-map-2026-09-20.json -> Cline 9a2512bb9835869d74774da99708a7f9d80b0fe8 sdk/packages/README.md -> OpenCode ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts
-VALIDATION_BLOCKER: GitHub Actions validate jobs fail before any workflow steps on this commit and on both immediately preceding governance-only commits; full regression/runtime proof remains UNVERIFIED.
+VALIDATION_BLOCKER: GitHub Actions validate attempt 1 continues to terminate all matrix jobs with zero executed workflow steps; rerun attempt 2 was requested after source convergence. Container network/DNS cannot clone GitHub. Until a runner executes test steps, focused/full regression and live runtime proof remain UNVERIFIED.
 AUTHORIZATION: EXPLICIT_USER_AUTHORIZATION_2026_09_20
 SCOPE_AMENDMENT_2026_09_21: Explicit user instruction `goahead build it in the repo` authorizes convergence of the existing canonical `lbe code` product-entry path onto the already-selected engine-neutral governed coding factory. This adds only `lbe_guard_inspector/cli.py` as an existing-owner path; it does not authorize TUI mutation, new runtime authority, branch/worktree creation, publication, or gate closure.
 ```\n
