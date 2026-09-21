@@ -779,6 +779,11 @@ impl App {
                 if argument.is_empty() {
                     self.transcript
                         .push("SYSTEM  /close requires a session ID.".to_owned());
+                } else if self.snapshot.connection == RuntimeConnection::Connected {
+                    self.transcript.push(
+                        "SESSION  close is not exposed until the canonical session lifecycle owner supports it"
+                            .to_owned(),
+                    );
                 } else {
                     self.apply_wrapper_result(wrapper.submit(
                         UserRequest::CloseSession {
