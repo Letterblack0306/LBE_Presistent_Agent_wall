@@ -76,6 +76,7 @@ pub(crate) enum UserRequest {
     SelectModel {
         model: ModelRef,
     },
+    RefreshCheckpoint,
     CompareCheckpoint {
         checkpoint_id: String,
     },
