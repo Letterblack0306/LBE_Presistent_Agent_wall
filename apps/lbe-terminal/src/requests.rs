@@ -3,7 +3,7 @@ use crate::{
     types::{AgentMode, ModelRef, ProviderId},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum UserRequest {
     SubmitTask {
         intent: String,
