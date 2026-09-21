@@ -988,7 +988,7 @@ def _checkpoint_latest(args: argparse.Namespace) -> dict[str, Any]:
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
     runtime = _runtime_from_state(database=args.database, state=state)
-    packet = runtime.rehydrate(session_id=state.session_id)
+    packet = runtime.start_or_resume()
     return {
         "action": "checkpoint.latest",
         "session_id": state.session_id,
@@ -1002,7 +1002,7 @@ def _checkpoint_compare(args: argparse.Namespace) -> dict[str, Any]:
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
     runtime = _runtime_from_state(database=args.database, state=state)
-    packet = runtime.rehydrate(session_id=state.session_id)
+    packet = runtime.start_or_resume()
     checkpoint = packet.get("checkpoint")
     if checkpoint is None:
         raise ValueError("no persisted checkpoint exists for session")
@@ -1026,7 +1026,7 @@ def _memory_recall(args: argparse.Namespace) -> dict[str, Any]:
     store = WorkspaceMemoryStore(args.database)
     state = _require_session(store, args.session_id)
     runtime = _runtime_from_state(database=args.database, state=state)
-    packet = runtime.rehydrate(session_id=state.session_id)
+    packet = runtime.start_or_resume()
     records = [
         *packet.get("verified_facts", []),
         *packet.get("active_constraints", []),
