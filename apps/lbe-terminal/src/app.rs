@@ -372,14 +372,7 @@ impl App {
             KeyCode::Char('c')
                 if matches!(self.panel, Some(MockPanel::Undo | MockPanel::Changes)) =>
             {
-                if self.snapshot.connection == RuntimeConnection::Connected {
-                    self.transcript.push(
-                        "CHECKPOINT  comparison is not exposed until the LBE comparison owner is wired"
-                            .to_owned(),
-                    );
-                } else {
-                    self.compare_checkpoint(wrapper);
-                }
+                self.compare_checkpoint(wrapper)
             }
             KeyCode::Char('r') if self.panel == Some(MockPanel::Undo) => {
                 if self.snapshot.connection == RuntimeConnection::Connected {
@@ -1401,12 +1394,28 @@ impl App {
             LbeEvent::CheckpointComparisonReady {
                 checkpoint_id,
                 changed_files,
+                revalidation_status,
+                reasons,
             } => {
                 self.checkpoint_changed_files = changed_files.clone();
-                self.transcript.push(format!(
-                    "CHECKPOINT  comparison ready ? {checkpoint_id} ? {} file(s)",
-                    changed_files.len()
-                ));
+                if let Some(status) = revalidation_status {
+                    self.checkpoint_restore_status = Some(format!(
+                        "REVALIDATION {status}{}",
+                        if reasons.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" · {}", reasons.join(", "))
+                        }
+                    ));
+                    self.transcript.push(format!(
+                        "CHECKPOINT  revalidation · {checkpoint_id} · {status}"
+                    ));
+                } else {
+                    self.transcript.push(format!(
+                        "CHECKPOINT  comparison ready · {checkpoint_id} · {} file(s)",
+                        changed_files.len()
+                    ));
+                }
             }
             LbeEvent::CheckpointRestoreRequested { checkpoint_id } => {
                 self.checkpoint_restore_status = Some("RESTORE REQUESTED".to_owned());
