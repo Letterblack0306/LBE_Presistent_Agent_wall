@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from lbe_guard_inspector.evidence_service import EvidenceService
 from lbe_guard_inspector.reasoning_contracts import LBERequest
 from lbe_guard_inspector.reasoning_provider import ProviderConfig
@@ -221,3 +223,95 @@ def test_engine_neutral_coding_factory_rejects_unknown_engine(tmp_path: Path) ->
         assert "unsupported governed coding reasoning engine" in str(exc)
     else:
         raise AssertionError("unknown reasoning engine must fail explicitly")
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "endpoint"),
+    [
+        ("anthropic", "https://api.anthropic.com/v1/messages"),
+        (
+            "gemini",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent",
+        ),
+        ("openai", "https://api.openai.com/v1/responses"),
+    ],
+)
+def test_native_lbe_governed_coding_fails_closed_for_unimplemented_protocols(
+    tmp_path: Path,
+    provider_id: str,
+    endpoint: str,
+) -> None:
+    workspace = tmp_path / provider_id
+    workspace.mkdir()
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / f"{provider_id}.sqlite",
+        project_workspace_id=f"project-{provider_id}",
+        workspace_root=workspace,
+        session_id=f"session-{provider_id}",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id=provider_id,
+        provider_model="model-a",
+        reasoning_engine="native-lbe",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="native-lbe governed coding transport is not implemented",
+    ):
+        build_governed_coding_controller(
+            runtime=runtime,
+            provider_id=provider_id,
+            provider_config=ProviderConfig(
+                endpoint=endpoint,
+                model="model-a",
+                timeout_seconds=5,
+                api_key="test-key",
+            ),
+            engine_id="native-lbe",
+        )
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "endpoint"),
+    [
+        ("openai-compatible", "http://127.0.0.1:1234/v1/chat/completions"),
+        ("lmstudio", "http://127.0.0.1:1234/v1/chat/completions"),
+        ("ollama", "http://127.0.0.1:11434/v1/chat/completions"),
+        ("openrouter", "https://openrouter.ai/api/v1/chat/completions"),
+    ],
+)
+def test_native_lbe_governed_coding_accepts_proven_chat_completions_transport(
+    tmp_path: Path,
+    provider_id: str,
+    endpoint: str,
+) -> None:
+    workspace = tmp_path / provider_id
+    workspace.mkdir()
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / f"{provider_id}.sqlite",
+        project_workspace_id=f"project-{provider_id}",
+        workspace_root=workspace,
+        session_id=f"session-{provider_id}",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id=provider_id,
+        provider_model="model-a",
+        reasoning_engine="native-lbe",
+    )
+
+    controller = build_governed_coding_controller(
+        runtime=runtime,
+        provider_id=provider_id,
+        provider_config=ProviderConfig(
+            endpoint=endpoint,
+            model="model-a",
+            timeout_seconds=5,
+            api_key="test-key" if provider_id == "openrouter" else None,
+        ),
+        engine_id="native-lbe",
+    )
+
+    assert controller.engine_id == "native-lbe"

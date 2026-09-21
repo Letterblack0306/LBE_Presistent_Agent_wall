@@ -24,7 +24,12 @@ from agent import Context, GovernanceError, matches_any, path_allowed
 
 from ..evidence_service import EvidenceService
 from ..openai_compatible_event_adapter import OpenAICompatibleEventAdapter
-from ..professional_provider_events import ModelEventType, NormalizedModelEvent
+from ..professional_provider_events import (
+    ModelEventType,
+    NormalizedModelEvent,
+    ProviderProtocolFamily,
+)
+from ..provider_capability_discovery import detect_protocol_family
 from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
 from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
@@ -871,6 +876,17 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         provider_config: ProviderConfig,
         external_capabilities: Iterable[object] = (),
     ) -> None:
+        protocol_family, protocol_evidence = detect_protocol_family(
+            provider_id=provider_id,
+            endpoint=provider_config.endpoint,
+        )
+        if protocol_family is not ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT:
+            raise ValueError(
+                "native-lbe governed coding transport is not implemented for "
+                f"{provider_id} protocol {protocol_family.value}: {protocol_evidence}. "
+                "Select an explicitly supported reasoning engine; LBE will not "
+                "silently route this provider through a different transport."
+            )
         super().__init__(
             runtime=runtime,
             provider_id=provider_id,
