@@ -942,16 +942,13 @@ def _run_mode_command(
     if handle.descriptor.provider_id != state.provider_id:
         raise ValueError("provider adapter identity does not match persisted session provider")
     if mode is AgentMode.CODING:
-        from .runtime.governed_coding import GovernedProviderReasoningController
+        from .runtime.governed_coding import build_governed_coding_controller
 
-        if state.reasoning_engine not in {None, "native-lbe"}:
-            raise ValueError(
-                "governed coding tool loop currently requires the native-lbe reasoning engine"
-            )
-        controller = GovernedProviderReasoningController(
+        controller = build_governed_coding_controller(
             runtime=runtime,
             provider_id=state.provider_id,
             provider_config=provider_config,
+            engine_id=state.reasoning_engine,
         )
 
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
