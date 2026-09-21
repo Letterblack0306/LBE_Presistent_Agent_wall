@@ -3,6 +3,7 @@
 Status: IMPLEMENTED / STATIC VALIDATION ADDED / LIVE ACCEPTANCE PENDING
 Intent: LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001
 Canonical base head: 5ad590bd0113d3c336589510de258ac815d6920a
+Current source head recorded before this checkpoint update: 944b4e65978f149b68ed36d26c404191bcedec74
 
 ## Current implementation truth
 
@@ -16,6 +17,9 @@ Canonical base head: 5ad590bd0113d3c336589510de258ac815d6920a
 - OpenAI Responses preserves provider response identity, function `call_id`, and `previous_response_id` across tool continuation.
 - Anthropic preserves provider `tool_use.id` through `tool_result`; Gemini preserves provider `functionCall.id` through `functionResponse`.
 - No automatic fallback to Cline or another provider is introduced.
+- Canonical `lbe code` now delegates coding-controller selection to the same engine-neutral `build_governed_coding_controller` used by the product runtime; the previous native-only CLI rejection is removed.
+- Focused CLI coverage now includes an explicitly persisted Cline engine selection and verifies that it reaches the shared governed coding factory.
+- Cross-engine coverage compares native-LBE and Cline `workspace.read` receipt/projection truth through the same LBE authority fields.
 - Native bounded reasoning is now protocol-aware: OpenAI Chat Completions and OpenAI Responses use distinct request envelopes; Anthropic requires Messages; Gemini requires GenerateContent.
 - OpenAI Responses bounded reasoning uses the provider-native `text.format = json_schema` contract instead of a Chat Completions payload.
 - The canonical `lbe code` CLI path was identified as a remaining native-only bypass; current scope is explicitly amended to converge that existing owner onto `build_governed_coding_controller` before slice closure.
@@ -34,8 +38,8 @@ Focused tests now require:
 ## Acceptance status
 
 STATIC SOURCE / OWNER ALIGNMENT: IMPLEMENTED
-FOCUSED TESTS: ADDED, execution not available in this GitHub-API-only environment
-FULL REGRESSION: UNVERIFIED
+FOCUSED TESTS: ADDED; execution pending a GitHub Actions runner
+FULL REGRESSION: BLOCKED_BY_CI_RUNNER — observed attempt-1 matrix jobs terminated before workflow steps; rerun attempt 2 requested
 LIVE NATIVE ENGINE TURN: UNVERIFIED
 LIVE CLINE REGRESSION: UNVERIFIED
 INSTALLED MULTI-ENGINE ACCEPTANCE: UNVERIFIED
