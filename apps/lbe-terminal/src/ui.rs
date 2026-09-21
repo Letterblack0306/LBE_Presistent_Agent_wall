@@ -1453,9 +1453,18 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ],
         ),
         MockPanel::Provider => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned(),
-                "Mock provider catalog; no credentials, network, or provider calls.".to_owned(),
+                if connected {
+                    "CONNECTED · authoritative LBE provider projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned()
+                },
+                if connected {
+                    "Provider identity, auth state and health are projected from LBE.".to_owned()
+                } else {
+                    "Mock provider catalog; no credentials, network, or provider calls.".to_owned()
+                },
                 String::new(),
             ];
             rows.extend(snapshot.providers.iter().map(|provider| {
@@ -1471,9 +1480,18 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ("Providers", rows)
         }
         MockPanel::Model => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned(),
-                "Mock provider-discovered catalog; capability values are not live.".to_owned(),
+                if connected {
+                    "CONNECTED · authoritative LBE model projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned()
+                },
+                if connected {
+                    "Model identity and capability metadata are projected from LBE.".to_owned()
+                } else {
+                    "Mock provider-discovered catalog; capability values are not live.".to_owned()
+                },
                 String::new(),
             ];
             rows.extend(snapshot.models.iter().map(|model| {
@@ -1504,8 +1522,16 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
         MockPanel::Mcp => (
             "MCP",
             vec![
-                "MOCK / NOT CONNECTED".to_owned(),
-                "No MCP server registry or transport is connected.".to_owned(),
+                if snapshot.connection == RuntimeConnection::Connected {
+                    "CONNECTED · authoritative LBE extension projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED".to_owned()
+                },
+                if snapshot.connection == RuntimeConnection::Connected {
+                    "Registry metadata is projected read-only; execution remains runtime-owned.".to_owned()
+                } else {
+                    "No MCP server registry or transport is connected.".to_owned()
+                },
             ],
         ),
         MockPanel::Tools => (
@@ -1852,9 +1878,18 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ("Workspace Changes", rows)
         }
         MockPanel::Doctor => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned(),
-                "Mock diagnostics; no live checks are executed.".to_owned(),
+                if connected {
+                    "CONNECTED · LBE diagnostic projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned()
+                },
+                if connected {
+                    "Diagnostic results are projected from the connected LBE runtime.".to_owned()
+                } else {
+                    "Mock diagnostics; no live checks are executed.".to_owned()
+                },
                 String::new(),
             ];
             rows.extend(snapshot.diagnostics.iter().map(|check| {
