@@ -25,7 +25,16 @@ if (-not $Model) { $Model = [string]$provider.model }
 if (-not $Model -or $Model -eq 'replace-with-provider-model-id') {
     throw 'Provider setup is incomplete: reasoning-provider.json must contain a real model id.'
 }
-$providerId = if ($provider.provider_id) { [string]$provider.provider_id } else { 'configured-provider' }
+$providerId = if ($provider.provider_id) {
+    [string]$provider.provider_id
+} elseif ([string]$provider.endpoint -match '/v1(?:/|$)') {
+    # The explicit provider file is OpenAI-compatible when it supplies a
+    # standard /v1 endpoint. Keep the runtime identity parseable by the TUI
+    # instead of inventing a provider id that the real adapter cannot project.
+    'openai-compatible'
+} else {
+    'configured-provider'
+}
 
 if (-not $SessionId) {
     $sha = [Security.Cryptography.SHA256]::Create()
@@ -34,11 +43,9 @@ if (-not $SessionId) {
         $workspaceId = 'workspace_' + ([BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
     } finally { $sha.Dispose() }
     $mode = if ($Agent -eq 'plan') { 'investigation' } elseif ($Agent -eq 'audit') { 'audit' } else { 'coding' }
-    $SessionId = 'lbe-' + [Guid]::NewGuid().ToString('N')
     $bootstrapArgs = @(
         '-m','lbe_guard_inspector.product_entry','start',
         '--database',[IO.Path]::GetFullPath($Database),
-        '--session-id',$SessionId,
         '--workspace',$workspace,
         '--project-workspace-id',$workspaceId,
         '--mode',$mode,

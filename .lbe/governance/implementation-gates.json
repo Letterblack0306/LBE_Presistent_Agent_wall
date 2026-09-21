@@ -66,7 +66,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001",
     "owner": "Existing governed tool/authorization owners plus Rust client projection; no second executor",
-    "index_revision": "A0676ECBA1B99313207321DF32F67FBBFF127D32FE2CE6ED36D6EB6D6D1C7D12"
+    "index_revision": "E4B52A18940A2F1485F8D565F8058F43F82EB9E205F33DB50FD18560B138D4B5"
   },
   "closure": {
     "status": "OPEN",

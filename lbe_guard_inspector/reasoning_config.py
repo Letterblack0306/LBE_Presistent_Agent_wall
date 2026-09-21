@@ -7,7 +7,7 @@ from typing import Any, Mapping
 
 from .reasoning_provider import ProviderConfig
 
-_ALLOWED_FIELDS = frozenset({"endpoint", "model", "timeout_seconds", "api_key"})
+_ALLOWED_FIELDS = frozenset({"endpoint", "model", "timeout_seconds", "api_key", "reasoning_effort"})
 _REQUIRED_FIELDS = frozenset({"endpoint", "model", "timeout_seconds"})
 
 
@@ -35,9 +35,13 @@ def provider_config_from_mapping(raw: Mapping[str, Any]) -> ProviderConfig:
     api_key = raw.get("api_key")
     if api_key is not None and (not isinstance(api_key, str) or not api_key.strip()):
         raise ValueError("provider api_key must be a non-empty string when supplied")
+    reasoning_effort = raw.get("reasoning_effort")
+    if reasoning_effort is not None and (not isinstance(reasoning_effort, str) or not reasoning_effort.strip()):
+        raise ValueError("provider reasoning_effort must be a non-empty string when supplied")
     return ProviderConfig(
         endpoint=raw["endpoint"],
         model=raw["model"],
         timeout_seconds=raw["timeout_seconds"],
         api_key=api_key.strip() if isinstance(api_key, str) else None,
+        reasoning_effort=reasoning_effort.strip() if isinstance(reasoning_effort, str) else None,
     )

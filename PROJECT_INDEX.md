@@ -47,6 +47,7 @@ must map to one row before it may be changed.
 | `.gitignore` | Root exclusion authority for generated/untracked artifacts | Repository governance | `docs/governance/PROJECT_INTENT_LEDGER.md` | Protected; governs what must never be committed |
 | `tty-acceptance-test.ps1` | PTY/ConPTY interactive acceptance surface (root-level acceptance harness) | LBE product acceptance owner | `docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md` | Acceptance evidence only |
 | `launch-lbe.ps1` | Canonical source-tree launcher that bootstraps a governed session before starting the Rust client | LBE product entry/runtime owners | `docs/governance/TUI_END_TO_END_TRACEABILITY.md` | Launcher/bootstrap only; authority remains in LBE runtime |
+| `reasoning-provider.json` | Explicit local OpenAI-compatible provider endpoint/model configuration used by the governed launcher; contains no copied Cline OAuth secrets | LBE provider-runtime configuration owner | `docs/governance/PROJECT_INTENT_LEDGER.md` | Provider configuration only; credentials remain external and governed |
 | `README.md` | Product and installation entrypoint | Product documentation | `docs/README.md` | Product-doc intent only |
 | `PROJECT_INDEX.md` | Root structural authority registry | LBE governance | `docs/governance/PROJECT_INTENT_LEDGER.md` | Protected; update before new structure |
 | `pyproject.toml` | Package metadata and version authority | Release governance | Active publication gates | Publication intent only |

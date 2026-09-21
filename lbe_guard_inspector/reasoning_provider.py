@@ -30,6 +30,7 @@ class ProviderConfig:
     model: str
     timeout_seconds: float
     api_key: str | None = None
+    reasoning_effort: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.endpoint, str) or not self.endpoint.strip():
@@ -38,6 +39,10 @@ class ProviderConfig:
             raise ValueError("provider model must be a non-empty string")
         if not isinstance(self.timeout_seconds, (int, float)) or self.timeout_seconds <= 0:
             raise ValueError("provider timeout_seconds must be greater than zero")
+        if self.reasoning_effort is not None and (
+            not isinstance(self.reasoning_effort, str) or not self.reasoning_effort.strip()
+        ):
+            raise ValueError("provider reasoning_effort must be a non-empty string when supplied")
 
 
 class ProviderError(RuntimeError):
@@ -231,6 +236,8 @@ class OpenAICompatibleReasoningBackend:
                 },
             },
         }
+        if self._config.reasoning_effort is not None:
+            payload["reasoning_effort"] = self._config.reasoning_effort.strip()
         headers = {"Content-Type": "application/json"}
         if self._config.api_key:
             headers["Authorization"] = f"Bearer {self._config.api_key}"
