@@ -23,17 +23,12 @@ from uuid import uuid4
 from agent import Context, GovernanceError, matches_any, path_allowed
 
 from ..evidence_service import EvidenceService
-from ..openai_compatible_event_adapter import OpenAICompatibleEventAdapter
-from ..professional_provider_events import (
-    ModelEventType,
-    NormalizedModelEvent,
-    ProviderProtocolFamily,
-)
-from ..provider_capability_discovery import detect_protocol_family
+from ..professional_provider_events import ModelEventType, NormalizedModelEvent
 from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
 from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
 from .mode_controller import ModeRequest, resolve_mode
+from .provider_event_adapters import build_native_provider_event_adapter
 from .agent_guidance import AgentGuidance, build_agent_guidance
 from .tool_orchestration import (
     GovernedToolOrchestrator,
@@ -876,17 +871,10 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         provider_config: ProviderConfig,
         external_capabilities: Iterable[object] = (),
     ) -> None:
-        protocol_family, protocol_evidence = detect_protocol_family(
+        self._adapter = build_native_provider_event_adapter(
             provider_id=provider_id,
-            endpoint=provider_config.endpoint,
+            config=provider_config,
         )
-        if protocol_family is not ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT:
-            raise ValueError(
-                "native-lbe governed coding transport is not implemented for "
-                f"{provider_id} protocol {protocol_family.value}: {protocol_evidence}. "
-                "Select an explicitly supported reasoning engine; LBE will not "
-                "silently route this provider through a different transport."
-            )
         super().__init__(
             runtime=runtime,
             provider_id=provider_id,
@@ -894,7 +882,6 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
             engine_id="native-lbe",
             external_capabilities=external_capabilities,
         )
-        self._adapter = OpenAICompatibleEventAdapter(config=provider_config)
 
     def run(self, request: LBERequest) -> LBEResponse:
         task_id = str(request.task_id or "").strip()

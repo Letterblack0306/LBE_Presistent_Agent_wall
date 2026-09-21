@@ -228,7 +228,6 @@ def test_engine_neutral_coding_factory_rejects_unknown_engine(tmp_path: Path) ->
 @pytest.mark.parametrize(
     ("provider_id", "endpoint"),
     [
-        ("anthropic", "https://api.anthropic.com/v1/messages"),
         (
             "gemini",
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent",
@@ -276,6 +275,7 @@ def test_native_lbe_governed_coding_fails_closed_for_unimplemented_protocols(
 @pytest.mark.parametrize(
     ("provider_id", "endpoint"),
     [
+        ("anthropic", "https://api.anthropic.com/v1/messages"),
         ("openai-compatible", "http://127.0.0.1:1234/v1/chat/completions"),
         ("lmstudio", "http://127.0.0.1:1234/v1/chat/completions"),
         ("ollama", "http://127.0.0.1:11434/v1/chat/completions"),
