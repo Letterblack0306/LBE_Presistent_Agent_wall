@@ -229,6 +229,14 @@ def build_parser() -> argparse.ArgumentParser:
     checkpoint_latest.add_argument("--session-id", required=True)
     checkpoint_latest.set_defaults(handler=_checkpoint_latest)
 
+    checkpoint_compare = checkpoint_commands.add_parser(
+        "compare", help="Revalidate one persisted checkpoint against current workspace state"
+    )
+    _add_database_argument(checkpoint_compare)
+    checkpoint_compare.add_argument("--session-id", required=True)
+    checkpoint_compare.add_argument("--checkpoint-id", required=True)
+    checkpoint_compare.set_defaults(handler=_checkpoint_compare)
+
     memory = commands.add_parser("memory", help="Read validated LBE session memory projections")
     memory_commands = memory.add_subparsers(dest="memory_command", required=True)
     memory_recall = memory_commands.add_parser(
@@ -987,6 +995,28 @@ def _checkpoint_latest(args: argparse.Namespace) -> dict[str, Any]:
         "project_workspace_id": state.project_workspace_id,
         "checkpoint": packet.get("checkpoint"),
         "checkpoint_revalidation": packet.get("checkpoint_revalidation"),
+    }
+
+
+def _checkpoint_compare(args: argparse.Namespace) -> dict[str, Any]:
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    packet = runtime.rehydrate(session_id=state.session_id)
+    checkpoint = packet.get("checkpoint")
+    if checkpoint is None:
+        raise ValueError("no persisted checkpoint exists for session")
+    if checkpoint.get("checkpoint_id") != args.checkpoint_id:
+        raise ValueError("requested checkpoint is not the latest persisted checkpoint")
+    revalidation = packet.get("checkpoint_revalidation")
+    if revalidation is None:
+        raise ValueError("checkpoint revalidation evidence is unavailable")
+    return {
+        "action": "checkpoint.compare",
+        "session_id": state.session_id,
+        "project_workspace_id": state.project_workspace_id,
+        "checkpoint_id": args.checkpoint_id,
+        "revalidation": revalidation,
     }
 
 
