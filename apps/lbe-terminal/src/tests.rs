@@ -5317,3 +5317,18 @@ fn checkpoints_command_routes_read_only_refresh_request() {
     assert_eq!(wrapper.requests, vec![UserRequest::RefreshCheckpoint]);
     assert_eq!(app.panel, Some(MockPanel::Undo));
 }
+
+
+#[test]
+fn real_wrapper_requires_connected_runtime_for_checkpoint_compare() {
+    let mut wrapper = RealLbeWrapper::new();
+    let error = wrapper
+        .submit(
+            UserRequest::CompareCheckpoint {
+                checkpoint_id: "checkpoint-1".to_owned(),
+            },
+            Instant::now(),
+        )
+        .expect_err("checkpoint comparison requires an attached LBE runtime");
+    assert!(error.message.contains("requires a connected LBE runtime"));
+}
