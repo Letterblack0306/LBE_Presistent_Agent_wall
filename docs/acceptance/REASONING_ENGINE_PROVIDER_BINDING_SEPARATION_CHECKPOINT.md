@@ -16,6 +16,9 @@ Canonical base head: 5ad590bd0113d3c336589510de258ac815d6920a
 - OpenAI Responses preserves provider response identity, function `call_id`, and `previous_response_id` across tool continuation.
 - Anthropic preserves provider `tool_use.id` through `tool_result`; Gemini preserves provider `functionCall.id` through `functionResponse`.
 - No automatic fallback to Cline or another provider is introduced.
+- Native bounded reasoning is now protocol-aware: OpenAI Chat Completions and OpenAI Responses use distinct request envelopes; Anthropic requires Messages; Gemini requires GenerateContent.
+- OpenAI Responses bounded reasoning uses the provider-native `text.format = json_schema` contract instead of a Chat Completions payload.
+- The canonical `lbe code` CLI path was identified as a remaining native-only bypass; current scope is explicitly amended to converge that existing owner onto `build_governed_coding_controller` before slice closure.
 
 ## Added falsifier coverage
 

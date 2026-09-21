@@ -790,12 +790,12 @@ ENGINE_NEUTRAL_MODEL: selected_reasoning_agent becomes engine-neutral authorized
 REQUIRED_EVIDENCE_REPLACEMENT: Replace headless_cline_provider_turn with engine-neutral governed-turn proof, while retaining Cline regression proof to ensure no regression.
 NON_GOALS: independent provider transport outside LBE-owned engine/provider bindings; silent engine/provider fallback; publication without separate authorization; branch/worktree creation; changes to the canonical client workspace (C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal); changes to existing working Cline-backed routes without regression proof.
 FIRST_CODE_CHANGE: After governance opens the slice, make the module-scope cline_reasoning_provider import optional/feature-scoped as the first implementation change, proving Cline-absent LBE initialization before re-pointing any provider bindings.
-AFFECTED_STRUCTURE: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/PROJECT_INTENT_LEDGER.md, docs/acceptance/, .lbe/governance/implementation-gates.json
+AFFECTED_STRUCTURE: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/cli.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/PROJECT_INTENT_LEDGER.md, docs/acceptance/, .lbe/governance/implementation-gates.json
 EXISTING_OWNER: LBE runtime owners; existing Cline adapter mechanics under LBE authority; engine/provider binding owner (new structural responsibility per PROJECT_INDEX.md).
 DESIRED_RESULT: LBE initializes and operates through an engine-neutral reasoning runtime. Cline is one supported adapter. Provider bindings are engine/provider-scoped behind LBE authority. No silent fallback. Cline regression proof retained.
 REUSE_DECISION: REUSE existing LBE runtime, authorization, execution, receipt, evidence, persistence, validation, and completion owners. REUSE existing Cline adapter as one supported engine. ADAPT the provider registry and reasoning runtime to be engine-neutral with optional/supported Cline import.
 AUTHORITY_IMPACT: LBE authority unchanged. Reasoning engine/provider bindings become a distinct structural responsibility owned by LBE runtime + engine/provider binding owner. Cline mechanics remain under LBE authority.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/, docs/acceptance/, .lbe/governance/
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/cli.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/, docs/acceptance/, .lbe/governance/
 REQUIRED_EVIDENCE: engine-neutral LBE initialization proof; Cline-absent LBE initialization proof; Cline regression proof; provider binding structure registered in PROJECT_INDEX.md; gate amendment record; focused tests for engine-neutral runtime; full regression.
 MACHINE_SLICE: REASONING_ENGINE_PROVIDER_BINDING_SEPARATION
 RESULT: IMPLEMENTED_STATIC_VALIDATION_PENDING
@@ -803,6 +803,7 @@ IMPLEMENTATION_COMMITS: 39dd7cf9a6194a4931d1c564f43af50d5d8d9f7f, 7685ecae0412a9
 REFERENCE_CHAIN: GPT-K ai-agents/studies/agent-feature-reference-map-2026-09-20.json -> Cline 9a2512bb9835869d74774da99708a7f9d80b0fe8 sdk/packages/README.md -> OpenCode ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts
 VALIDATION_BLOCKER: GitHub Actions validate jobs fail before any workflow steps on this commit and on both immediately preceding governance-only commits; full regression/runtime proof remains UNVERIFIED.
 AUTHORIZATION: EXPLICIT_USER_AUTHORIZATION_2026_09_20
+SCOPE_AMENDMENT_2026_09_21: Explicit user instruction `goahead build it in the repo` authorizes convergence of the existing canonical `lbe code` product-entry path onto the already-selected engine-neutral governed coding factory. This adds only `lbe_guard_inspector/cli.py` as an existing-owner path; it does not authorize TUI mutation, new runtime authority, branch/worktree creation, publication, or gate closure.
 ```\n
 
 ## INTENT LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001

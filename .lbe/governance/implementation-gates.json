@@ -132,7 +132,7 @@
       },
       "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION": {
         "status": "AUTHORIZED",
-        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_20",
+        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_20 + EXPLICIT_USER_CONTINUATION_2026_09_21",
         "scope": [
           "engine-neutral reasoning runtime",
           "optional/supported Cline adapter (not required owner)",
@@ -141,7 +141,8 @@
           "engine-neutral governed-turn evidence (replacing headless_cline_provider_turn)",
           "Cline regression proof retention",
           "no silent engine/provider fallback",
-          "capability truth from ProviderModelCapabilitySnapshot/normalize_provider_descriptor"
+          "capability truth from ProviderModelCapabilitySnapshot/normalize_provider_descriptor",
+          "canonical CLI coding entry uses the engine-neutral governed coding factory"
         ],
         "required_evidence": [
           "engine-neutral LBE initialization proof",
@@ -162,7 +163,20 @@
         ],
         "first_code_change": "Make module-scope cline_reasoning_provider import optional/feature-scoped; prove Cline-absent LBE initialization before re-pointing provider bindings",
         "implementation_allowed": true,
-        "completion_checkpoint": "docs/acceptance/REASONING_ENGINE_PROVIDER_BINDING_SEPARATION_CHECKPOINT.md"
+        "completion_checkpoint": "docs/acceptance/REASONING_ENGINE_PROVIDER_BINDING_SEPARATION_CHECKPOINT.md",
+        "scope_amendment": {
+          "date": "2026-09-21",
+          "authorization": "User instructed `goahead build it in the repo` after current gate/scope was disclosed",
+          "added_existing_owner_path": "lbe_guard_inspector/cli.py",
+          "purpose": "Remove native-only product-entry bypass and reuse build_governed_coding_controller",
+          "forbidden": [
+            "apps/lbe-terminal changes",
+            "new authority owner",
+            "branch/worktree creation",
+            "publication",
+            "silent gate closure"
+          ]
+        }
       }
     },
     "next_phase": null
