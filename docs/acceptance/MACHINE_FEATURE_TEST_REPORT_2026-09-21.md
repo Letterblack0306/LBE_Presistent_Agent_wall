@@ -2,13 +2,13 @@
 
 Canonical workspace: `C:\Agents-Memory-Tool-v6-integration`
 Branch: `main`
-HEAD: `e448950`
+HEAD: `068bf94`
 
 ## Verdict
 
 `BLOCKED_FOR_LIVE_USE`
 
-This is not a mock-based release claim. The real TUI rendered and restored the terminal correctly. Python and Rust regressions passed, but a live provider session was not available, so provider turns, authorization, completion evidence, and physical mouse outcomes remain unproven.
+This is not a mock-based release claim. The real TUI rendered and restored the terminal correctly. Python and Rust regressions passed. Real PTY SGR mouse input proved landing entry and command-palette selection; attached-session provider, authorization, completion, and remaining mouse paths remain unproven.
 
 ## Evidence
 
@@ -18,7 +18,8 @@ This is not a mock-based release claim. The real TUI rendered and restored the t
 - Real launcher provider guard: observed and actionable
 - Real runtime attachment: `FAIL` — `LBE_SESSION_ID is not configured`
 - Keyboard semantic outcome: `UNVERIFIED`
-- Mouse click/wheel outcome: `UNVERIFIED`
+- Mouse landing/palette outcome: `PASS` — observed in release PTY traces
+- Mouse provider/model/session/workspace/approval/wheel outcome: `UNVERIFIED`
 - Live provider turn: `UNVERIFIED`
 
 The machine-readable record is in [MACHINE_FEATURE_TEST_REPORT_2026-09-21.json](MACHINE_FEATURE_TEST_REPORT_2026-09-21.json).
@@ -31,4 +32,4 @@ Create a real `reasoning-provider.json`, then run:
 .\launch-lbe.ps1
 ```
 
-Do not promote this report to release-ready until the live session, provider turn, keyboard semantics, and physical mouse interactions produce observable evidence.
+Do not promote this report to release-ready until the live session, provider turn, keyboard semantics, and attached-session mouse interactions produce observable evidence.

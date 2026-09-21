@@ -2308,6 +2308,41 @@ impl RealLbeWrapper {
         // Step 13 — apply snapshot fields; all required projections passed
         self.snapshot.project_truth = Some(project_truth);
         self.snapshot.session_context = Some(session_context.clone());
+        // The checkpoint projection is opaque owner data, but its stable
+        // envelope fields are part of the session_context contract. Project
+        // only those fields; do not infer changed files or fabricate a
+        // checkpoint when the owner did not provide one.
+        self.snapshot.latest_checkpoint =
+            session_context
+                .data
+                .checkpoint
+                .as_ref()
+                .and_then(|checkpoint| {
+                    let payload = &checkpoint.payload;
+                    let checkpoint_id = payload
+                        .get("checkpoint_id")
+                        .and_then(serde_json::Value::as_str)
+                        .or(session_context.data.session.checkpoint_id.as_deref())?
+                        .trim();
+                    let created_at = payload
+                        .get("created_at")
+                        .and_then(serde_json::Value::as_str)?
+                        .trim();
+                    if checkpoint_id.is_empty() || created_at.is_empty() {
+                        return None;
+                    }
+                    let workspace_revision = payload
+                        .get("head")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or_default()
+                        .trim();
+                    Some(CheckpointDescriptor {
+                        checkpoint_id: checkpoint_id.to_owned(),
+                        created_at: created_at.to_owned(),
+                        workspace_revision: workspace_revision.to_owned(),
+                        changed_files: Vec::new(),
+                    })
+                });
         self.snapshot.provenance = provenance;
         self.snapshot.validation = validation;
         self.snapshot.session_id = Some(session_context.session_id.clone());
@@ -5025,8 +5060,24 @@ impl LbeWrapper for RealLbeWrapper {
                 self.resolve_authorization(&approval_id, "reject")
             }
             UserRequest::SetMode { mode } => self.set_real_mode(mode),
-            UserRequest::CompareCheckpoint { .. } => {
-                self.unsupported_real_request("checkpoint comparison")
+            UserRequest::CompareCheckpoint { checkpoint_id } => {
+                self.require_connected()?;
+                let Some(checkpoint) = self.snapshot.latest_checkpoint.as_ref() else {
+                    return Err(LbeError::new(
+                        "no checkpoint is available in the owner projection",
+                    ));
+                };
+                if checkpoint.checkpoint_id != checkpoint_id {
+                    return Err(LbeError::new(
+                        "checkpoint is not available in the owner projection",
+                    ));
+                }
+                self.pending_events
+                    .push_back(LbeEvent::CheckpointComparisonReady {
+                        checkpoint_id,
+                        changed_files: checkpoint.changed_files.clone(),
+                    });
+                Ok(())
             }
             UserRequest::RestoreCheckpoint { .. } => {
                 self.unsupported_real_request("checkpoint restore")

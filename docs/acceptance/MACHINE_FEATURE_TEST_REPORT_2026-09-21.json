@@ -3,7 +3,7 @@
   "generated_at": "2026-09-21T13:50:00+04:00",
   "workspace": "C:\\Agents-Memory-Tool-v6-integration",
   "branch": "main",
-  "head": "e4489508757ef16572cff956f2eed2a4d278ef1e",
+  "head": "068bf94a575b618c1ba12e4a5c779eb6ea25fed7",
   "policy": {
     "pass_requires": "observed execution on the real product/runtime path",
     "mock_results_count_as_pass": false,
@@ -55,9 +55,15 @@
     },
     {
       "id": "mouse_click_interaction",
+      "status": "PASS",
+      "evidence": "Real release PTY SGR mouse sequences captured through LBE_INPUT_TRACE_FILE",
+      "detail": "Observed landing click -> mouse_enter_landing and command-palette click -> mouse_command_palette_select index=0. This PASS is limited to those two paths; provider/model/session/workspace/approval click and wheel paths remain separately unverified."
+    },
+    {
+      "id": "mouse_provider_model_session_workspace_approval",
       "status": "UNVERIFIED",
-      "evidence": "No mouse-capable computer-use terminal surface was available",
-      "detail": "Mouse capture and hit-testing code now cover palette, provider/model/session, workspace, and approval controls, but physical click/wheel outcomes were not observed on a real terminal surface."
+      "evidence": "Source hit-testing exists, but no real attached-session PTY observation is recorded",
+      "detail": "Provider, model, session, workspace-row, approval, and wheel outcomes require an attached runtime with visible rows and must not inherit the landing/palette result."
     },
     {
       "id": "live_provider_turn",
@@ -70,7 +76,7 @@
   "blocking_items": [
     "Create a real reasoning-provider.json with a reachable provider endpoint and model id.",
     "Rerun launch-lbe.ps1 and capture an attached session plus a real provider turn.",
-    "Run the same interaction matrix on a mouse-capable terminal and record observed click and wheel outcomes."
+    "Run the attached-session interaction matrix on a mouse-capable terminal and record provider/model/session/workspace/approval/wheel outcomes."
   ],
   "next_command": ".\\launch-lbe.ps1"
 }

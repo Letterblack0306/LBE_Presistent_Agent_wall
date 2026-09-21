@@ -16,7 +16,7 @@ unit-test path, and a live installed-runtime proof.
 | Installed PTY/ConPTY acceptance | Not run/re-proven | Live installed behavior remains unverified |
 | Live provider turn | Not proven here | Tests do not prove credentials/network/provider availability |
 | Real release PTY launch | **FAIL / FIXED IN SOURCE** | Root launcher now bootstraps required variables/session; direct binary still fails closed without a session |
-| Mouse injection | **FAIL / UNVERIFIED** | No usable computer-use terminal surface or mouse-capable PTY harness was available |
+| Mouse injection | **PARTIALLY VERIFIED** | Real release PTY SGR sequences proved landing entry and command-palette selection; attached-session controls and wheel remain unverified |
 
 ## Surface audit
 
@@ -40,7 +40,7 @@ unit-test path, and a live installed-runtime proof.
 | Checkpoints/undo | Compare and restore request paths | Implemented as panels | Live restore acceptance |
 | Browser agent | Browser state/chat panel and governed request vocabulary | Partial | Live browser adapter acceptance |
 | Headless CLI | `run`, `--json`, `--plain`, explicit prompt path | Implemented | Installed CLI acceptance |
-| Mouse | Capture, wheel scrolling, landing/help, provider/model/session/workspace/palette/approval hit regions | Implemented in source; physical terminal proof pending | Real mouse-capable terminal acceptance |
+| Mouse | Capture, wheel scrolling, landing/help, provider/model/session/workspace/palette/approval hit regions | Landing and command-palette paths observed in real release PTY; remaining controls not proven | Attached-session mouse-capable terminal acceptance |
 | Accessibility | Compact layout, ASCII, no-color, reduced motion, minimum-size fallback | Implemented/tested | Live terminal-size matrix |
 | Packaging | Release binary, canonical launcher, `lbe-cli.ps1`, `.bat`, and TTY prerequisite script | Implemented in source; installed artifact not proven | Reinstall and verify exact installed artifact |
 
@@ -57,6 +57,12 @@ The source launcher has since been added and now creates the governed session
 before launching the binary when a real provider configuration is available.
 The direct binary remains intentionally fail-closed when no session is passed.
 No live provider/session attachment has yet been observed in the current build.
+
+A subsequent real release-PTY run injected SGR mouse sequences and captured
+authoritative input traces. The trace showed `mouse_enter_landing` for the
+landing click and `mouse_command_palette_select index=0` for a visible palette
+row click. This proves those two paths only; it is not evidence for attached
+provider/model/session/workspace/approval rows or wheel behavior.
 
 The earlier mock PTY run is intentionally excluded from evidence. It showed
 preview rendering only and is not evidence of provider, session, keyboard,
