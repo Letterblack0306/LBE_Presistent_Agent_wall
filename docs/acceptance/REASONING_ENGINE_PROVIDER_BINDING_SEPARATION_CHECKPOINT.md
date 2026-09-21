@@ -39,9 +39,17 @@ Focused tests now require:
 
 STATIC SOURCE / OWNER ALIGNMENT: IMPLEMENTED
 FOCUSED TESTS: ADDED; execution pending a GitHub Actions runner
-FULL REGRESSION: BLOCKED_BY_CI_RUNNER — observed attempt-1 matrix jobs terminated before workflow steps; rerun attempt 2 requested
+FULL REGRESSION: BLOCKED_BY_CI_RUNNER — attempts 1 and 2 both terminated all 8 Ubuntu/Windows matrix jobs before any workflow step executed; no test logs were produced
 LIVE NATIVE ENGINE TURN: UNVERIFIED
 LIVE CLINE REGRESSION: UNVERIFIED
 INSTALLED MULTI-ENGINE ACCEPTANCE: UNVERIFIED
 
 Do not close the machine slice from this checkpoint alone.
+
+## Validation infrastructure blocker — 2026-09-21
+
+GitHub Actions run `35559528172` was rerun after the engine/provider source convergence. Attempt 2 reproduced the same infrastructure symptom as attempt 1: all eight matrix jobs completed `failure` with an empty steps list and no logs. This does not classify the source as failing; it blocks focused/full regression evidence.
+
+Classification: `BLOCKED_CONFIGURATION / CI_RUNNER`.
+
+The machine slice remains OPEN. Do not advance to the proposed Rust TUI or later convergence slices until claim-matched regression executes successfully on a functioning runner or equivalent current workspace.
