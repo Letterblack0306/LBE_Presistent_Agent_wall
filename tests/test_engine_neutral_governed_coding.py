@@ -309,7 +309,7 @@ def test_native_lbe_governed_coding_accepts_proven_chat_completions_transport(
             endpoint=endpoint,
             model="model-a",
             timeout_seconds=5,
-            api_key="test-key" if provider_id == "openrouter" else None,
+            api_key="test-key" if provider_id in {"anthropic", "openrouter"} else None,
         ),
         engine_id="native-lbe",
     )
