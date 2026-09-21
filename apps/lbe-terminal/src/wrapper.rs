@@ -1413,6 +1413,11 @@ impl LbeWrapper for MockLbeWrapper {
                 self.snapshot.selected_model = Some(model);
                 self.emit_snapshot();
             }
+            UserRequest::RefreshCheckpoint => {
+                if let Some(checkpoint) = self.snapshot.latest_checkpoint.clone() {
+                    self.emit(LbeEvent::CheckpointCreated { checkpoint });
+                }
+            }
             UserRequest::CompareCheckpoint { checkpoint_id } => {
                 let Some(checkpoint) = self.snapshot.latest_checkpoint.as_ref() else {
                     return Err(LbeError::new("no checkpoint is available to compare"));
@@ -2960,6 +2965,95 @@ impl RealLbeWrapper {
             .push_back(LbeEvent::ChildAgentRunsUpdated {
                 runs: self.snapshot.child_agents.clone(),
             });
+        Ok(())
+    }
+
+    fn refresh_real_checkpoint(&mut self) -> Result<(), LbeError> {
+        self.require_connected()?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .ok_or_else(|| LbeError::new("no authoritative LBE session is attached"))?;
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "checkpoint",
+                "latest",
+                "--database",
+            ])
+            .arg(database)
+            .args(["--session-id", &session_id])
+            .output()
+            .map_err(|error| LbeError::new(format!("checkpoint refresh failed: {error}")))?;
+
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid checkpoint.latest JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("checkpoint refresh failed");
+            return Err(LbeError::new(message));
+        }
+        if payload.get("action").and_then(serde_json::Value::as_str) != Some("checkpoint.latest") {
+            return Err(LbeError::new("checkpoint refresh returned unexpected action"));
+        }
+        if payload.get("session_id").and_then(serde_json::Value::as_str) != Some(session_id.as_str()) {
+            return Err(LbeError::new("checkpoint refresh session identity mismatch"));
+        }
+
+        let Some(checkpoint) = payload.get("checkpoint") else {
+            self.snapshot.latest_checkpoint = None;
+            return Ok(());
+        };
+        if checkpoint.is_null() {
+            self.snapshot.latest_checkpoint = None;
+            return Ok(());
+        }
+        let checkpoint_id = checkpoint
+            .get("checkpoint_id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| LbeError::new("checkpoint projection omitted checkpoint_id"))?
+            .to_owned();
+        let created_at = checkpoint
+            .get("created_at")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| LbeError::new("checkpoint projection omitted created_at"))?
+            .to_owned();
+        let workspace_revision = checkpoint
+            .get("head")
+            .and_then(serde_json::Value::as_str)
+            .filter(|value| !value.is_empty())
+            .or_else(|| checkpoint.get("branch").and_then(serde_json::Value::as_str))
+            .unwrap_or("unknown")
+            .to_owned();
+
+        let descriptor = CheckpointDescriptor {
+            checkpoint_id,
+            created_at,
+            workspace_revision,
+            changed_files: Vec::new(),
+        };
+        self.snapshot.latest_checkpoint = Some(descriptor.clone());
+        self.pending_events
+            .push_back(LbeEvent::CheckpointCreated { checkpoint: descriptor });
         Ok(())
     }
 
@@ -5337,6 +5431,7 @@ impl LbeWrapper for RealLbeWrapper {
                 self.resolve_authorization(&approval_id, "reject")
             }
             UserRequest::SetMode { mode } => self.set_real_mode(mode),
+            UserRequest::RefreshCheckpoint => self.refresh_real_checkpoint(),
             UserRequest::CompareCheckpoint { .. } => {
                 self.unsupported_real_request("checkpoint comparison")
             }
