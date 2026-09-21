@@ -284,7 +284,7 @@ def test_native_lbe_governed_coding_fails_closed_for_unimplemented_protocols(
         ("openrouter", "https://openrouter.ai/api/v1/chat/completions"),
     ],
 )
-def test_native_lbe_governed_coding_accepts_proven_chat_completions_transport(
+def test_native_lbe_governed_coding_accepts_implemented_provider_transports(
     tmp_path: Path,
     provider_id: str,
     endpoint: str,
@@ -317,3 +317,197 @@ def test_native_lbe_governed_coding_accepts_proven_chat_completions_transport(
     )
 
     assert controller.engine_id == "native-lbe"
+
+
+
+def test_native_and_cline_project_the_same_lbe_read_authority(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    workspace = tmp_path / "shared"
+    workspace.mkdir()
+    (workspace / "README.md").write_text("same authority\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.governed_coding.EvidenceService",
+        _FakeEvidenceService,
+    )
+
+    class _NativeAdapter:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def complete(
+            self,
+            *,
+            messages,
+            provider_id,
+            lbe_call_id_for_provider_tool_call,
+            tools,
+        ):
+            self.calls += 1
+            if self.calls == 1:
+                provider_call_id = "native-call-1"
+                lbe_call_id = lbe_call_id_for_provider_tool_call(provider_call_id)
+                tool_name = next(
+                    item["function"]["name"]
+                    for item in tools
+                    if "workspace_read" in item["function"]["name"]
+                )
+                return (
+                    __import__(
+                        "lbe_guard_inspector.professional_provider_events",
+                        fromlist=["NormalizedModelEvent"],
+                    ).NormalizedModelEvent(
+                        __import__(
+                            "lbe_guard_inspector.professional_provider_events",
+                            fromlist=["ModelEventType"],
+                        ).ModelEventType.TOOL_CALL_COMPLETED,
+                        provider_id,
+                        "model-a",
+                        __import__(
+                            "lbe_guard_inspector.professional_provider_events",
+                            fromlist=["ProviderProtocolFamily"],
+                        ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                        provider_tool_call_id=provider_call_id,
+                        lbe_call_id=lbe_call_id,
+                        tool_name=tool_name,
+                        tool_arguments={"path": "README.md"},
+                    ),
+                    __import__(
+                        "lbe_guard_inspector.professional_provider_events",
+                        fromlist=["NormalizedModelEvent"],
+                    ).NormalizedModelEvent(
+                        __import__(
+                            "lbe_guard_inspector.professional_provider_events",
+                            fromlist=["ModelEventType"],
+                        ).ModelEventType.TURN_REQUIRES_TOOL,
+                        provider_id,
+                        "model-a",
+                        __import__(
+                            "lbe_guard_inspector.professional_provider_events",
+                            fromlist=["ProviderProtocolFamily"],
+                        ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                    ),
+                )
+            tool_messages = [item for item in messages if item.get("role") == "tool"]
+            assert len(tool_messages) == 1
+            assert '"status": "EXECUTED"' in tool_messages[0]["content"]
+            return (
+                __import__(
+                    "lbe_guard_inspector.professional_provider_events",
+                    fromlist=["NormalizedModelEvent"],
+                ).NormalizedModelEvent(
+                    __import__(
+                        "lbe_guard_inspector.professional_provider_events",
+                        fromlist=["ModelEventType"],
+                    ).ModelEventType.MESSAGE_COMPLETED,
+                    provider_id,
+                    "model-a",
+                    __import__(
+                        "lbe_guard_inspector.professional_provider_events",
+                        fromlist=["ProviderProtocolFamily"],
+                    ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                    text="native complete",
+                ),
+                __import__(
+                    "lbe_guard_inspector.professional_provider_events",
+                    fromlist=["NormalizedModelEvent"],
+                ).NormalizedModelEvent(
+                    __import__(
+                        "lbe_guard_inspector.professional_provider_events",
+                        fromlist=["ModelEventType"],
+                    ).ModelEventType.TURN_COMPLETED,
+                    provider_id,
+                    "model-a",
+                    __import__(
+                        "lbe_guard_inspector.professional_provider_events",
+                        fromlist=["ProviderProtocolFamily"],
+                    ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                ),
+            )
+
+    native_adapter = _NativeAdapter()
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.governed_coding.build_native_provider_event_adapter",
+        lambda **_kwargs: native_adapter,
+    )
+
+    native_runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "native.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=workspace,
+        session_id="native-session",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id="openai-compatible",
+        provider_model="model-a",
+        reasoning_engine="native-lbe",
+    )
+    native = build_governed_coding_controller(
+        runtime=native_runtime,
+        provider_id="openai-compatible",
+        provider_config=ProviderConfig(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="model-a",
+            timeout_seconds=5,
+        ),
+        engine_id="native-lbe",
+    )
+    native_result = native.run(
+        LBERequest("Inspect README.md", workspace, (), "native-task", 10)
+    )
+
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.cline_stdio_bridge.GovernedClineWorker",
+        _FakeGovernedClineWorker,
+    )
+    cline_runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "cline.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=workspace,
+        session_id="cline-session",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id="openrouter",
+        provider_model="model-a",
+        reasoning_engine="cline",
+    )
+    cline = build_governed_coding_controller(
+        runtime=cline_runtime,
+        provider_id="openrouter",
+        provider_config=ProviderConfig(
+            endpoint="https://openrouter.ai/api/v1/chat/completions",
+            model="model-a",
+            timeout_seconds=5,
+            api_key="test-key",
+        ),
+        engine_id="cline",
+    )
+    cline_result = cline.run(
+        LBERequest("Inspect README.md", workspace, (), "cline-task", 10)
+    )
+
+    native_receipt = native_result.deterministic_result["governed_tool_receipts"][0]
+    cline_receipt = cline_result.deterministic_result["governed_tool_receipts"][0]
+    assert native_receipt["tool_id"] == cline_receipt["tool_id"] == "workspace.read"
+    assert native_receipt["status"] == cline_receipt["status"] == "EXECUTED"
+
+    native_projection = native_result.deterministic_result["governed_tool_projection"][0]
+    cline_projection = cline_result.deterministic_result["governed_tool_projection"][0]
+    for key in (
+        "tool_id",
+        "capability",
+        "access_class",
+        "network_behavior",
+        "risk_class",
+        "authorization_verdict",
+    ):
+        assert native_projection[key] == cline_projection[key]
+
+    assert native_result.workspace_profile["reasoning_engine"] == "native-lbe"
+    assert cline_result.workspace_profile["reasoning_engine"] == "cline"
+    assert native_result.deterministic_result["direct_native_mutation_tools_exposed"] is False
+    assert cline_result.deterministic_result["direct_native_mutation_tools_exposed"] is False
