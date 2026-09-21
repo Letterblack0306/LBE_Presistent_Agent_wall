@@ -138,6 +138,16 @@ def test_mode_commands_route_through_existing_gateway(
         "lbe_guard_inspector.cli.build_provider_controller",
         lambda **kwargs: (object(), handle),
     )
+    coding_builds = []
+
+    def fake_build_governed_coding_controller(**kwargs):
+        coding_builds.append(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.governed_coding.build_governed_coding_controller",
+        fake_build_governed_coding_controller,
+    )
 
     class FakeGateway:
         def __init__(self, *, runtime, reasoning_controller):
@@ -204,6 +214,125 @@ def test_mode_commands_route_through_existing_gateway(
     assert request.project_workspace_id == "project-1"
     assert request.workspace_root == workspace.resolve()
     assert request.operation_id == "reasoning.inspect"
+    if command == "code":
+        assert len(coding_builds) == 1
+        assert coding_builds[0]["provider_id"] == "openai-compatible"
+        assert coding_builds[0]["engine_id"] == "native-lbe"
+    else:
+        assert coding_builds == []
+
+
+def test_code_command_accepts_explicit_cline_engine_binding(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    database = tmp_path / "memory.sqlite"
+    SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=workspace,
+        session_id="session-cline",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id="openrouter",
+        provider_model="model-a",
+        reasoning_engine="cline",
+    )
+    config = tmp_path / "cline-provider.json"
+    config.write_text(
+        json.dumps(
+            {
+                "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+                "model": "model-a",
+                "timeout_seconds": 5,
+                "api_key": "test-key",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    handle = SimpleNamespace(
+        descriptor=SimpleNamespace(
+            provider_id="openrouter",
+            model_id="model-a",
+        )
+    )
+    monkeypatch.setattr(
+        "lbe_guard_inspector.cli.build_provider_controller",
+        lambda **kwargs: (object(), handle),
+    )
+
+    coding_builds = []
+
+    def fake_build_governed_coding_controller(**kwargs):
+        coding_builds.append(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.governed_coding.build_governed_coding_controller",
+        fake_build_governed_coding_controller,
+    )
+
+    class FakeGateway:
+        def __init__(self, *, runtime, reasoning_controller):
+            assert runtime.session_id == "session-cline"
+            assert reasoning_controller is not None
+
+        def invoke(self, request):
+            return SimpleNamespace(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                task_id=request.task_id,
+                mode=request.mode,
+                mode_decision=ModeDecision(
+                    mode="coding",
+                    allowed_behaviors=(),
+                    capabilities=(),
+                    rationale="test",
+                ),
+                status=TaskStatus.COMPLETED,
+                outcome="COMPLETED",
+                response=LBEResponse(
+                    task_id=request.task_id,
+                    workspace_identity={
+                        "workspace_id": "project-1",
+                        "target_project_root": str(workspace.resolve()),
+                    },
+                    workspace_profile={"reasoning_engine": "cline"},
+                    plan=None,
+                    deterministic_result=None,
+                    explanation=None,
+                    outcome="COMPLETED",
+                    read_only=False,
+                ),
+            )
+
+    monkeypatch.setattr("lbe_guard_inspector.cli.GovernedAgentGateway", FakeGateway)
+
+    code = main([
+        "code",
+        "--database",
+        str(database),
+        "--session-id",
+        "session-cline",
+        "--task-id",
+        "task-cline",
+        "--provider-config",
+        str(config),
+        "--problem",
+        "Inspect and update through the governed Cline path",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["outcome"] == "COMPLETED"
+    assert len(coding_builds) == 1
+    assert coding_builds[0]["provider_id"] == "openrouter"
+    assert coding_builds[0]["engine_id"] == "cline"
 
 
 def test_mode_command_rejects_provider_config_model_mismatch_before_composition(
