@@ -6,6 +6,11 @@ import pytest
 
 from lbe_guard_inspector.evidence_service import EvidenceService
 from lbe_guard_inspector.reasoning_contracts import LBERequest
+from lbe_guard_inspector.professional_provider_events import (
+    ModelEventType,
+    NormalizedModelEvent,
+    ProviderProtocolFamily,
+)
 from lbe_guard_inspector.reasoning_provider import ProviderConfig
 from lbe_guard_inspector.runtime.cline_stdio_protocol import BridgeFrame, PROTOCOL_VERSION
 from lbe_guard_inspector.runtime.governed_coding import build_governed_coding_controller
@@ -355,75 +360,39 @@ def test_native_and_cline_project_the_same_lbe_read_authority(
                     if "workspace_read" in item["function"]["name"]
                 )
                 return (
-                    __import__(
-                        "lbe_guard_inspector.professional_provider_events",
-                        fromlist=["NormalizedModelEvent"],
-                    ).NormalizedModelEvent(
-                        __import__(
-                            "lbe_guard_inspector.professional_provider_events",
-                            fromlist=["ModelEventType"],
-                        ).ModelEventType.TOOL_CALL_COMPLETED,
+                    NormalizedModelEvent(
+                        ModelEventType.TOOL_CALL_COMPLETED,
                         provider_id,
                         "model-a",
-                        __import__(
-                            "lbe_guard_inspector.professional_provider_events",
-                            fromlist=["ProviderProtocolFamily"],
-                        ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                        ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
                         provider_tool_call_id=provider_call_id,
                         lbe_call_id=lbe_call_id,
                         tool_name=tool_name,
                         tool_arguments={"path": "README.md"},
                     ),
-                    __import__(
-                        "lbe_guard_inspector.professional_provider_events",
-                        fromlist=["NormalizedModelEvent"],
-                    ).NormalizedModelEvent(
-                        __import__(
-                            "lbe_guard_inspector.professional_provider_events",
-                            fromlist=["ModelEventType"],
-                        ).ModelEventType.TURN_REQUIRES_TOOL,
+                    NormalizedModelEvent(
+                        ModelEventType.TURN_REQUIRES_TOOL,
                         provider_id,
                         "model-a",
-                        __import__(
-                            "lbe_guard_inspector.professional_provider_events",
-                            fromlist=["ProviderProtocolFamily"],
-                        ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                        ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
                     ),
                 )
             tool_messages = [item for item in messages if item.get("role") == "tool"]
             assert len(tool_messages) == 1
             assert '"status": "EXECUTED"' in tool_messages[0]["content"]
             return (
-                __import__(
-                    "lbe_guard_inspector.professional_provider_events",
-                    fromlist=["NormalizedModelEvent"],
-                ).NormalizedModelEvent(
-                    __import__(
-                        "lbe_guard_inspector.professional_provider_events",
-                        fromlist=["ModelEventType"],
-                    ).ModelEventType.MESSAGE_COMPLETED,
+                NormalizedModelEvent(
+                    ModelEventType.MESSAGE_COMPLETED,
                     provider_id,
                     "model-a",
-                    __import__(
-                        "lbe_guard_inspector.professional_provider_events",
-                        fromlist=["ProviderProtocolFamily"],
-                    ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                    ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
                     text="native complete",
                 ),
-                __import__(
-                    "lbe_guard_inspector.professional_provider_events",
-                    fromlist=["NormalizedModelEvent"],
-                ).NormalizedModelEvent(
-                    __import__(
-                        "lbe_guard_inspector.professional_provider_events",
-                        fromlist=["ModelEventType"],
-                    ).ModelEventType.TURN_COMPLETED,
+                NormalizedModelEvent(
+                    ModelEventType.TURN_COMPLETED,
                     provider_id,
                     "model-a",
-                    __import__(
-                        "lbe_guard_inspector.professional_provider_events",
-                        fromlist=["ProviderProtocolFamily"],
-                    ).ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                    ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
                 ),
             )
 
