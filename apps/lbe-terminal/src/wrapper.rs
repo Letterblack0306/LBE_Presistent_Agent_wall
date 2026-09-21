@@ -1430,6 +1430,8 @@ impl LbeWrapper for MockLbeWrapper {
                 self.emit(LbeEvent::CheckpointComparisonReady {
                     checkpoint_id,
                     changed_files: checkpoint.changed_files.clone(),
+                    revalidation_status: None,
+                    reasons: Vec::new(),
                 });
             }
             UserRequest::RestoreCheckpoint { checkpoint_id } => {
@@ -3054,6 +3056,93 @@ impl RealLbeWrapper {
         self.snapshot.latest_checkpoint = Some(descriptor.clone());
         self.pending_events
             .push_back(LbeEvent::CheckpointCreated { checkpoint: descriptor });
+        Ok(())
+    }
+
+    fn compare_real_checkpoint(&mut self, checkpoint_id: &str) -> Result<(), LbeError> {
+        self.require_connected()?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .ok_or_else(|| LbeError::new("no authoritative LBE session is attached"))?;
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "checkpoint",
+                "compare",
+                "--database",
+            ])
+            .arg(database)
+            .args([
+                "--session-id",
+                &session_id,
+                "--checkpoint-id",
+                checkpoint_id,
+            ])
+            .output()
+            .map_err(|error| LbeError::new(format!("checkpoint comparison failed: {error}")))?;
+
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid checkpoint.compare JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("checkpoint comparison failed");
+            return Err(LbeError::new(message));
+        }
+        if payload.get("action").and_then(serde_json::Value::as_str) != Some("checkpoint.compare") {
+            return Err(LbeError::new("checkpoint comparison returned unexpected action"));
+        }
+        if payload.get("checkpoint_id").and_then(serde_json::Value::as_str) != Some(checkpoint_id) {
+            return Err(LbeError::new("checkpoint comparison identity mismatch"));
+        }
+        let revalidation = payload
+            .get("revalidation")
+            .and_then(serde_json::Value::as_object)
+            .ok_or_else(|| LbeError::new("checkpoint comparison omitted revalidation"))?;
+        let status = revalidation
+            .get("status")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| LbeError::new("checkpoint comparison omitted status"))?
+            .to_owned();
+        let reasons = revalidation
+            .get("reasons")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| LbeError::new("checkpoint comparison omitted reasons"))?
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .map(ToOwned::to_owned)
+                    .ok_or_else(|| LbeError::new("checkpoint comparison reason was not text"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        self.pending_events
+            .push_back(LbeEvent::CheckpointComparisonReady {
+                checkpoint_id: checkpoint_id.to_owned(),
+                changed_files: Vec::new(),
+                revalidation_status: Some(status),
+                reasons,
+            });
         Ok(())
     }
 
@@ -5432,8 +5521,8 @@ impl LbeWrapper for RealLbeWrapper {
             }
             UserRequest::SetMode { mode } => self.set_real_mode(mode),
             UserRequest::RefreshCheckpoint => self.refresh_real_checkpoint(),
-            UserRequest::CompareCheckpoint { .. } => {
-                self.unsupported_real_request("checkpoint comparison")
+            UserRequest::CompareCheckpoint { checkpoint_id } => {
+                self.compare_real_checkpoint(&checkpoint_id)
             }
             UserRequest::RestoreCheckpoint { .. } => {
                 self.unsupported_real_request("checkpoint restore")
