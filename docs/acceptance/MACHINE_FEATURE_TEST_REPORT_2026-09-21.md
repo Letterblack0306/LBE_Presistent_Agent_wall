@@ -2,7 +2,7 @@
 
 Canonical workspace: `C:\Agents-Memory-Tool-v6-integration`
 Branch: `main`
-HEAD: `f32b71f`
+HEAD: `e448950`
 
 ## Verdict
 
