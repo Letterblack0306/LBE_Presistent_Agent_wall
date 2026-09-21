@@ -174,7 +174,11 @@ Required proof:
 
 ## Final acceptance
 
-The phase may advance only when `TUI_INSTALLED_INTERACTIVE_ACCEPTANCE` is PASS and the required installed evidence above is recorded. Source changes, static screenshots, mocks, or unit tests alone are insufficient.
+The phase may advance only after `TUI_INSTALLED_INTERACTIVE_ACCEPTANCE` has
+direct visual machine evidence for every required interaction under
+`docs/acceptance/VISUAL_MACHINE_ACCEPTANCE_POLICY.md`. Source changes, static
+screenshots, mocks, unit tests, and automated result output alone are
+insufficient and must never be described as the interface working.
 
 ## Forbidden
 

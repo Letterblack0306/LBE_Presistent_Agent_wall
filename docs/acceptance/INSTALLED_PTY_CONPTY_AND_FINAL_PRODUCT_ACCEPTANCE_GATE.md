@@ -1,5 +1,12 @@
 # Installed PTY/ConPTY and Final Product Acceptance Gate
 
+> **HISTORICAL RECORD — NOT CURRENT AUTHORITY (2026-09-21).** The PASS claims
+> below belong to the recorded 2026-09-18 installed artifact and revisions
+> listed in this document. They do not prove the current workspace, current
+> `main` HEAD, current release binary, provider, mouse, or installed package.
+> Current evidence is tracked in `docs/governance/TUI_SURFACE_AUDIT_2026-09-21.md`
+> and `docs/acceptance/MACHINE_FEATURE_TEST_REPORT_2026-09-21.json`.
+
 Status: **PASS — FINAL INSTALLED PRODUCT ACCEPTED**
 
 ## Canonical implementation

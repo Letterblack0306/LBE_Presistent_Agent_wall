@@ -64,9 +64,10 @@ pub(crate) fn init_terminal() -> io::Result<(AppTerminal, EventReader)> {
     output.enter_raw_mode()?;
     write!(
         output,
-        "{}{}",
+        "{}{}{}",
         alternate_screen(true),
-        terminal_cursor_visible(false)
+        terminal_cursor_visible(false),
+        mouse_capture(true)
     )?;
     output.flush()?;
     let events = output.event_reader();
@@ -81,9 +82,10 @@ pub(crate) fn restore_terminal(terminal: &mut AppTerminal) -> io::Result<()> {
 
 pub(crate) fn terminal_restore_sequence() -> String {
     format!(
-        "{}{}",
+        "{}{}{}",
         alternate_screen(false),
-        terminal_cursor_visible(true)
+        terminal_cursor_visible(true),
+        mouse_capture(false)
     )
 }
 
@@ -99,6 +101,15 @@ fn alternate_screen(enabled: bool) -> Csi {
 fn terminal_cursor_visible(visible: bool) -> Csi {
     let mode = DecPrivateMode::Code(DecPrivateModeCode::ShowCursor);
     if visible {
+        Csi::Mode(Mode::SetDecPrivateMode(mode))
+    } else {
+        Csi::Mode(Mode::ResetDecPrivateMode(mode))
+    }
+}
+
+fn mouse_capture(enabled: bool) -> Csi {
+    let mode = DecPrivateMode::Code(DecPrivateModeCode::ButtonEventMouse);
+    if enabled {
         Csi::Mode(Mode::SetDecPrivateMode(mode))
     } else {
         Csi::Mode(Mode::ResetDecPrivateMode(mode))
@@ -149,7 +160,7 @@ pub(crate) fn draw_at(frame: &mut Frame, app: &App, elapsed: Duration) {
             Constraint::Length(1),
             Constraint::Min(2),
             Constraint::Length(2),
-            Constraint::Length(3),
+            Constraint::Length(2),
         ])
         .split(safe_area);
         draw_chrome(frame, sections[0]);
@@ -163,7 +174,7 @@ pub(crate) fn draw_at(frame: &mut Frame, app: &App, elapsed: Duration) {
             Constraint::Length(1),
             Constraint::Min(10),
             Constraint::Length(3),
-            Constraint::Length(3),
+            Constraint::Length(2),
         ])
         .split(safe_area);
         draw_chrome(frame, sections[0]);
@@ -430,86 +441,60 @@ fn draw_landing(frame: &mut Frame, app: &App) {
     ])
     .split(safe_area);
 
-    // Main landing block
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(PALETTE.green))
-        .style(Style::default().bg(PALETTE.bg))
-        .title(Line::from(vec![Span::styled(
-            " LBE - LOCKSTEP BOUNDARY ENGINE ",
-            Style::default()
-                .fg(PALETTE.green)
-                .add_modifier(Modifier::BOLD),
-        )]))
-        .title_alignment(Alignment::Center);
-
-    let inner = block.inner(sections[1]);
-    frame.render_widget(block, sections[1]);
+    // The landing view is intentionally quiet: one small mark, one status
+    // line, and the controls needed to enter the workspace. Detailed runtime
+    // and policy information belongs in the status panels after entry.
+    let inner = sections[1];
+    let landing_sections =
+        Layout::vertical([Constraint::Length(7), Constraint::Min(1)]).split(inner);
+    frame.render_widget(
+        Paragraph::new(Text::from(minimal_logo_lines())).alignment(Alignment::Center),
+        landing_sections[0],
+    );
 
     // Landing content
-    let mut lines = vec![
-        Line::default(),
+    let provider = if app.snapshot.providers.is_empty() {
+        "provider not selected".to_owned()
+    } else {
+        format!("{} provider(s)", app.snapshot.providers.len())
+    };
+    let model = if app.snapshot.model_id.is_empty() {
+        "model not selected".to_owned()
+    } else {
+        app.snapshot.model_id.clone()
+    };
+    let lines = vec![
         Line::from(Span::styled(
-            "Welcome to LBE",
+            "LOCKSTEP BOUNDARY ENGINE",
             Style::default()
                 .fg(PALETTE.amber)
                 .add_modifier(Modifier::BOLD),
         )),
-        Line::default(),
         Line::from(Span::styled(
             if app.snapshot.connection == RuntimeConnection::Connected {
                 "Connected to LBE runtime"
             } else {
-                "Configure your provider to get started."
+                "Runtime preview · configure provider to get started"
             },
             Style::default().fg(PALETTE.ink),
         )),
-        Line::default(),
         Line::from(Span::styled(
-            "Provider:",
+            format!("{provider} · {model}"),
             Style::default().fg(PALETTE.muted),
         )),
         Line::from(Span::styled(
-            if app.snapshot.providers.is_empty() {
-                "  ▸ Select a provider (F2)".to_string()
-            } else {
-                format!("  ▸ {} providers available", app.snapshot.providers.len())
-            },
-            Style::default().fg(if app.snapshot.providers.is_empty() {
-                PALETTE.ink
-            } else {
-                PALETTE.green
-            }),
-        )),
-        Line::default(),
-        Line::from(Span::styled("Model:", Style::default().fg(PALETTE.muted))),
-        Line::from(Span::styled(
-            if app.snapshot.model_id.is_empty() {
-                "  ▸ Select a model (F3)".to_string()
-            } else {
-                format!("  ▸ {}", app.snapshot.model_id)
-            },
-            Style::default().fg(if app.snapshot.model_id.is_empty() {
-                PALETTE.ink
-            } else {
-                PALETTE.green
-            }),
-        )),
-        Line::default(),
-        Line::from(Span::styled(
-            format!("Mode: {mode}  (Tab to switch)"),
+            format!("Mode: {mode}"),
             Style::default().fg(PALETTE.faint),
         )),
-        Line::default(),
         Line::from(Span::styled(
-            "Press Enter to continue · F2 provider · F3 model · Tab mode",
+            "Enter continue · F2 provider · F3 model · Tab mode",
             Style::default().fg(PALETTE.green),
         )),
     ];
 
     frame.render_widget(
         Paragraph::new(Text::from(lines)).alignment(Alignment::Center),
-        inner,
+        landing_sections[1],
     );
 }
 
@@ -918,7 +903,7 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
         } else if app.show_shortcuts {
             "? close help · Esc close view"
         } else {
-            "Enter submit · Ctrl+P commands · F2 provider · F3 model"
+            "? for shortcuts · Enter submit · Ctrl+P commands · F2 provider · F3 model"
         };
         frame.render_widget(
             Paragraph::new(truncate_text(hint, area.width as usize))
@@ -927,12 +912,7 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
         );
         return;
     }
-    let rows = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Length(1),
-    ])
-    .split(area);
+    let rows = Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).split(area);
 
     let shortcut_label = if app.show_shortcuts {
         "? close shortcuts"
@@ -952,20 +932,13 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
     } else {
         app.snapshot.context_used.saturating_mul(100) / app.snapshot.context_capacity
     };
-    let engine = app
-        .snapshot
-        .session_context
-        .as_ref()
-        .and_then(|context| context.data.session.reasoning_engine.as_deref())
-        .unwrap_or("engine?");
     let line_one_text = format!(
-        "{} · {} · {} · context {}%",
+        "{} · {} · context {}%",
         match app.agent_mode {
             AgentMode::Build => "BUILD",
             AgentMode::Plan => "PLAN",
             AgentMode::Audit => "AUDIT",
         },
-        engine,
         provider_model,
         context_percent
     );
@@ -1007,45 +980,8 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
         Style::default().fg(PALETTE.red).bg(PALETTE.bg)
     };
     frame.render_widget(
-        Paragraph::new(truncate_text(&line_two, rows[1].width as usize))
-            .style(branch_style),
+        Paragraph::new(truncate_text(&line_two, rows[1].width as usize)).style(branch_style),
         rows[1],
-    );
-
-    let policy_line = app
-        .snapshot
-        .session_context
-        .as_ref()
-        .map(|context| {
-            format!(
-                "Enter submit · permission {} · runtime policy {} · evidence policy {}",
-                context
-                    .data
-                    .session
-                    .permission
-                    .as_deref()
-                    .unwrap_or("unknown"),
-                context
-                    .data
-                    .session
-                    .runtime_policy
-                    .as_deref()
-                    .unwrap_or("unknown"),
-                context
-                    .data
-                    .session
-                    .evidence_policy_id
-                    .as_deref()
-                    .unwrap_or("unknown")
-            )
-        })
-        .unwrap_or_else(|| {
-            "Enter submit · policy projection unavailable · approval remains LBE-owned".to_owned()
-        });
-    frame.render_widget(
-        Paragraph::new(truncate_text(&policy_line, rows[2].width as usize))
-            .style(Style::default().fg(PALETTE.muted).bg(PALETTE.bg)),
-        rows[2],
     );
 }
 
@@ -1119,6 +1055,7 @@ fn shortcut_text() -> Text<'static> {
         Line::from("Tab     cycle Runtime, Plan, and Audit"),
         Line::from("F2/F3   open the live provider/model selectors"),
         Line::from("↑/↓     move files; scroll open files or transcript"),
+        Line::from("mouse   wheel scrolls; click landing/help to enter or dismiss"),
         Line::from("Enter   open the selected file/directory in the workspace pane"),
         Line::from("Ctrl+L  clear the rendered transcript"),
         Line::from("Ctrl+P  open command palette"),
@@ -1508,13 +1445,43 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                 "No MCP server registry or transport is connected.".to_owned(),
             ],
         ),
-        MockPanel::Tools => (
-            "Tools",
-            vec![
-                "MOCK / NOT CONNECTED".to_owned(),
-                "No canonical typed tool registry or policy is connected.".to_owned(),
-            ],
-        ),
+        MockPanel::Tools => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
+            let mut rows = vec![
+                if connected {
+                    "CONNECTED · authoritative LBE governed-tool projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED".to_owned()
+                },
+                "Registry and R6C policy metadata are read-only here; execution and approval remain runtime-owned."
+                    .to_owned(),
+                String::new(),
+            ];
+
+            if snapshot.governed_tools.is_empty() {
+                rows.push(if connected {
+                    "No governed tool projection has been emitted for the current runtime turn."
+                        .to_owned()
+                } else {
+                    "No canonical typed tool registry or policy is connected.".to_owned()
+                });
+            } else {
+                for tool in &snapshot.governed_tools {
+                    rows.push(format!(
+                        "{} · {} · {} · risk {} · network {} · {}",
+                        tool.tool_id,
+                        tool.capability,
+                        tool.access_class,
+                        tool.risk_class,
+                        tool.network_behavior,
+                        tool.authorization_verdict,
+                    ));
+                    rows.push(format!("  {}", tool.authorization_rationale));
+                }
+            }
+
+            ("Tools", rows)
+        }
         MockPanel::Processes => (
             "Processes",
             vec![
@@ -2498,12 +2465,15 @@ fn capability_marker(enabled: bool) -> &'static str {
 fn welcome_text(available_height: u16, app: &App) -> Text<'static> {
     // The large identity artwork is launch-only. The working surface stays
     // instrument-panel minimal so task state owns the vertical space.
-    let mut lines = vec![Line::from(Span::styled(
-        "AGENT COCKPIT",
-        Style::default()
-            .fg(PALETTE.agent)
-            .add_modifier(Modifier::BOLD),
-    )), Line::default()];
+    let mut lines = vec![
+        Line::from(Span::styled(
+            "AGENT COCKPIT",
+            Style::default()
+                .fg(PALETTE.agent)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::default(),
+    ];
     lines.push(Line::from(Span::styled(
         "What can I do for you?",
         Style::default()

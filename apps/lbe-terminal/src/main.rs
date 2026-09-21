@@ -430,17 +430,13 @@ fn emit_headless_event(event: &LbeEvent, plain: bool) -> io::Result<()> {
                 approval_id,
                 rationale,
                 ..
-            } => format!(
-                "AUTH  {capability} · approval {approval_id} · {rationale}"
-            ),
+            } => format!("AUTH  {capability} · approval {approval_id} · {rationale}"),
             LbeEvent::AuthorizationResolved {
                 verdict,
                 approval_id,
                 rationale,
                 ..
-            } => format!(
-                "AUTH  {verdict} · approval {approval_id} · {rationale}"
-            ),
+            } => format!("AUTH  {verdict} · approval {approval_id} · {rationale}"),
             LbeEvent::ExecutionStarted { execution_id } => {
                 format!("RUN   {execution_id} · started")
             }
@@ -622,6 +618,8 @@ fn run(
     if let Some(prompt) = options.prompt.clone() {
         app.input = prompt;
     }
+    let initial_prompt = options.prompt.clone();
+    let mut initial_prompt_pending = initial_prompt.is_some();
     let mut startup_options_applied = false;
     let mut startup_model_applied = options.model.is_some();
     let animation_started = Instant::now();
@@ -670,6 +668,16 @@ fn run(
                     startup_model_applied = true;
                 }
             }
+            if initial_prompt_pending
+                && app.snapshot.session_id.is_some()
+                && app.snapshot.workspace_id.is_some()
+                && (options.model.is_none() || startup_model_applied)
+            {
+                if let Some(prompt) = initial_prompt.clone() {
+                    app.submit_initial_prompt(prompt, &mut wrapper, Instant::now());
+                    initial_prompt_pending = false;
+                }
+            }
             app.continue_authorized_patch(&mut wrapper, Instant::now());
             continue;
         }
@@ -689,12 +697,24 @@ fn run(
         };
 
         if events.poll(timeout, |event| {
-            matches!(event, Event::Key(_) | Event::WindowResized(_))
+            matches!(
+                event,
+                Event::Key(_) | Event::Mouse(_) | Event::WindowResized(_)
+            )
         })? {
-            if let Event::Key(key) =
-                events.read(|event| matches!(event, Event::Key(_) | Event::WindowResized(_)))?
-            {
-                app.handle_key(key, &mut wrapper, Instant::now());
+            let event = events.read(|event| {
+                matches!(
+                    event,
+                    Event::Key(_) | Event::Mouse(_) | Event::WindowResized(_)
+                )
+            })?;
+            match event {
+                Event::Key(key) => app.handle_key(key, &mut wrapper, Instant::now()),
+                Event::Mouse(mouse) => {
+                    app.handle_mouse_with_wrapper(mouse, &mut wrapper, Instant::now());
+                }
+                Event::WindowResized(_) => {}
+                _ => {}
             }
         }
     }

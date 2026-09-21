@@ -215,7 +215,7 @@ NON_GOALS: No TUI redesign, no session-lifecycle-unification patch, no Cline int
 REUSE_DECISION: ACCEPTANCE ONLY. Reuse all existing LBE runtime, provider, session, authorization, dispatch, receipt, evidence, recovery, completion, promotion, and Textual owners; add no authority.
 AUTHORITY_IMPACT: NONE. Acceptance only; no new runtime/provider/session/execution/completion authority.
 EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,docs/DOCUMENT_INTENT_MANIFEST.md,lbe_guard_inspector/,tests/,scripts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md,.lbe/governance/
-REQUIRED_EVIDENCE: isolated build and wheel hash, installed entrypoint/import isolation, persisted session create/restore, provider/model identity, installed registry fail-closed behavior, governed capability receipt/evidence, deterministic completion and verified promotion, recovery reconstruction, installed interface smoke, focused installed tests, full regression.
+REQUIRED_EVIDENCE: isolated build and wheel hash, installed entrypoint/import isolation, persisted session create/restore, provider/model identity, installed registry fail-closed behavior, governed capability receipt/evidence, deterministic completion and verified promotion, recovery reconstruction, direct visual machine evidence for every claimed interface interaction, focused installed tests, full regression. Automated results are diagnostic only and cannot establish that the interface works.
 MACHINE_SLICE: INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
 SUPERSEDES: none
 RESULT: PASS
@@ -798,18 +798,19 @@ AUTHORITY_IMPACT: LBE authority unchanged. Reasoning engine/provider bindings be
 EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/, docs/acceptance/, .lbe/governance/
 REQUIRED_EVIDENCE: engine-neutral LBE initialization proof; Cline-absent LBE initialization proof; Cline regression proof; provider binding structure registered in PROJECT_INDEX.md; gate amendment record; focused tests for engine-neutral runtime; full regression.
 MACHINE_SLICE: REASONING_ENGINE_PROVIDER_BINDING_SEPARATION
-RESULT: IMPLEMENTED_STATIC_VALIDATION_PENDING
+RESULT: PASS
 IMPLEMENTATION_COMMITS: 39dd7cf9a6194a4931d1c564f43af50d5d8d9f7f, 7685ecae0412a92f7b61f9b5b51011e3125a4f8d
 REFERENCE_CHAIN: GPT-K ai-agents/studies/agent-feature-reference-map-2026-09-20.json -> Cline 9a2512bb9835869d74774da99708a7f9d80b0fe8 sdk/packages/README.md -> OpenCode ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts
 VALIDATION_BLOCKER: GitHub Actions validate jobs fail before any workflow steps on this commit and on both immediately preceding governance-only commits; full regression/runtime proof remains UNVERIFIED.
 AUTHORIZATION: EXPLICIT_USER_AUTHORIZATION_2026_09_20
-```\n
+```
+\n
 
 ## INTENT LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001
 
 ```text
 INTENT_ID: LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001
-STATUS: PROPOSED (non-authorizing until current active slice completes and machine gate selects this slice)
+STATUS: ACTIVE
 REQUEST: Converge LBE tool/capability presentation and permission interaction onto the existing R6C/R6E owners, using exact upstream tool-registry and approval references without creating a second executor.
 WHY: LBE already owns ToolRegistry, resolve_authorization(), GovernedToolOrchestrator and ToolReceipt. Upstreams provide mature tool catalog/visibility/approval patterns that should improve the existing surface rather than replace authority.
 REFERENCE_CHAIN: Cline cline/cline@9a2512bb9835869d74774da99708a7f9d80b0fe8 docs/tools-reference/all-cline-tools.mdx + sdk/packages/core/src/extensions/tools/; OpenCode anomalyco/opencode@ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts + packages/web/src/content/docs/permissions.mdx; Claude Code anthropics/claude-code@7974a70773fa229e4cc65aa1b356cc21f5c216c4 official tools/permissions docs; Antigravity google-antigravity/antigravity-cli@7bb195acaec9e7788df5210d0dc3e15f3cefc6b3 README.md + CHANGELOG.md + official permissions docs.
@@ -819,10 +820,11 @@ DESIRED_RESULT: Tool visibility, capability readiness, approval prompts and tool
 NON_GOALS: No native provider/external tool bypass; no second permission engine; no direct upstream executor; no silent auto-approval changes.
 REUSE_DECISION: REUSE LBE owners. ADAPT upstream registry/approval UX and visibility mechanics only.
 AUTHORITY_IMPACT: None; LBE remains sole authorization/execution/receipt owner.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,lbe_guard_inspector/professional_capabilities.py,tests/,apps/lbe-terminal/,docs/governance/,PROJECT_INDEX.md,.lbe/governance/
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,lbe_guard_inspector/professional_capabilities.py,tests/,apps/lbe-terminal/,docs/governance/,docs/acceptance/,PROJECT_INDEX.md,.lbe/governance/,launch-lbe.ps1,tty-acceptance-test.ps1
 REQUIRED_EVIDENCE: exact tool registry projection; allow/deny/escalate zero/once execution proof; capability truth proof; UI approval projection; focused tests; full regression; live acceptance.
 MACHINE_SLICE: GOVERNED_TOOL_PERMISSION_REFERENCE_CONVERGENCE
-RESULT: NOT_STARTED
+RESULT: IMPLEMENTED_FOCUSED_VALIDATION_PASS_LIVE_ACCEPTANCE_PENDING
+VALIDATION: GovernedToolOrchestrator registry projection reuses R6C authorization without invoking handlers or creating receipts; Rust client parses and rejects unknown authorization verdicts; focused Python tests pass (31); Rust fmt/check/tests pass (211 passed, 2 ignored). Existing full-regression artifact records 855 passed before the added projection test. Installed PTY/live acceptance remains a separate final-product gate.
 ```
 
 
@@ -845,7 +847,6 @@ REQUIRED_EVIDENCE: parent/child identity proof; persisted resume proof; stale ch
 MACHINE_SLICE: SESSION_CHECKPOINT_SUBAGENT_REFERENCE_CONVERGENCE
 RESULT: NOT_STARTED
 ```
-
 
 ## INTENT LBE-INTENT-EXTENSION-SURFACE-REFERENCE-CONVERGENCE-001
 

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
+  "active_slice": "GOVERNED_TOOL_PERMISSION_REFERENCE_CONVERGENCE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,16 +64,16 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
-    "owner": "LBE runtime + engine/provider binding owner; reasoning engine registry, provider bindings, and Cline-as-one-engine mechanics behind LBE authority",
-    "index_revision": "F170717580305D71954E6C95BC389B26643044AB87E3F72A2E235D743CAE8A6D"
+    "intent_id": "LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001",
+    "owner": "Existing governed tool/authorization owners plus Rust client projection; no second executor",
+    "index_revision": "A0676ECBA1B99313207321DF32F67FBBFF127D32FE2CE6ED36D6EB6D6D1C7D12"
   },
   "closure": {
     "status": "OPEN",
-    "last_completed_slice": "LBE_OWNED_RUST_TUI_PRODUCT_SURFACE",
-    "last_completed_intent": "LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001",
+    "last_completed_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
+    "last_completed_intent": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
     "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
+    "next_slice": "GOVERNED_TOOL_PERMISSION_REFERENCE_CONVERGENCE",
     "publication": "LOCKED"
   },
   "active_execution_plan": {

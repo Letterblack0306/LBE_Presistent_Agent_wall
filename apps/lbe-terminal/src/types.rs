@@ -371,6 +371,21 @@ impl RuntimeConnection {
 }
 
 // ---------------------------------------------------------------------------
+// Governed tool projection
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GovernedToolProjection {
+    pub(crate) tool_id: String,
+    pub(crate) capability: String,
+    pub(crate) access_class: String,
+    pub(crate) network_behavior: String,
+    pub(crate) risk_class: String,
+    pub(crate) authorization_verdict: String,
+    pub(crate) authorization_rationale: String,
+}
+
+// ---------------------------------------------------------------------------
 // LbeSnapshot
 // ---------------------------------------------------------------------------
 
@@ -410,6 +425,7 @@ pub(crate) struct LbeSnapshot {
     pub(crate) providers: Vec<ProviderProjection>,
     pub(crate) models: Vec<ModelDescriptor>,
     pub(crate) selected_model: Option<ModelRef>,
+    pub(crate) governed_tools: Vec<GovernedToolProjection>,
     pub(crate) memory: MemoryProjection,
     pub(crate) browser_chat: BrowserChatProjection,
     pub(crate) child_agents: Vec<ChildAgentRun>,
@@ -464,6 +480,7 @@ impl Default for LbeSnapshot {
                 provider_id: ProviderId::Gemini,
                 model_id: "gemini-2.5-flash-preview".to_owned(),
             }),
+            governed_tools: Vec::new(),
             memory: MemoryProjection::default(),
             browser_chat: BrowserChatProjection::default(),
             child_agents: Vec::new(),

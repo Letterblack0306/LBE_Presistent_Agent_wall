@@ -1,5 +1,10 @@
 # Installed Package End-to-End Acceptance Checkpoint
 
+> **HISTORICAL RECORD — NOT CURRENT AUTHORITY (2026-09-21).** This checkpoint
+> describes an isolated package and older source head. Its PASS labels must not
+> be used for the current dirty `main` workspace or current release artifact.
+> See the current machine report and TUI surface audit for present evidence.
+
 ```text
 SLICE: INSTALLED_PACKAGE_END_TO_END_ACCEPTANCE
 RESULT: PASS

@@ -1,5 +1,11 @@
 # Current Implementation Gate
 
+> **CURRENT EVIDENCE OVERRIDE (2026-09-21):** This gate remains open and
+> release-blocked until the current machine report proves live runtime,
+> provider, keyboard, mouse, and installed-package behavior. Historical PASS
+> records elsewhere in `docs/acceptance/` are retained but are not current
+> acceptance evidence.
+
 Status: **OPEN — LBE-OWNED RUST TUI / INSTALLED PTY-CONPTY FINAL ACCEPTANCE**
 
 This file is the human-readable projection of `.lbe/governance/implementation-gates.json`. The machine gate is authoritative.

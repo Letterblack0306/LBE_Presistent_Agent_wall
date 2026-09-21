@@ -1,0 +1,76 @@
+{
+  "report_type": "machine_feature_test",
+  "generated_at": "2026-09-21T13:50:00+04:00",
+  "workspace": "C:\\Agents-Memory-Tool-v6-integration",
+  "branch": "main",
+  "head": "f32b71fd8efbbcb8767b70fac25bc62c67e8bab2",
+  "policy": {
+    "pass_requires": "observed execution on the real product/runtime path",
+    "mock_results_count_as_pass": false,
+    "unobserved_interaction_status": "UNVERIFIED",
+    "provider_and_mouse_requirements": "live provider and mouse-capable terminal surface"
+  },
+  "results": [
+    {
+      "id": "python_regression",
+      "status": "PASS",
+      "evidence": "python -m pytest -q",
+      "detail": "856 passed in 192.76s"
+    },
+    {
+      "id": "rust_tui_regression",
+      "status": "PASS",
+      "evidence": "cargo test --manifest-path apps/lbe-terminal/Cargo.toml",
+      "detail": "213 passed; 0 failed; 2 ignored"
+    },
+    {
+      "id": "launcher_syntax",
+      "status": "PASS",
+      "evidence": "PowerShell parser accepted launch-lbe.ps1",
+      "detail": "Source launcher parses successfully."
+    },
+    {
+      "id": "provider_setup_guard",
+      "status": "PASS",
+      "evidence": "Real launch-lbe.ps1 invocation using reasoning-provider.example.json",
+      "detail": "Rejected placeholder model with an actionable setup message; no provider or credential was fabricated."
+    },
+    {
+      "id": "real_tui_startup",
+      "status": "PASS",
+      "evidence": "Release binary launched in a real PTY with LBE_RUNTIME=real",
+      "detail": "Visible Ratatui surface rendered, mouse capture was enabled, and terminal restore sequences were emitted on exit."
+    },
+    {
+      "id": "real_runtime_attachment",
+      "status": "FAIL",
+      "evidence": "Real PTY launch with wall root, target workspace, database, and no session id",
+      "detail": "Runtime displayed LBE_SESSION_ID is not configured. The launcher now bootstraps this when a real provider configuration exists."
+    },
+    {
+      "id": "keyboard_semantic_interaction",
+      "status": "UNVERIFIED",
+      "evidence": "Injected ? and Escape bytes into the real PTY",
+      "detail": "Bytes were delivered and the terminal restored, but the captured PTY stream did not provide reliable semantic proof that the shortcut state changed."
+    },
+    {
+      "id": "mouse_click_interaction",
+      "status": "UNVERIFIED",
+      "evidence": "No mouse-capable computer-use terminal surface was available",
+      "detail": "Mouse capture and hit-testing code now cover palette, provider/model/session, workspace, and approval controls, but physical click/wheel outcomes were not observed on a real terminal surface."
+    },
+    {
+      "id": "live_provider_turn",
+      "status": "UNVERIFIED",
+      "evidence": "No real reasoning-provider.json is present in the workspace",
+      "detail": "Provider selection, prompt submission, tool execution, authorization, validation, and completion receipts cannot be machine-proven without a configured live provider."
+    }
+  ],
+  "overall_status": "BLOCKED_FOR_LIVE_USE",
+  "blocking_items": [
+    "Create a real reasoning-provider.json with a reachable provider endpoint and model id.",
+    "Rerun launch-lbe.ps1 and capture an attached session plus a real provider turn.",
+    "Run the same interaction matrix on a mouse-capable terminal and record observed click and wheel outcomes."
+  ],
+  "next_command": ".\\launch-lbe.ps1"
+}

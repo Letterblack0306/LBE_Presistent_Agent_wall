@@ -1,6 +1,8 @@
 use std::time::{Duration, Instant};
 
-use ratatui::termina::event::{KeyCode, KeyEvent, KeyEventKind, Modifiers};
+use ratatui::termina::event::{
+    KeyCode, KeyEvent, KeyEventKind, Modifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 
 use crate::{
     browser_chat::BrowserChatProvider,
@@ -113,7 +115,10 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
         ("/sessions", "list and resume sessions"),
         ("/history", "show persisted session history"),
         ("/agents", "show delegated child-agent runs"),
-        ("/extensions", "refresh MCP, skills, plugins, hooks and connectors"),
+        (
+            "/extensions",
+            "refresh MCP, skills, plugins, hooks and connectors",
+        ),
         ("/mcp", "refresh extension registry (MCP alias)"),
         ("/tools", "inspect the last governed tool projection"),
         ("/processes", "inspect process activity"),
@@ -454,6 +459,154 @@ impl App {
         }
     }
 
+    /// Handle terminal mouse input without creating a second interaction model.
+    /// The wrapper-aware variant below maps clicks to the same state-machine
+    /// actions as keyboard Enter/arrow bindings.
+    pub(crate) fn handle_mouse(&mut self, mouse: MouseEvent) {
+        self.handle_mouse_state(mouse);
+    }
+
+    pub(crate) fn handle_mouse_with_wrapper(
+        &mut self,
+        mouse: MouseEvent,
+        wrapper: &mut (impl LbeWrapper + ?Sized),
+        now: Instant,
+    ) {
+        self.handle_mouse_state(mouse);
+        if !matches!(mouse.kind, MouseEventKind::Down(MouseButton::Left)) {
+            return;
+        }
+
+        let line = mouse.row.saturating_sub(4) as usize;
+        if self.show_command_palette {
+            let command_line = 3;
+            if line >= command_line {
+                let index = line - command_line;
+                if index < command_palette_commands().len() {
+                    self.command_palette_index = index;
+                    input_trace(format!("action=mouse_command_palette_select index={index}"));
+                    self.execute_command_palette(wrapper);
+                }
+            }
+            return;
+        }
+
+        if matches!(self.phase, Phase::AwaitingApproval { .. }) {
+            // The approval affordance is rendered after the proposal details.
+            // Left side is Allow, right side is Deny, matching the visual
+            // order shown to the user.
+            if line == 11 {
+                if mouse.column < 40 {
+                    self.submit_or_approve(wrapper, now);
+                    input_trace("action=mouse_approval_allow");
+                } else {
+                    self.dismiss_or_reject(wrapper);
+                    input_trace("action=mouse_approval_deny");
+                }
+            }
+            return;
+        }
+
+        if let Some(panel) = self.panel {
+            match panel {
+                MockPanel::Provider => {
+                    let index = line.saturating_sub(5);
+                    if index < self.snapshot.providers.len() {
+                        self.provider_picker_index = index;
+                        self.submit_or_approve(wrapper, now);
+                    }
+                }
+                MockPanel::Model => {
+                    let index = line.saturating_sub(3);
+                    if index < self.snapshot.models.len() {
+                        self.model_picker_index = index;
+                        self.submit_or_approve(wrapper, now);
+                    }
+                }
+                MockPanel::Session if !self.snapshot.sessions.is_empty() => {
+                    let index = line.saturating_sub(3);
+                    if index < self.snapshot.sessions.len() {
+                        self.session_picker_index = index;
+                        self.submit_or_approve(wrapper, now);
+                    }
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        if let Some(listing) = self.workspace_listing.clone() {
+            let index = line.saturating_sub(3);
+            if index < listing.entries.len() {
+                self.workspace_cursor = index;
+                let entry = &listing.entries[index];
+                let path = entry.path.clone();
+                if entry.entry_type == "directory" {
+                    self.apply_wrapper_result(
+                        wrapper.submit(UserRequest::ListWorkspace { path }, now),
+                    );
+                } else {
+                    self.apply_wrapper_result(
+                        wrapper.submit(UserRequest::InspectWorkspace { path }, now),
+                    );
+                }
+                input_trace(format!("action=mouse_workspace_open index={index}"));
+            }
+            return;
+        }
+    }
+
+    fn handle_mouse_state(&mut self, mouse: MouseEvent) {
+        input_trace(format!(
+            "mouse={:?} column={} row={} phase={:?} panel={:?}",
+            mouse.kind, mouse.column, mouse.row, self.phase, self.panel
+        ));
+        match mouse.kind {
+            MouseEventKind::ScrollUp => self.scroll_from_mouse(-3),
+            MouseEventKind::ScrollDown => self.scroll_from_mouse(3),
+            MouseEventKind::Down(MouseButton::Left) if self.phase == Phase::Landing => {
+                self.phase = Phase::Welcome;
+                input_trace("action=mouse_enter_landing");
+            }
+            MouseEventKind::Down(MouseButton::Left) if self.show_shortcuts => {
+                self.show_shortcuts = false;
+                input_trace("action=mouse_close_shortcuts");
+            }
+            _ => {}
+        }
+    }
+
+    fn scroll_from_mouse(&mut self, delta: i32) {
+        if self.workspace_file.is_some() {
+            self.scroll_workspace_file(delta);
+        } else if self.agent_mode == AgentMode::Audit {
+            self.scroll_audit(delta);
+        } else if self.panel.is_none() && self.workspace_listing.is_none() {
+            self.scroll_transcript(delta);
+        }
+        input_trace(format!("action=mouse_scroll delta={delta}"));
+    }
+
+    /// Submit an explicitly supplied startup prompt after the real runtime has
+    /// attached. This follows the normal composer path so transcript history,
+    /// authorization, receipts, and completion handling remain identical to a
+    /// prompt entered interactively.
+    pub(crate) fn submit_initial_prompt(
+        &mut self,
+        prompt: String,
+        wrapper: &mut (impl LbeWrapper + ?Sized),
+        now: Instant,
+    ) {
+        if prompt.trim().is_empty() || self.should_quit || matches!(self.phase, Phase::Running) {
+            return;
+        }
+        if self.phase == Phase::Landing {
+            self.phase = Phase::Welcome;
+        }
+        self.input = prompt;
+        self.submit_or_approve(wrapper, now);
+    }
+
     pub(crate) fn submit_or_approve(
         &mut self,
         wrapper: &mut (impl LbeWrapper + ?Sized),
@@ -698,10 +851,9 @@ impl App {
             "/processes" => Some(MockPanel::Processes),
             "/agents" | "/tasks" => {
                 if let Some(turn_id) = self.snapshot.turn_id.clone() {
-                    self.apply_wrapper_result(wrapper.submit(
-                        UserRequest::RefreshChildAgents { turn_id },
-                        Instant::now(),
-                    ));
+                    self.apply_wrapper_result(
+                        wrapper.submit(UserRequest::RefreshChildAgents { turn_id }, Instant::now()),
+                    );
                 } else {
                     self.transcript.push(
                         "SYSTEM  delegated-run projection requires an active turn.".to_owned(),

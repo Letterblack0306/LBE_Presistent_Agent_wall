@@ -1655,6 +1655,53 @@ pub(crate) fn governed_response_status<'a>(
     }
 }
 
+pub(crate) fn parse_governed_tool_projection(
+    payload: &serde_json::Value,
+) -> Result<Vec<GovernedToolProjection>, LbeError> {
+    let Some(items) = payload.get("governed_tool_projection") else {
+        return Ok(Vec::new());
+    };
+    let items = items
+        .as_array()
+        .ok_or_else(|| LbeError::new("governed_tool_projection must be an array"))?;
+
+    items
+        .iter()
+        .map(|item| {
+            let required = |name: &str| -> Result<String, LbeError> {
+                item.get(name)
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_owned)
+                    .ok_or_else(|| {
+                        LbeError::new(format!("governed tool projection omitted {name}"))
+                    })
+            };
+
+            let authorization_verdict = required("authorization_verdict")?;
+            if !matches!(
+                authorization_verdict.as_str(),
+                "ALLOW" | "DENY" | "ESCALATE"
+            ) {
+                return Err(LbeError::new(format!(
+                    "unsupported governed tool authorization verdict: {authorization_verdict}"
+                )));
+            }
+
+            Ok(GovernedToolProjection {
+                tool_id: required("tool_id")?,
+                capability: required("capability")?,
+                access_class: required("access_class")?,
+                network_behavior: required("network_behavior")?,
+                risk_class: required("risk_class")?,
+                authorization_verdict,
+                authorization_rationale: required("authorization_rationale")?,
+            })
+        })
+        .collect()
+}
+
 pub(crate) fn parse_workspace_payload(
     stdout: &[u8],
     tool_id: &str,
@@ -2843,7 +2890,14 @@ impl RealLbeWrapper {
                 "--database",
             ])
             .arg(database)
-            .args(["--session-id", &session_id, "--turn-id", turn_id, "--format", "json"])
+            .args([
+                "--session-id",
+                &session_id,
+                "--turn-id",
+                turn_id,
+                "--format",
+                "json",
+            ])
             .output()
             .map_err(|error| LbeError::new(format!("delegated-run listing failed: {error}")))?;
         let payload = parse_workspace_payload(&output.stdout, "child-agent.list")?;
@@ -3553,6 +3607,7 @@ impl RealLbeWrapper {
                     });
             }
             "model.turn.completed" => {
+                self.snapshot.governed_tools = parse_governed_tool_projection(payload)?;
                 self.pending_events
                     .push_back(LbeEvent::ConversationalTurnCompleted {
                         session_id: self.snapshot.session_id.clone().unwrap_or_default(),
@@ -4916,9 +4971,7 @@ impl LbeWrapper for RealLbeWrapper {
                 self.require_connected()?;
                 self.attach()
             }
-            UserRequest::RefreshChildAgents { turn_id } => {
-                self.refresh_child_agents(&turn_id)
-            }
+            UserRequest::RefreshChildAgents { turn_id } => self.refresh_child_agents(&turn_id),
             UserRequest::RefreshMcpRegistry => {
                 self.require_connected()?;
                 self.refresh_mcp_registry()

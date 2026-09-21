@@ -6,15 +6,15 @@ use crate::{
     types::*,
     ui::{mock_panel_text_for_app, *},
     wrapper::{
-        executed_receipt_id, governed_response_status, parse_provider_check_payload,
-        parse_provider_list_payload, parse_workspace_payload, validate_provenance,
-        validate_validation, workspace_glob_matches, workspace_list_entries,
+        executed_receipt_id, governed_response_status, parse_governed_tool_projection,
+        parse_provider_check_payload, parse_provider_list_payload, parse_workspace_payload,
+        validate_provenance, validate_validation, workspace_glob_matches, workspace_list_entries,
         workspace_patch_result, workspace_read_content, workspace_search_results, LbeWrapper,
         MockLbeWrapper, RealLbeWrapper,
     },
 };
 
-use ratatui::termina::event::{KeyCode, KeyEvent, Modifiers};
+use ratatui::termina::event::{KeyCode, KeyEvent, Modifiers, MouseEvent, MouseEventKind};
 use ratatui::{backend::TestBackend, style::Color, Terminal};
 use std::time::{Duration, Instant};
 
@@ -59,6 +59,47 @@ fn executed_receipt_contract_accepts_and_normalizes_a_non_empty_receipt() {
 }
 
 #[test]
+fn governed_tool_projection_parser_preserves_authorization_truth() {
+    let projected = parse_governed_tool_projection(&serde_json::json!({
+        "governed_tool_projection": [{
+            "tool_id": "workspace.delete",
+            "capability": "modify",
+            "access_class": "write",
+            "network_behavior": "none",
+            "risk_class": "high",
+            "authorization_verdict": "ESCALATE",
+            "authorization_rationale": "approval required"
+        }]
+    }))
+    .expect("valid governed tool projection");
+
+    assert_eq!(projected.len(), 1);
+    assert_eq!(projected[0].tool_id, "workspace.delete");
+    assert_eq!(projected[0].authorization_verdict, "ESCALATE");
+    assert_eq!(projected[0].authorization_rationale, "approval required");
+}
+
+#[test]
+fn governed_tool_projection_parser_rejects_unknown_verdict() {
+    let error = parse_governed_tool_projection(&serde_json::json!({
+        "governed_tool_projection": [{
+            "tool_id": "workspace.read",
+            "capability": "inspect",
+            "access_class": "read",
+            "network_behavior": "none",
+            "risk_class": "low",
+            "authorization_verdict": "MAYBE",
+            "authorization_rationale": "invalid"
+        }]
+    }))
+    .expect_err("unknown authorization verdict must fail closed");
+
+    assert!(error
+        .message
+        .contains("unsupported governed tool authorization verdict"));
+}
+
+#[test]
 fn headless_prompt_collects_arguments_after_no_tui_and_ignores_presentation_flags() {
     let arguments = vec![
         "--no-tui".to_owned(),
@@ -88,7 +129,7 @@ fn cli_accepts_plain_ascii_and_reduced_motion_for_headless_runs() {
     assert!(options.plain);
     assert!(options.no_animation);
     assert!(options.ascii);
-    assert!(options.no_color);
+    assert!(!options.no_color);
     assert!(!options.json);
 }
 
@@ -2786,7 +2827,9 @@ fn mcp_registry_event_replaces_retained_metadata_and_projects_it_in_mcp_panel() 
     let text = mock_panel_text_for_app(MockPanel::Mcp, &app).to_string();
     assert!(text.contains("CONNECTED · authoritative LBE extension projection"));
     assert!(text.contains("mcp-files · mcp · mcp.files.read · UNAVAILABLE"));
-    assert!(text.contains("execution, or authorization state"));
+    assert!(
+        text.contains("transport, execution, authorization and completion remain runtime-owned")
+    );
 }
 
 #[test]
@@ -2927,6 +2970,56 @@ fn landing_phase_is_the_default_entry_gate() {
 }
 
 #[test]
+fn mouse_click_enters_landing_and_wheel_reuses_scroll_state() {
+    let mut app = App::default();
+    app.handle_mouse(MouseEvent {
+        kind: MouseEventKind::Down(ratatui::termina::event::MouseButton::Left),
+        column: 10,
+        row: 10,
+        modifiers: Modifiers::NONE,
+    });
+    assert_eq!(app.phase, Phase::Welcome);
+
+    app.agent_mode = AgentMode::Build;
+    app.transcript = (0..20).map(|index| format!("line-{index}")).collect();
+    app.handle_mouse(MouseEvent {
+        kind: MouseEventKind::ScrollDown,
+        column: 10,
+        row: 10,
+        modifiers: Modifiers::NONE,
+    });
+    assert_eq!(app.transcript_scroll, Some(3));
+    app.handle_mouse(MouseEvent {
+        kind: MouseEventKind::ScrollUp,
+        column: 10,
+        row: 10,
+        modifiers: Modifiers::NONE,
+    });
+    assert_eq!(app.transcript_scroll, Some(0));
+}
+
+#[test]
+fn explicit_initial_prompt_uses_the_normal_submission_path() {
+    let mut app = App::default();
+    app.snapshot.session_id = Some("sess_initial_prompt".to_owned());
+    app.snapshot.workspace_id = Some("workspace_initial_prompt".to_owned());
+    let mut wrapper = MockLbeWrapper::default();
+
+    app.submit_initial_prompt(
+        "inspect the workspace".to_owned(),
+        &mut wrapper,
+        Instant::now(),
+    );
+
+    assert_eq!(app.phase, Phase::Welcome);
+    assert!(app.input.is_empty());
+    assert!(app
+        .transcript
+        .iter()
+        .any(|line| line == "you        inspect the workspace"));
+}
+
+#[test]
 fn landing_gate_holds_against_runtime_events() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
@@ -3008,7 +3101,6 @@ fn welcome_frame_prioritizes_home_controls_at_80_by_24() {
     assert!(rendered.contains("UI CONTRACT PREVIEW"));
     assert!(!rendered.contains("runtime connected"));
     assert!(rendered.contains("? for shortcuts"));
-    assert!(rendered.contains("Runtime"));
     assert!(rendered.contains("Provider"));
     assert!(rendered.contains("Model"));
     assert!(rendered.contains("Workspace"));
@@ -3022,6 +3114,7 @@ fn working_surface_uses_compact_agent_cockpit_instead_of_persistent_logo_art() {
     let mut terminal = Terminal::new(backend).expect("test terminal should initialize");
     let mut app = App::default();
     app.phase = Phase::Welcome;
+    app.agent_mode = AgentMode::Build;
     terminal
         .draw(|frame| draw(frame, &app))
         .expect("working frame should render");
@@ -3307,7 +3400,7 @@ fn command_palette_runs_existing_lbe_commands() {
     assert!(app.show_command_palette);
     app.handle_key(KeyCode::Down.into(), &mut wrapper, now);
     app.handle_key(KeyCode::Enter.into(), &mut wrapper, now);
-    assert_eq!(app.panel, Some(MockPanel::Model));
+    assert_eq!(app.panel, Some(MockPanel::Provider));
     assert_eq!(wrapper.requests, vec![UserRequest::RefreshProviderCatalog]);
 }
 
