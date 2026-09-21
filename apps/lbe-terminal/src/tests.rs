@@ -1,5 +1,5 @@
 use crate::{
-    app::App,
+    app::{command_palette_commands, App},
     events::{LbeEvent, ToolRisk, ValidationStatus},
     headless_prompt, parse_cli,
     requests::{LbeError, UserRequest},
