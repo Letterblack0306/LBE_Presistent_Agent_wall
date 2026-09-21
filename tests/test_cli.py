@@ -759,3 +759,36 @@ def test_memory_recall_returns_revalidated_session_memory(tmp_path: Path, capsys
     assert [record["memory_id"] for record in payload["records"]] == [memory_id]
     assert payload["records"][0]["memory_type"] == "workspace_fact"
     assert payload["records"][0]["validation_status"] == "verified"
+
+
+def test_checkpoint_latest_returns_persisted_revalidated_checkpoint(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+    )
+    checkpoint_id = runtime.checkpoint(
+        compaction={
+            "source_message_count": 1,
+            "source_prefix_hash": "sha256:" + "a" * 64,
+            "source_last_message_key": "message-1",
+        }
+    )
+
+    code = main([
+        "checkpoint", "latest",
+        "--database", str(database),
+        "--session-id", "session-1",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["ok"] is True
+    assert payload["action"] == "checkpoint.latest"
+    assert payload["session_id"] == "session-1"
+    assert payload["checkpoint"]["checkpoint_id"] == checkpoint_id
+    assert payload["checkpoint_revalidation"]["authority_owner"] == "LBE_MEMORY_RUNTIME"
