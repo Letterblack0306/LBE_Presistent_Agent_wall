@@ -962,7 +962,12 @@ impl App {
                 None
             }
             "/undo" => Some(MockPanel::Undo),
-            "/checkpoints" => Some(MockPanel::Undo),
+            "/checkpoints" => {
+                self.apply_wrapper_result(
+                    wrapper.submit(UserRequest::RefreshCheckpoint, Instant::now()),
+                );
+                Some(MockPanel::Undo)
+            },
             "/diff" | "/changes" => Some(MockPanel::Changes),
             "/mode" => {
                 self.transcript
