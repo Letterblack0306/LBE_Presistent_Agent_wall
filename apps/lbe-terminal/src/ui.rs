@@ -1797,7 +1797,7 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                     "CHECKPOINTS · MOCK / NOT CONNECTED".to_owned()
                 },
                 if connected {
-                    "[Esc] close · compare/restore not exposed".to_owned()
+                    "[c] revalidate checkpoint   [Esc] close · restore not exposed".to_owned()
                 } else {
                     "[c] compare   [r] request restore   [Esc] close".to_owned()
                 },
@@ -2178,7 +2178,7 @@ pub(crate) fn mock_panel_text_for_app(panel: MockPanel, app: &App) -> Text<'stat
             ))];
             lines.push(Line::from(Span::styled(
                 if app.snapshot.connection == RuntimeConnection::Connected {
-                    "[Esc] close · compare/restore not exposed"
+                    "[c] revalidate checkpoint   [Esc] close · restore not exposed"
                 } else {
                     "[c] compare   [r] request restore   [Esc] close"
                 },
