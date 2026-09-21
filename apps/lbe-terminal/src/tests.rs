@@ -5296,3 +5296,24 @@ fn production_command_palette_omits_unwired_restore_compaction_and_browser_contr
     assert!(commands.contains(&"/checkpoints"));
     assert!(commands.contains(&"/memory"));
 }
+
+
+#[test]
+fn real_wrapper_requires_connected_runtime_for_checkpoint_refresh() {
+    let mut wrapper = RealLbeWrapper::new();
+    let error = wrapper
+        .submit(UserRequest::RefreshCheckpoint, Instant::now())
+        .expect_err("checkpoint refresh requires an attached LBE runtime");
+    assert!(error.message.contains("requires a connected LBE runtime"));
+}
+
+#[test]
+fn checkpoints_command_routes_read_only_refresh_request() {
+    let mut app = App::default();
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_command("/checkpoints", &mut wrapper);
+
+    assert_eq!(wrapper.requests, vec![UserRequest::RefreshCheckpoint]);
+    assert_eq!(app.panel, Some(MockPanel::Undo));
+}
