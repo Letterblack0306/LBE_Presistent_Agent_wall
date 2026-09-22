@@ -342,15 +342,13 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
                 model_catalog_ready
             };
             if !submitted && session_ready && model_ready {
-                wrapper
-                    .submit(
-                        requests::UserRequest::SubmitTask {
-                            intent: prompt.clone(),
-                            mode,
-                        },
-                        Instant::now(),
-                    )
-                    .map_err(|error| io::Error::other(error.message))?;
+                // Headless execution follows the same entry path as the
+                // interactive client, including passing the landing gate.
+                // Submitting directly to the wrapper can complete in the
+                // runtime while the App remains on Landing, misreporting a
+                // successful turn as a timeout.
+                app.agent_mode = mode;
+                app.submit_initial_prompt(prompt.clone(), &mut wrapper, Instant::now());
                 submitted = true;
             }
             if submitted && matches!(app.phase, Phase::Completed) {
