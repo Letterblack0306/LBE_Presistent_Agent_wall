@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "GOVERNED_TOOL_PERMISSION_REFERENCE_CONVERGENCE",
+  "active_slice": "INTERACTIVE_PROVIDER_CATALOG_PROJECTION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,8 +64,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001",
-    "owner": "Existing governed tool/authorization owners plus Rust client projection; no second executor",
+    "intent_id": "LBE-INTENT-INTERACTIVE-PROVIDER-CATALOG-PROJECTION-001",
+    "owner": "LBE runtime provider/model catalog and authoritative session snapshot; Rust/Ratatui app reducer",
     "index_revision": "E4B52A18940A2F1485F8D565F8058F43F82EB9E205F33DB50FD18560B138D4B5"
   },
   "closure": {
@@ -73,7 +73,7 @@
     "last_completed_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
     "last_completed_intent": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
     "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "GOVERNED_TOOL_PERMISSION_REFERENCE_CONVERGENCE",
+    "next_slice": "INTERACTIVE_PROVIDER_CATALOG_PROJECTION",
     "publication": "LOCKED"
   },
   "active_execution_plan": {
@@ -129,6 +129,29 @@
         "status": "PASS",
         "evidence": "Canonical backend main 09b5c1cd28806d4381fabaa4723191494f2bc32f publishes the installed command contract in tools/lbe_product_integration.ps1: zero-mandatory-argument launcher defaults from installed runtime.json, provider configuration under the install root, bin\\lbe.cmd generation, idempotent user-PATH prepend, and explicit collision reporting without overwriting npm/Python owners. Product was rebuilt/reinstalled from this exact canonical head and revalidated.",
         "required_fix": "NONE. Closed."
+      },
+      "INTERACTIVE_PROVIDER_CATALOG_PROJECTION": {
+        "status": "AUTHORIZED",
+        "authorization": "EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22",
+        "scope": [
+          "preserve runtime-discovered provider/model catalogs across session snapshot updates",
+          "interactive provider/model picker row projection and selection",
+          "exact-build PTY validation against the configured live provider",
+          "retain authoritative LBE runtime/catalog ownership"
+        ],
+        "required_evidence": [
+          "regression for provider catalog then snapshot event ordering",
+          "Rust tests and formatting",
+          "exact release PTY provider row rendering and mouse selection",
+          "live provider catalog refresh"
+        ],
+        "non_goals": [
+          "new provider authority or parallel catalog",
+          "copying Cline credentials",
+          "provider configuration/removal workflows",
+          "changing runtime/session ownership"
+        ],
+        "implementation_allowed": true
       },
       "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION": {
         "status": "AUTHORIZED",

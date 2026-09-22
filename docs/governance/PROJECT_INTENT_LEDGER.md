@@ -908,4 +908,23 @@ EXPECTED_PATH_PREFIXES: lbe_guard_inspector/product_entry.py,lbe_guard_inspector
 REQUIRED_EVIDENCE: same-session local/headless/remote identity proof; cancellation/approval propagation; JSON event contract; disconnect/reconnect; fail-closed auth; focused/full regression; live multi-client acceptance.
 MACHINE_SLICE: HEADLESS_REMOTE_SURFACE_CONVERGENCE
 RESULT: NOT_STARTED
+
+
+## INTENT LBE-INTENT-INTERACTIVE-PROVIDER-CATALOG-PROJECTION-001
+
+
+INTENT_ID: LBE-INTENT-INTERACTIVE-PROVIDER-CATALOG-PROJECTION-001
+STATUS: AUTHORIZED
+REQUEST: Preserve live provider and model catalog projections across asynchronous session/runtime snapshot updates in the canonical Rust TUI.
+WHY: A real attached-provider PTY run on 2026-09-22 showed provider discovery completing with 11 providers while the provider picker rendered “No provider catalog projected.” This is a live UI data-loss defect, not a source-only concern.
+EXISTING_OWNER: LBE runtime provider/model catalog and authoritative session snapshot; Rust/Ratatui app reducer and provider picker.
+DESIRED_RESULT: Provider/model discovery survives later authoritative session snapshot events, and the interactive picker displays and selects live catalog rows without fabricating provider state.
+NON_GOALS: No new provider authority, second catalog, credentials copied from Cline, provider configuration/removal, or change to session/runtime ownership.
+REUSE_DECISION: REUSE the existing provider/model events and runtime snapshot; merge independently owned catalog projections when reducing a snapshot.
+AUTHORITY_IMPACT: None.
+EXPECTED_PATH_PREFIXES: apps/lbe-terminal/,tests/,docs/governance/,docs/acceptance/,.lbe/governance/
+REQUIRED_EVIDENCE: regression for snapshot/catalog event ordering; Rust tests and formatting; exact release PTY proof that F2 provider rows render and can be mouse-selected; fresh live runtime/provider verification; no fake catalog fallback.
+MACHINE_SLICE: INTERACTIVE_PROVIDER_CATALOG_PROJECTION
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22
 ```
