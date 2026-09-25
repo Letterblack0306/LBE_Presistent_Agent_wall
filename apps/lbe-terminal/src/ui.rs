@@ -1374,7 +1374,20 @@ fn mode_placeholder(mode: AgentMode) -> &'static str {
 }
 
 pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<'static> {
+    // The gate is stateful: it renders runtime approval state held by the app,
+    // not the snapshot alone. Rendering it here would mean showing a decision
+    // that this projection cannot describe, so it stays explicitly unavailable.
+    if panel == MockPanel::ActionGate {
+        return Text::from(vec![Line::from(Span::styled(
+            "ACTION GATE // requires runtime authorization state",
+            Style::default().fg(PALETTE.amber),
+        ))]);
+    }
     let (title, rows): (&str, Vec<String>) = match panel {
+        MockPanel::ActionGate => (
+            "Action Gate",
+            vec!["requires runtime authorization state".to_owned()],
+        ),
         MockPanel::Activity => (
             "Activity",
             vec![
@@ -1899,6 +1912,9 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
 }
 
 pub(crate) fn mock_panel_text_for_app(panel: MockPanel, app: &App) -> Text<'static> {
+    if panel == MockPanel::ActionGate {
+        return action_gate_panel_text(app);
+    }
     // Activity is rendered from the app projection below.
     if panel == MockPanel::Activity {
         let mut lines = vec![Line::from(Span::styled(
@@ -2342,6 +2358,100 @@ pub(crate) fn mock_panel_text_for_app(panel: MockPanel, app: &App) -> Text<'stat
         }
         _ => mock_panel_text(panel, &app.snapshot),
     }
+}
+
+/// Dedicated authorization surface.
+///
+/// Every value here is a copy of runtime-owned state. A value the runtime did
+/// not project is rendered as unknown; it is never inferred, defaulted, or
+/// generated client-side. This function renders and nothing else: the decision
+/// travels to the runtime through the existing `UserRequest` path.
+fn action_gate_panel_text(app: &App) -> Text<'static> {
+    const UNKNOWN: &str = "unknown - runtime projected no value";
+    let connected = app.snapshot.connection == RuntimeConnection::Connected;
+    let mut lines = vec![
+        Line::from(Span::styled(
+            "ACTION GATE // AUTHORIZATION REQUIRED",
+            Style::default()
+                .fg(PALETTE.amber)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            if connected {
+                "LBE-OWNED · the runtime decides; this surface only displays"
+            } else {
+                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW"
+            },
+            Style::default().fg(if connected { PALETTE.info } else { PALETTE.muted }),
+        )),
+        Line::default(),
+    ];
+
+    let Some(pending) = &app.action_gate.pending else {
+        lines.push(Line::from(Span::styled(
+            "No authorization decision is currently pending.",
+            Style::default().fg(PALETTE.muted),
+        )));
+        return Text::from(lines);
+    };
+
+    let tool = app.action_gate.correlated_tool.as_ref();
+    let field = |label: &str, value: Option<String>| {
+        let known = value.is_some();
+        Line::from(vec![
+            Span::styled(
+                format!("{label:<18}"),
+                Style::default()
+                    .fg(PALETTE.faint)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                value.unwrap_or_else(|| UNKNOWN.to_owned()),
+                Style::default().fg(if known { PALETTE.ink } else { PALETTE.muted }),
+            ),
+        ])
+    };
+
+    lines.push(field("Capability", Some(pending.capability.clone())));
+    lines.push(field(
+        "Tool",
+        tool.map(|tool| tool.tool_id.clone()),
+    ));
+    lines.push(field(
+        "Target / Input",
+        tool.map(|tool| tool.access_class.clone()),
+    ));
+    lines.push(field("Risk", tool.map(|tool| tool.risk_class.clone())));
+    lines.push(field("Operation ID", Some(pending.operation_id.clone())));
+    lines.push(field("Approval ID", Some(pending.approval_id.clone())));
+    lines.push(field("Rationale", Some(pending.rationale.clone())));
+    lines.push(Line::default());
+    lines.push(field(
+        "Diff",
+        if app.action_gate.show_diff {
+            None
+        } else {
+            Some("[D] to view the runtime-projected diff".to_owned())
+        },
+    ));
+    lines.push(Line::default());
+    for (key, label, effect) in [
+        ("[D]    ", "VIEW DIFF", "display only"),
+        ("[Enter]", "ALLOW ONCE", "runtime UserRequest::Approve"),
+        ("[Esc]  ", "DENY", "runtime UserRequest::Reject"),
+    ] {
+        lines.push(Line::from(vec![
+            Span::styled(key, Style::default().fg(PALETTE.agent)),
+            Span::styled(
+                format!(" {label:<11}"),
+                Style::default()
+                    .fg(PALETTE.ink)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(effect, Style::default().fg(PALETTE.faint)),
+        ]));
+    }
+    Text::from(lines)
 }
 
 fn provider_panel_text(app: &App) -> Text<'static> {

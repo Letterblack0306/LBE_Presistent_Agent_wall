@@ -78,6 +78,8 @@ pub(crate) struct App {
     pub(crate) last_authorization_capability: Option<String>,
     pub(crate) last_authorization_verdict: Option<String>,
     pub(crate) last_authorization_rationale: Option<String>,
+    /// Dedicated authorization surface. Populated only from runtime events.
+    pub(crate) action_gate: ActionGateView,
     pub(crate) evidence_records: Vec<EvidenceProjection>,
     pub(crate) receipt_records: Vec<ReceiptProjection>,
     pub(crate) audit_findings: Vec<AuditFinding>,
@@ -183,6 +185,7 @@ impl Default for App {
             last_authorization_capability: None,
             last_authorization_verdict: None,
             last_authorization_rationale: None,
+            action_gate: ActionGateView::default(),
             evidence_records: Vec::new(),
             receipt_records: Vec::new(),
             audit_findings: Vec::new(),
@@ -337,6 +340,15 @@ impl App {
             KeyCode::Escape => {
                 input_trace("action=escape_dismiss_or_reject");
                 self.dismiss_or_reject(wrapper)
+            }
+            KeyCode::Char('d') if self.input.is_empty() && self.action_gate.pending.is_some() => {
+                // VIEW DIFF only re-reads what the runtime already projected. It
+                // never computes, requests, or mutates anything.
+                self.action_gate.show_diff = !self.action_gate.show_diff;
+                input_trace(format!(
+                    "action=toggle_action_gate_diff visible={}",
+                    self.action_gate.show_diff
+                ));
             }
             KeyCode::Enter
                 if key
@@ -708,6 +720,22 @@ impl App {
         }
     }
     pub(crate) fn dismiss_or_reject(&mut self, wrapper: &mut (impl LbeWrapper + ?Sized)) {
+        // A live authorization decision outranks panel dismissal: the gate must
+        // never turn a DENY into "close the window".
+        if let Phase::AwaitingApproval { approval_id, .. } = &self.phase {
+            if self.action_gate.pending.is_some() {
+                let approval_id = approval_id.clone();
+                self.pending_patch = None;
+                self.apply_wrapper_result(wrapper.submit(
+                    UserRequest::Reject {
+                        approval_id: approval_id.clone(),
+                    },
+                    Instant::now(),
+                ));
+                input_trace(format!("action=deny_pending_approval approval_id={approval_id}"));
+                return;
+            }
+        }
         if self.panel.is_some() || self.show_shortcuts {
             self.panel = None;
             self.show_shortcuts = false;
@@ -1972,6 +2000,23 @@ impl App {
                 self.last_authorization_capability = Some(capability.clone());
                 self.last_authorization_verdict = Some("REQUIRED".to_owned());
                 self.last_authorization_rationale = Some(rationale.clone());
+                // The gate renders runtime-owned approval state only. Tool, risk, and
+                // target are correlated from the governed projection when the runtime
+                // emitted one; otherwise they stay unknown.
+                self.action_gate.pending = Some(PendingAuthorization {
+                    operation_id: operation_id.clone(),
+                    approval_id: approval_id.clone(),
+                    capability: capability.clone(),
+                    rationale: rationale.clone(),
+                });
+                self.action_gate.show_diff = false;
+                self.action_gate.correlated_tool = self
+                    .snapshot
+                    .governed_tools
+                    .iter()
+                    .find(|tool| tool.capability == capability.as_str())
+                    .cloned();
+                self.panel = Some(MockPanel::ActionGate);
                 self.advance_phase(Phase::AwaitingApproval {
                     approval_id,
                     proposal: format!("AUTHORIZATION REQUIRED · {capability} · {rationale}"),
@@ -1998,6 +2043,11 @@ impl App {
                 self.last_authorization_approval_id = Some(approval_id.clone());
                 self.last_authorization_verdict = Some(verdict.clone());
                 self.last_authorization_rationale = Some(rationale.clone());
+                // The runtime resolved the decision; the gate must stop presenting a
+                // decision that no longer exists.
+                self.action_gate.pending = None;
+                self.action_gate.correlated_tool = None;
+                self.action_gate.show_diff = false;
                 self.transcript.push(format!(
                     "AUTHORIZATION  {verdict} · {operation_id} · {approval_id} · {rationale}"
                 ));

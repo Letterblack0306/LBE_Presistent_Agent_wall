@@ -386,6 +386,32 @@ pub(crate) struct GovernedToolProjection {
 }
 
 // ---------------------------------------------------------------------------
+// PendingAuthorization
+// ---------------------------------------------------------------------------
+
+/// One authorization decision the LBE runtime asked the operator for.
+///
+/// Every field is copied from a runtime event. The client never mints an
+/// approval ID, an operation ID, a risk class, or a target: an absent value
+/// stays unknown and is rendered as such.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PendingAuthorization {
+    pub(crate) operation_id: String,
+    pub(crate) approval_id: String,
+    pub(crate) capability: String,
+    pub(crate) rationale: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) struct ActionGateView {
+    pub(crate) pending: Option<PendingAuthorization>,
+    /// Correlated governed-tool projection, when the runtime emitted one for
+    /// this capability. Absent means unknown, never inferred.
+    pub(crate) correlated_tool: Option<GovernedToolProjection>,
+    pub(crate) show_diff: bool,
+}
+
+// ---------------------------------------------------------------------------
 // LbeSnapshot
 // ---------------------------------------------------------------------------
 
@@ -1174,6 +1200,9 @@ pub(crate) enum MockPanel {
     Undo,
     Changes,
     Doctor,
+    /// Dedicated authorization surface over runtime-owned approval state. It renders
+    /// only what the runtime projected; it never decides or executes an approval.
+    ActionGate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

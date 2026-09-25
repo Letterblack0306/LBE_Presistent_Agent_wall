@@ -5634,3 +5634,210 @@ fn connected_close_command_does_not_dispatch_unwired_session_close() {
         .iter()
         .any(|line| line.contains("close is not exposed until the canonical session lifecycle owner supports it")));
 }
+
+// ---------------------------------------------------------------------------
+// Action Gate
+// ---------------------------------------------------------------------------
+
+/// Drives the client into the exact state a runtime authorization request
+/// creates, so every test below starts from runtime-owned facts.
+fn gate_with_pending_approval() -> App {
+    let mut app = App::default();
+    // A real session leaves the landing phase before the runtime asks for
+    // authorization; `advance_phase` is intentionally inert while landing.
+    app.phase = Phase::Welcome;
+    app.reduce_lbe_event(LbeEvent::AuthorizationRequired {
+        operation_id: "op-gate".to_owned(),
+        approval_id: "approval-gate".to_owned(),
+        capability: "modify".to_owned(),
+        rationale: "workspace mutation requires approval".to_owned(),
+    });
+    app
+}
+
+#[test]
+fn action_gate_offers_no_decision_before_the_runtime_asks_for_one() {
+    let app = App::default();
+    assert!(app.action_gate.pending.is_none());
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    assert!(
+        text.contains("No authorization decision is currently pending."),
+        "{text}"
+    );
+    assert!(!text.contains("ALLOW ONCE"), "{text}");
+}
+
+#[test]
+fn action_gate_appears_only_from_runtime_authorization_state() {
+    let app = gate_with_pending_approval();
+    assert_eq!(app.panel, Some(MockPanel::ActionGate));
+    assert!(matches!(app.phase, Phase::AwaitingApproval { .. }));
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    assert!(text.contains("ACTION GATE // AUTHORIZATION REQUIRED"), "{text}");
+}
+
+#[test]
+fn action_gate_shows_runtime_identity_verbatim_and_invents_nothing() {
+    let app = gate_with_pending_approval();
+    let pending = app.action_gate.pending.as_ref().expect("pending");
+    assert_eq!(pending.operation_id, "op-gate");
+    assert_eq!(pending.approval_id, "approval-gate");
+    assert_eq!(pending.capability, "modify");
+
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    // Identity shown is exactly what the runtime sent, not a client-generated value.
+    assert!(text.contains("op-gate"), "{text}");
+    assert!(text.contains("approval-gate"), "{text}");
+    // Values the runtime did not project stay unknown instead of being inferred.
+    assert!(text.contains("unknown - runtime projected no value"), "{text}");
+}
+
+#[test]
+fn action_gate_correlates_risk_from_the_governed_projection() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    // The runtime projects the governed tool before it requests authorization.
+    app.snapshot.governed_tools.push(GovernedToolProjection {
+        tool_id: "workspace.patch".to_owned(),
+        capability: "modify".to_owned(),
+        access_class: "workspace-write".to_owned(),
+        network_behavior: "none".to_owned(),
+        risk_class: "HIGH".to_owned(),
+        authorization_verdict: "REQUIRE_APPROVAL".to_owned(),
+        authorization_rationale: "workspace mutation".to_owned(),
+    });
+    app.reduce_lbe_event(LbeEvent::AuthorizationRequired {
+        operation_id: "op-gate".to_owned(),
+        approval_id: "approval-gate".to_owned(),
+        capability: "modify".to_owned(),
+        rationale: "workspace mutation requires approval".to_owned(),
+    });
+
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    assert!(text.contains("workspace.patch"), "{text}");
+    assert!(text.contains("HIGH"), "{text}");
+    assert!(
+        !text.contains("unknown - runtime projected no value"),
+        "a projected risk must not render as unknown: {text}"
+    );
+}
+
+#[test]
+fn action_gate_enter_sends_the_existing_approve_request() {
+    let mut app = gate_with_pending_approval();
+    let mut wrapper = RecordingWrapper::new();
+    app.handle_key(KeyCode::Enter.into(), &mut wrapper, Instant::now());
+
+    assert!(matches!(
+        wrapper.requests.as_slice(),
+        [UserRequest::Approve { approval_id }] if approval_id == "approval-gate"
+    ));
+}
+
+#[test]
+fn action_gate_escape_sends_the_existing_reject_request_despite_the_open_panel() {
+    let mut app = gate_with_pending_approval();
+    let mut wrapper = RecordingWrapper::new();
+    app.handle_key(KeyCode::Escape.into(), &mut wrapper, Instant::now());
+
+    assert!(matches!(
+        wrapper.requests.as_slice(),
+        [UserRequest::Reject { approval_id }] if approval_id == "approval-gate"
+    ));
+}
+
+#[test]
+fn action_gate_deny_produces_zero_consequential_execution() {
+    let mut app = App::default();
+    let mut wrapper = RecordingWrapper::new();
+    app.handle_command("/patch file.txt expected replacement", &mut wrapper);
+    app.submit_or_approve(&mut wrapper, Instant::now());
+    let before = wrapper.requests.len();
+
+    app.reduce_lbe_event(LbeEvent::AuthorizationRequired {
+        operation_id: "op-deny".to_owned(),
+        approval_id: "approval-deny".to_owned(),
+        capability: "modify".to_owned(),
+        rationale: "approval required".to_owned(),
+    });
+    app.handle_key(KeyCode::Escape.into(), &mut wrapper, Instant::now());
+    app.reduce_lbe_event(LbeEvent::AuthorizationResolved {
+        operation_id: "op-deny".to_owned(),
+        approval_id: "approval-deny".to_owned(),
+        verdict: "DENY".to_owned(),
+        rationale: "operator denied".to_owned(),
+    });
+
+    // Exactly one request after the gate: the rejection itself. No mutation ran.
+    assert_eq!(wrapper.requests.len(), before + 1);
+    assert!(matches!(
+        wrapper.requests.last(),
+        Some(UserRequest::Reject { .. })
+    ));
+    assert!(app.pending_patch.is_none());
+}
+
+#[test]
+fn action_gate_stops_presenting_a_decision_the_runtime_already_resolved() {
+    let mut app = gate_with_pending_approval();
+    app.reduce_lbe_event(LbeEvent::AuthorizationResolved {
+        operation_id: "op-gate".to_owned(),
+        approval_id: "approval-gate".to_owned(),
+        verdict: "ALLOW".to_owned(),
+        rationale: "approved".to_owned(),
+    });
+
+    assert!(app.action_gate.pending.is_none());
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    assert!(
+        text.contains("No authorization decision is currently pending."),
+        "{text}"
+    );
+}
+
+#[test]
+fn action_gate_view_diff_key_toggles_only_local_display() {
+    let mut app = gate_with_pending_approval();
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_key(KeyCode::Char('d').into(), &mut wrapper, Instant::now());
+    assert!(app.action_gate.show_diff);
+    assert!(wrapper.requests.is_empty());
+
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    // The runtime projects no diff for this operation, so the surface says so
+    // rather than rendering one.
+    assert!(text.contains("Diff"), "{text}");
+    assert!(text.contains("unknown - runtime projected no value"), "{text}");
+
+    app.handle_key(KeyCode::Char('d').into(), &mut wrapper, Instant::now());
+    assert!(!app.action_gate.show_diff);
+    assert!(wrapper.requests.is_empty());
+}
+
+#[test]
+fn action_gate_stays_visibly_non_live_when_disconnected() {
+    let mut app = gate_with_pending_approval();
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    assert!(text.contains("MOCK / NOT CONNECTED"), "{text}");
+
+    app.snapshot.connection = RuntimeConnection::Connected;
+    let live = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    assert!(live.contains("the runtime decides"), "{live}");
+    assert!(!live.contains("MOCK / NOT CONNECTED"), "{live}");
+}
+
+#[test]
+fn action_gate_generates_no_receipt_or_evidence_of_its_own() {
+    let mut app = gate_with_pending_approval();
+    let mut wrapper = RecordingWrapper::new();
+    let receipts_before = app.receipt_records.len();
+    let evidence_before = app.evidence_records.len();
+
+    app.handle_key(KeyCode::Enter.into(), &mut wrapper, Instant::now());
+    app.handle_key(KeyCode::Char('d').into(), &mut wrapper, Instant::now());
+
+    assert_eq!(app.receipt_records.len(), receipts_before);
+    assert_eq!(app.evidence_records.len(), evidence_before);
+}
+
