@@ -9,7 +9,12 @@ from lbe_guard_inspector.reasoning_config import (
     load_provider_config,
     provider_config_from_mapping,
 )
-from lbe_guard_inspector.reasoning_provider import ProviderConfig
+from lbe_guard_inspector.reasoning_provider import (
+    LBE_DEFAULT_MAX_OUTPUT_TOKENS,
+    LBE_MAX_OUTPUT_TOKENS_CEILING,
+    ProviderConfig,
+    resolve_max_output_tokens,
+)
 
 
 def valid_mapping() -> dict:
@@ -104,6 +109,60 @@ def test_file_loader_accepts_a_utf8_bom_from_windows_editors(tmp_path) -> None:
     assert config.endpoint == "http://provider/v1/chat/completions"
     assert config.model == "local-model"
     assert config.api_key == "secret"
+
+
+def test_configured_output_cap_is_accepted_from_the_provider_config() -> None:
+    config = provider_config_from_mapping({**valid_mapping(), "max_output_tokens": 2048})
+
+    assert config.max_output_tokens == 2048
+    assert resolve_max_output_tokens(configured=config.max_output_tokens) == 2048
+
+
+@pytest.mark.parametrize(
+    "value,message",
+    [
+        ("4096", "positive integer"),
+        (0, "positive integer"),
+        (-10, "positive integer"),
+        (True, "positive integer"),
+        (LBE_MAX_OUTPUT_TOKENS_CEILING + 1, "ceiling"),
+    ],
+)
+def test_malformed_or_unsupported_config_output_caps_fail_truthfully(value, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        provider_config_from_mapping({**valid_mapping(), "max_output_tokens": value})
+
+
+def test_configured_output_cap_is_honored_and_never_exceeds_the_lbe_ceiling() -> None:
+    assert resolve_max_output_tokens() == LBE_DEFAULT_MAX_OUTPUT_TOKENS
+    assert resolve_max_output_tokens(configured=2048) == 2048
+    # A request-specific need can only lower the cap, never raise it.
+    assert resolve_max_output_tokens(configured=2048, requirement=256) == 256
+    assert resolve_max_output_tokens(configured=2048, requirement=8192) == 2048
+
+
+@pytest.mark.parametrize(
+    "configured,requirement,message",
+    [
+        (0, None, "positive"),
+        (-1, None, "positive"),
+        (LBE_MAX_OUTPUT_TOKENS_CEILING + 1, None, "ceiling"),
+        (None, 0, "positive"),
+        (None, -5, "positive"),
+    ],
+)
+def test_malformed_or_unsupported_output_caps_fail_truthfully(
+    configured, requirement, message
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        resolve_max_output_tokens(configured=configured, requirement=requirement)
+
+
+def test_default_output_bound_is_a_step_not_the_context_window() -> None:
+    """Regression: an omitted max_tokens made the provider substitute the model's full
+    output ceiling (131072 on OpenRouter), which a governed step must never request."""
+    assert LBE_DEFAULT_MAX_OUTPUT_TOKENS < LBE_MAX_OUTPUT_TOKENS_CEILING
+    assert LBE_MAX_OUTPUT_TOKENS_CEILING <= 8192
 
 
 def test_file_loader_reads_only_the_supplied_path(tmp_path) -> None:

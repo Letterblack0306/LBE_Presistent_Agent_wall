@@ -15,7 +15,13 @@ from .professional_provider_events import (
     NormalizedModelEvent,
     ProviderProtocolFamily,
 )
-from .reasoning_provider import JsonTransport, ProviderConfig, ProviderError, UrllibJsonTransport
+from .reasoning_provider import (
+    JsonTransport,
+    ProviderConfig,
+    ProviderError,
+    UrllibJsonTransport,
+    resolve_max_output_tokens,
+)
 
 
 class OpenAICompatibleEventAdapter:
@@ -32,6 +38,7 @@ class OpenAICompatibleEventAdapter:
         provider_id: str = "openai-compatible",
         lbe_call_id_for_provider_tool_call: Callable[[str], str] | None = None,
         tools: tuple[Mapping[str, Any], ...] = (),
+        max_output_tokens: int | None = None,
     ) -> tuple[NormalizedModelEvent, ...]:
         """Return truthful normalized events for one non-streaming provider call."""
 
@@ -40,9 +47,16 @@ class OpenAICompatibleEventAdapter:
         _required(provider_id, "provider_id")
         if not isinstance(tools, tuple) or not all(isinstance(item, Mapping) for item in tools):
             raise TypeError("tools must be a tuple of mappings")
+        # Never omit max_tokens: a provider then substitutes the model's full output
+        # ceiling, which is not a bounded governed request and can be rejected outright.
+        resolved_max_tokens = resolve_max_output_tokens(
+            configured=self._config.max_output_tokens,
+            requirement=max_output_tokens,
+        )
         payload: dict[str, Any] = {
             "model": self._config.model.strip(),
             "messages": [dict(item) for item in messages],
+            "max_tokens": resolved_max_tokens,
         }
         if tools:
             payload["tools"] = [dict(item) for item in tools]
@@ -72,6 +86,8 @@ class OpenAICompatibleEventAdapter:
             event_type=ModelEventType.TURN_STARTED,
             provider_id=provider_id,
             provider_request_id=request_id,
+            # Observable: the effective output bound for this governed call.
+            metadata={"max_output_tokens": resolved_max_tokens},
         )]
         choice = _single_choice(response)
         message = choice.get("message")
@@ -144,13 +160,27 @@ class OpenAICompatibleEventAdapter:
         *,
         messages: tuple[Mapping[str, Any], ...],
         provider_id: str = "openai-compatible",
+        max_output_tokens: int | None = None,
     ) -> Iterator[NormalizedModelEvent]:
         """Normalize OpenAI-compatible SSE chunks into persisted LBE events."""
         stream_json = getattr(self._transport, "stream_json", None)
         if not callable(stream_json):
-            yield from self.complete(messages=messages, provider_id=provider_id)
+            yield from self.complete(
+                messages=messages,
+                provider_id=provider_id,
+                max_output_tokens=max_output_tokens,
+            )
             return
-        payload = {"model": self._config.model.strip(), "messages": [dict(item) for item in messages], "stream": True}
+        resolved_max_tokens = resolve_max_output_tokens(
+            configured=self._config.max_output_tokens,
+            requirement=max_output_tokens,
+        )
+        payload = {
+            "model": self._config.model.strip(),
+            "messages": [dict(item) for item in messages],
+            "stream": True,
+            "max_tokens": resolved_max_tokens,
+        }
         headers = {"Content-Type": "application/json"}
         if self._config.api_key:
             headers["Authorization"] = f"Bearer {self._config.api_key}"

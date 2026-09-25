@@ -661,6 +661,11 @@ def build_git_commit_staged_handler(allowed_paths: Callable[[], frozenset[str]])
     return handler
 
 
+# Bounded output need for one governed tool step (a tool call plus a short rationale).
+# It intersects with the configured cap and the LBE ceiling; it never raises them.
+_TOOL_STEP_MAX_OUTPUT_TOKENS = 2048
+
+
 class _ReceiptTrackingOrchestrator(GovernedToolOrchestrator):
     def __init__(self, *, registry: ToolRegistry) -> None:
         super().__init__(registry=registry)
@@ -913,6 +918,9 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
                         _provider_tool_definition(index, spec)
                         for index, spec in enumerate(self._registry.specs())
                     ),
+                    # Explicit bounded need for one governed tool step. It can only
+                    # lower the effective output limit, never raise it.
+                    max_output_tokens=_TOOL_STEP_MAX_OUTPUT_TOKENS,
                 )
                 terminal_error = _provider_event_error(events)
                 if terminal_error is not None:

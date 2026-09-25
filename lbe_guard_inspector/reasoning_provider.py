@@ -23,6 +23,52 @@ from .reasoning_contracts import (
 
 _REASONING_MAX_TOKENS = 512
 
+# Output-token bounding. A provider will happily default an omitted `max_tokens` to the
+# model's full output ceiling (for example 131072 on OpenRouter), which is neither the
+# model's context window nor what a bounded governed step needs, and it turns a normal
+# call into a provider rejection. LBE therefore always sends an explicit, bounded value.
+#
+#   actual max_tokens = min(configured or advertised limit, LBE ceiling, request need)
+#
+# This is a static, LBE-owned bound. It is deliberately not credit-aware: provider
+# billing state is not a runtime policy owner, and shrinking a request because an
+# account balance changed would be a silent substitution.
+LBE_MAX_OUTPUT_TOKENS_CEILING = 8192
+LBE_DEFAULT_MAX_OUTPUT_TOKENS = 4096
+
+
+def resolve_max_output_tokens(
+    *,
+    configured: int | None = None,
+    requirement: int | None = None,
+) -> int:
+    """Resolve one bounded output-token limit for a governed provider call.
+
+    `configured` is the explicit user/provider cap (ProviderConfig.max_output_tokens).
+    `requirement` is the request-specific bounded need of the step being executed.
+    """
+    if configured is not None:
+        if isinstance(configured, bool) or not isinstance(configured, int):
+            raise ValueError("configured max_output_tokens must be an integer")
+        if configured <= 0:
+            raise ValueError("configured max_output_tokens must be positive")
+        if configured > LBE_MAX_OUTPUT_TOKENS_CEILING:
+            raise ValueError(
+                "configured max_output_tokens exceeds the LBE ceiling of "
+                f"{LBE_MAX_OUTPUT_TOKENS_CEILING}"
+            )
+        limit = configured
+    else:
+        limit = LBE_DEFAULT_MAX_OUTPUT_TOKENS
+
+    if requirement is not None:
+        if isinstance(requirement, bool) or not isinstance(requirement, int):
+            raise ValueError("max_output_tokens requirement must be an integer")
+        if requirement <= 0:
+            raise ValueError("max_output_tokens requirement must be positive")
+        limit = min(limit, requirement)
+    return limit
+
 
 @dataclass(frozen=True)
 class ProviderConfig:
@@ -32,6 +78,9 @@ class ProviderConfig:
     api_key: str | None = None
     reasoning_effort: str | None = None
     provider_id: str | None = None
+    # Optional explicit output cap. `None` means "no user/provider cap", and the
+    # resolver applies the LBE default and ceiling. It is never the context window.
+    max_output_tokens: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.endpoint, str) or not self.endpoint.strip():
@@ -280,7 +329,10 @@ class OpenAICompatibleReasoningBackend:
                 },
             ],
             "temperature": 0,
-            "max_tokens": _REASONING_MAX_TOKENS,
+            "max_tokens": resolve_max_output_tokens(
+                configured=self._config.max_output_tokens,
+                requirement=_REASONING_MAX_TOKENS,
+            ),
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {

@@ -73,7 +73,7 @@ def test_governed_provider_turn_receives_guidance_and_persists_only_metadata(tmp
         def __init__(self, *, config) -> None:
             self.config = config
 
-        def complete(self, *, messages, provider_id, lbe_call_id_for_provider_tool_call, tools):
+        def complete(self, *, messages, provider_id, lbe_call_id_for_provider_tool_call, tools, max_output_tokens=None):
             captured.append(messages)
             return (
                 NormalizedModelEvent(
@@ -147,7 +147,7 @@ def test_governed_provider_tool_call_round_trips_through_receipt(tmp_path, monke
             self.config = config
             self.calls = 0
 
-        def complete(self, *, messages, provider_id, lbe_call_id_for_provider_tool_call, tools):
+        def complete(self, *, messages, provider_id, lbe_call_id_for_provider_tool_call, tools, max_output_tokens=None):
             captured_messages.append(messages)
             self.calls += 1
             if self.calls == 1:

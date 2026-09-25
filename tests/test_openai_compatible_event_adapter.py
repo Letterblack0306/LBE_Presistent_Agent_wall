@@ -2,9 +2,29 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+import pytest
+
 from lbe_guard_inspector.openai_compatible_event_adapter import OpenAICompatibleEventAdapter
 from lbe_guard_inspector.professional_provider_events import ModelEventType
-from lbe_guard_inspector.reasoning_provider import ProviderConfig, ProviderError
+from lbe_guard_inspector.reasoning_provider import (
+    LBE_DEFAULT_MAX_OUTPUT_TOKENS,
+    LBE_MAX_OUTPUT_TOKENS_CEILING,
+    ProviderConfig,
+    ProviderError,
+)
+
+
+def _response_with_tool_call() -> Mapping[str, Any]:
+    return {
+        "id": "chatcmpl-bounded",
+        "choices": [{
+            "message": {"content": None, "tool_calls": [{
+                "id": "provider-call-1",
+                "function": {"name": "workspace.read", "arguments": '{"path":"README.md"}'},
+            }]},
+            "finish_reason": "tool_calls",
+        }],
+    }
 
 
 class _Transport:
@@ -17,6 +37,10 @@ class _Transport:
         if isinstance(self.response, Exception):
             raise self.response
         return self.response
+
+    @property
+    def payloads(self) -> list[Mapping[str, Any]]:
+        return [dict(request.get("payload") or {}) for request in self.requests]
 
 
 class _StreamTransport(_Transport):
@@ -109,6 +133,60 @@ def test_provider_failure_is_a_truthful_error_event() -> None:
     # The provider's own message must survive normalization: dropping it made every
     # provider rejection (for example an HTTP 402 credit limit) indistinguishable.
     assert events[0].text == "timed out"
+
+
+def test_tool_call_request_carries_a_bounded_output_limit() -> None:
+    """Regression: the coding tool call omitted max_tokens, so the provider substituted
+    the model's full output ceiling (OpenRouter asked for 131072 and returned HTTP 402)."""
+    transport = _Transport(_response_with_tool_call())
+    adapter = OpenAICompatibleEventAdapter(
+        config=ProviderConfig(endpoint="http://provider/v1/chat/completions", model="model-a", timeout_seconds=5),
+        transport=transport,
+    )
+
+    events = adapter.complete(
+        messages=({"role": "user", "content": "rename a symbol"},),
+        tools=({"type": "function", "function": {"name": "x"}},),
+    )
+
+    sent = transport.payloads[0]
+    assert sent["max_tokens"] == LBE_DEFAULT_MAX_OUTPUT_TOKENS
+    assert sent["max_tokens"] <= LBE_MAX_OUTPUT_TOKENS_CEILING
+    assert events[0].metadata["max_output_tokens"] == sent["max_tokens"]
+
+
+def test_configured_cap_and_request_need_bound_the_tool_call_request() -> None:
+    transport = _Transport(_response_with_tool_call())
+    config = ProviderConfig(
+        endpoint="http://provider/v1/chat/completions",
+        model="model-a",
+        timeout_seconds=5,
+        max_output_tokens=2048,
+    )
+
+    OpenAICompatibleEventAdapter(config=config, transport=transport).complete(
+        messages=({"role": "user", "content": "rename a symbol"},),
+        max_output_tokens=512,
+    )
+
+    assert transport.payloads[0]["max_tokens"] == 512
+
+
+def test_unsupported_configured_cap_fails_before_any_provider_call() -> None:
+    transport = _Transport(_response_with_tool_call())
+    config = ProviderConfig(
+        endpoint="http://provider/v1/chat/completions",
+        model="model-a",
+        timeout_seconds=5,
+        max_output_tokens=LBE_MAX_OUTPUT_TOKENS_CEILING + 1,
+    )
+
+    with pytest.raises(ValueError, match="ceiling"):
+        OpenAICompatibleEventAdapter(config=config, transport=transport).complete(
+            messages=({"role": "user", "content": "rename a symbol"},),
+        )
+
+    assert transport.payloads == []
 
 
 def test_unmapped_provider_tool_call_fails_without_fabricating_requires_tool_state() -> None:

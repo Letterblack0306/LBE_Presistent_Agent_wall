@@ -7,7 +7,7 @@ from typing import Any, Mapping
 from dataclasses import replace
 from urllib.parse import urlsplit
 
-from .reasoning_provider import ProviderConfig
+from .reasoning_provider import LBE_MAX_OUTPUT_TOKENS_CEILING, ProviderConfig
 
 _ALLOWED_FIELDS = frozenset({
     "endpoint",
@@ -16,6 +16,7 @@ _ALLOWED_FIELDS = frozenset({
     "api_key",
     "reasoning_effort",
     "provider_id",
+    "max_output_tokens",
 })
 _REQUIRED_FIELDS = frozenset({"endpoint", "model", "timeout_seconds"})
 
@@ -53,6 +54,18 @@ def provider_config_from_mapping(raw: Mapping[str, Any]) -> ProviderConfig:
     provider_id = raw.get("provider_id")
     if provider_id is not None and (not isinstance(provider_id, str) or not provider_id.strip()):
         raise ValueError("provider provider_id must be a non-empty string when supplied")
+    max_output_tokens = raw.get("max_output_tokens")
+    if max_output_tokens is not None:
+        # Fail closed on a malformed or unsupported cap instead of silently clamping it.
+        if isinstance(max_output_tokens, bool) or not isinstance(max_output_tokens, int):
+            raise ValueError("provider max_output_tokens must be a positive integer when supplied")
+        if max_output_tokens <= 0:
+            raise ValueError("provider max_output_tokens must be a positive integer when supplied")
+        if max_output_tokens > LBE_MAX_OUTPUT_TOKENS_CEILING:
+            raise ValueError(
+                "provider max_output_tokens exceeds the LBE ceiling of "
+                f"{LBE_MAX_OUTPUT_TOKENS_CEILING}"
+            )
     return ProviderConfig(
         endpoint=raw["endpoint"],
         model=raw["model"],
@@ -60,6 +73,7 @@ def provider_config_from_mapping(raw: Mapping[str, Any]) -> ProviderConfig:
         api_key=api_key.strip() if isinstance(api_key, str) else None,
         reasoning_effort=reasoning_effort.strip() if isinstance(reasoning_effort, str) else None,
         provider_id=provider_id.strip() if isinstance(provider_id, str) else None,
+        max_output_tokens=max_output_tokens,
     )
 
 
