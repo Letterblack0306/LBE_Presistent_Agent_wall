@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "CANONICAL_MAIN_REMOTE_SYNC",
+  "active_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,16 +64,16 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-CANONICAL-MAIN-REMOTE-SYNC-001",
-    "owner": "canonical main worktree and the single registered primary worktree; remote sync of validated current work",
-    "index_revision": "C26B0B61A60AF57FF5A35040249428D0527D7E127A3A3A8F5D95CB0CD2A421A4"
+    "intent_id": "LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001",
+    "owner": "apps/lbe-terminal presentation surfaces and docs/reference",
+    "index_revision": "FFB8FF6D389869947C47DDF7F853EDC6FE8EC3D0915070C037F81144BD6591CD"
   },
   "closure": {
     "status": "OPEN",
     "last_completed_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
     "last_completed_intent": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
     "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "CANONICAL_MAIN_REMOTE_SYNC",
+    "next_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
     "publication": "LOCKED"
   },
  "active_execution_plan": {

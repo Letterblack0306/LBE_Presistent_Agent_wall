@@ -977,3 +977,21 @@ REQUIRED_EVIDENCE: pre-merge recoverability record of both heads and every local
 MACHINE_SLICE: CANONICAL_MAIN_REMOTE_SYNC
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_FOLLOW_GOVERNANCE_AND_SUCCESSFULLY_PUSH_2026_09_25
+
+## INTENT LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001
+
+STATUS: AUTHORIZED
+REQUEST: Converge the canonical Rust/Ratatui client surfaces onto the reviewed LBE HTML/React interaction contract, keeping all runtime authority in LBE and the projection truthfulness rules intact.
+OWNER: apps/lbe-terminal presentation surfaces and docs/reference; the Rust client remains projection and operator control only.
+FAILURE_CLASS: UI_CONTRACT_DIVERGENCE_FROM_APPROVED_REFERENCE.
+WHY: The reviewed reference folder now carries an approved interaction and projection contract (typed lifecycle projections, per-object provenance, capability-driven command availability, LIVE/PREVIEW separation, an Action Gate, a single proposal-to-validation Inspector, and an Agent Wall with correct child-agent authority). The Rust client currently exposes eighteen independent panels and has no Action Gate or single cross-linked Inspector, so the approved contract is not yet carried.
+EXISTING_OWNER: LBE runtime owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion. The Rust client owns only rendering and operator control.
+DESIRED_RESULT: A written, evidence-backed surface mapping from the reference contract to the existing Rust owners, with each gap classified as already-owned, gap, or intentionally out of scope, followed by only the bounded implementation slices the user authorizes.
+NON_GOALS: No port of the TypeScript runtime simulator; no synthetic receipt, evidence, or ID generation in Rust; no adoption of the reference WebSocket placeholder endpoint; no acceptance of the reference copies of PROJECT_INDEX.md or README as authority; no change to runtime authority, execution, or persistence semantics; no terminal editor redesign.
+REUSE_DECISION: REUSE the existing Rust wrapper/event ingestion boundary, LbeSnapshot projections, the existing Receipts/Evidence/Agents/Tools panels, and the reference only as a visual and interaction contract.
+AUTHORITY_IMPACT: Presentation and reference documentation only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority moves to the client.
+EXPECTED_PATH_PREFIXES: docs/reference/,docs/governance/,docs/acceptance/,PROJECT_INDEX.md,.lbe/governance/,apps/lbe-terminal/
+REQUIRED_EVIDENCE: classified surface mapping with file evidence from both the reference and the current Rust owners; explicit classification of every gap as already-owned, gap, or out of scope; no synthetic identity or receipt generation introduced; full Python and Rust suites green for any code change; runtime proof only for claims that need it.
+MACHINE_SLICE: TERMINAL_UI_CONTRACT_CONVERGENCE
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_MAP_REFERENCE_SURFACES_INTO_EXISTING_RUST_OWNERS_2026_09_25

@@ -43,6 +43,7 @@ must map to one row before it may be changed.
 | `schemas/` | Machine-readable contract/reference schemas | Contract owner | `docs/contracts/` | Contract intent required |
 | `rules/` | Active audit and rule implementation | LBE audit/rule owner | `docs/AUDIT_FINDING_REVIEW_REGISTER.md` | Active implementation intent plus affected rule owner |
 | `tools/` | Deterministic validation and acceptance utilities | LBE validation owner | `docs/acceptance/STAGE_2_FINAL_CHECKPOINT.md` | Validation/tooling intent required |
+| `docs/reference/TERMINAL_UI_CONTRACT_MAPPING.md` | Approved terminal UI visual/interaction/projection contract mapped onto existing Rust owners; the reference folder supplies the contract, never runtime authority | Terminal UI contract owner | `docs/reference/TERMINAL_UI_CONTRACT_MAPPING.md` | Presentation and reference contract only; no runtime, receipt, evidence, or authority ownership |
 | `examples/` | Non-authoritative examples and reference material | Reference owner | `docs/reference/README.md` | No runtime authority |
 | `lbe-core/` | Embedded independent LBE Core repository retained for reuse research | Separate Git repository authority | `lbe-core/LBE_Core_Engine/INDEX.md` | Read-only from parent; no parent mutation authority |
 | `unused-in-repo/` | Preserved material proven not to participate in the live repository | Workspace-hygiene preservation owner | `unused-in-repo/MANIFEST.md` | Move only after complete non-use proof; never use as live authority |
