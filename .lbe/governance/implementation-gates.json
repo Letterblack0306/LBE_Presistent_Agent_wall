@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE",
+  "active_slice": "CANONICAL_MAIN_REMOTE_SYNC",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,8 +64,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-MAIN-HEAD-CONSOLIDATION-TRUTHFUL-ACCEPTANCE-001",
-    "owner": "canonical main worktree integration, provider/session behavior, and current acceptance truth",
+    "intent_id": "LBE-INTENT-CANONICAL-MAIN-REMOTE-SYNC-001",
+    "owner": "canonical main worktree and the single registered primary worktree; remote sync of validated current work",
     "index_revision": "95E4A6BEB1AFE32A52CFAC091E4161FA7EA4430AC65C856AF962E162F013BD8A"
   },
   "closure": {
@@ -73,7 +73,7 @@
     "last_completed_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
     "last_completed_intent": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
     "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE",
+    "next_slice": "CANONICAL_MAIN_REMOTE_SYNC",
     "publication": "LOCKED"
   },
  "active_execution_plan": {

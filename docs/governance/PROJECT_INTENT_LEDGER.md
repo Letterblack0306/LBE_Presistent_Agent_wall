@@ -965,3 +965,21 @@ MACHINE_SLICE: MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_CONSOLIDATE_ALL_READY_WORK_ON_MAIN_AND_MAKE_WORKSPACE_TRUTHFUL_2026_09_22
 ```
+
+## INTENT LBE-INTENT-CANONICAL-MAIN-REMOTE-SYNC-001
+
+STATUS: AUTHORIZED
+REQUEST: Integrate the canonical origin/main remote work into the canonical local main checkout and publish the consolidated current work back to origin/main.
+OWNER: canonical main worktree and the single registered primary worktree; .lbe/governance/implementation-gates.json remains machine authority.
+FAILURE_CLASS: TWO_SIDED_DIVERGENT_CANONICAL_HISTORY.
+WHY: origin/main carries 85 commits of current engine-separation, provider-registry, event-adapter, and product-surface work that the local checkout never received, while the local main carries 14 validated commits of runtime-proven fixes. A plain push is rejected as non-fast-forward, and the pre-push lock permits only refs/heads/main, so no side-branch publication is available.
+EXISTING_OWNER: origin/main (github.com/Letterblack0306/LBE_Presistent_Agent_wall) is the canonical remote; the single primary main worktree is the canonical local owner.
+DESIRED_RESULT: The remote's validated current work and the locally runtime-proven fixes are both preserved on origin/main with an explicit merge record, no history is destroyed, and the machine gate and acceptance projections state what is and is not yet proven.
+NON_GOALS: no force push; no history rewrite or rebase of published work; no creation of tags, releases, or branches; no PyPI or npm publication; no silent provider, model, or credential substitution; no discarding remote engine-separation work; no acceptance claim beyond what runtime evidence proves.
+REUSE_DECISION: REUSE the existing origin remote, the existing primary worktree, the existing machine gate, and both existing commit histories; add only the merge record.
+AUTHORITY_IMACT: User explicitly authorized this remote sync after the push rejection. Publication of packages and releases remains LOCKED and is not part of this intent.
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,.lbe/governance/,docs/,apps/lbe-terminal/,lbe_guard_inspector/,tests/,launch-lbe.ps1,tools/,agent.py
+REQUIRED_EVIDENCE: pre-merge recoverability record of both heads and every local-only commit; classified conflict review for every conflicted path; full Python and Rust suites green on the merged tree; confirmation that no history was rewritten; pre-push lock pass and post-push remote verification.
+MACHINE_SLICE: CANONICAL_MAIN_REMOTE_SYNC
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_FOLLOW_GOVERNANCE_AND_SUCCESSFULLY_PUSH_2026_09_25
