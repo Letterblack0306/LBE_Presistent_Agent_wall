@@ -124,6 +124,7 @@ def test_session_status_reads_existing_state_without_reconfiguring_it(tmp_path: 
         "ok": True,
         "provider_id": "openai-compatible",
         "provider_model": "model-a",
+        "reasoning_engine": before.reasoning_engine,
         "session_id": "session-1",
         "workspace": before.canonical_workspace_root,
     }

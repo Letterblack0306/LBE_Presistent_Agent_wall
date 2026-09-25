@@ -137,6 +137,9 @@ The former `.agent/` and `.cline/` routing files were retired as obsolete local 
 |---|---|---|
 | `docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md` | `GOVERNANCE` | Canonical operating guide for implementation execution; keep current. |
 | `docs/governance/PROJECT_INTENT_LEDGER.md` | `GOVERNANCE` | Canonical pre-mutation intent authority binding requested work to one active machine slice; keep current. |
+| `docs/governance/TUI_END_TO_END_TRACEABILITY.md` | `GOVERNANCE` | End-to-end TUI traceability map covering input, runtime authority, projections, tests, packaging, and live-acceptance gaps; reporting only. |
+| `docs/governance/LBE_COMPLETE_PRODUCT_DIRECTION.md` | `GOVERNANCE` | North-star product-direction contract for normal coding-agent interaction, optional audit, authority ownership, lifecycle, feature scope, and acceptance rules. |
+| `docs/governance/TUI_SURFACE_AUDIT_2026-09-21.md` | `GOVERNANCE` | Area-by-area TUI audit distinguishing complete pages, panels, partial setup flows, live proof, and remaining implementation gaps. |
 | `docs/governance/WORKSPACE_AND_IMPLEMENTATION_PROGRESSION_LOCK.md` | `GOVERNANCE` | Active progression and one-slice lock; keep as governance reference. |
 
 ## Closed history

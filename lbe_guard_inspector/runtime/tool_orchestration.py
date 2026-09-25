@@ -147,6 +147,30 @@ class RegisteredTool:
     handler: ToolHandler
 
 
+@dataclass(frozen=True)
+class ToolProjection:
+    """Read-only registry projection; never authorizes or executes a tool."""
+
+    tool_id: str
+    capability: str
+    access_class: ToolAccessClass
+    network_behavior: ToolNetworkBehavior
+    risk_class: ToolRiskClass
+    authorization: AuthorizationDecision
+
+    def as_payload(self) -> dict[str, str]:
+        """Serialize authoritative registry/policy truth for product surfaces."""
+        return {
+            "tool_id": self.tool_id,
+            "capability": self.capability,
+            "access_class": self.access_class.value,
+            "network_behavior": self.network_behavior.value,
+            "risk_class": self.risk_class.value,
+            "authorization_verdict": self.authorization.verdict.value,
+            "authorization_rationale": self.authorization.rationale,
+        }
+
+
 class ToolRegistry:
     """Explicit registry; unregistered model requests cannot execute."""
 
@@ -178,6 +202,54 @@ class GovernedToolOrchestrator:
         self._authorization_resolver = authorization_resolver
         self._receipts: dict[str, ToolReceipt] = {}
         self._requests: dict[str, ToolRequest] = {}
+
+    def project_tool(
+        self,
+        tool_id: str,
+        context: ToolExecutionContext,
+    ) -> ToolProjection:
+        """Project one registered tool through R6C without executing it."""
+        if not isinstance(context, ToolExecutionContext):
+            raise TypeError("context must be ToolExecutionContext")
+        registered = self._registry.get(tool_id)
+        if registered is None:
+            raise ValueError(f"tool is not registered: {tool_id}")
+        spec = registered.spec
+        authorization = self._authorization_resolver(
+            _authorization_request(spec=spec, context=context)
+        )
+        return ToolProjection(
+            tool_id=spec.tool_id,
+            capability=spec.capability,
+            access_class=spec.access_class,
+            network_behavior=spec.network_behavior,
+            risk_class=spec.risk_class,
+            authorization=authorization,
+        )
+
+    def project_registry(
+        self,
+        context: ToolExecutionContext,
+    ) -> tuple[ToolProjection, ...]:
+        """Project registered-tool truth through the same R6C resolver as execution.
+
+        This is presentation/readiness state only. It never invokes a handler,
+        grants authority, mutates policy, or creates a receipt.
+        """
+        if not isinstance(context, ToolExecutionContext):
+            raise TypeError("context must be ToolExecutionContext")
+
+        return tuple(
+            self.project_tool(spec.tool_id, context)
+            for spec in self._registry.specs()
+        )
+
+    def project_registry_payload(
+        self,
+        context: ToolExecutionContext,
+    ) -> tuple[dict[str, str], ...]:
+        """JSON-ready projection for product clients; execution remains untouched."""
+        return tuple(item.as_payload() for item in self.project_registry(context))
 
     def invoke(self, request: ToolRequest) -> ToolReceipt:
         if not isinstance(request, ToolRequest):
@@ -215,18 +287,9 @@ class GovernedToolOrchestrator:
             ))
 
         context = request.context
-        authorization = self._authorization_resolver(AuthorizationRequest(
-            mode_decision=context.mode_decision,
-            capability=registered.spec.capability,
-            within_workspace_scope=context.within_workspace_scope,
-            explicitly_forbidden=context.explicitly_forbidden,
-            destructive=context.destructive,
-            destructive_authorized=context.destructive_authorized,
-            persistent_policy_change=context.persistent_policy_change,
-            persistent_policy_authorized=context.persistent_policy_authorized,
-            intent_scope_conflict=context.intent_scope_conflict,
-            approval_granted=context.approval_granted,
-        ))
+        authorization = self._authorization_resolver(
+            _authorization_request(spec=registered.spec, context=context)
+        )
         if authorization.verdict is AuthorizationVerdict.DENY:
             return self._remember(ToolReceipt(
                 operation_id=request.operation_id,
@@ -275,6 +338,26 @@ class GovernedToolOrchestrator:
     def _remember(self, receipt: ToolReceipt) -> ToolReceipt:
         self._receipts[receipt.operation_id] = receipt
         return receipt
+
+
+def _authorization_request(
+    *,
+    spec: ToolSpec,
+    context: ToolExecutionContext,
+) -> AuthorizationRequest:
+    """Build the single R6C request shape shared by projection and execution."""
+    return AuthorizationRequest(
+        mode_decision=context.mode_decision,
+        capability=spec.capability,
+        within_workspace_scope=context.within_workspace_scope,
+        explicitly_forbidden=context.explicitly_forbidden,
+        destructive=context.destructive,
+        destructive_authorized=context.destructive_authorized,
+        persistent_policy_change=context.persistent_policy_change,
+        persistent_policy_authorized=context.persistent_policy_authorized,
+        intent_scope_conflict=context.intent_scope_conflict,
+        approval_granted=context.approval_granted,
+    )
 
 
 def workspace_read_spec() -> ToolSpec:

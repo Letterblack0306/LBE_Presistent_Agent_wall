@@ -172,9 +172,11 @@ def _turn(argv: Sequence[str]) -> int:
 
         store = _cli.WorkspaceMemoryStore(args.database)
         state = _cli._require_session(store, args.session_id)
-        config = _cli.load_provider_config(args.provider_config)
-        if config.model != state.provider_model:
-            raise ValueError("provider config model must match persisted session model")
+        config = _cli.bind_provider_config_to_session(
+            _cli.load_provider_config(args.provider_config),
+            session_provider_id=state.provider_id,
+            session_model=state.provider_model,
+        )
         history = SessionOperationalHistory(store=store)
         runtime = _cli._runtime_from_state(database=args.database, state=state)
         if state.mode == "coding" and state.permission not in {"read_only", "audit_only"}:

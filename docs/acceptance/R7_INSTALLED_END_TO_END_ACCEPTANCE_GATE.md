@@ -1,5 +1,11 @@
 # R7 Installed End-to-End Acceptance Gate
 
+> **Historical-status note (2026-09-25):** This record remains an accepted
+> historical R7 baseline for the exact revision, environment, and observables
+> listed below. It is not the current installed-product gate. Current
+> acceptance is separately OPEN/BLOCKED and must re-prove changed invariants
+> through the present installed Rust/Ratatui `lbe` path.
+
 Status: **PASS — R7 INSTALLED END-TO-END ACCEPTANCE COMPLETE — RELEASE/PUBLISH STILL LOCKED**
 
 ```text

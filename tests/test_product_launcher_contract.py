@@ -2,6 +2,7 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "tools" / "lbe_product_integration.ps1"
+INSTALLER = Path(__file__).resolve().parents[1] / "install.ps1"
 
 
 def test_product_launcher_contract_ships_installed_single_command_entrypoint() -> None:
@@ -27,3 +28,12 @@ def test_product_launcher_contract_prepends_installed_bin_idempotently_without_t
     assert '[Environment]::SetEnvironmentVariable("Path", ($userPathEntries -join ";"), "User")' in source
     assert '-notcontains $binFull' in source or '-notcontains $binFull,' in source
     assert 'AppData\\Roaming\\npm' not in source
+
+
+def test_root_installer_delegates_to_canonical_package_flow() -> None:
+    source = INSTALLER.read_text(encoding="utf-8")
+
+    assert 'Join-Path $PSScriptRoot "tools\\lbe_product_integration.ps1"' in source
+    assert '$arguments = @("-Mode", "package")' in source
+    assert '& $integration @arguments' in source
+    assert 'python -m py_compile' not in source

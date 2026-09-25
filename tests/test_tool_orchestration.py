@@ -76,6 +76,40 @@ def test_workspace_read_spec_declares_required_governance_metadata() -> None:
     assert spec.failure_modes
 
 
+def test_registry_projection_reuses_authorization_without_execution(tmp_path: Path) -> None:
+    calls = []
+    registry = ToolRegistry()
+    registry.register(
+        workspace_read_spec(),
+        lambda request: calls.append(request) or ToolExecutionResult(output={}),
+    )
+    registry.register(
+        workspace_delete_spec(),
+        lambda request: calls.append(request) or ToolExecutionResult(output={}),
+    )
+    orchestrator = GovernedToolOrchestrator(registry=registry)
+
+    projected = orchestrator.project_registry_payload(
+        _context(tmp_path, "inspect")
+    )
+
+    assert [item["tool_id"] for item in projected] == [
+        "workspace.delete",
+        "workspace.read",
+    ]
+    delete = projected[0]
+    assert delete["capability"] == "modify"
+    assert delete["access_class"] == "write"
+    assert delete["risk_class"] == "high"
+    assert delete["authorization_verdict"] == "ESCALATE"
+    read = projected[1]
+    assert read["capability"] == "inspect"
+    assert read["access_class"] == "read"
+    assert read["authorization_verdict"] == "ALLOW"
+    assert calls == []
+    assert orchestrator.receipt("projection-only") is None
+
+
 def test_registry_rejects_duplicate_tool_id() -> None:
     registry = ToolRegistry()
     spec = workspace_read_spec()

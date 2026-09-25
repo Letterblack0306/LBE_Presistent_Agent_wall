@@ -13,6 +13,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Sequence
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
@@ -22,7 +23,8 @@ from .memory import SessionState, WorkspaceMemoryStore
 from .memory.operational_history import SessionOperationalHistory
 from .provider_health import check_provider_health
 from .provider_registry import default_provider_registry
-from .reasoning_config import load_provider_config
+from .reasoning_config import bind_provider_config_to_session, load_provider_config
+from .reasoning_provider import discover_openai_compatible_model_ids
 from .reasoning_runtime import build_provider_controller
 from .runtime.completion_runtime import CodingCompletionRuntime
 from .runtime.mode_controller import ModeRequest, resolve_mode
@@ -129,6 +131,12 @@ def build_parser() -> argparse.ArgumentParser:
     provider_commands = provider.add_subparsers(dest="provider_command", required=True)
     provider_list = provider_commands.add_parser("list", help="List registered providers")
     provider_list.set_defaults(handler=_provider_list)
+
+    provider_models = provider_commands.add_parser(
+        "models", help="Discover model IDs from a configured compatible endpoint"
+    )
+    provider_models.add_argument("--provider-config", required=True)
+    provider_models.set_defaults(handler=_provider_models)
 
     provider_check = provider_commands.add_parser(
         "check", help="Check a provider against the structured reasoning contract"
@@ -492,6 +500,17 @@ def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _provider_models(args: argparse.Namespace) -> dict[str, Any]:
+    config = load_provider_config(args.provider_config)
+    model_ids = discover_openai_compatible_model_ids(config)
+    hostname = (urlparse(config.endpoint).hostname or "").lower()
+    return {
+        "action": "provider.models",
+        "models": list(model_ids),
+        "is_local": hostname in {"localhost", "127.0.0.1", "::1"},
+    }
+
+
 def _provider_select(args: argparse.Namespace) -> dict[str, Any]:
     _validate_provider_selection(args.provider, args.model, require_pair=True)
     store = WorkspaceMemoryStore(args.database)
@@ -529,7 +548,7 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     from .memory.operational_history import SessionOperationalHistory
     from .persistent_turn_control import PersistentTurnControl
     from .provider_turn_runtime import BackgroundProviderTurnRuntime, GovernedCodingTurnRuntime, GovernedProviderTurnRuntime
-    from .reasoning_config import load_provider_config
+    from .reasoning_config import bind_provider_config_to_session, load_provider_config
     from .project_profiler import ProjectProfiler
     from .guard_catalog import select_guard_catalog
     from .runtime.agent_guidance import build_agent_guidance
@@ -547,9 +566,11 @@ def _tui(args: argparse.Namespace) -> dict[str, Any]:
     provider_runtime = None
     config = None
     if args.provider_config is not None:
-        config = load_provider_config(args.provider_config)
-        if config.model != state.provider_model:
-            raise ValueError("provider config model must match persisted session model")
+        config = bind_provider_config_to_session(
+            load_provider_config(args.provider_config),
+            session_provider_id=state.provider_id,
+            session_model=state.provider_model,
+        )
         if state.mode == AgentMode.CODING.value:
             from .runtime.governed_coding import build_governed_coding_controller
             from .runtime.installed_capability_registry import (
@@ -704,9 +725,11 @@ def _run_mode_command(
     if not state.provider_id or not state.provider_model:
         raise ValueError("persisted session does not have a selected provider/model")
 
-    provider_config = load_provider_config(args.provider_config)
-    if provider_config.model.strip() != state.provider_model:
-        raise ValueError("provider config model does not match persisted session provider model")
+    provider_config = bind_provider_config_to_session(
+        load_provider_config(args.provider_config),
+        session_provider_id=state.provider_id,
+        session_model=state.provider_model,
+    )
 
     runtime = _runtime_from_state(database=args.database, state=state)
     controller, handle = build_provider_controller(

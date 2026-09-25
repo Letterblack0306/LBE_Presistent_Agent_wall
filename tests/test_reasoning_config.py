@@ -5,6 +5,7 @@ import json
 import pytest
 
 from lbe_guard_inspector.reasoning_config import (
+    bind_provider_config_to_session,
     load_provider_config,
     provider_config_from_mapping,
 )
@@ -29,6 +30,66 @@ def test_mapping_decodes_explicit_provider_config() -> None:
     )
 
 
+def test_mapping_accepts_provider_identity_metadata_without_changing_adapter_config() -> None:
+    config = provider_config_from_mapping({**valid_mapping(), "provider_id": "openai-compatible"})
+    assert config == ProviderConfig(
+        endpoint="http://provider/v1/chat/completions",
+        model="local-model",
+        timeout_seconds=30,
+        api_key=None,
+        provider_id="openai-compatible",
+    )
+
+
+def test_binding_rebinds_model_to_persisted_session_selection() -> None:
+    config = provider_config_from_mapping({
+        **valid_mapping(),
+        "model": "stale-model",
+        "provider_id": "openai-compatible",
+    })
+
+    bound = bind_provider_config_to_session(
+        config,
+        session_provider_id="openai-compatible",
+        session_model="selected-model",
+    )
+
+    assert bound == ProviderConfig(
+        endpoint=config.endpoint,
+        model="selected-model",
+        timeout_seconds=config.timeout_seconds,
+        provider_id="openai-compatible",
+    )
+
+
+def test_binding_rejects_provider_identity_mismatch() -> None:
+    config = provider_config_from_mapping({
+        **valid_mapping(),
+        "provider_id": "anthropic",
+    })
+
+    with pytest.raises(ValueError, match="does not match persisted session provider"):
+        bind_provider_config_to_session(
+            config,
+            session_provider_id="openai-compatible",
+            session_model="selected-model",
+        )
+
+
+def test_binding_rejects_unsupported_endpoint_without_provider_identity() -> None:
+    config = provider_config_from_mapping({
+        **valid_mapping(),
+        "endpoint": "http://provider/v1/messages",
+    })
+
+    with pytest.raises(ValueError, match="must declare provider_id"):
+        bind_provider_config_to_session(
+            config,
+            session_provider_id="openai-compatible",
+            session_model="selected-model",
+        )
+
+
 def test_file_loader_reads_only_the_supplied_path(tmp_path) -> None:
     path = tmp_path / "provider.json"
     path.write_text(json.dumps({**valid_mapping(), "api_key": " secret "}), encoding="utf-8")
@@ -43,6 +104,7 @@ def test_file_loader_reads_only_the_supplied_path(tmp_path) -> None:
         ({"endpoint": "x"}, "missing provider config fields"),
         ({**valid_mapping(), "port": 1234}, "unknown provider config fields"),
         ({**valid_mapping(), "api_key": ""}, "api_key"),
+        ({**valid_mapping(), "provider_id": " "}, "provider_id"),
     ],
 )
 def test_invalid_shapes_are_rejected(raw, error) -> None:

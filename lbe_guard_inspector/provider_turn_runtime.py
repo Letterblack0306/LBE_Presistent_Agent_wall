@@ -237,7 +237,21 @@ class GovernedCodingTurnRuntime:
                     provider_id=state.provider_id, model_id=state.provider_model,
                 ))
             if result.outcome == "COMPLETED":
-                self.history.append_event(OperationalEvent(session_id=turn.session_id, turn_id=turn_id, event_type="model.turn.completed", payload={"task_id": result.task_id, "outcome": result.outcome}))
+                tool_projection = [
+                    dict(item)
+                    for item in deterministic.get("governed_tool_projection", [])
+                    if isinstance(item, dict)
+                ]
+                self.history.append_event(OperationalEvent(
+                    session_id=turn.session_id,
+                    turn_id=turn_id,
+                    event_type="model.turn.completed",
+                    payload={
+                        "task_id": result.task_id,
+                        "outcome": result.outcome,
+                        "governed_tool_projection": tool_projection,
+                    },
+                ))
                 self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.COMPLETED)
                 return
             raise RuntimeError(result.response.error.message if result.response.error else result.outcome)

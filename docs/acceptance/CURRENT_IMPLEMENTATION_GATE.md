@@ -1,10 +1,16 @@
 # Current Implementation Gate
 
-> **CURRENT EVIDENCE OVERRIDE (2026-09-21):** This gate remains open and
+> **CURRENT EVIDENCE OVERRIDE (2026-09-22):** This gate remains open and
 > release-blocked until the current machine report proves live runtime,
 > provider, keyboard, mouse, and installed-package behavior. Historical PASS
 > records elsewhere in `docs/acceptance/` are retained but are not current
 > acceptance evidence.
+
+> **HISTORICAL BASELINE CLARIFICATION (2026-09-25):** R3–R7 remain accepted
+> historical PASS records for their declared revisions and bounded observables.
+> They are preserved, not revoked. Later source/product changes require the
+> present installed `lbe` path to re-prove the relevant invariants; historical
+> PASS cannot be promoted to current LIVE/WORKING/PROVEN status by itself.
 
 Status: **OPEN — LBE-OWNED RUST TUI / INSTALLED PTY-CONPTY FINAL ACCEPTANCE**
 
@@ -15,15 +21,19 @@ This file is the human-readable projection of `.lbe/governance/implementation-ga
 ```text
 active_plan      = docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md
 active_phase     = INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE
-active_slice     = LBE_OWNED_RUST_TUI_PRODUCT_SURFACE
+active_slice     = MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE
 status           = OPEN
 implementation  = ALLOWED
 architecture_changes_allowed = true
 next_phase       = LOCKED UNTIL PASS
 publication      = LOCKED
-selected_agent   = Cline (headless reasoning/provider mechanics)
-active_intent    = LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001
+selected_agent   = engine-neutral provider binding (Cline supported adapter)
+active_intent    = LBE-INTENT-MAIN-HEAD-CONSOLIDATION-TRUTHFUL-ACCEPTANCE-001
+
+Current evidence override: the exact main worktree has a reproduced failure after selecting Qwen: the next provider turn rejects the selection because the configured endpoint model remains Gemma. The installed command-name path and full current-head governed loop are unverified. Machine acceptance is BLOCKED; historical PASS records below are not current proof.
 ```
+
+The September 20, September 4, and August 26 Google Drive history was reconciled with the current local acceptance records on September 25, 2026. No architecture contradiction was found. The current OPEN gate remains authoritative because provider/model continuation, durable receipt/evidence correlation, exactly-once execution, continuation, restart/resume, artifact provenance, and final installed Rust/Ratatui proof are not all current and correlated.
 
 ## Explicit product-owner decision — 2026-09-18
 
@@ -31,11 +41,11 @@ active_intent    = LBE-INTENT-LBE-OWNED-RUST-TUI-PRODUCT-SURFACE-001
 PRODUCT / BRAND               = LBE / LetterBlack
 VISIBLE PRODUCT CLIENT        = LBE-owned Rust/Ratatui terminal UI
 VISUAL / INTERACTION CONTRACT = existing LBE HTML/React work + canonical UI plan
-REASONING / PROVIDER ENGINE   = headless Cline mechanics behind LBE
+REASONING / PROVIDER ENGINE   = engine-neutral LBE binding; Cline supported adapter behind LBE
 RUNTIME / GOVERNANCE          = LBE Agent Wall
 ```
 
-This supersedes the earlier assumption that the final visible product must be a copied/modified Cline CLI/OpenTUI surface. It does **not** supersede the selected Cline reasoning-agent source or governed Cline worker/provider mechanics.
+This supersedes the earlier assumption that the final visible product must be a copied/modified Cline CLI/OpenTUI surface. It retains Cline source and governed worker/provider mechanics as a supported adapter; it does not make Cline the required reasoning owner.
 
 ## Accepted architecture
 
@@ -44,7 +54,7 @@ USER
   -> lbe
   -> LBE-owned Rust/Ratatui terminal shell
   -> RealLbeWrapper / LBE product-entry boundary
-  -> headless Cline reasoning/provider/model/continuation mechanics
+  -> engine-neutral reasoning/provider/model/continuation mechanics (Cline supported adapter)
   -> LBE session/workspace/turn identity
   -> mode/policy
   -> authorization
@@ -55,15 +65,15 @@ USER
   -> truthful terminal projection
 ```
 
-Rust/Ratatui owns presentation/input mechanics only. Cline owns headless cognition/provider/continuation mechanics only. LBE owns identity, policy, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion truth.
+Rust/Ratatui owns presentation/input mechanics only. The selected reasoning engine owns cognition, planning, provider/model interaction, tool proposals, continuation, and response composition. Cline is a supported adapter, not the required reasoning owner. LBE owns identity, policy, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion truth.
 
 ## Product implementation owners
 
 ```text
-canonical client source = C:\LBE-TUI-Lab\src\
+canonical client source = C:\Agents-Memory-Tool-v6-integration\apps\lbe-terminal\
 canonical client boundary = LbeWrapper / RealLbeWrapper
 normal product entry = lbe
-headless Cline owner = lbe_guard_inspector/runtime/cline_worker/ + provider adapters
+reasoning/provider owners = engine-neutral LBE bindings; Cline adapter under lbe_guard_inspector/runtime/cline_worker/ + provider adapters
 HTML/React = visual/interaction reference only
 Cline CLI/OpenTUI tree = reference/reuse only, not product requirement
 Python/Textual = historical/diagnostic only
@@ -76,7 +86,7 @@ The product decision is settled. The remaining defect is source/build/package/in
 ```text
 Rust/Ratatui selected product technology   ACCEPTED
 existing Rust client implementation        IMPLEMENTED / NEEDS CANONICALIZATION
-headless Cline reasoning mechanics          PRESENT / RETAIN
+ engine-neutral reasoning/provider binding   PRESENT / Cline adapter retained
 HTML/React visual contract                  REFERENCE / RETAIN
 product integration script                  SOURCE_RECONCILED / VALIDATION_PENDING
 installed one-command product               UNVERIFIED

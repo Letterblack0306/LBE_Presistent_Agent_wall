@@ -31,6 +31,7 @@ class ProviderConfig:
     timeout_seconds: float
     api_key: str | None = None
     reasoning_effort: str | None = None
+    provider_id: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.endpoint, str) or not self.endpoint.strip():
@@ -43,12 +44,65 @@ class ProviderConfig:
             not isinstance(self.reasoning_effort, str) or not self.reasoning_effort.strip()
         ):
             raise ValueError("provider reasoning_effort must be a non-empty string when supplied")
+        if self.provider_id is not None and (
+            not isinstance(self.provider_id, str) or not self.provider_id.strip()
+        ):
+            raise ValueError("provider_id must be a non-empty string when supplied")
 
 
 class ProviderError(RuntimeError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+def discover_openai_compatible_model_ids(config: ProviderConfig) -> tuple[str, ...]:
+    """Read IDs from /v1/models without prompting or performing inference."""
+    if not isinstance(config, ProviderConfig):
+        raise TypeError("config must be a ProviderConfig")
+    parsed = urllib.parse.urlsplit(config.endpoint)
+    path = parsed.path.rstrip("/")
+    suffix = next(
+        (item for item in ("/chat/completions", "/completions") if path.endswith(item)),
+        None,
+    )
+    if suffix is None or parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ProviderError(
+            "MODEL_DISCOVERY_UNSUPPORTED",
+            "provider endpoint does not identify an OpenAI-compatible completion route",
+        )
+    models_path = path[: -len(suffix)] + "/models"
+    models_url = urllib.parse.urlunsplit(
+        (parsed.scheme, parsed.netloc, models_path, "", "")
+    )
+    headers = {"Accept": "application/json"}
+    if config.api_key:
+        headers["Authorization"] = f"Bearer {config.api_key}"
+    request = urllib.request.Request(models_url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(
+            request, timeout=min(float(config.timeout_seconds), 5.0)
+        ) as response:
+            payload = json.loads(response.read())
+    except (OSError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise ProviderError(
+            "MODEL_DISCOVERY_FAILED", "provider model catalog request failed"
+        ) from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        raise ProviderError(
+            "MODEL_DISCOVERY_INVALID_RESPONSE",
+            "provider model catalog response did not contain a data array",
+        )
+    model_ids: list[str] = []
+    for item in payload["data"]:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get("id")
+        if isinstance(model_id, str) and model_id.strip():
+            clean_id = model_id.strip()
+            if clean_id not in model_ids:
+                model_ids.append(clean_id)
+    return tuple(model_ids)
 
 
 class JsonTransport(Protocol):

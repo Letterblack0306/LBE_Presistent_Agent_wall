@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "INTERACTIVE_PROVIDER_CATALOG_PROJECTION",
+  "active_slice": "MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,8 +64,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-INTERACTIVE-PROVIDER-CATALOG-PROJECTION-001",
-    "owner": "LBE runtime provider/model catalog and authoritative session snapshot; Rust/Ratatui app reducer",
+    "intent_id": "LBE-INTENT-MAIN-HEAD-CONSOLIDATION-TRUTHFUL-ACCEPTANCE-001",
+    "owner": "canonical main worktree integration, provider/session behavior, and current acceptance truth",
     "index_revision": "E4B52A18940A2F1485F8D565F8058F43F82EB9E205F33DB50FD18560B138D4B5"
   },
   "closure": {
@@ -73,22 +73,23 @@
     "last_completed_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
     "last_completed_intent": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
     "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "INTERACTIVE_PROVIDER_CATALOG_PROJECTION",
+    "next_slice": "MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE",
     "publication": "LOCKED"
   },
-  "active_execution_plan": {
-    "status": "PASS",
+ "active_execution_plan": {
+   "status": "BLOCKED",
+    "current_evidence": "2026-09-22: current-main source-launcher attachment and Qwen model selection are proven; the next real turn fails because the endpoint config model is Gemma, while the persisted selected session model is Qwen. The installed-command path and full governed loop are not yet proven on current main. Historical per-slice evidence below is not current acceptance.",
     "ordered_slices": {
-      "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
-        "status": "PASS",
+     "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
+        "status": "UNVERIFIED",
         "evidence": "Fresh-shell post-provenance acceptance on 2026-09-18: Get-Command lbe -All resolves first to C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd. Bare `lbe` launches installed lbe-launch.ps1 -> installed Rust/Ratatui lbe.exe, renders LETTERBLACK ENGINE / CONNECTED / AGENT WALL / ACT LIVE, restores sess_lbe_accept_001, projects live LM Studio google/gemma-4-e4b, and completes clean teardown."
       },
       "REAL_RUNTIME_ATTACHMENT": {
         "status": "PASS",
         "evidence": "Real WinPTY capture projected CONNECTED / AGENT WALL / ACT LIVE with authoritative workspace, session sess_lbe_accept_001, coding/write_allowed/permissive policy, and live runtime state."
       },
-      "PROVIDER_MODEL_BINDING": {
-        "status": "PASS",
+     "PROVIDER_MODEL_BINDING": {
+        "status": "FAIL",
         "evidence": "Real PTY projected LM Studio / google/gemma-4-e4b and startup provider discovery of 11 providers against live LM Studio at 127.0.0.1:1234."
       },
       "GOVERNED_CODING_FLOW": {
@@ -111,8 +112,8 @@
         "status": "PASS",
         "evidence": "Real PTY rendered the LBE-owned Rust/Ratatui surface with LETTERBLACK ENGINE, authoritative runtime/session/workspace/provider/model/mode/policy footer, governed turn timeline, approval UI, and no synthetic preview state."
       },
-      "FINAL_PRODUCT_ACCEPTANCE": {
-        "status": "PASS",
+     "FINAL_PRODUCT_ACCEPTANCE": {
+        "status": "BLOCKED",
         "evidence": "All defined final-product verdicts pass: canonical Rust/Ratatui surface, authoritative real runtime attachment, live provider/model, governed tool round trip, persisted ToolReceipt/evidence, interactive approve/reject, mode-policy mapping, clean PTY lifecycle, restart/resume, fresh-shell bare `lbe`, and canonical installer/source provenance. Installed lbe.exe SHA256 6E794AF5E2F2E869D0F02F7CCB25EAD105956E9C05EC67ECE43F76F58B4BAB8F matches the canonical built client reported in the acceptance run."
       },
       "MODE_POLICY_PRODUCT_MAPPING": {

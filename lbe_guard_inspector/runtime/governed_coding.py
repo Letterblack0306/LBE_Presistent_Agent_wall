@@ -777,6 +777,11 @@ class _GovernedCodingControllerBase:
     def external_capabilities(self) -> tuple[object, ...]:
         return self._external_capabilities
 
+    @property
+    def governed_tool_projection(self) -> tuple[dict[str, str], ...]:
+        """Authoritative read-only tool + R6C policy projection for product clients."""
+        return self._orchestrator.project_registry_payload(self._context)
+
     def _record_mutation_path(self, receipt: ToolReceipt) -> None:
         if (
             receipt.status is ToolReceiptStatus.EXECUTED
@@ -802,6 +807,9 @@ class _GovernedCodingControllerBase:
             "provider_model": self._provider_config.model.strip(),
             "reasoning_engine": self._engine_id,
             "governed_tool_receipts": [_receipt_payload(receipt) for receipt in receipts],
+            "governed_tool_projection": [
+                dict(item) for item in self.governed_tool_projection
+            ],
             "provider_output": provider_output,
             "agent_guidance": self._guidance.audit_payload(),
             "governed_mutation_paths": sorted(self._governed_mutation_paths),
@@ -844,6 +852,9 @@ class _GovernedCodingControllerBase:
                 "provider_id": self._provider_id,
                 "reasoning_engine": self._engine_id,
                 "governed_tools": [spec.tool_id for spec in self._registry.specs()],
+                "governed_tool_projection": [
+                    dict(item) for item in self.governed_tool_projection
+                ],
                 "native_mutation_tools": [],
             },
             plan=None,

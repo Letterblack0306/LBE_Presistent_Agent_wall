@@ -1,4 +1,4 @@
-"""Product-level read-only projections over existing LBE owners."""
+﻿"""Product-level read-only projections over existing LBE owners."""
 from __future__ import annotations
 
 from datetime import datetime, timezone

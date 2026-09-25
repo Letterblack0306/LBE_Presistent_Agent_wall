@@ -25,8 +25,9 @@ if (-not $Model) { $Model = [string]$provider.model }
 if (-not $Model -or $Model -eq 'replace-with-provider-model-id') {
     throw 'Provider setup is incomplete: reasoning-provider.json must contain a real model id.'
 }
-$providerId = if ($provider.provider_id) {
-    [string]$provider.provider_id
+$providerIdProperty = $provider.PSObject.Properties['provider_id']
+$providerId = if ($providerIdProperty -and -not [string]::IsNullOrWhiteSpace([string]$providerIdProperty.Value)) {
+    [string]$providerIdProperty.Value
 } elseif ([string]$provider.endpoint -match '/v1(?:/|$)') {
     # The explicit provider file is OpenAI-compatible when it supplies a
     # standard /v1 endpoint. Keep the runtime identity parseable by the TUI

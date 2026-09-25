@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from lbe_guard_inspector.evidence_service import EvidenceService
 from lbe_guard_inspector.reasoning_contracts import LBERequest
 from lbe_guard_inspector.reasoning_provider import ProviderConfig
 from lbe_guard_inspector.runtime.cline_stdio_protocol import BridgeFrame, PROTOCOL_VERSION
@@ -10,7 +11,7 @@ from lbe_guard_inspector.runtime.tool_orchestration import ToolRequest, ToolRece
 from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
 
 
-class _FakeEvidenceService:
+class _FakeEvidenceService(EvidenceService):
     def build_evidence_package(self, **kwargs):
         return {
             "current_workspace_evidence": [

@@ -7,7 +7,7 @@
 > Current evidence is tracked in `docs/governance/TUI_SURFACE_AUDIT_2026-09-21.md`
 > and `docs/acceptance/MACHINE_FEATURE_TEST_REPORT_2026-09-21.json`.
 
-Status: **PASS — FINAL INSTALLED PRODUCT ACCEPTED**
+Status: **HISTORICAL PASS — NOT CURRENT ACCEPTANCE**
 
 ## Canonical implementation
 
@@ -79,6 +79,6 @@ PASS evidence includes:
 | CANONICAL_INSTALLER_LAUNCHER_CONTRACT | PASS |
 | FINAL_PRODUCT_ACCEPTANCE | **PASS** |
 
-No acceptance blocker remains for the defined installed LBE product gate.
+This document records the bounded 2026-09-18 artifact acceptance only. It does not establish current main readiness. The current machine gate is BLOCKED after a 2026-09-22 selected-provider/model continuation failure; see docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md and docs/CURRENT_STATUS.md.
 
 Publication/release authorization remains governed separately and is not implied by this acceptance.

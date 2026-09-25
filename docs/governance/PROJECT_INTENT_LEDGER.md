@@ -927,4 +927,41 @@ REQUIRED_EVIDENCE: regression for snapshot/catalog event ordering; Rust tests an
 MACHINE_SLICE: INTERACTIVE_PROVIDER_CATALOG_PROJECTION
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22
+
+## INTENT LBE-INTENT-CANONICAL-LAUNCHER-CONFIG-COMPATIBILITY-001
+
+STATUS: AUTHORIZED
+REQUEST: Repair the canonical direct launcher so valid provider configuration files that omit the optional provider_id field launch under PowerShell StrictMode.
+OWNER: launch-lbe.ps1 session bootstrap and provider identity derivation.
+FAILURE_CLASS: LIVE_LAUNCHER_RUNTIME_FAILURE.
+WHY: A real canonical-launcher run with reasoning-provider.json terminated before UI startup because StrictMode treats dereferencing an absent optional provider_id property as an error.
+EXISTING_OWNER: launch-lbe.ps1; provider identity comes from the existing endpoint-derived classification and product_entry bootstrap.
+DESIRED_RESULT: Missing optional provider_id safely falls back to endpoint-derived identity, while explicitly configured provider_id continues to be honored; launcher creates/attaches a governed session and starts the canonical TUI.
+NON_GOALS: No provider credentials copied from Cline, no provider/model authority changes, no fallback provider, no user database reuse in tests, and no publication.
+REUSE_DECISION: REUSE existing PowerShell launcher and product_entry bootstrap; safely probe the optional JSON property.
+AUTHORITY_IMPACT: None.
+EXPECTED_PATH_PREFIXES: launch-lbe.ps1,lbe_guard_inspector/reasoning_config.py,tests/,docs/governance/,docs/acceptance/,.lbe/governance/
+REQUIRED_EVIDENCE: regression for absent and present provider_id under StrictMode; actual direct launcher invocation with isolated temporary database; live runtime attachment in PTY; Python/Rust targeted tests and full regression; no real user database mutation.
+MACHINE_SLICE: CANONICAL_LAUNCHER_CONFIG_COMPATIBILITY
+RESULT: PASS
+AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22
+COMPLETION_CHECKPOINT: docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md
+
+## INTENT LBE-INTENT-MAIN-HEAD-CONSOLIDATION-TRUTHFUL-ACCEPTANCE-001
+
+STATUS: AUTHORIZED
+REQUEST: Consolidate validated current work on the existing main checkout and make current workspace, machine gate, and acceptance records match observed source/runtime evidence.
+OWNER: canonical main worktree, LBE provider/session integration, active acceptance gate, and status projections.
+FAILURE_CLASS: MAIN_WORKSPACE_INTEGRATION_AND_EVIDENCE_DRIFT.
+WHY: Local main is seven commits ahead of cached origin/main, the working tree contains staged/unstaged/untracked changes, 257 local refs include old divergent feature and checkpoint snapshots, and current machine acceptance still contains stale PASS claims despite a reproduced selected-model continuation failure.
+EXISTING_OWNER: main branch and sole registered worktree; .lbe/governance/implementation-gates.json is machine authority; docs/CURRENT_STATUS.md and docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md are current projections; existing provider registry/config/session owners remain authoritative.
+DESIRED_RESULT: Validated current enhancements and only compatible branch work are integrated on main; non-current or superseded evidence is labeled; provider/model turn routing is safe and tested; current status is evidence-backed; final acceptance remains blocked until every required installed end-to-end proof passes.
+NON_GOALS: No blind wholesale merges of legacy branch histories; no silent provider/model or credential substitution; no publication or remote push; no destructive deletion of branch/checkpoint refs before recoverable archive verification; no edits to the unrelated root conversation-export report.
+REUSE_DECISION: REUSE current main architecture, existing LBE provider/session/config authorities, release PTY harness, and existing machine gate; inspect branch candidates and integrate only validated compatible deltas.
+AUTHORITY_IMPACT: Gate scope is explicitly widened by the user request; publication remains locked; no provider credentials are copied or exposed.
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,.lbe/governance/,docs/,apps/lbe-terminal/,lbe_guard_inspector/,tests/,launch-lbe.ps1,tools/
+REQUIRED_EVIDENCE: inventory local/remote refs and worktrees; classify unique branch candidates against current product direction; regression and full Python/Rust suites for changed behavior; exact release PTY provider/model click and persistence proof; live selected-model turn with provider identity verified before credentials are used; reconcile machine/human acceptance status; preserve unrelated user files; keep any remaining unknowns explicitly blocked.
+MACHINE_SLICE: MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_CONSOLIDATE_ALL_READY_WORK_ON_MAIN_AND_MAKE_WORKSPACE_TRUTHFUL_2026_09_22
 ```

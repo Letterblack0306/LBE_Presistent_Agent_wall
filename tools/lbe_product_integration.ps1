@@ -425,7 +425,7 @@ function Invoke-Proof {
     $proofs = [System.Collections.Generic.List[object]]::new()
     $python = Get-Command python -ErrorAction SilentlyContinue
     if (-not $python) {
-        $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = "BLOCKED"; exit_code = $null; command = "python"; output = @("python not found") })
+        $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = "BLOCKED"; blocking = $true; exit_code = $null; command = "python"; output = @("python not found") })
     }
     else {
         $agentTests = [System.Collections.Generic.List[string]]::new()
@@ -440,22 +440,22 @@ function Invoke-Proof {
                 $agentTests.Add($candidate)
             }
             else {
-                $proofs.Add([pscustomobject]@{ id = "agent.$([IO.Path]::GetFileNameWithoutExtension($candidate))"; status = "BLOCKED"; exit_code = $null; command = "pytest"; output = @("required child-agent proof missing: $candidate") })
+                $proofs.Add([pscustomobject]@{ id = "agent.$([IO.Path]::GetFileNameWithoutExtension($candidate))"; status = "BLOCKED"; blocking = $true; exit_code = $null; command = "pytest"; output = @("required child-agent proof missing: $candidate") })
             }
         }
         $agent = Invoke-Native -FilePath $python.Source -WorkingDirectory $AgentStage -Arguments (@("-m", "pytest", "-q") + @($agentTests))
-        $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = $(if ($agent.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $agent.exit_code; command = $agent.command; output = $agent.output })
+        $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = $(if ($agent.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $true; exit_code = $agent.exit_code; command = $agent.command; output = $agent.output })
     }
 
     $cargo = Get-Command cargo -ErrorAction SilentlyContinue
     if (-not $cargo) {
-        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = "BLOCKED"; exit_code = $null; command = "cargo"; output = @("cargo not found") })
+        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = "BLOCKED"; blocking = $true; exit_code = $null; command = "cargo"; output = @("cargo not found") })
     }
     else {
         $tuiTest = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("test", "--locked")
-        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = $(if ($tuiTest.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $tuiTest.exit_code; command = $tuiTest.command; output = $tuiTest.output })
+        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = $(if ($tuiTest.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $true; exit_code = $tuiTest.exit_code; command = $tuiTest.command; output = $tuiTest.output })
         $fmt = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("fmt", "--", "--check")
-        $proofs.Add([pscustomobject]@{ id = "tui.cargo_fmt"; status = $(if ($fmt.exit_code -eq 0) { "PASS" } else { "FAIL" }); exit_code = $fmt.exit_code; command = $fmt.command; output = $fmt.output })
+        $proofs.Add([pscustomobject]@{ id = "tui.cargo_fmt"; status = $(if ($fmt.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $true; exit_code = $fmt.exit_code; command = $fmt.command; output = $fmt.output })
     }
     $clineRoot = Join-Path $TuiStage "cline\apps\cli"
     if (-not (Test-Path -LiteralPath $clineRoot -PathType Container)) {
@@ -531,6 +531,7 @@ param(
     [string]$CapabilityRegistry,
     [string]$SessionId,
     [ValidateSet("build", "plan", "audit")][string]$Agent = "build",
+    [string]$Provider = "openai-compatible",
     [string]$Model,
     [switch]$Continue,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE")
@@ -589,6 +590,54 @@ if (-not $SessionId -and $env:LBE_SESSION_ID) { $SessionId = $env:LBE_SESSION_ID
 if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Installed LBE Python runtime missing: $python" }
 if (-not (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) { throw "Provider config missing: $ProviderConfig" }
+
+# A fresh Rust client cannot attach until a persisted session exists. Create
+# that session through the authoritative Python entrypoint instead of making
+# the TUI invent identity or bypassing the session policy gate. An explicit
+# -SessionId (or LBE_SESSION_ID) still resumes an existing session exactly as
+# before.
+if (-not $SessionId) {
+    $providerDocument = Get-Content -LiteralPath $ProviderConfig -Raw | ConvertFrom-Json
+    if (-not $Model) { $Model = [string]$providerDocument.model }
+    if (-not $Model) { throw "Provider config must declare a model before creating a session" }
+    if ($providerDocument.provider_id) { $Provider = [string]$providerDocument.provider_id }
+
+    $hash = [Security.Cryptography.SHA256]::Create()
+    try {
+        $workspaceBytes = [Text.Encoding]::UTF8.GetBytes($workspaceFull.ToLowerInvariant())
+        $workspaceId = "workspace_" + ([BitConverter]::ToString($hash.ComputeHash($workspaceBytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally { $hash.Dispose() }
+
+    switch ($Agent) {
+        "audit" { $sessionMode = "audit" }
+        "plan" { $sessionMode = "investigation" }
+        default { $sessionMode = "coding" }
+    }
+    $SessionId = "lbe-" + ([Guid]::NewGuid().ToString("N"))
+    $bootstrapArgs = @(
+        "-m", "lbe_guard_inspector.product_entry", "start",
+        "--database", ([IO.Path]::GetFullPath($Database)),
+        "--session-id", $SessionId,
+        "--workspace", $workspaceFull,
+        "--project-workspace-id", $workspaceId,
+        "--mode", $sessionMode,
+        "--permission", "read_only",
+        "--runtime-policy", "audit",
+        "--provider", $Provider,
+        "--model", $Model,
+        "--provider-config", ([IO.Path]::GetFullPath($ProviderConfig)),
+        "--format", "json"
+    )
+    if ($CapabilityRegistry) { $bootstrapArgs += @("--capability-registry", ([IO.Path]::GetFullPath($CapabilityRegistry))) }
+    $bootstrapOutput = (& $python @bootstrapArgs 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { throw "Unable to create LBE session: $bootstrapOutput" }
+    try { $bootstrap = $bootstrapOutput | ConvertFrom-Json }
+    catch { throw "LBE session bootstrap returned invalid JSON: $bootstrapOutput" }
+    if (-not $bootstrap.ok -or -not $bootstrap.session_id) {
+        throw "LBE session bootstrap was rejected: $bootstrapOutput"
+    }
+}
 
 $env:LBE_RUNTIME = "real"
 $env:LBE_WALL_ROOT = $InstallRoot
@@ -989,7 +1038,7 @@ if ($Mode -in @("prove", "build", "package")) {
     $proofs = Invoke-Proof -AgentStage $agentStage -TuiStage $tuiStage
 }
 
-$proofPass = if ($proofs.Count -eq 0) { $false } else { @($proofs | Where-Object { ($_.blocking -ne $false) -and $_.status -ne "PASS" }).Count -eq 0 }
+$proofPass = if ($proofs.Count -eq 0) { $false } else { @($proofs | Where-Object { (($null -eq $_.PSObject.Properties["blocking"]) -or $_.blocking) -and $_.status -ne "PASS" }).Count -eq 0 }
 
 if ($Mode -in @("build", "package")) {
     if (-not $structuralPass) { throw "Product build blocked: structural integration checks failed." }

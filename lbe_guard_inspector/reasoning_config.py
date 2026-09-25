@@ -4,10 +4,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, Mapping
+from dataclasses import replace
+from urllib.parse import urlsplit
 
 from .reasoning_provider import ProviderConfig
 
-_ALLOWED_FIELDS = frozenset({"endpoint", "model", "timeout_seconds", "api_key", "reasoning_effort"})
+_ALLOWED_FIELDS = frozenset({
+    "endpoint",
+    "model",
+    "timeout_seconds",
+    "api_key",
+    "reasoning_effort",
+    "provider_id",
+})
 _REQUIRED_FIELDS = frozenset({"endpoint", "model", "timeout_seconds"})
 
 
@@ -38,10 +47,43 @@ def provider_config_from_mapping(raw: Mapping[str, Any]) -> ProviderConfig:
     reasoning_effort = raw.get("reasoning_effort")
     if reasoning_effort is not None and (not isinstance(reasoning_effort, str) or not reasoning_effort.strip()):
         raise ValueError("provider reasoning_effort must be a non-empty string when supplied")
+    provider_id = raw.get("provider_id")
+    if provider_id is not None and (not isinstance(provider_id, str) or not provider_id.strip()):
+        raise ValueError("provider provider_id must be a non-empty string when supplied")
     return ProviderConfig(
         endpoint=raw["endpoint"],
         model=raw["model"],
         timeout_seconds=raw["timeout_seconds"],
         api_key=api_key.strip() if isinstance(api_key, str) else None,
         reasoning_effort=reasoning_effort.strip() if isinstance(reasoning_effort, str) else None,
+        provider_id=provider_id.strip() if isinstance(provider_id, str) else None,
     )
+
+
+def bind_provider_config_to_session(
+    config: ProviderConfig, *, session_provider_id: str, session_model: str
+) -> ProviderConfig:
+    """Bind the persisted model only when the explicit endpoint belongs to its provider."""
+    if not isinstance(config, ProviderConfig):
+        raise TypeError("config must be a ProviderConfig")
+    if not isinstance(session_provider_id, str) or not session_provider_id.strip():
+        raise ValueError("persisted session does not have a selected provider")
+    if not isinstance(session_model, str) or not session_model.strip():
+        raise ValueError("persisted session does not have a selected model")
+
+    configured_provider_id = config.provider_id
+    if configured_provider_id is None:
+        endpoint = urlsplit(config.endpoint)
+        path = endpoint.path.rstrip("/")
+        if endpoint.scheme not in {"http", "https"} or not endpoint.netloc or not (
+            path.endswith("/chat/completions") or path.endswith("/completions")
+        ):
+            raise ValueError(
+                "provider config must declare provider_id unless it uses an OpenAI-compatible completion endpoint"
+            )
+        configured_provider_id = "openai-compatible"
+    if configured_provider_id != session_provider_id.strip():
+        raise ValueError(
+            "provider config identity does not match persisted session provider; refusing to route credentials"
+        )
+    return replace(config, model=session_model.strip(), provider_id=configured_provider_id)

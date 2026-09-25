@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -193,6 +194,7 @@ def test_start_provider_config_mismatch_fails_closed_before_live_turn_runtime(
                 "endpoint": "http://127.0.0.1:1234/v1/chat/completions",
                 "model": "different-model",
                 "timeout_seconds": 5,
+                "provider_id": "anthropic",
             }
         ),
         encoding="utf-8",
@@ -224,7 +226,7 @@ def test_start_provider_config_mismatch_fails_closed_before_live_turn_runtime(
     assert code == 2
     payload = _last_json(capsys)
     assert payload["ok"] is False
-    assert "must match persisted session model" in str(payload["message"])
+    assert "does not match persisted session provider" in str(payload["message"])
 
 
 def test_non_start_commands_delegate_to_legacy_cli(monkeypatch) -> None:
@@ -518,11 +520,21 @@ def test_product_tool_executes_argument_only_installed_capability(
 
 def test_workspace_tool_still_requires_path_after_generic_extension_support(
     tmp_path: Path,
+    monkeypatch,
     capsys,
 ) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     database = tmp_path / "lbe.sqlite"
+    monkeypatch.setattr(
+        product_entry.Context,
+        "load",
+        staticmethod(
+            lambda: SimpleNamespace(
+                roots=[SimpleNamespace(path=workspace.resolve(), name="test-root")]
+            )
+        ),
+    )
     from lbe_guard_inspector.memory.models import SessionState
 
     WorkspaceMemoryStore(database).save_session_state(

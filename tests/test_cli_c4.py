@@ -206,7 +206,7 @@ def test_mode_commands_route_through_existing_gateway(
     assert request.operation_id == "reasoning.inspect"
 
 
-def test_mode_command_rejects_provider_config_model_mismatch_before_composition(
+def test_mode_command_binds_stale_config_model_to_session_before_composition(
     tmp_path: Path, capsys, monkeypatch
 ) -> None:
     _, database = _session(
@@ -215,13 +215,110 @@ def test_mode_command_rejects_provider_config_model_mismatch_before_composition(
         permission="read_only",
         runtime_policy="audit",
     )
-    config = _provider_config(tmp_path, model="other-model")
+    config = _provider_config(tmp_path, model="stale-config-model")
+    composed = []
+
+    def fake_build(**kwargs):
+        composed.append(kwargs)
+        handle = SimpleNamespace(
+            descriptor=SimpleNamespace(
+                provider_id="openai-compatible",
+                model_id="model-a",
+            )
+        )
+        return object(), handle
+
+    monkeypatch.setattr("lbe_guard_inspector.cli.build_provider_controller", fake_build)
+
+    class FakeGateway:
+        def __init__(self, *, runtime, reasoning_controller):
+            assert runtime.session_id == "session-1"
+            assert reasoning_controller is not None
+
+        def invoke(self, request):
+            return SimpleNamespace(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                task_id=request.task_id,
+                mode=request.mode,
+                mode_decision=ModeDecision(
+                    mode=request.mode.value,
+                    allowed_behaviors=(),
+                    capabilities=(),
+                    rationale="test",
+                ),
+                status=TaskStatus.COMPLETED,
+                outcome="COMPLETED",
+                response=LBEResponse(
+                    task_id=request.task_id,
+                    workspace_identity={
+                        "workspace_id": "project-1",
+                        "target_project_root": "",
+                    },
+                    workspace_profile={},
+                    plan=None,
+                    deterministic_result=None,
+                    explanation=None,
+                    outcome="COMPLETED",
+                    read_only=True,
+                ),
+            )
+
+    monkeypatch.setattr("lbe_guard_inspector.cli.GovernedAgentGateway", FakeGateway)
+
+    code = main([
+        "audit",
+        "--database",
+        str(database),
+        "--session-id",
+        "session-1",
+        "--task-id",
+        "task-1",
+        "--provider-config",
+        str(config),
+        "--problem",
+        "Inspect current workspace",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["action"] == "audit"
+    # The persisted session selection is authoritative: a stale endpoint config
+    # model must be rebound to the session model before composition, while the
+    # endpoint credentials and identity from the config remain in use.
+    assert len(composed) == 1
+    bound = composed[0]["provider_config"]
+    assert bound.model == "model-a"
+    assert bound.endpoint == "http://provider/v1/chat/completions"
+    assert composed[0]["provider_id"] == "openai-compatible"
+
+
+def test_mode_command_rejects_config_without_provider_identity_before_composition(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    _, database = _session(
+        tmp_path,
+        mode="audit",
+        permission="read_only",
+        runtime_policy="audit",
+    )
+    config = tmp_path / "provider.json"
+    config.write_text(
+        json.dumps(
+            {
+                "endpoint": "http://provider/v1/messages",
+                "model": "model-a",
+                "timeout_seconds": 5,
+            }
+        ),
+        encoding="utf-8",
+    )
     built = False
 
     def fake_build(**kwargs):
         nonlocal built
         built = True
-        raise AssertionError("provider must not be composed after identity mismatch")
+        raise AssertionError("provider must not be composed without provider identity")
 
     monkeypatch.setattr("lbe_guard_inspector.cli.build_provider_controller", fake_build)
 
@@ -241,7 +338,7 @@ def test_mode_command_rejects_provider_config_model_mismatch_before_composition(
 
     payload = _json_output(capsys)
     assert code == 2
-    assert "does not match persisted session provider model" in payload["message"]
+    assert "must declare provider_id" in payload["message"]
     assert built is False
 
 
