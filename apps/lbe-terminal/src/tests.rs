@@ -1,5 +1,5 @@
 use crate::{
-    app::App,
+    app::{command_palette_commands, App},
     events::{LbeEvent, ToolRisk, ValidationStatus},
     headless_prompt, parse_cli,
     requests::{LbeError, UserRequest},
@@ -1347,7 +1347,10 @@ fn provider_config_command_projects_configured_auth_without_raw_credentials() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
 
-    app.handle_command("/provider-config openai", &mut wrapper);
+    app.handle_command(
+        "/provider-config work openai model-a https://provider.example/v1",
+        &mut wrapper,
+    );
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
         app.reduce_lbe_event(event);
     }
@@ -1370,9 +1373,13 @@ fn real_wrapper_rejects_provider_configuration_while_disconnected() {
     let error = wrapper
         .submit(
             UserRequest::ConfigureProvider {
+                profile_name: "work".to_owned(),
                 provider_id: ProviderId::OpenAi,
-                base_url: None,
-                credential_ref: Some("opaque-ref".to_owned()),
+                model: "model-a".to_owned(),
+                endpoint: "https://provider.example/v1".to_owned(),
+                timeout_seconds: 30.0,
+                credential_ref: None,
+                activate: true,
             },
             Instant::now(),
         )
@@ -1525,25 +1532,20 @@ fn real_wrapper_rejects_provider_validation_while_disconnected() {
 }
 
 #[test]
-fn provider_remove_command_removes_provider_and_models_from_projection() {
+fn provider_remove_command_removes_profile_without_deleting_provider_capability() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
 
-    app.handle_command("/provider-remove openai", &mut wrapper);
+    app.handle_command("/provider-remove work", &mut wrapper);
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
         app.reduce_lbe_event(event);
     }
 
-    assert!(!app
+    assert!(app
         .snapshot
         .providers
         .iter()
         .any(|provider| provider.provider_id == ProviderId::OpenAi));
-    assert!(!app
-        .snapshot
-        .models
-        .iter()
-        .any(|model| model.provider_id == ProviderId::OpenAi));
 }
 
 #[test]
@@ -1552,7 +1554,7 @@ fn real_wrapper_rejects_provider_removal_while_disconnected() {
     let error = wrapper
         .submit(
             UserRequest::RemoveProvider {
-                provider_id: ProviderId::OpenAi,
+                profile_name: "work".to_owned(),
             },
             Instant::now(),
         )
@@ -2319,7 +2321,7 @@ fn mock_provider_catalog_events_and_panels_project_safe_typed_values() {
 }
 
 #[test]
-fn compact_and_doctor_commands_render_mock_runtime_projections() {
+fn compact_command_stays_hidden_until_canonical_payload_exists_and_doctor_still_runs() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
 
@@ -2327,12 +2329,11 @@ fn compact_and_doctor_commands_render_mock_runtime_projections() {
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
         app.reduce_lbe_event(event);
     }
-    assert_eq!(app.snapshot.context_used, 1);
-    assert_eq!(app.snapshot.compaction_state, CompactionState::Completed);
+    assert_ne!(app.snapshot.compaction_state, CompactionState::Completed);
     assert!(app
         .transcript
         .iter()
-        .any(|line| line.contains("CONTEXT  compaction completed")));
+        .any(|line| line.contains("compaction is not exposed until a canonical compaction payload is available")));
 
     app.handle_command("/doctor", &mut wrapper);
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
@@ -3595,6 +3596,27 @@ fn command_palette_runs_existing_lbe_commands() {
     app.handle_key(KeyCode::Enter.into(), &mut wrapper, now);
     assert_eq!(app.panel, Some(MockPanel::Provider));
     assert_eq!(wrapper.requests, vec![UserRequest::RefreshProviderCatalog]);
+}
+
+#[test]
+fn delegated_child_cancel_command_routes_existing_lbe_lifecycle_owner() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.snapshot.turn_id = Some("turn-child-control".to_owned());
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_command("/agent-cancel child-run-1", &mut wrapper);
+
+    assert_eq!(
+        wrapper.requests,
+        vec![UserRequest::CancelChildAgent {
+            turn_id: "turn-child-control".to_owned(),
+            child_agent_run_id: "child-run-1".to_owned(),
+        }]
+    );
+    assert!(command_palette_commands()
+        .iter()
+        .any(|(command, _)| *command == "/agent-cancel"));
 }
 
 #[test]
@@ -5528,4 +5550,87 @@ fn workspace_patch_payload_requires_complete_governed_result() {
         "patch": "-before\n+after\n"
     }))
     .unwrap();
+}
+
+
+#[test]
+fn real_wrapper_requires_connected_runtime_for_session_memory_recall() {
+    let mut wrapper = RealLbeWrapper::new();
+    let error = wrapper
+        .submit(
+            UserRequest::RecallSessionMemory {
+                query: "recent".to_owned(),
+                limit: 10,
+            },
+            Instant::now(),
+        )
+        .expect_err("real memory recall requires an attached LBE runtime");
+    assert!(error.message.contains("requires a connected LBE runtime"));
+}
+
+
+#[test]
+fn production_command_palette_omits_unwired_restore_compaction_and_browser_controls() {
+    let commands = command_palette_commands()
+        .iter()
+        .map(|(command, _)| *command)
+        .collect::<Vec<_>>();
+
+    assert!(!commands.contains(&"/undo"));
+    assert!(!commands.contains(&"/compact"));
+    assert!(!commands.contains(&"/browser"));
+    assert!(commands.contains(&"/checkpoints"));
+    assert!(commands.contains(&"/memory"));
+}
+
+
+#[test]
+fn real_wrapper_requires_connected_runtime_for_checkpoint_refresh() {
+    let mut wrapper = RealLbeWrapper::new();
+    let error = wrapper
+        .submit(UserRequest::RefreshCheckpoint, Instant::now())
+        .expect_err("checkpoint refresh requires an attached LBE runtime");
+    assert!(error.message.contains("requires a connected LBE runtime"));
+}
+
+#[test]
+fn checkpoints_command_routes_read_only_refresh_request() {
+    let mut app = App::default();
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_command("/checkpoints", &mut wrapper);
+
+    assert_eq!(wrapper.requests, vec![UserRequest::RefreshCheckpoint]);
+    assert_eq!(app.panel, Some(MockPanel::Undo));
+}
+
+
+#[test]
+fn real_wrapper_requires_connected_runtime_for_checkpoint_compare() {
+    let mut wrapper = RealLbeWrapper::new();
+    let error = wrapper
+        .submit(
+            UserRequest::CompareCheckpoint {
+                checkpoint_id: "checkpoint-1".to_owned(),
+            },
+            Instant::now(),
+        )
+        .expect_err("checkpoint comparison requires an attached LBE runtime");
+    assert!(error.message.contains("requires a connected LBE runtime"));
+}
+
+
+#[test]
+fn connected_close_command_does_not_dispatch_unwired_session_close() {
+    let mut app = App::default();
+    app.snapshot.connection = RuntimeConnection::Connected;
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_command("/close session-2", &mut wrapper);
+
+    assert!(wrapper.requests.is_empty());
+    assert!(app
+        .transcript
+        .iter()
+        .any(|line| line.contains("close is not exposed until the canonical session lifecycle owner supports it")));
 }

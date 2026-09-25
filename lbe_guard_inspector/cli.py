@@ -18,18 +18,20 @@ from uuid import uuid4
 
 from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
 from .control_protocol import ControlMethod, ControlRequest
+from .credential_store import WindowsCredentialStore
 from .evidence_service import EvidenceService
 from .memory import SessionState, WorkspaceMemoryStore
 from .memory.operational_history import SessionOperationalHistory
 from .provider_health import check_provider_health
 from .provider_registry import default_provider_registry
 from .reasoning_config import bind_provider_config_to_session, load_provider_config
-from .reasoning_provider import discover_openai_compatible_model_ids
+from .reasoning_provider import ProviderConfig, discover_openai_compatible_model_ids
 from .reasoning_runtime import build_provider_controller
 from .runtime.completion_runtime import CodingCompletionRuntime
 from .runtime.mode_controller import ModeRequest, resolve_mode
 from .session_memory_runtime import SessionMemoryRuntimeBridge
 from .session_lifecycle import LbeSessionService
+from .user_state import ProviderProfile, UserStateStore
 
 
 _MODES = ("coding", "audit", "investigation")
@@ -142,7 +144,9 @@ def build_parser() -> argparse.ArgumentParser:
         "check", help="Check a provider against the structured reasoning contract"
     )
     provider_check.add_argument("--provider", required=True)
-    provider_check.add_argument("--provider-config", required=True)
+    provider_check.add_argument("--provider-config")
+    provider_check.add_argument("--state-root")
+    provider_check.add_argument("--profile")
     provider_check.add_argument("--engine")
     provider_check.set_defaults(handler=_provider_check)
 
@@ -155,6 +159,50 @@ def build_parser() -> argparse.ArgumentParser:
     provider_select.add_argument("--model", required=True)
     provider_select.add_argument("--engine")
     provider_select.set_defaults(handler=_provider_select)
+
+    provider_add = provider_commands.add_parser(
+        "add", help="Add or update a per-user provider profile without storing secrets in JSON"
+    )
+    provider_add.add_argument("--state-root")
+    provider_add.add_argument("--name", required=True)
+    provider_add.add_argument("--provider", required=True)
+    provider_add.add_argument("--model", required=True)
+    provider_add.add_argument("--endpoint", required=True)
+    provider_add.add_argument("--timeout-seconds", type=float, default=30.0)
+    provider_add.add_argument("--credential-id")
+    provider_add.add_argument("--use", action="store_true")
+    provider_add.set_defaults(handler=_provider_add)
+
+    provider_use = provider_commands.add_parser(
+        "use", help="Select an existing per-user provider profile"
+    )
+    provider_use.add_argument("--state-root")
+    provider_use.add_argument("--name", required=True)
+    provider_use.set_defaults(handler=_provider_use)
+
+    provider_migrate = provider_commands.add_parser(
+        "migrate", help="Migrate one explicit legacy provider config into per-user state"
+    )
+    provider_migrate.add_argument("--state-root")
+    provider_migrate.add_argument("--name", required=True)
+    provider_migrate.add_argument("--provider", required=True)
+    provider_migrate.add_argument("--provider-config", required=True)
+    provider_migrate.add_argument("--credential-id")
+    provider_migrate.add_argument("--use", action="store_true")
+    provider_migrate.set_defaults(handler=_provider_migrate)
+
+    provider_active = provider_commands.add_parser(
+        "active", help="Show the active per-user provider profile without exposing credentials"
+    )
+    provider_active.add_argument("--state-root")
+    provider_active.set_defaults(handler=_provider_active)
+
+    provider_remove = provider_commands.add_parser(
+        "remove", help="Remove one per-user provider profile"
+    )
+    provider_remove.add_argument("--state-root")
+    provider_remove.add_argument("--name", required=True)
+    provider_remove.set_defaults(handler=_provider_remove)
 
     _add_mode_command(commands, "code", AgentMode.CODING, "Run a governed coding task")
     _add_mode_command(commands, "audit", AgentMode.AUDIT, "Run a governed read-only audit task")
@@ -178,6 +226,34 @@ def build_parser() -> argparse.ArgumentParser:
     _add_database_argument(permissions_show)
     permissions_show.add_argument("--session-id", required=True)
     permissions_show.set_defaults(handler=_permissions_show)
+
+    checkpoint = commands.add_parser("checkpoint", help="Inspect persisted LBE checkpoints")
+    checkpoint_commands = checkpoint.add_subparsers(dest="checkpoint_command", required=True)
+    checkpoint_latest = checkpoint_commands.add_parser(
+        "latest", help="Read the latest persisted checkpoint for one session"
+    )
+    _add_database_argument(checkpoint_latest)
+    checkpoint_latest.add_argument("--session-id", required=True)
+    checkpoint_latest.set_defaults(handler=_checkpoint_latest)
+
+    checkpoint_compare = checkpoint_commands.add_parser(
+        "compare", help="Revalidate one persisted checkpoint against current workspace state"
+    )
+    _add_database_argument(checkpoint_compare)
+    checkpoint_compare.add_argument("--session-id", required=True)
+    checkpoint_compare.add_argument("--checkpoint-id", required=True)
+    checkpoint_compare.set_defaults(handler=_checkpoint_compare)
+
+    memory = commands.add_parser("memory", help="Read validated LBE session memory projections")
+    memory_commands = memory.add_subparsers(dest="memory_command", required=True)
+    memory_recall = memory_commands.add_parser(
+        "recall", help="Recall validated memory for one persisted session"
+    )
+    _add_database_argument(memory_recall)
+    memory_recall.add_argument("--session-id", required=True)
+    memory_recall.add_argument("--query", default="recent")
+    memory_recall.add_argument("--limit", type=int, default=10)
+    memory_recall.set_defaults(handler=_memory_recall)
 
     tui = commands.add_parser("tui", help="Open or create a persisted LBE terminal session")
     _add_database_argument(tui)
@@ -483,8 +559,64 @@ def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _resolve_user_provider_config(
+    *,
+    state_root: str | None,
+    profile_name: str | None,
+    expected_provider_id: str | None = None,
+) -> tuple[str, ProviderProfile, ProviderConfig]:
+    store = UserStateStore(state_root)
+    selected = profile_name or store.active_profile_name()
+    if selected is None:
+        raise ValueError("no active provider profile is configured")
+    profiles = store.profiles()
+    profile = profiles.get(selected)
+    if profile is None:
+        raise ValueError(f"provider profile not found: {selected}")
+    if expected_provider_id is not None and profile.provider_id != expected_provider_id:
+        raise ValueError(
+            "provider profile does not match requested provider: "
+            f"{profile.provider_id} != {expected_provider_id}"
+        )
+    api_key = None
+    if profile.credential_id is not None:
+        api_key = WindowsCredentialStore().get(profile.credential_id)
+    return (
+        selected,
+        profile,
+        ProviderConfig(
+            endpoint=profile.endpoint,
+            model=profile.model,
+            timeout_seconds=profile.timeout_seconds,
+            api_key=api_key,
+        ),
+    )
+
+
+def resolve_provider_config(
+    *,
+    provider_config: str | None,
+    state_root: str | None = None,
+    profile_name: str | None = None,
+    expected_provider_id: str | None = None,
+) -> tuple[str | None, ProviderConfig]:
+    if provider_config is not None:
+        return None, load_provider_config(provider_config)
+    selected, _profile, config = _resolve_user_provider_config(
+        state_root=state_root,
+        profile_name=profile_name,
+        expected_provider_id=expected_provider_id,
+    )
+    return selected, config
+
+
 def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
-    config = load_provider_config(args.provider_config)
+    profile_name, config = resolve_provider_config(
+        provider_config=args.provider_config,
+        state_root=args.state_root,
+        profile_name=args.profile,
+        expected_provider_id=args.provider,
+    )
     result = check_provider_health(
         provider_id=args.provider,
         provider_config=config,
@@ -497,6 +629,98 @@ def _provider_check(args: argparse.Namespace) -> dict[str, Any]:
         "engine_id": result.engine_id,
         "status": result.status,
         "capabilities": asdict(result.capabilities),
+        "profile": profile_name,
+    }
+
+
+def _provider_profile_payload(name: str, profile: ProviderProfile) -> dict[str, Any]:
+    return {
+        "name": name,
+        "provider_id": profile.provider_id,
+        "model": profile.model,
+        "endpoint": profile.endpoint,
+        "timeout_seconds": profile.timeout_seconds,
+        "credential_id": profile.credential_id,
+    }
+
+
+def _provider_add(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    profile = ProviderProfile(
+        provider_id=args.provider,
+        model=args.model,
+        endpoint=args.endpoint,
+        timeout_seconds=args.timeout_seconds,
+        credential_id=args.credential_id,
+    )
+    store.save_profile(args.name, profile, activate=args.use)
+    return {
+        "action": "provider.add",
+        "profile": _provider_profile_payload(args.name, profile),
+        "active_profile": store.active_profile_name(),
+    }
+
+
+def _provider_use(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    profile = store.select_profile(args.name)
+    return {
+        "action": "provider.use",
+        "profile": _provider_profile_payload(args.name, profile),
+        "active_profile": store.active_profile_name(),
+    }
+
+
+def _provider_migrate(args: argparse.Namespace) -> dict[str, Any]:
+    config = load_provider_config(args.provider_config)
+    credential_id = args.credential_id
+    if config.api_key is not None:
+        if credential_id is None or not str(credential_id).strip():
+            raise ValueError(
+                "--credential-id is required when the legacy provider config contains api_key"
+            )
+        WindowsCredentialStore().put(str(credential_id).strip(), config.api_key)
+        credential_id = str(credential_id).strip()
+
+    profile = ProviderProfile(
+        provider_id=args.provider,
+        model=config.model,
+        endpoint=config.endpoint,
+        timeout_seconds=config.timeout_seconds,
+        credential_id=credential_id,
+    )
+    store = UserStateStore(args.state_root)
+    store.save_profile(args.name, profile, activate=args.use)
+    return {
+        "action": "provider.migrate",
+        "profile": _provider_profile_payload(args.name, profile),
+        "active_profile": store.active_profile_name(),
+        "legacy_config_removal_required": config.api_key is not None,
+    }
+
+
+def _provider_active(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    name = store.active_profile_name()
+    if name is None:
+        raise ValueError("no active provider profile is configured")
+    profile = store.profiles().get(name)
+    if profile is None:
+        raise ValueError(f"provider profile not found: {name}")
+    return {
+        "action": "provider.active",
+        "profile": _provider_profile_payload(name, profile),
+        "active_profile": name,
+    }
+
+
+def _provider_remove(args: argparse.Namespace) -> dict[str, Any]:
+    store = UserStateStore(args.state_root)
+    removed = store.remove_profile(args.name)
+    return {
+        "action": "provider.remove",
+        "profile": _provider_profile_payload(args.name, removed),
+        "active_profile": store.active_profile_name(),
     }
 
 
@@ -740,16 +964,19 @@ def _run_mode_command(
     if handle.descriptor.provider_id != state.provider_id:
         raise ValueError("provider adapter identity does not match persisted session provider")
     if mode is AgentMode.CODING:
-        from .runtime.governed_coding import GovernedProviderReasoningController
+        from .runtime.governed_coding import build_governed_coding_controller
 
-        if state.reasoning_engine not in {None, "native-lbe"}:
-            raise ValueError(
-                "governed coding tool loop currently requires the native-lbe reasoning engine"
-            )
-        controller = GovernedProviderReasoningController(
+        # A session persisted without an explicit engine still needs a truthful engine
+        # identity. The provider registry owns the default binding for that provider, so
+        # resolve it there instead of inventing one here or projecting None.
+        engine_id = state.reasoning_engine or default_provider_registry().default_engine_for_provider(
+            state.provider_id
+        )
+        controller = build_governed_coding_controller(
             runtime=runtime,
             provider_id=state.provider_id,
             provider_config=provider_config,
+            engine_id=engine_id,
         )
 
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
@@ -852,6 +1079,73 @@ def _run_mode_command(
         "outcome": result.outcome,
         "response": asdict(result.response),
         "operational_turn_id": finalized_turn.turn_id,
+    }
+
+
+def _checkpoint_latest(args: argparse.Namespace) -> dict[str, Any]:
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    packet = runtime.start_or_resume()
+    return {
+        "action": "checkpoint.latest",
+        "session_id": state.session_id,
+        "project_workspace_id": state.project_workspace_id,
+        "checkpoint": packet.get("checkpoint"),
+        "checkpoint_revalidation": packet.get("checkpoint_revalidation"),
+    }
+
+
+def _checkpoint_compare(args: argparse.Namespace) -> dict[str, Any]:
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    packet = runtime.start_or_resume()
+    checkpoint = packet.get("checkpoint")
+    if checkpoint is None:
+        raise ValueError("no persisted checkpoint exists for session")
+    if checkpoint.get("checkpoint_id") != args.checkpoint_id:
+        raise ValueError("requested checkpoint is not the latest persisted checkpoint")
+    revalidation = packet.get("checkpoint_revalidation")
+    if revalidation is None:
+        raise ValueError("checkpoint revalidation evidence is unavailable")
+    return {
+        "action": "checkpoint.compare",
+        "session_id": state.session_id,
+        "project_workspace_id": state.project_workspace_id,
+        "checkpoint_id": args.checkpoint_id,
+        "revalidation": revalidation,
+    }
+
+
+def _memory_recall(args: argparse.Namespace) -> dict[str, Any]:
+    if args.limit < 1:
+        raise ValueError("limit must be a positive integer")
+    store = WorkspaceMemoryStore(args.database)
+    state = _require_session(store, args.session_id)
+    runtime = _runtime_from_state(database=args.database, state=state)
+    packet = runtime.start_or_resume()
+    records = [
+        *packet.get("verified_facts", []),
+        *packet.get("active_constraints", []),
+        *packet.get("recent_failures", []),
+    ]
+    query = str(args.query or "recent").strip().lower()
+    if query and query != "recent":
+        records = [
+            record
+            for record in records
+            if query in json.dumps(record, ensure_ascii=False, sort_keys=True).lower()
+        ]
+    records = records[: min(int(args.limit), 100)]
+    return {
+        "action": "memory.recall",
+        "session_id": state.session_id,
+        "project_workspace_id": state.project_workspace_id,
+        "query": args.query,
+        "records": records,
+        "checkpoint": packet.get("checkpoint"),
+        "checkpoint_revalidation": packet.get("checkpoint_revalidation"),
     }
 
 

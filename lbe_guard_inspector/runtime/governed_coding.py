@@ -23,12 +23,12 @@ from uuid import uuid4
 from agent import Context, GovernanceError, matches_any, path_allowed
 
 from ..evidence_service import EvidenceService
-from ..openai_compatible_event_adapter import OpenAICompatibleEventAdapter
 from ..professional_provider_events import ModelEventType, NormalizedModelEvent
 from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
 from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
 from .mode_controller import ModeRequest, resolve_mode
+from .provider_event_adapters import build_native_provider_event_adapter
 from .agent_guidance import AgentGuidance, build_agent_guidance
 from .tool_orchestration import (
     GovernedToolOrchestrator,
@@ -813,7 +813,11 @@ class _GovernedCodingControllerBase:
             "reasoning_engine": self._engine_id,
             "governed_tool_receipts": [_receipt_payload(receipt) for receipt in receipts],
             "governed_tool_projection": [
-                dict(item) for item in self.governed_tool_projection
+                # Execution truth: one entry per governed receipt with its own
+                # authorization decision. The authorized capability catalog the model
+                # is offered is projected separately under workspace_profile.
+                _governed_tool_projection(receipt, self._registry)
+                for receipt in receipts
             ],
             "provider_output": provider_output,
             "agent_guidance": self._guidance.audit_payload(),
@@ -883,6 +887,10 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         provider_config: ProviderConfig,
         external_capabilities: Iterable[object] = (),
     ) -> None:
+        self._adapter = build_native_provider_event_adapter(
+            provider_id=provider_id,
+            config=provider_config,
+        )
         super().__init__(
             runtime=runtime,
             provider_id=provider_id,
@@ -890,7 +898,6 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
             engine_id="native-lbe",
             external_capabilities=external_capabilities,
         )
-        self._adapter = OpenAICompatibleEventAdapter(config=provider_config)
 
     def run(self, request: LBERequest) -> LBEResponse:
         task_id = str(request.task_id or "").strip()
@@ -1216,6 +1223,33 @@ def _provider_tool_definition(index: int, spec: ToolSpec) -> dict[str, object]:
                 "additionalProperties": False,
             },
         },
+    }
+
+
+def _governed_tool_projection(
+    receipt: ToolReceipt,
+    registry: ToolRegistry,
+) -> dict[str, object]:
+    """Project governed tool truth from the existing LBE registry + receipt owners."""
+    registered = registry.get(receipt.tool_id)
+    if registered is None:
+        raise ValueError(
+            f"governed receipt references an unregistered tool: {receipt.tool_id}"
+        )
+    spec = registered.spec
+    authorization = receipt.authorization
+    return {
+        "tool_id": receipt.tool_id,
+        "capability": spec.capability,
+        "access_class": spec.access_class.value,
+        "network_behavior": spec.network_behavior.value,
+        "risk_class": spec.risk_class.value,
+        "authorization_verdict": (
+            None if authorization is None else authorization.verdict.value
+        ),
+        "authorization_rationale": (
+            None if authorization is None else authorization.rationale
+        ),
     }
 
 

@@ -3,7 +3,7 @@ use crate::{
     types::{AgentMode, ModelRef, ProviderId},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum UserRequest {
     SubmitTask {
         intent: String,
@@ -24,6 +24,10 @@ pub(crate) enum UserRequest {
     RefreshRuntimeSnapshot,
     RefreshChildAgents {
         turn_id: String,
+    },
+    CancelChildAgent {
+        turn_id: String,
+        child_agent_run_id: String,
     },
     RefreshMcpRegistry,
     QueryBirdEye {
@@ -55,19 +59,24 @@ pub(crate) enum UserRequest {
     },
     RefreshProviderCatalog,
     ConfigureProvider {
+        profile_name: String,
         provider_id: ProviderId,
-        base_url: Option<String>,
+        model: String,
+        endpoint: String,
+        timeout_seconds: f64,
         credential_ref: Option<String>,
+        activate: bool,
     },
     ValidateProvider {
         provider_id: ProviderId,
     },
     RemoveProvider {
-        provider_id: ProviderId,
+        profile_name: String,
     },
     SelectModel {
         model: ModelRef,
     },
+    RefreshCheckpoint,
     CompareCheckpoint {
         checkpoint_id: String,
     },

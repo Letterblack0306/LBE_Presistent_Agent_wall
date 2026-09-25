@@ -730,3 +730,104 @@ def test_session_validate_rejects_task_without_persisted_contract(tmp_path: Path
     assert code == 2
     assert payload["error"] == "ValueError"
     assert "completion contract" in payload["message"]
+
+
+def test_memory_recall_returns_revalidated_session_memory(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+    )
+    memory_id = runtime.adapter.record_file_hash(relative_path="tracked.txt")
+
+    code = main([
+        "memory", "recall",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--query", "tracked.txt",
+        "--limit", "5",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["ok"] is True
+    assert payload["action"] == "memory.recall"
+    assert payload["session_id"] == "session-1"
+    assert [record["memory_id"] for record in payload["records"]] == [memory_id]
+    assert payload["records"][0]["memory_type"] == "workspace_fact"
+    assert payload["records"][0]["validation_status"] == "verified"
+
+
+def test_checkpoint_latest_returns_persisted_revalidated_checkpoint(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+    )
+    checkpoint_id = runtime.checkpoint(
+        compaction={
+            "source_message_count": 1,
+            "source_prefix_hash": "sha256:" + "a" * 64,
+            "source_last_message_key": "message-1",
+        }
+    )
+
+    code = main([
+        "checkpoint", "latest",
+        "--database", str(database),
+        "--session-id", "session-1",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["ok"] is True
+    assert payload["action"] == "checkpoint.latest"
+    assert payload["session_id"] == "session-1"
+    assert payload["checkpoint"]["checkpoint_id"] == checkpoint_id
+    assert payload["checkpoint_revalidation"]["authority_owner"] == "LBE_MEMORY_RUNTIME"
+
+
+def test_checkpoint_compare_returns_current_lbe_revalidation(tmp_path: Path, capsys) -> None:
+    root = _repo(tmp_path)
+    database = tmp_path / "memory.sqlite"
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=database,
+        project_workspace_id="project-1",
+        workspace_root=root,
+        session_id="session-1",
+        mode="audit",
+    )
+    checkpoint_id = runtime.checkpoint(
+        compaction={
+            "source_message_count": 1,
+            "source_prefix_hash": "sha256:" + "b" * 64,
+            "source_last_message_key": "message-1",
+        }
+    )
+
+    code = main([
+        "checkpoint", "compare",
+        "--database", str(database),
+        "--session-id", "session-1",
+        "--checkpoint-id", checkpoint_id,
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    assert payload["ok"] is True
+    assert payload["action"] == "checkpoint.compare"
+    assert payload["checkpoint_id"] == checkpoint_id
+    assert payload["revalidation"]["authority_owner"] == "LBE_MEMORY_RUNTIME"
+    assert payload["revalidation"]["status"] in {
+        "ELIGIBLE",
+        "INELIGIBLE",
+        "INSUFFICIENT_EVIDENCE",
+    }

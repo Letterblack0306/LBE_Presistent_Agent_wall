@@ -1390,9 +1390,18 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ],
         ),
         MockPanel::Provider => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned(),
-                "Mock provider catalog; no credentials, network, or provider calls.".to_owned(),
+                if connected {
+                    "CONNECTED · authoritative LBE provider projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned()
+                },
+                if connected {
+                    "Provider identity, auth state and health are projected from LBE.".to_owned()
+                } else {
+                    "Mock provider catalog; no credentials, network, or provider calls.".to_owned()
+                },
                 String::new(),
             ];
             rows.extend(snapshot.providers.iter().map(|provider| {
@@ -1408,9 +1417,18 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ("Providers", rows)
         }
         MockPanel::Model => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned(),
-                "Mock provider-discovered catalog; capability values are not live.".to_owned(),
+                if connected {
+                    "CONNECTED · authoritative LBE model projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned()
+                },
+                if connected {
+                    "Model identity and capability metadata are projected from LBE.".to_owned()
+                } else {
+                    "Mock provider-discovered catalog; capability values are not live.".to_owned()
+                },
                 String::new(),
             ];
             rows.extend(snapshot.models.iter().map(|model| {
@@ -1441,8 +1459,16 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
         MockPanel::Mcp => (
             "MCP",
             vec![
-                "MOCK / NOT CONNECTED".to_owned(),
-                "No MCP server registry or transport is connected.".to_owned(),
+                if snapshot.connection == RuntimeConnection::Connected {
+                    "CONNECTED · authoritative LBE extension projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED".to_owned()
+                },
+                if snapshot.connection == RuntimeConnection::Connected {
+                    "Registry metadata is projected read-only; execution remains runtime-owned.".to_owned()
+                } else {
+                    "No MCP server registry or transport is connected.".to_owned()
+                },
             ],
         ),
         MockPanel::Tools => {
@@ -1498,6 +1524,7 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                     format!("{} · delegated-run projection", snapshot.connection.label())
                 },
                 format!("Projected child runs {}", snapshot.child_agents.len()),
+                "Use /agent-cancel <run-id> to request LBE-owned cancellation.".to_owned(),
                 String::new(),
             ];
             if snapshot.child_agents.is_empty() {
@@ -1647,8 +1674,13 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ],
         ),
         MockPanel::Memory => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "LOCAL UI MEMORY · NON-CANONICAL · PRE-INTEGRATION".to_owned(),
+                if connected {
+                    "LBE MEMORY · READ-ONLY VALIDATED PROJECTION".to_owned()
+                } else {
+                    "LOCAL UI MEMORY · MOCK / NOT CONNECTED".to_owned()
+                },
                 "Canonical durable memory and verified promotion remain LBE-runtime-owned."
                     .to_owned(),
                 String::new(),
@@ -1673,7 +1705,11 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                 String::new(),
             ];
             if snapshot.memory.recent_records.is_empty() {
-                rows.push("No recalled records projected in the mock TUI.".to_owned());
+                rows.push(if connected {
+                    "No matching validated memory records.".to_owned()
+                } else {
+                    "No recalled records projected in the mock TUI.".to_owned()
+                });
             } else {
                 rows.push("Relevant:".to_owned());
                 rows.extend(snapshot.memory.recent_records.iter().map(|record| {
@@ -1746,24 +1782,41 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             )
         }
         MockPanel::Undo => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "CHECKPOINTS ? PROJECTION ONLY".to_owned(),
-                "[c] compare   [r] request restore   [Esc] close".to_owned(),
+                if connected {
+                    "LBE CHECKPOINT · READ-ONLY PROJECTION".to_owned()
+                } else {
+                    "CHECKPOINTS · MOCK / NOT CONNECTED".to_owned()
+                },
+                if connected {
+                    "[c] revalidate checkpoint   [Esc] close · restore not exposed".to_owned()
+                } else {
+                    "[c] compare   [r] request restore   [Esc] close".to_owned()
+                },
                 String::new(),
             ];
             if let Some(checkpoint) = &snapshot.latest_checkpoint {
                 rows.push(format!(
-                    "{} ? {} ? {} file(s) changed",
+                    "{} · {}",
                     checkpoint.checkpoint_id,
-                    checkpoint.created_at,
-                    checkpoint.changed_files.len()
+                    checkpoint.created_at
                 ));
                 rows.push(format!(
                     "workspace revision {}",
                     checkpoint.workspace_revision
                 ));
+                if connected {
+                    rows.push("Changed-file list is not part of the canonical checkpoint projection.".to_owned());
+                } else {
+                    rows.push(format!("{} file(s) changed", checkpoint.changed_files.len()));
+                }
             } else {
-                rows.push("No checkpoint has been created in this mock session.".to_owned());
+                rows.push(if connected {
+                    "No persisted checkpoint exists for this session.".to_owned()
+                } else {
+                    "No checkpoint has been created in this mock session.".to_owned()
+                });
             }
             ("Checkpoints", rows)
         }
@@ -1792,9 +1845,18 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             ("Workspace Changes", rows)
         }
         MockPanel::Doctor => {
+            let connected = snapshot.connection == RuntimeConnection::Connected;
             let mut rows = vec![
-                "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned(),
-                "Mock diagnostics; no live checks are executed.".to_owned(),
+                if connected {
+                    "CONNECTED · LBE diagnostic projection".to_owned()
+                } else {
+                    "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW".to_owned()
+                },
+                if connected {
+                    "Diagnostic results are projected from the connected LBE runtime.".to_owned()
+                } else {
+                    "Mock diagnostics; no live checks are executed.".to_owned()
+                },
                 String::new(),
             ];
             rows.extend(snapshot.diagnostics.iter().map(|check| {
@@ -2117,16 +2179,30 @@ pub(crate) fn mock_panel_text_for_app(panel: MockPanel, app: &App) -> Text<'stat
                     .add_modifier(Modifier::BOLD),
             ))];
             lines.push(Line::from(Span::styled(
-                "[c] compare   [r] request restore   [Esc] close",
+                if app.snapshot.connection == RuntimeConnection::Connected {
+                    "[c] revalidate checkpoint   [Esc] close · restore not exposed"
+                } else {
+                    "[c] compare   [r] request restore   [Esc] close"
+                },
                 Style::default().fg(PALETTE.faint),
             )));
             if let Some(checkpoint) = &app.snapshot.latest_checkpoint {
                 lines.push(Line::from(format!(
-                    "{} ? {} ? {} file(s) changed",
+                    "{} · {}",
                     checkpoint.checkpoint_id,
-                    checkpoint.created_at,
-                    checkpoint.changed_files.len()
+                    checkpoint.created_at
                 )));
+                if app.snapshot.connection == RuntimeConnection::Connected {
+                    lines.push(Line::from(Span::styled(
+                        "Changed-file list is not part of the canonical checkpoint projection.",
+                        Style::default().fg(PALETTE.muted),
+                    )));
+                } else {
+                    lines.push(Line::from(format!(
+                        "{} file(s) changed",
+                        checkpoint.changed_files.len()
+                    )));
+                }
                 lines.push(Line::from(format!(
                     "workspace revision {}",
                     checkpoint.workspace_revision

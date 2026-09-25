@@ -91,7 +91,10 @@ def test_governed_provider_turn_receives_guidance_and_persists_only_metadata(tmp
                 ),
             )
 
-    monkeypatch.setattr("lbe_guard_inspector.runtime.governed_coding.OpenAICompatibleEventAdapter", CaptureAdapter)
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.governed_coding.build_native_provider_event_adapter",
+        lambda **kwargs: CaptureAdapter(config=kwargs["config"]),
+    )
     controller = GovernedProviderReasoningController(
         runtime=runtime,
         provider_id="openai-compatible",
@@ -198,8 +201,8 @@ def test_governed_provider_tool_call_round_trips_through_receipt(tmp_path, monke
             )
 
     monkeypatch.setattr(
-        "lbe_guard_inspector.runtime.governed_coding.OpenAICompatibleEventAdapter",
-        ToolCallingAdapter,
+        "lbe_guard_inspector.runtime.governed_coding.build_native_provider_event_adapter",
+        lambda **kwargs: ToolCallingAdapter(config=kwargs["config"]),
     )
     controller = GovernedProviderReasoningController(
         runtime=runtime,

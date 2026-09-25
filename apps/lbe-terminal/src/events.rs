@@ -96,6 +96,8 @@ pub(crate) enum LbeEvent {
     CheckpointComparisonReady {
         checkpoint_id: String,
         changed_files: Vec<String>,
+        revalidation_status: Option<String>,
+        reasons: Vec<String>,
     },
     CheckpointRestoreRequested {
         checkpoint_id: String,

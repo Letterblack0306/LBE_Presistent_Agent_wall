@@ -80,7 +80,14 @@ def provider_config_from_mapping(raw: Mapping[str, Any]) -> ProviderConfig:
 def bind_provider_config_to_session(
     config: ProviderConfig, *, session_provider_id: str, session_model: str
 ) -> ProviderConfig:
-    """Bind the persisted model only when the explicit endpoint belongs to its provider."""
+    """Bind the persisted model, and refuse a declared identity that is not the session's.
+
+    Identity authority: a provider profile or an explicit ``provider_id`` declares the
+    identity and must equal the persisted session provider. A config that declares
+    nothing is the generic OpenAI-compatible shape: its credentials are routed under the
+    session's own provider selection, which is the existing behavior for a compatible
+    endpoint. Either way the model always comes from the persisted session.
+    """
     if not isinstance(config, ProviderConfig):
         raise TypeError("config must be a ProviderConfig")
     if not isinstance(session_provider_id, str) or not session_provider_id.strip():
@@ -98,7 +105,12 @@ def bind_provider_config_to_session(
             raise ValueError(
                 "provider config must declare provider_id unless it uses an OpenAI-compatible completion endpoint"
             )
-        configured_provider_id = "openai-compatible"
+        # Generic compatible endpoint: the session's persisted provider owns the routing.
+        return replace(
+            config,
+            model=session_model.strip(),
+            provider_id=session_provider_id.strip(),
+        )
     if configured_provider_id != session_provider_id.strip():
         raise ValueError(
             "provider config identity does not match persisted session provider; refusing to route credentials"

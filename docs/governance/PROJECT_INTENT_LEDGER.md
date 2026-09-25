@@ -6,7 +6,7 @@ Every meaningful repository mutation must resolve to exactly one intent record b
 The machine gate binds the active slice to the `INTENT_ID`, and the affected structure must exist
 in `PROJECT_INDEX.md`.
 
-## Current reconciliation — 2026-09-05
+## Current reconciliation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 2026-09-05
 
 The current implementation uses the originating project-planning concepts as a
 bounded LBE startup projection. `lbe start` profiles the selected workspace and
@@ -23,7 +23,7 @@ configuration.
 Current proof for this bounded integration is recorded as:
 
 ```text
-focused adapter validation         = PASS — 15/15
+focused adapter validation         = PASS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 15/15
 live parent->child->parent proof   = PASS
 live cancellation terminality      = PASS
 canonical verifier proof           = PASS
@@ -48,7 +48,7 @@ REUSE_DECISION: REUSE ProjectProfiler, select_guard_catalog, existing audit load
 AUTHORITY_IMPACT: None. LBE remains the sole authority for authorization, governed execution, receipts, evidence, persistence, validation, and completion.
 EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,audit_controller.py,rules/,examples/reference/,docs/contracts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md
 REQUIRED_EVIDENCE: startup profile/catalog projection; canonical CEP rule resolution; target-profile audit scope; no duplicate callback rule discovery; focused integration regression; full Python regression; preserved active TUI gate.
-MACHINE_SLICE: NONE — bounded implementation record; does not alter the machine-declared active slice.
+MACHINE_SLICE: NONE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bounded implementation record; does not alter the machine-declared active slice.
 SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/CURRENT_STATUS.md and .agent/evidence/CURRENT_TASK.md
@@ -342,8 +342,8 @@ REUSE_DECISION: REUSE existing LBE persistence, continuation, receipt, validatio
 AUTHORITY_IMPACT: LBE remains sole authority. The projection is bookkeeping only.
 EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,.lbe/governance/,docs/CURRENT_STATUS.md,docs/IMPLEMENTATION_PLAN.md,docs/acceptance/,docs/governance/
 REQUIRED_EVIDENCE: parent consumes persisted authoritative LBE child terminal result; no transient
-                   local/Cline result is authoritative; provider_tool_call_id ↔ lbe_call_id ↔
-                   child_run_id ↔ runtime_operation_id ↔ tool_receipt_id are all correlated;
+                   local/Cline result is authoritative; provider_tool_call_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â lbe_call_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+                   child_run_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â runtime_operation_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â tool_receipt_id are all correlated;
                    no heuristic correlation; focused adapter validation; live continuation proof;
                    cancellation terminality proof; canonical verifier proof.
 MACHINE_SLICE: PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION
@@ -421,7 +421,7 @@ RESULT: PASS (focused)
 MACHINE_SLICE: CLINE_RUNTIME_WIRING
 ```
 
-## INTENT LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001 — SUPERSEDED / REFERENCE ONLY
+## INTENT LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â SUPERSEDED / REFERENCE ONLY
 
 ```text
 INTENT_ID: LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001
@@ -522,7 +522,7 @@ RESULT: SUPERSEDED_IN_CLIENT_SURFACE_SCOPE
 COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_CHECKPOINT.md
 ```
 
-## Historical product-owner correction — HTML-based TUI (superseded in scope)
+## Historical product-owner correction ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â HTML-based TUI (superseded in scope)
 
 The prior Cline surface-direction record is amended by the current product decision: the
 supplied `docs/reference/ui/lbe_runtime_console.html` and
@@ -751,7 +751,7 @@ REUSE_DECISION: REUSE existing machine governance, project index, intent ledger,
 AUTHORITY_IMPACT: None. This intent changes documentation routing only and does not create a new runtime, reasoning, execution, validation, persistence, or completion authority.
 EXPECTED_PATH_PREFIXES: docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md,docs/governance/AGENT_DOCUMENT_WRITE_POLICY.md,docs/governance/PROJECT_INTENT_LEDGER.md
 REQUIRED_EVIDENCE: created source-of-truth document; created document-write policy; no product-code changes; no existing docs deleted; canonical GitHub commit(s) available for local pull.
-MACHINE_SLICE: NONE — explicit user-authorized documentation-governance bootstrap; does not advance the closed product gate.
+MACHINE_SLICE: NONE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â explicit user-authorized documentation-governance bootstrap; does not advance the closed product gate.
 SUPERSEDES: none
 RESULT: ACTIVE
 ```
@@ -790,27 +790,21 @@ ENGINE_NEUTRAL_MODEL: selected_reasoning_agent becomes engine-neutral authorized
 REQUIRED_EVIDENCE_REPLACEMENT: Replace headless_cline_provider_turn with engine-neutral governed-turn proof, while retaining Cline regression proof to ensure no regression.
 NON_GOALS: independent provider transport outside LBE-owned engine/provider bindings; silent engine/provider fallback; publication without separate authorization; branch/worktree creation; changes to the canonical client workspace (C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal); changes to existing working Cline-backed routes without regression proof.
 FIRST_CODE_CHANGE: After governance opens the slice, make the module-scope cline_reasoning_provider import optional/feature-scoped as the first implementation change, proving Cline-absent LBE initialization before re-pointing any provider bindings.
-AFFECTED_STRUCTURE: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/PROJECT_INTENT_LEDGER.md, docs/acceptance/, .lbe/governance/implementation-gates.json
+AFFECTED_STRUCTURE: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/cli.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/PROJECT_INTENT_LEDGER.md, docs/acceptance/, .lbe/governance/implementation-gates.json
 EXISTING_OWNER: LBE runtime owners; existing Cline adapter mechanics under LBE authority; engine/provider binding owner (new structural responsibility per PROJECT_INDEX.md).
 DESIRED_RESULT: LBE initializes and operates through an engine-neutral reasoning runtime. Cline is one supported adapter. Provider bindings are engine/provider-scoped behind LBE authority. No silent fallback. Cline regression proof retained.
 REUSE_DECISION: REUSE existing LBE runtime, authorization, execution, receipt, evidence, persistence, validation, and completion owners. REUSE existing Cline adapter as one supported engine. ADAPT the provider registry and reasoning runtime to be engine-neutral with optional/supported Cline import.
 AUTHORITY_IMPACT: LBE authority unchanged. Reasoning engine/provider bindings become a distinct structural responsibility owned by LBE runtime + engine/provider binding owner. Cline mechanics remain under LBE authority.
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/, docs/acceptance/, .lbe/governance/
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_registry.py, lbe_guard_inspector/reasoning_runtime.py, lbe_guard_inspector/cline_reasoning_provider.py, lbe_guard_inspector/cli.py, lbe_guard_inspector/runtime/, tests/, PROJECT_INDEX.md, docs/governance/, docs/acceptance/, .lbe/governance/
 REQUIRED_EVIDENCE: engine-neutral LBE initialization proof; Cline-absent LBE initialization proof; Cline regression proof; provider binding structure registered in PROJECT_INDEX.md; gate amendment record; focused tests for engine-neutral runtime; full regression.
 MACHINE_SLICE: REASONING_ENGINE_PROVIDER_BINDING_SEPARATION
-RESULT: PASS
-IMPLEMENTATION_COMMITS: 39dd7cf9a6194a4931d1c564f43af50d5d8d9f7f, 7685ecae0412a92f7b61f9b5b51011e3125a4f8d
+RESULT: IMPLEMENTED_STATIC_VALIDATION_PENDING
 REFERENCE_CHAIN: GPT-K ai-agents/studies/agent-feature-reference-map-2026-09-20.json -> Cline 9a2512bb9835869d74774da99708a7f9d80b0fe8 sdk/packages/README.md -> OpenCode ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts
-VALIDATION_BLOCKER: GitHub Actions validate jobs fail before any workflow steps on this commit and on both immediately preceding governance-only commits; full regression/runtime proof remains UNVERIFIED.
+VALIDATION_BLOCKER: GitHub Actions validate attempt 1 continues to terminate all matrix jobs with zero executed workflow steps; rerun attempt 2 was requested after source convergence. Container network/DNS cannot clone GitHub. Until a runner executes test steps, focused/full regression and live runtime proof remain UNVERIFIED.
 AUTHORIZATION: EXPLICIT_USER_AUTHORIZATION_2026_09_20
+SCOPE_AMENDMENT_2026_09_21: Explicit user instruction `goahead build it in the repo` authorizes convergence of the existing canonical `lbe code` product-entry path onto the already-selected engine-neutral governed coding factory. This adds only `lbe_guard_inspector/cli.py` as an existing-owner path; it does not authorize TUI mutation, new runtime authority, branch/worktree creation, publication, or gate closure.
 ```
-\n
 
-## INTENT LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001
-
-```text
-INTENT_ID: LBE-INTENT-GOVERNED-TOOL-PERMISSION-REFERENCE-CONVERGENCE-001
-STATUS: ACTIVE
 REQUEST: Converge LBE tool/capability presentation and permission interaction onto the existing R6C/R6E owners, using exact upstream tool-registry and approval references without creating a second executor.
 WHY: LBE already owns ToolRegistry, resolve_authorization(), GovernedToolOrchestrator and ToolReceipt. Upstreams provide mature tool catalog/visibility/approval patterns that should improve the existing surface rather than replace authority.
 REFERENCE_CHAIN: Cline cline/cline@9a2512bb9835869d74774da99708a7f9d80b0fe8 docs/tools-reference/all-cline-tools.mdx + sdk/packages/core/src/extensions/tools/; OpenCode anomalyco/opencode@ebb7b76eca82342642c78645109e865614533827 packages/opencode/src/tool/registry.ts + packages/web/src/content/docs/permissions.mdx; Claude Code anthropics/claude-code@7974a70773fa229e4cc65aa1b356cc21f5c216c4 official tools/permissions docs; Antigravity google-antigravity/antigravity-cli@7bb195acaec9e7788df5210d0dc3e15f3cefc6b3 README.md + CHANGELOG.md + official permissions docs.
@@ -916,7 +910,7 @@ RESULT: NOT_STARTED
 INTENT_ID: LBE-INTENT-INTERACTIVE-PROVIDER-CATALOG-PROJECTION-001
 STATUS: AUTHORIZED
 REQUEST: Preserve live provider and model catalog projections across asynchronous session/runtime snapshot updates in the canonical Rust TUI.
-WHY: A real attached-provider PTY run on 2026-09-22 showed provider discovery completing with 11 providers while the provider picker rendered “No provider catalog projected.” This is a live UI data-loss defect, not a source-only concern.
+WHY: A real attached-provider PTY run on 2026-09-22 showed provider discovery completing with 11 providers while the provider picker rendered ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“No provider catalog projected.ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â This is a live UI data-loss defect, not a source-only concern.
 EXISTING_OWNER: LBE runtime provider/model catalog and authoritative session snapshot; Rust/Ratatui app reducer and provider picker.
 DESIRED_RESULT: Provider/model discovery survives later authoritative session snapshot events, and the interactive picker displays and selects live catalog rows without fabricating provider state.
 NON_GOALS: No new provider authority, second catalog, credentials copied from Cline, provider configuration/removal, or change to session/runtime ownership.

@@ -111,14 +111,14 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
     &[
         ("/status", "runtime, session, provider, engine and context"),
         ("/provider", "refresh and inspect providers"),
+        ("/provider-config", "configure a named provider profile"),
+        ("/provider-remove", "remove a named provider profile"),
         ("/models", "choose a model"),
         ("/sessions", "list and resume sessions"),
         ("/history", "show persisted session history"),
         ("/agents", "show delegated child-agent runs"),
-        (
-            "/extensions",
-            "refresh MCP, skills, plugins, hooks and connectors",
-        ),
+        ("/agent-cancel", "cancel a delegated child-agent run"),
+        ("/extensions", "refresh MCP, skills, plugins, hooks and connectors"),
         ("/mcp", "refresh extension registry (MCP alias)"),
         ("/tools", "inspect the last governed tool projection"),
         ("/processes", "inspect process activity"),
@@ -126,10 +126,8 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
         ("/evidence", "show evidence references"),
         ("/receipts", "show governed ToolReceipts"),
         ("/changes", "show workspace changes and diff state"),
-        ("/undo", "inspect/restore the latest checkpoint"),
-        ("/compact", "compact model context"),
-        ("/memory", "recall recent session memory"),
-        ("/browser", "inspect browser-agent connection"),
+        ("/checkpoints", "inspect the latest persisted checkpoint"),
+        ("/memory", "recall validated session memory"),
         ("/tree", "browse the authoritative workspace"),
         ("/find", "search the authoritative workspace"),
         ("/doctor", "run diagnostics"),
@@ -379,7 +377,14 @@ impl App {
                 self.compare_checkpoint(wrapper)
             }
             KeyCode::Char('r') if self.panel == Some(MockPanel::Undo) => {
-                self.restore_checkpoint(wrapper)
+                if self.snapshot.connection == RuntimeConnection::Connected {
+                    self.transcript.push(
+                        "CHECKPOINT  restore is not exposed until the LBE restore owner is wired"
+                            .to_owned(),
+                    );
+                } else {
+                    self.restore_checkpoint(wrapper);
+                }
             }
             KeyCode::Up if self.panel == Some(MockPanel::Model) => self.move_model_picker(-1),
             KeyCode::Down if self.panel == Some(MockPanel::Model) => self.move_model_picker(1),
@@ -765,24 +770,44 @@ impl App {
                 Some(MockPanel::Provider)
             }
             "/provider-config" => {
-                let provider_id = match argument.to_ascii_lowercase().as_str() {
+                let args = argument.split_whitespace().collect::<Vec<_>>();
+                let provider_id = args.get(1).and_then(|value| match value.to_ascii_lowercase().as_str() {
                     "gemini" | "google" => Some(ProviderId::Gemini),
                     "openai" => Some(ProviderId::OpenAi),
+                    "openai-native" => Some(ProviderId::OpenAiNative),
                     "anthropic" => Some(ProviderId::Anthropic),
+                    "bedrock" => Some(ProviderId::Bedrock),
+                    "vertex" => Some(ProviderId::Vertex),
+                    "mistral" => Some(ProviderId::Mistral),
+                    "openai-compatible" => Some(ProviderId::OpenAiCompatible),
+                    "lmstudio" | "lm-studio" => Some(ProviderId::LmStudio),
+                    "ollama" => Some(ProviderId::Ollama),
+                    "openrouter" => Some(ProviderId::OpenRouter),
+                    "opencode" => Some(ProviderId::OpenCode),
                     _ => None,
-                };
-                if let Some(provider_id) = provider_id {
-                    self.apply_wrapper_result(wrapper.submit(
-                        UserRequest::ConfigureProvider {
-                            provider_id,
-                            base_url: None,
-                            credential_ref: Some("opaque-ref".to_owned()),
-                        },
-                        Instant::now(),
-                    ));
+                });
+                if args.len() >= 4 {
+                    if let Some(provider_id) = provider_id {
+                        self.apply_wrapper_result(wrapper.submit(
+                            UserRequest::ConfigureProvider {
+                                profile_name: args[0].to_owned(),
+                                provider_id,
+                                model: args[2].to_owned(),
+                                endpoint: args[3].to_owned(),
+                                timeout_seconds: 30.0,
+                                credential_ref: args.get(4).map(|value| (*value).to_owned()),
+                                activate: true,
+                            },
+                            Instant::now(),
+                        ));
+                    } else {
+                        self.transcript.push(
+                            "SYSTEM  provider-config has an unsupported provider id".to_owned(),
+                        );
+                    }
                 } else {
                     self.transcript.push(
-                        "SYSTEM  usage: /provider-config <gemini|openai|anthropic>".to_owned(),
+                        "SYSTEM  usage: /provider-config <profile> <provider> <model> <endpoint> [credential-id]".to_owned(),
                     );
                 }
                 Some(MockPanel::Provider)
@@ -807,20 +832,16 @@ impl App {
                 Some(MockPanel::Provider)
             }
             "/provider-remove" => {
-                let provider_id = match argument.to_ascii_lowercase().as_str() {
-                    "gemini" | "google" => Some(ProviderId::Gemini),
-                    "openai" => Some(ProviderId::OpenAi),
-                    "anthropic" => Some(ProviderId::Anthropic),
-                    _ => None,
-                };
-                if let Some(provider_id) = provider_id {
-                    self.apply_wrapper_result(
-                        wrapper.submit(UserRequest::RemoveProvider { provider_id }, Instant::now()),
-                    );
+                if argument.is_empty() {
+                    self.transcript
+                        .push("SYSTEM  usage: /provider-remove <profile-name>".to_owned());
                 } else {
-                    self.transcript.push(
-                        "SYSTEM  usage: /provider-remove <gemini|openai|anthropic>".to_owned(),
-                    );
+                    self.apply_wrapper_result(wrapper.submit(
+                        UserRequest::RemoveProvider {
+                            profile_name: argument.to_owned(),
+                        },
+                        Instant::now(),
+                    ));
                 }
                 Some(MockPanel::Provider)
             }
@@ -864,6 +885,26 @@ impl App {
                 }
                 Some(MockPanel::Agents)
             }
+            "/agent-cancel" => {
+                if argument.is_empty() {
+                    self.transcript.push(
+                        "SYSTEM  usage: /agent-cancel <child-agent-run-id>".to_owned(),
+                    );
+                } else if let Some(turn_id) = self.snapshot.turn_id.clone() {
+                    self.apply_wrapper_result(wrapper.submit(
+                        UserRequest::CancelChildAgent {
+                            turn_id,
+                            child_agent_run_id: argument.to_owned(),
+                        },
+                        Instant::now(),
+                    ));
+                } else {
+                    self.transcript.push(
+                        "SYSTEM  delegated-run cancellation requires an active turn.".to_owned(),
+                    );
+                }
+                Some(MockPanel::Agents)
+            }
             "/history" => Some(MockPanel::History),
             "/session" => Some(MockPanel::Session),
             "/sessions" => {
@@ -890,6 +931,11 @@ impl App {
                 if argument.is_empty() {
                     self.transcript
                         .push("SYSTEM  /close requires a session ID.".to_owned());
+                } else if self.snapshot.connection == RuntimeConnection::Connected {
+                    self.transcript.push(
+                        "SESSION  close is not exposed until the canonical session lifecycle owner supports it"
+                            .to_owned(),
+                    );
                 } else {
                     self.apply_wrapper_result(wrapper.submit(
                         UserRequest::CloseSession {
@@ -1080,7 +1126,12 @@ impl App {
                 None
             }
             "/undo" => Some(MockPanel::Undo),
-            "/checkpoints" => Some(MockPanel::Undo),
+            "/checkpoints" => {
+                self.apply_wrapper_result(
+                    wrapper.submit(UserRequest::RefreshCheckpoint, Instant::now()),
+                );
+                Some(MockPanel::Undo)
+            },
             "/diff" | "/changes" => Some(MockPanel::Changes),
             "/mode" => {
                 self.transcript
@@ -1522,12 +1573,28 @@ impl App {
             LbeEvent::CheckpointComparisonReady {
                 checkpoint_id,
                 changed_files,
+                revalidation_status,
+                reasons,
             } => {
                 self.checkpoint_changed_files = changed_files.clone();
-                self.transcript.push(format!(
-                    "CHECKPOINT  comparison ready ? {checkpoint_id} ? {} file(s)",
-                    changed_files.len()
-                ));
+                if let Some(status) = revalidation_status {
+                    self.checkpoint_restore_status = Some(format!(
+                        "REVALIDATION {status}{}",
+                        if reasons.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" · {}", reasons.join(", "))
+                        }
+                    ));
+                    self.transcript.push(format!(
+                        "CHECKPOINT  revalidation · {checkpoint_id} · {status}"
+                    ));
+                } else {
+                    self.transcript.push(format!(
+                        "CHECKPOINT  comparison ready · {checkpoint_id} · {} file(s)",
+                        changed_files.len()
+                    ));
+                }
             }
             LbeEvent::CheckpointRestoreRequested { checkpoint_id } => {
                 self.checkpoint_restore_status = Some("RESTORE REQUESTED".to_owned());

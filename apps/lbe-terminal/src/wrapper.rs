@@ -10,7 +10,7 @@ use std::{
 
 use crate::{
     events::{LbeEvent, ToolRisk, ValidationStatus},
-    memory::mock_memory_records,
+    memory::{mock_memory_records, MemoryRecord, MemoryRecordType, MemoryTruth},
     requests::{LbeError, UserRequest},
     types::*,
 };
@@ -944,7 +944,7 @@ impl LbeWrapper for MockLbeWrapper {
                     text: format!("Mock plan: investigate {intent}; no execution."),
                 }),
                 AgentMode::Audit => self.emit(LbeEvent::AuditVerdict {
-                    verdict: "INSUFFICIENT_EVIDENCE · mock runtime not connected to LBE guards."
+                    verdict: "INSUFFICIENT_EVIDENCE Ã‚Â· mock runtime not connected to LBE guards."
                         .to_owned(),
                 }),
             },
@@ -1051,6 +1051,29 @@ impl LbeWrapper for MockLbeWrapper {
                     runs: self.snapshot.child_agents.clone(),
                 });
             }
+            UserRequest::CancelChildAgent {
+                child_agent_run_id, ..
+            } => {
+                let run = self
+                    .snapshot
+                    .child_agents
+                    .iter_mut()
+                    .find(|run| run.child_agent_run_id == child_agent_run_id)
+                    .ok_or_else(|| {
+                        LbeError::new(format!(
+                            "delegated child-agent run is not known: {child_agent_run_id}"
+                        ))
+                    })?;
+                if run.status.is_terminal() {
+                    return Err(LbeError::new(format!(
+                        "delegated child-agent run is already terminal: {child_agent_run_id}"
+                    )));
+                }
+                run.status = ChildAgentStatus::Cancelled;
+                self.emit(LbeEvent::ChildAgentRunsUpdated {
+                    runs: self.snapshot.child_agents.clone(),
+                });
+            }
             UserRequest::RefreshMcpRegistry => {
                 self.emit(LbeEvent::McpRegistryUpdated {
                     schema_version: 1,
@@ -1128,15 +1151,22 @@ impl LbeWrapper for MockLbeWrapper {
                 });
             }
             UserRequest::ConfigureProvider {
+                profile_name,
                 provider_id,
-                base_url,
+                model,
+                endpoint,
+                timeout_seconds,
                 credential_ref,
+                activate: _,
             } => {
-                if base_url.as_deref().is_some_and(str::is_empty)
-                    || credential_ref.as_deref().is_some_and(str::is_empty)
+                if profile_name.trim().is_empty()
+                    || model.trim().is_empty()
+                    || endpoint.trim().is_empty()
+                    || timeout_seconds <= 0.0
+                    || credential_ref.as_deref().is_some_and(|value| value.trim().is_empty())
                 {
                     return Err(LbeError::new(
-                        "provider configuration values must not be blank",
+                        "provider profile values must not be blank and timeout must be positive",
                     ));
                 }
                 let provider = self
@@ -1186,29 +1216,9 @@ impl LbeWrapper for MockLbeWrapper {
                     providers: self.snapshot.providers.clone(),
                 });
             }
-            UserRequest::RemoveProvider { provider_id } => {
-                let index = self
-                    .snapshot
-                    .providers
-                    .iter()
-                    .position(|provider| provider.provider_id == provider_id)
-                    .ok_or_else(|| {
-                        LbeError::new(format!(
-                            "provider {} is not in the mock catalog",
-                            provider_id.label()
-                        ))
-                    })?;
-                self.snapshot.providers.remove(index);
-                self.snapshot
-                    .models
-                    .retain(|model| model.provider_id != provider_id);
-                if self
-                    .snapshot
-                    .selected_model
-                    .as_ref()
-                    .is_some_and(|model| model.provider_id == provider_id)
-                {
-                    self.snapshot.selected_model = None;
+            UserRequest::RemoveProvider { profile_name } => {
+                if profile_name.trim().is_empty() {
+                    return Err(LbeError::new("provider profile name must not be blank"));
                 }
                 self.emit(LbeEvent::ProviderCatalogDiscovered {
                     providers: self.snapshot.providers.clone(),
@@ -1218,20 +1228,13 @@ impl LbeWrapper for MockLbeWrapper {
                 });
             }
             UserRequest::CompactContext => {
-                if !self.snapshot.compaction_available {
-                    self.emit(LbeEvent::ContextCompactionFailed {
-                        message: "Context compaction unavailable in mock runtime.".to_owned(),
-                    });
-                } else {
-                    self.snapshot.compaction_state = CompactionState::Suggested;
-                    self.emit(LbeEvent::ContextCompactionSuggested);
-                    self.snapshot.compaction_state = CompactionState::Running;
-                    self.emit(LbeEvent::ContextCompactionStarted);
-                    self.snapshot.context_used = 1;
-                    self.snapshot.compaction_state = CompactionState::Completed;
-                    self.emit(LbeEvent::ContextCompactionCompleted { context_used: 1 });
-                    self.emit_snapshot();
-                }
+                // The mock runtime has no canonical compaction payload. It must not
+                // fabricate one: the product contract is that compaction stays hidden
+                // until a real payload exists, and this double now enforces it.
+                self.emit(LbeEvent::ContextCompactionFailed {
+                    message: "compaction is not exposed until a canonical compaction payload is available"
+                        .to_owned(),
+                });
             }
             UserRequest::RunDiagnostics => {
                 self.emit(LbeEvent::DiagnosticsUpdated {
@@ -1403,6 +1406,11 @@ impl LbeWrapper for MockLbeWrapper {
                 self.snapshot.selected_model = Some(model);
                 self.emit_snapshot();
             }
+            UserRequest::RefreshCheckpoint => {
+                if let Some(checkpoint) = self.snapshot.latest_checkpoint.clone() {
+                    self.emit(LbeEvent::CheckpointCreated { checkpoint });
+                }
+            }
             UserRequest::CompareCheckpoint { checkpoint_id } => {
                 let Some(checkpoint) = self.snapshot.latest_checkpoint.as_ref() else {
                     return Err(LbeError::new("no checkpoint is available to compare"));
@@ -1415,6 +1423,8 @@ impl LbeWrapper for MockLbeWrapper {
                 self.emit(LbeEvent::CheckpointComparisonReady {
                     checkpoint_id,
                     changed_files: checkpoint.changed_files.clone(),
+                    revalidation_status: None,
+                    reasons: Vec::new(),
                 });
             }
             UserRequest::RestoreCheckpoint { checkpoint_id } => {
@@ -1970,7 +1980,7 @@ impl RealLbeWrapper {
     /// The wrapper never leaves RealLbeWrapper Connected if either projection
     /// fails after the other succeeds.
     pub(crate) fn attach(&mut self) -> Result<(), LbeError> {
-        // Step 1 — validate LBE_WALL_ROOT
+        // Step 1 Ã¢â‚¬â€ validate LBE_WALL_ROOT
         let wall_root = match self.wall_root.clone() {
             Some(value) if !value.as_os_str().is_empty() => value,
             None => {
@@ -1990,7 +2000,7 @@ impl RealLbeWrapper {
             }
         };
 
-        // Step 2 — validate LBE_TARGET_WORKSPACE
+        // Step 2 Ã¢â‚¬â€ validate LBE_TARGET_WORKSPACE
         let target = match self.target_workspace.clone() {
             Some(value) if !value.as_os_str().is_empty() => value,
             None => {
@@ -2010,12 +2020,12 @@ impl RealLbeWrapper {
             }
         };
 
-        // Step 3 — resolve python interpreter (LBE_WALL_PYTHON else "python")
+        // Step 3 Ã¢â‚¬â€ resolve python interpreter (LBE_WALL_PYTHON else "python")
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
 
-        // Step 4 — export project_truth
+        // Step 4 Ã¢â‚¬â€ export project_truth
         let output = match configured_lbe_command(&python, &wall_root)
             .current_dir(&wall_root)
             .args([
@@ -2056,7 +2066,7 @@ impl RealLbeWrapper {
             return Err(LbeError::new("project_truth stdout was empty"));
         }
 
-        // Step 5 — decode and validate project_truth
+        // Step 5 Ã¢â‚¬â€ decode and validate project_truth
         let project_truth: ProjectTruthProjection = match serde_json::from_str(&stdout) {
             Ok(value) => value,
             Err(error) => {
@@ -2071,11 +2081,11 @@ impl RealLbeWrapper {
             return Err(error);
         }
 
-        // Step 6 — retain the project_truth workspace root. The persisted
+        // Step 6 Ã¢â‚¬â€ retain the project_truth workspace root. The persisted
         // session_context remains authoritative for the session workspace ID.
         let canonical_workspace_root = normalize_workspace_path(&project_truth.data.workspace_root);
 
-        // Step 7 — require LBE_WALL_DATABASE
+        // Step 7 Ã¢â‚¬â€ require LBE_WALL_DATABASE
         let database = match self.wall_database.clone() {
             Some(value) if !value.as_os_str().is_empty() => value,
             None => {
@@ -2088,7 +2098,7 @@ impl RealLbeWrapper {
             }
         };
 
-        // Step 8 — require LBE_SESSION_ID
+        // Step 8 Ã¢â‚¬â€ require LBE_SESSION_ID
         let session_id = match self.session_id.clone() {
             Some(value) if !value.trim().is_empty() => value,
             None => {
@@ -2100,7 +2110,7 @@ impl RealLbeWrapper {
                 return Err(LbeError::new("LBE_SESSION_ID is empty"));
             }
         };
-        // Step 9 — export session_context using the authoritative workspace_id
+        // Step 9 Ã¢â‚¬â€ export session_context using the authoritative workspace_id
         let sc_output = match configured_lbe_command(&python, &wall_root)
             .current_dir(&wall_root)
             .args([
@@ -2142,7 +2152,7 @@ impl RealLbeWrapper {
             return Err(LbeError::new("session_context stdout was empty"));
         }
 
-        // Step 10 — decode session_context
+        // Step 10 Ã¢â‚¬â€ decode session_context
         let session_context: SessionContextProjection = match serde_json::from_str(&sc_stdout) {
             Ok(value) => value,
             Err(error) => {
@@ -2182,7 +2192,7 @@ impl RealLbeWrapper {
         let mut validation = None;
 
         if let Some(task_id) = task_id.as_deref() {
-            // Step 11 — export provenance using authoritative identities
+            // Step 11 Ã¢â‚¬â€ export provenance using authoritative identities
             let mut provenance_command = configured_lbe_command(&python, &wall_root);
             provenance_command
                 .current_dir(&wall_root)
@@ -2241,7 +2251,7 @@ impl RealLbeWrapper {
                 return Err(error);
             }
 
-            // Step 12 — export validation using only authoritative identities
+            // Step 12 Ã¢â‚¬â€ export validation using only authoritative identities
             let validation_output = match configured_lbe_command(&python, &wall_root)
                 .current_dir(&wall_root)
                 .args([
@@ -2305,7 +2315,7 @@ impl RealLbeWrapper {
             validation = Some(parsed_validation);
         }
 
-        // Step 13 — apply snapshot fields; all required projections passed
+        // Step 13 Ã¢â‚¬â€ apply snapshot fields; all required projections passed
         self.snapshot.project_truth = Some(project_truth);
         self.snapshot.session_context = Some(session_context.clone());
         // The checkpoint projection is opaque owner data, but its stable
@@ -2379,7 +2389,7 @@ impl RealLbeWrapper {
         self.snapshot.connection = RuntimeConnection::Connected;
         self.connection = RuntimeConnection::Connected;
 
-        // Step 13 — emit attachment and snapshot events
+        // Step 13 Ã¢â‚¬â€ emit attachment and snapshot events
         self.pending_events
             .push_back(LbeEvent::RuntimeAttachmentUpdated {
                 connection: RuntimeConnection::Connected,
@@ -2883,6 +2893,8 @@ impl RealLbeWrapper {
             configured_provider,
             configured_provider_is_local,
         );
+
+        // Discovery must not execute model inference. A provider health check
         self.snapshot.providers = providers.clone();
         self.snapshot.models = models.clone();
         self.pending_events
@@ -2961,6 +2973,527 @@ impl RealLbeWrapper {
         Ok(())
     }
 
+    fn cancel_child_agent(
+        &mut self,
+        turn_id: &str,
+        child_agent_run_id: &str,
+    ) -> Result<(), LbeError> {
+        self.require_connected()?;
+        if turn_id.trim().is_empty() {
+            return Err(LbeError::new("delegated-run cancellation requires a turn_id"));
+        }
+        if child_agent_run_id.trim().is_empty() {
+            return Err(LbeError::new(
+                "delegated-run cancellation requires a child_agent_run_id",
+            ));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .wall_database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .or_else(|| self.session_id.clone())
+            .ok_or_else(|| LbeError::new("LBE session is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "child-agent",
+                "cancel",
+                "--database",
+            ])
+            .arg(database)
+            .args([
+                "--session-id",
+                &session_id,
+                "--turn-id",
+                turn_id,
+                "--child-agent-run-id",
+                child_agent_run_id,
+                "--format",
+                "json",
+            ])
+            .output()
+            .map_err(|error| {
+                LbeError::new(format!("delegated-run cancellation failed: {error}"))
+            })?;
+        let payload = parse_workspace_payload(&output.stdout, "child-agent.cancel")?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("delegated-run cancellation was rejected by LBE");
+            return Err(LbeError::new(message));
+        }
+        let updated: ChildAgentRun = serde_json::from_value(
+            payload
+                .get("child_agent")
+                .cloned()
+                .ok_or_else(|| LbeError::new("child-agent.cancel omitted child_agent"))?,
+        )
+        .map_err(|error| LbeError::new(format!("invalid delegated-run projection: {error}")))?;
+        if let Some(existing) = self
+            .snapshot
+            .child_agents
+            .iter_mut()
+            .find(|run| run.child_agent_run_id == updated.child_agent_run_id)
+        {
+            *existing = updated;
+        } else {
+            self.snapshot.child_agents.push(updated);
+        }
+        self.pending_events
+            .push_back(LbeEvent::ChildAgentRunsUpdated {
+                runs: self.snapshot.child_agents.clone(),
+            });
+        Ok(())
+    }
+
+    fn refresh_real_checkpoint(&mut self) -> Result<(), LbeError> {
+        self.require_connected()?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .ok_or_else(|| LbeError::new("no authoritative LBE session is attached"))?;
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .wall_database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "checkpoint",
+                "latest",
+                "--database",
+            ])
+            .arg(database)
+            .args(["--session-id", &session_id])
+            .output()
+            .map_err(|error| LbeError::new(format!("checkpoint refresh failed: {error}")))?;
+
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid checkpoint.latest JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("checkpoint refresh failed");
+            return Err(LbeError::new(message));
+        }
+        if payload.get("action").and_then(serde_json::Value::as_str) != Some("checkpoint.latest") {
+            return Err(LbeError::new("checkpoint refresh returned unexpected action"));
+        }
+        if payload.get("session_id").and_then(serde_json::Value::as_str) != Some(session_id.as_str()) {
+            return Err(LbeError::new("checkpoint refresh session identity mismatch"));
+        }
+
+        let Some(checkpoint) = payload.get("checkpoint") else {
+            self.snapshot.latest_checkpoint = None;
+            return Ok(());
+        };
+        if checkpoint.is_null() {
+            self.snapshot.latest_checkpoint = None;
+            return Ok(());
+        }
+        let checkpoint_id = checkpoint
+            .get("checkpoint_id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| LbeError::new("checkpoint projection omitted checkpoint_id"))?
+            .to_owned();
+        let created_at = checkpoint
+            .get("created_at")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| LbeError::new("checkpoint projection omitted created_at"))?
+            .to_owned();
+        let workspace_revision = checkpoint
+            .get("head")
+            .and_then(serde_json::Value::as_str)
+            .filter(|value| !value.is_empty())
+            .or_else(|| checkpoint.get("branch").and_then(serde_json::Value::as_str))
+            .unwrap_or("unknown")
+            .to_owned();
+
+        let descriptor = CheckpointDescriptor {
+            checkpoint_id,
+            created_at,
+            workspace_revision,
+            changed_files: Vec::new(),
+        };
+        self.snapshot.latest_checkpoint = Some(descriptor.clone());
+        self.pending_events
+            .push_back(LbeEvent::CheckpointCreated { checkpoint: descriptor });
+        Ok(())
+    }
+
+    fn compare_real_checkpoint(&mut self, checkpoint_id: &str) -> Result<(), LbeError> {
+        self.require_connected()?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .ok_or_else(|| LbeError::new("no authoritative LBE session is attached"))?;
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .wall_database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "checkpoint",
+                "compare",
+                "--database",
+            ])
+            .arg(database)
+            .args([
+                "--session-id",
+                &session_id,
+                "--checkpoint-id",
+                checkpoint_id,
+            ])
+            .output()
+            .map_err(|error| LbeError::new(format!("checkpoint comparison failed: {error}")))?;
+
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid checkpoint.compare JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("checkpoint comparison failed");
+            return Err(LbeError::new(message));
+        }
+        if payload.get("action").and_then(serde_json::Value::as_str) != Some("checkpoint.compare") {
+            return Err(LbeError::new("checkpoint comparison returned unexpected action"));
+        }
+        if payload.get("checkpoint_id").and_then(serde_json::Value::as_str) != Some(checkpoint_id) {
+            return Err(LbeError::new("checkpoint comparison identity mismatch"));
+        }
+        let revalidation = payload
+            .get("revalidation")
+            .and_then(serde_json::Value::as_object)
+            .ok_or_else(|| LbeError::new("checkpoint comparison omitted revalidation"))?;
+        let status = revalidation
+            .get("status")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| LbeError::new("checkpoint comparison omitted status"))?
+            .to_owned();
+        let reasons = revalidation
+            .get("reasons")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| LbeError::new("checkpoint comparison omitted reasons"))?
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .map(ToOwned::to_owned)
+                    .ok_or_else(|| LbeError::new("checkpoint comparison reason was not text"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        self.pending_events
+            .push_back(LbeEvent::CheckpointComparisonReady {
+                checkpoint_id: checkpoint_id.to_owned(),
+                changed_files: Vec::new(),
+                revalidation_status: Some(status),
+                reasons,
+            });
+        Ok(())
+    }
+
+    fn recall_real_session_memory(&mut self, query: &str, limit: usize) -> Result<(), LbeError> {
+        self.require_connected()?;
+        let session_id = self
+            .snapshot
+            .session_id
+            .clone()
+            .ok_or_else(|| LbeError::new("no authoritative LBE session is attached"))?;
+        if limit < 1 {
+            return Err(LbeError::new("memory recall limit must be positive"));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let database = self
+            .wall_database
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_DATABASE is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+
+        self.pending_events
+            .push_back(LbeEvent::MemoryRecallStarted { query: query.to_owned() });
+
+        let limit_arg = limit.to_string();
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "memory",
+                "recall",
+                "--database",
+            ])
+            .arg(database)
+            .args([
+                "--session-id",
+                &session_id,
+                "--query",
+                query,
+                "--limit",
+                &limit_arg,
+            ])
+            .output()
+            .map_err(|error| LbeError::new(format!("memory recall failed: {error}")))?;
+
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid memory.recall JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("memory recall failed");
+            return Err(LbeError::new(message));
+        }
+        if payload.get("action").and_then(serde_json::Value::as_str) != Some("memory.recall") {
+            return Err(LbeError::new("memory recall returned unexpected action"));
+        }
+        if payload.get("session_id").and_then(serde_json::Value::as_str) != Some(session_id.as_str()) {
+            return Err(LbeError::new("memory recall session identity mismatch"));
+        }
+
+        let raw_records = payload
+            .get("records")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| LbeError::new("memory recall omitted records"))?;
+        let mut records = Vec::with_capacity(raw_records.len());
+        for raw in raw_records {
+            let memory_id = raw
+                .get("memory_id")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| LbeError::new("memory record omitted memory_id"))?
+                .to_owned();
+            let memory_type = raw
+                .get("memory_type")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| LbeError::new("memory record omitted memory_type"))?;
+            let record_type = match memory_type {
+                "workspace_fact" => MemoryRecordType::WorkspaceFact,
+                "task_constraint" => MemoryRecordType::TaskConstraint,
+                "decision" => MemoryRecordType::AgentDecision,
+                "failure_pattern" => MemoryRecordType::FailurePattern,
+                "validation_result" => MemoryRecordType::ValidationResult,
+                "checkpoint" => MemoryRecordType::Checkpoint,
+                "user_preference" => MemoryRecordType::UserPreference,
+                "historical_observation" => MemoryRecordType::HistoricalObservation,
+                other => return Err(LbeError::new(format!("unsupported memory_type: {other}"))),
+            };
+            let truth = match raw
+                .get("validation_status")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| LbeError::new("memory record omitted validation_status"))?
+            {
+                "verified" => MemoryTruth::Verified,
+                "unverified" => MemoryTruth::Unverified,
+                "stale" => MemoryTruth::Stale,
+                "contradicted" => MemoryTruth::Contradicted,
+                "superseded" => MemoryTruth::Superseded,
+                other => return Err(LbeError::new(format!("unsupported memory validation status: {other}"))),
+            };
+            let subject = raw
+                .get("subject")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("");
+            let predicate = raw
+                .get("predicate")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("");
+            let value = raw.get("value").cloned().unwrap_or(serde_json::Value::Null);
+            let summary = format!("{subject} Ã‚Â· {predicate} Ã‚Â· {value}");
+            let created_at = raw
+                .get("created_at")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("")
+                .to_owned();
+            let content_hash = raw
+                .get("source_hash")
+                .and_then(serde_json::Value::as_str)
+                .map(ToOwned::to_owned);
+
+            records.push(MemoryRecord {
+                memory_id,
+                session_id: session_id.clone(),
+                session_hash: None,
+                turn_id: None,
+                record_type,
+                summary,
+                content_hash,
+                evidence_refs: Vec::new(),
+                receipt_refs: Vec::new(),
+                created_at,
+                truth,
+            });
+        }
+
+        self.snapshot.memory.last_recall_query = Some(query.to_owned());
+        self.snapshot.memory.indexed_sessions = self.snapshot.memory.indexed_sessions.max(1);
+        self.snapshot.memory.indexed_memories = records.len();
+        self.snapshot.memory.recent_records = records.clone();
+        if records.is_empty() {
+            self.pending_events
+                .push_back(LbeEvent::MemoryRecallEmpty { query: query.to_owned() });
+        } else {
+            self.pending_events
+                .push_back(LbeEvent::MemoryRecallResult {
+                    query: query.to_owned(),
+                    records,
+                });
+        }
+        Ok(())
+    }
+
+    fn configure_real_provider(
+        &mut self,
+        profile_name: &str,
+        provider_id: ProviderId,
+        model: &str,
+        endpoint: &str,
+        timeout_seconds: f64,
+        credential_ref: Option<&str>,
+        activate: bool,
+    ) -> Result<(), LbeError> {
+        self.require_connected()?;
+        if profile_name.trim().is_empty() || model.trim().is_empty() || endpoint.trim().is_empty() {
+            return Err(LbeError::new("provider profile name, model, and endpoint are required"));
+        }
+        if timeout_seconds <= 0.0 {
+            return Err(LbeError::new("provider timeout must be positive"));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+        let timeout_seconds_arg = timeout_seconds.to_string();
+        let mut command = configured_lbe_command(&python, &wall_root);
+        command.current_dir(&wall_root).args([
+            "-m",
+            "lbe_guard_inspector.product_entry",
+            "--format",
+            "json",
+            "provider",
+            "add",
+            "--name",
+            profile_name,
+            "--provider",
+            provider_id.cli_name(),
+            "--model",
+            model,
+            "--endpoint",
+            endpoint,
+            "--timeout-seconds",
+            &timeout_seconds_arg,
+        ]);
+        if let Some(credential_ref) = credential_ref {
+            command.args(["--credential-id", credential_ref]);
+        }
+        if activate {
+            command.arg("--use");
+        }
+        let output = command
+            .output()
+            .map_err(|error| LbeError::new(format!("provider profile configuration failed: {error}")))?;
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid provider.add JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("provider profile configuration failed");
+            return Err(LbeError::new(message));
+        }
+        self.refresh_provider_catalog()
+    }
+
+    fn remove_real_provider_profile(&mut self, profile_name: &str) -> Result<(), LbeError> {
+        self.require_connected()?;
+        if profile_name.trim().is_empty() {
+            return Err(LbeError::new("provider profile name must not be blank"));
+        }
+        let wall_root = self
+            .wall_root
+            .clone()
+            .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
+        let python = std::env::var_os("LBE_WALL_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("python"));
+        let output = configured_lbe_command(&python, &wall_root)
+            .current_dir(&wall_root)
+            .args([
+                "-m",
+                "lbe_guard_inspector.product_entry",
+                "--format",
+                "json",
+                "provider",
+                "remove",
+                "--name",
+                profile_name,
+            ])
+            .output()
+            .map_err(|error| LbeError::new(format!("provider profile removal failed: {error}")))?;
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| LbeError::new(format!("invalid provider.remove JSON: {error}")))?;
+        if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
+            let message = payload
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("provider profile removal failed");
+            return Err(LbeError::new(message));
+        }
+        self.refresh_provider_catalog()
+    }
+
     fn validate_real_provider(&mut self, provider_id: ProviderId) -> Result<(), LbeError> {
         self.require_connected()?;
         if !self
@@ -2978,10 +3511,6 @@ impl RealLbeWrapper {
             .wall_root
             .clone()
             .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
-        let provider_config = self
-            .provider_config
-            .clone()
-            .ok_or_else(|| LbeError::new("LBE_PROVIDER_CONFIG is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
@@ -2999,9 +3528,10 @@ impl RealLbeWrapper {
                 "check",
                 "--provider",
                 provider_id.cli_name(),
-                "--provider-config",
-            ])
-            .arg(provider_config);
+            ]);
+        if let Some(provider_config) = self.provider_config.as_ref() {
+            command.arg("--provider-config").arg(provider_config);
+        }
         if let Some(engine_id) = self
             .snapshot
             .session_context
@@ -3375,14 +3905,11 @@ impl RealLbeWrapper {
             .clone()
             .or_else(|| self.snapshot.session_id.clone())
             .ok_or_else(|| LbeError::new("LBE_SESSION_ID is not configured"))?;
-        let provider_config = self
-            .provider_config
-            .clone()
-            .ok_or_else(|| LbeError::new("LBE_PROVIDER_CONFIG is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("python"));
-        let output = configured_lbe_command(&python, &wall_root)
+        let mut command = configured_lbe_command(&python, &wall_root);
+        command
             .current_dir(&wall_root)
             .args([
                 "-m",
@@ -3391,15 +3918,12 @@ impl RealLbeWrapper {
                 "--database",
             ])
             .arg(database)
-            .args([
-                "--session-id",
-                &session_id,
-                "--text",
-                intent,
-                "--provider-config",
-            ])
-            .arg(provider_config)
-            .args(["--format", "json"])
+            .args(["--session-id", &session_id, "--text", intent]);
+        if let Some(provider_config) = self.provider_config.as_ref() {
+            command.arg("--provider-config").arg(provider_config);
+        }
+        command.args(["--format", "json"]);
+        let output = command
             .output()
             .map_err(|error| LbeError::new(format!("turn bridge launch failed: {error}")))?;
         let payload = parse_workspace_payload(&output.stdout, "turn")?;
@@ -5078,18 +5602,38 @@ impl LbeWrapper for RealLbeWrapper {
             UserRequest::ListSessions => self.list_real_sessions(),
             UserRequest::ResumeSession { session_id } => self.resume_real_session(session_id),
             UserRequest::CloseSession { .. } => self.unsupported_real_request("session closing"),
-            UserRequest::ConfigureProvider { .. } => {
-                self.unsupported_real_request("provider configuration")
-            }
+            UserRequest::ConfigureProvider {
+                profile_name,
+                provider_id,
+                model,
+                endpoint,
+                timeout_seconds,
+                credential_ref,
+                activate,
+            } => self.configure_real_provider(
+                &profile_name,
+                provider_id,
+                &model,
+                &endpoint,
+                timeout_seconds,
+                credential_ref.as_deref(),
+                activate,
+            ),
             UserRequest::ValidateProvider { provider_id } => {
                 self.validate_real_provider(provider_id)
             }
-            UserRequest::RemoveProvider { .. } => self.unsupported_real_request("provider removal"),
+            UserRequest::RemoveProvider { profile_name } => {
+                self.remove_real_provider_profile(&profile_name)
+            },
             UserRequest::RefreshRuntimeSnapshot => {
                 self.require_connected()?;
                 self.attach()
             }
             UserRequest::RefreshChildAgents { turn_id } => self.refresh_child_agents(&turn_id),
+            UserRequest::CancelChildAgent {
+                turn_id,
+                child_agent_run_id,
+            } => self.cancel_child_agent(&turn_id, &child_agent_run_id),
             UserRequest::RefreshMcpRegistry => {
                 self.require_connected()?;
                 self.refresh_mcp_registry()
@@ -5143,32 +5687,19 @@ impl LbeWrapper for RealLbeWrapper {
                 self.resolve_authorization(&approval_id, "reject")
             }
             UserRequest::SetMode { mode } => self.set_real_mode(mode),
+            UserRequest::RefreshCheckpoint => self.refresh_real_checkpoint(),
             UserRequest::CompareCheckpoint { checkpoint_id } => {
-                self.require_connected()?;
-                let Some(checkpoint) = self.snapshot.latest_checkpoint.as_ref() else {
-                    return Err(LbeError::new(
-                        "no checkpoint is available in the owner projection",
-                    ));
-                };
-                if checkpoint.checkpoint_id != checkpoint_id {
-                    return Err(LbeError::new(
-                        "checkpoint is not available in the owner projection",
-                    ));
-                }
-                self.pending_events
-                    .push_back(LbeEvent::CheckpointComparisonReady {
-                        checkpoint_id,
-                        changed_files: checkpoint.changed_files.clone(),
-                    });
-                Ok(())
+                self.compare_real_checkpoint(&checkpoint_id)
             }
             UserRequest::RestoreCheckpoint { .. } => {
                 self.unsupported_real_request("checkpoint restore")
             }
             UserRequest::CompactContext => self.unsupported_real_request("context compaction"),
             UserRequest::RunDiagnostics => self.run_real_diagnostics(),
-            UserRequest::RecallSessionMemory { .. }
-            | UserRequest::RecallSession { .. }
+            UserRequest::RecallSessionMemory { query, limit } => {
+                self.recall_real_session_memory(&query, limit)
+            }
+            UserRequest::RecallSession { .. }
             | UserRequest::CreateMemoryCheckpoint
             | UserRequest::ForgetSessionMemory { .. } => {
                 self.unsupported_real_request("session memory operations")

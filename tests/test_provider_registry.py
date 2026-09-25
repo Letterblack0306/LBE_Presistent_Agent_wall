@@ -45,6 +45,9 @@ from lbe_guard_inspector.reasoning_runtime import (
     build_provider_controller,
 )
 from lbe_guard_inspector.request_controller import LBERequestController
+from lbe_guard_inspector.runtime.openai_responses_reasoning_backend import (
+    OpenAIResponsesReasoningBackend,
+)
 
 
 class FakeBackend:
@@ -230,20 +233,32 @@ def test_default_registry_exposes_engine_provider_bindings():
 
 
 @pytest.mark.parametrize(
-    ("provider_id", "backend_type"),
+    ("provider_id", "endpoint", "backend_type"),
     [
-        ("openai", ToolAwareOpenAICompatibleReasoningBackend),
-        ("anthropic", AnthropicReasoningBackend),
-        ("gemini", GeminiReasoningBackend),
+        (
+            "openai",
+            "https://api.openai.com/v1/chat/completions",
+            ToolAwareOpenAICompatibleReasoningBackend,
+        ),
+        (
+            "anthropic",
+            "https://api.anthropic.com/v1/messages",
+            AnthropicReasoningBackend,
+        ),
+        (
+            "gemini",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent",
+            GeminiReasoningBackend,
+        ),
     ],
 )
 def test_default_registry_builds_native_lbe_provider_adapters(
-    provider_id, backend_type
+    provider_id, endpoint, backend_type
 ):
     handle = default_provider_registry().build(
         provider_id=provider_id,
         config=ProviderConfig(
-            endpoint="https://provider.invalid/v1/messages",
+            endpoint=endpoint,
             model="model-a",
             timeout_seconds=30,
             api_key="test-key",
@@ -253,6 +268,22 @@ def test_default_registry_builds_native_lbe_provider_adapters(
     assert handle.engine_id == NATIVE_LBE_ENGINE_ID
     assert isinstance(handle.backend, backend_type)
     assert handle.descriptor.provider_id == provider_id
+
+
+def test_openai_responses_uses_responses_reasoning_backend():
+    handle = default_provider_registry().build(
+        provider_id="openai",
+        config=ProviderConfig(
+            endpoint="https://api.openai.com/v1/responses",
+            model="model-a",
+            timeout_seconds=30,
+            api_key="test-key",
+        ),
+    )
+
+    assert handle.engine_id == NATIVE_LBE_ENGINE_ID
+    assert isinstance(handle.backend, OpenAIResponsesReasoningBackend)
+    assert handle.descriptor.protocol_family is ProviderProtocolFamily.OPENAI_RESPONSES
 
 
 @pytest.mark.parametrize(
@@ -297,11 +328,47 @@ def test_openai_compatible_routes_have_native_default_and_explicit_cline_binding
     assert isinstance(cline.backend, ClineReasoningBackend)
 
 
-@pytest.mark.parametrize("provider_id", ["openai", "anthropic", "gemini"])
-def test_reused_provider_adapters_require_explicit_api_key(provider_id):
+@pytest.mark.parametrize(
+    ("provider_id", "endpoint"),
+    [
+        ("openai", "https://api.openai.com/v1/chat/completions"),
+        ("anthropic", "https://api.anthropic.com/v1/messages"),
+        (
+            "gemini",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent",
+        ),
+    ],
+)
+def test_reused_provider_adapters_require_explicit_api_key(provider_id, endpoint):
     with pytest.raises(ValueError, match="requires a non-empty api_key"):
         default_provider_registry().build(
-            provider_id=provider_id, config=config()
+            provider_id=provider_id,
+            config=ProviderConfig(
+                endpoint=endpoint,
+                model="model-a",
+                timeout_seconds=30,
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "endpoint"),
+    [
+        ("anthropic", "https://api.anthropic.com/v1/chat/completions"),
+        ("gemini", "https://generativelanguage.googleapis.com/v1beta/interactions"),
+        ("openai", "https://api.openai.com/v1/messages"),
+    ],
+)
+def test_native_reasoning_bindings_fail_closed_on_wrong_protocol(provider_id, endpoint):
+    with pytest.raises(ValueError, match="native-lbe reasoning transport is not implemented"):
+        default_provider_registry().build(
+            provider_id=provider_id,
+            config=ProviderConfig(
+                endpoint=endpoint,
+                model="model-a",
+                timeout_seconds=30,
+                api_key="test-key",
+            ),
         )
 
 

@@ -121,7 +121,9 @@ def _build_turn_parser() -> argparse.ArgumentParser:
     parser.add_argument("--database", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--text", required=True)
-    parser.add_argument("--provider-config", required=True)
+    parser.add_argument("--provider-config")
+    parser.add_argument("--state-root")
+    parser.add_argument("--profile")
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
 
@@ -172,8 +174,19 @@ def _turn(argv: Sequence[str]) -> int:
 
         store = _cli.WorkspaceMemoryStore(args.database)
         state = _cli._require_session(store, args.session_id)
+        profile_name, resolved = _cli.resolve_provider_config(
+            provider_config=args.provider_config,
+            state_root=args.state_root,
+            profile_name=args.profile,
+            expected_provider_id=state.provider_id,
+        )
+        # The persisted session selection stays authoritative for the model, and a
+        # profile may only supply credentials and endpoint identity. An active profile
+        # with a different model is a contradiction to reject, not a value to overwrite.
+        if profile_name is not None and resolved.model.strip() != state.provider_model:
+            raise ValueError("provider config model must match persisted session model")
         config = _cli.bind_provider_config_to_session(
-            _cli.load_provider_config(args.provider_config),
+            resolved,
             session_provider_id=state.provider_id,
             session_model=state.provider_model,
         )
@@ -230,6 +243,7 @@ def _turn(argv: Sequence[str]) -> int:
             "session_id": state.session_id,
             "turn_id": turn_id,
             "mode": state.mode,
+            "provider_profile": profile_name,
             "events": [_serialize_operational_event(event) for event in events],
         }
         if not outcome.accepted:

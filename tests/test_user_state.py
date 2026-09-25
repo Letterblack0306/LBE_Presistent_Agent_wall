@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import lbe_guard_inspector.cli as cli
 from lbe_guard_inspector.cli import main
 from lbe_guard_inspector.user_state import ProviderProfile, UserStateStore
 
