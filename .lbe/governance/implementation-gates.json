@@ -66,7 +66,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-MAIN-HEAD-CONSOLIDATION-TRUTHFUL-ACCEPTANCE-001",
     "owner": "canonical main worktree integration, provider/session behavior, and current acceptance truth",
-    "index_revision": "E4B52A18940A2F1485F8D565F8058F43F82EB9E205F33DB50FD18560B138D4B5"
+    "index_revision": "95E4A6BEB1AFE32A52CFAC091E4161FA7EA4430AC65C856AF962E162F013BD8A"
   },
   "closure": {
     "status": "OPEN",

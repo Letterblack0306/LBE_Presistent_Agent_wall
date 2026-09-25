@@ -959,7 +959,7 @@ DESIRED_RESULT: Validated current enhancements and only compatible branch work a
 NON_GOALS: No blind wholesale merges of legacy branch histories; no silent provider/model or credential substitution; no publication or remote push; no destructive deletion of branch/checkpoint refs before recoverable archive verification; no edits to the unrelated root conversation-export report.
 REUSE_DECISION: REUSE current main architecture, existing LBE provider/session/config authorities, release PTY harness, and existing machine gate; inspect branch candidates and integrate only validated compatible deltas.
 AUTHORITY_IMPACT: Gate scope is explicitly widened by the user request; publication remains locked; no provider credentials are copied or exposed.
-EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,.lbe/governance/,docs/,apps/lbe-terminal/,lbe_guard_inspector/,tests/,launch-lbe.ps1,tools/
+EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,agent.py,.lbe/governance/,docs/,apps/lbe-terminal/,lbe_guard_inspector/,tests/,launch-lbe.ps1,tools/
 REQUIRED_EVIDENCE: inventory local/remote refs and worktrees; classify unique branch candidates against current product direction; regression and full Python/Rust suites for changed behavior; exact release PTY provider/model click and persistence proof; live selected-model turn with provider identity verified before credentials are used; reconcile machine/human acceptance status; preserve unrelated user files; keep any remaining unknowns explicitly blocked.
 MACHINE_SLICE: MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE
 RESULT: IMPLEMENTATION_PENDING

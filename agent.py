@@ -176,10 +176,24 @@ class KnowledgeRoot:
 
 
 @dataclass(frozen=True)
+class MissingKnowledgeRoot:
+    """A configured root that is not present on this machine.
+
+    Recorded rather than silently dropped: a run with reduced knowledge scope must
+    stay visible in every projection and must never be reported as full coverage.
+    """
+
+    name: str
+    path: Path
+    reason: str
+
+
+@dataclass(frozen=True)
 class Context:
     config: dict[str, Any]
     governance: dict[str, Any]
     roots: tuple[KnowledgeRoot, ...]
+    missing_roots: tuple[MissingKnowledgeRoot, ...] = ()
 
     @classmethod
     def load(cls) -> "Context":
@@ -190,6 +204,7 @@ class Context:
             raise GovernanceError("config.json requires a non-empty knowledge_roots list")
 
         roots: list[KnowledgeRoot] = []
+        missing: list[MissingKnowledgeRoot] = []
         names: set[str] = set()
         paths: set[str] = set()
 
@@ -206,11 +221,25 @@ class Context:
             key = str(path).casefold()
             if key in paths:
                 raise GovernanceError(f"Duplicate knowledge root path: {path}")
-            if not path.exists() or not path.is_dir():
-                raise FileNotFoundError(f"Knowledge root does not exist: {path}")
-            roots.append(KnowledgeRoot(name, path))
             names.add(name)
             paths.add(key)
+            if not path.exists() or not path.is_dir():
+                # A configured root can be absent (for example an unmounted drive).
+                # Refusing to run at all would make the product unusable on any
+                # machine where one optional root is offline; silently ignoring it
+                # would overstate coverage. Keep the root visible as missing and
+                # continue with the roots that are actually present.
+                missing.append(
+                    MissingKnowledgeRoot(name, path, "configured path is not present on this machine")
+                )
+                continue
+            roots.append(KnowledgeRoot(name, path))
+
+        if not roots:
+            detail = ", ".join(f"{item.name} ({item.path})" for item in missing) or "none configured"
+            raise GovernanceError(
+                f"No configured knowledge root is present on this machine: {detail}"
+            )
 
         for index, left in enumerate(roots):
             for right in roots[index + 1:]:
@@ -227,7 +256,7 @@ class Context:
                 else:
                     raise GovernanceError(f"Overlapping roots: {right.path} is inside {left.path}")
 
-        return cls(config, governance, tuple(roots))
+        return cls(config, governance, tuple(roots), tuple(missing))
 
 
 def matches_any(path_text: str, patterns: list[str]) -> bool:
@@ -611,6 +640,10 @@ def trace_workspace(
             "database": str(DATABASE_PATH),
             "schema_version": STATE_FILE_SCHEMA_VERSION,
             "knowledge_roots": [{"name": root.name, "path": str(root.path)} for root in ctx.roots],
+            "missing_knowledge_roots": [
+                {"name": item.name, "path": str(item.path), "reason": item.reason}
+                for item in ctx.missing_roots
+            ],
             "statistics": {
                 "files_seen_this_run": stats.files_seen,
                 "files_hashed_this_run": stats.files_hashed,
@@ -982,10 +1015,24 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("roots")
-    p.set_defaults(func=lambda _: print(json.dumps(
-        {"knowledge_roots": [{"name": r.name, "path": str(r.path)} for r in Context.load().roots]},
-        indent=2,
-    )))
+
+    def _print_roots(_args: argparse.Namespace) -> None:
+        context = Context.load()
+
+        print(json.dumps(
+            {
+                "knowledge_roots": [
+                    {"name": root.name, "path": str(root.path)} for root in context.roots
+                ],
+                "missing_knowledge_roots": [
+                    {"name": item.name, "path": str(item.path), "reason": item.reason}
+                    for item in context.missing_roots
+                ],
+            },
+            indent=2,
+        ))
+
+    p.set_defaults(func=_print_roots)
 
     p = sub.add_parser("trace")
     p.add_argument("--resume", action="store_true")

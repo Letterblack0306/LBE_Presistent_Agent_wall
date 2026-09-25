@@ -13,8 +13,59 @@ $ErrorActionPreference = 'Stop'
 
 $root = [IO.Path]::GetFullPath($PSScriptRoot)
 $workspace = [IO.Path]::GetFullPath($Project)
-$pythonCommand = Get-Command python -ErrorAction SilentlyContinue
-if (-not $pythonCommand) { throw 'Python is required to bootstrap the governed LBE session.' }
+function Resolve-LbePython {
+    # The governed session bootstrap needs a real Python 3.11+ interpreter with the
+    # runtime dependencies present. A bare `python` on PATH can be older than the
+    # package requirement, so resolve deterministically and fail with a clear reason
+    # instead of letting the private runtime blow up later with an opaque error.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $candidates = New-Object System.Collections.Generic.List[string]
+        $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+        if ($pyLauncher) {
+            $listing = (& $pyLauncher.Source '-0p' 2>$null | Out-String)
+            foreach ($line in ($listing -split "`r?`n")) {
+                if ($line -match '-V:(?<major>\d+)\.(?<minor>\d+)\s+\*?\s*(?<path>[A-Za-z]:\\.*?python\.exe)\s*$') {
+                    if ([int]$Matches['major'] -eq 3 -and [int]$Matches['minor'] -ge 11) {
+                        $candidates.Add($Matches['path'].Trim())
+                    }
+                }
+            }
+            if ($candidates.Count -eq 0) {
+                foreach ($tag in @('-3.14', '-3.13', '-3.12', '-3.11')) {
+                    $probe = (& $pyLauncher.Source $tag -c 'import sys; print(sys.executable)' 2>$null | Out-String).Trim()
+                    if ($LASTEXITCODE -eq 0 -and $probe) { $candidates.Add($probe) }
+                }
+            }
+        }
+        $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+        if ($pythonCommand) { $candidates.Add($pythonCommand.Source) }
+
+        foreach ($candidate in ($candidates | Select-Object -Unique)) {
+            if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) { continue }
+            & $candidate -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>$null
+            if ($LASTEXITCODE -ne 0) { continue }
+            $version = (& $candidate -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' 2>$null | Out-String).Trim()
+            $dependencyError = (& $candidate -c 'import jsonschema' 2>&1 | Out-String).Trim()
+            if ($LASTEXITCODE -ne 0) {
+                return [pscustomobject]@{ Source = $candidate; Version = $version; DependencyError = $dependencyError }
+            }
+            return [pscustomobject]@{ Source = $candidate; Version = $version; DependencyError = $null }
+        }
+        return $null
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+}
+
+$pythonCommand = Resolve-LbePython
+if (-not $pythonCommand) {
+    throw 'LBE requires a Python 3.11 or newer interpreter to bootstrap the governed session; none was found (the default `python` on this machine is older). Install one (for example: winget install Python.Python.3.13) and rerun this launcher.'
+}
+if ($pythonCommand.DependencyError) {
+    throw "LBE runtime Python $($pythonCommand.Version) at $($pythonCommand.Source) is missing a required dependency: $($pythonCommand.DependencyError). Install it with `"$($pythonCommand.Source)`" -m pip install -r requirements.txt"
+}
 if (-not (Test-Path -LiteralPath $workspace -PathType Container)) { throw "Project workspace missing: $workspace" }
 if (-not (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) {
     throw "Provider setup is required. Create reasoning-provider.json from reasoning-provider.example.json, then rerun this launcher. No provider or credential was fabricated."
@@ -60,7 +111,15 @@ if (-not $SessionId) {
     if (Test-Path -LiteralPath $CapabilityRegistry -PathType Leaf) {
         $bootstrapArgs += @('--capability-registry',[IO.Path]::GetFullPath($CapabilityRegistry))
     }
-    $result = (& $pythonCommand.Source @bootstrapArgs 2>&1 | Out-String).Trim()
+    # The runtime package lives in this repository; `-m lbe_guard_inspector.product_entry`
+    # only resolves from the repository root, so bootstrap there instead of trusting the
+    # caller's current directory.
+    Push-Location -LiteralPath $root
+    try {
+        $result = (& $pythonCommand.Source @bootstrapArgs 2>&1 | Out-String).Trim()
+    } finally {
+        Pop-Location
+    }
     if ($LASTEXITCODE -ne 0) { throw "Governed session bootstrap failed: $result" }
     try { $created = $result | ConvertFrom-Json } catch { throw "Governed session bootstrap returned invalid JSON: $result" }
     if (-not $created.ok -or -not $created.session_id) { throw "Governed session bootstrap was rejected: $result" }
