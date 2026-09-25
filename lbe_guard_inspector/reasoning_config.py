@@ -24,7 +24,10 @@ def load_provider_config(path: str | Path) -> ProviderConfig:
     """Load one explicit provider config file without environment or runtime defaults."""
     config_path = Path(path).expanduser().resolve()
     try:
-        raw = json.loads(config_path.read_text(encoding="utf-8"))
+        # `utf-8-sig` accepts both plain UTF-8 and the BOM that Windows editors and
+        # PowerShell `Set-Content -Encoding utf8` write by default. Rejecting a BOM here
+        # made an otherwise valid provider config unusable.
+        raw = json.loads(config_path.read_text(encoding="utf-8-sig"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"invalid provider config file: {config_path}: {exc}") from exc
     return provider_config_from_mapping(raw)

@@ -60,6 +60,9 @@ class OpenAICompatibleEventAdapter:
             return (self._event(
                 event_type=ModelEventType.ERROR,
                 provider_id=provider_id,
+                # Carry the provider's own message; dropping it made every transport or
+                # provider rejection look like the same opaque error event.
+                text=str(exc),
                 error_code=exc.code,
                 metadata={"terminal_attribution": "http_or_transport_error"},
             ),)

@@ -106,6 +106,9 @@ def test_provider_failure_is_a_truthful_error_event() -> None:
     assert events[0].event_type is ModelEventType.ERROR
     assert events[0].error_code == "PROVIDER_TIMEOUT"
     assert events[0].metadata["terminal_attribution"] == "http_or_transport_error"
+    # The provider's own message must survive normalization: dropping it made every
+    # provider rejection (for example an HTTP 402 credit limit) indistinguishable.
+    assert events[0].text == "timed out"
 
 
 def test_unmapped_provider_tool_call_fails_without_fabricating_requires_tool_state() -> None:

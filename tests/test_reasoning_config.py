@@ -90,6 +90,22 @@ def test_binding_rejects_unsupported_endpoint_without_provider_identity() -> Non
         )
 
 
+def test_file_loader_accepts_a_utf8_bom_from_windows_editors(tmp_path) -> None:
+    """PowerShell `Set-Content -Encoding utf8` and most Windows editors prepend a BOM.
+    A valid provider config must load with or without it."""
+    path = tmp_path / "provider.json"
+    path.write_text(
+        "﻿" + json.dumps({**valid_mapping(), "api_key": " secret "}),
+        encoding="utf-8",
+    )
+
+    config = load_provider_config(path)
+
+    assert config.endpoint == "http://provider/v1/chat/completions"
+    assert config.model == "local-model"
+    assert config.api_key == "secret"
+
+
 def test_file_loader_reads_only_the_supplied_path(tmp_path) -> None:
     path = tmp_path / "provider.json"
     path.write_text(json.dumps({**valid_mapping(), "api_key": " secret "}), encoding="utf-8")

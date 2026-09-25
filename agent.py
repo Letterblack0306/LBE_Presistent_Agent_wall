@@ -103,7 +103,9 @@ def load_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Missing required file: {path}")
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        # Accept a UTF-8 BOM: PowerShell and common Windows editors write JSON config
+        # files with one, and a BOM is not a reason to refuse the whole runtime.
+        value = json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Invalid JSON in {path}: {exc}") from exc
     if not isinstance(value, dict):

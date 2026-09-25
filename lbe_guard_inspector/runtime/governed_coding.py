@@ -1252,7 +1252,14 @@ def _provider_event_error(events: tuple[NormalizedModelEvent, ...]) -> Orchestra
     error = next((event for event in events if event.event_type is ModelEventType.ERROR), None)
     if error is None:
         return None
-    return OrchestrationError(code=error.error_code or "PROVIDER_RESPONSE_ERROR", message="provider returned an error event")
+    # Keep the provider's own error text. A generic "provider returned an error event"
+    # hides the actual cause and makes a real provider rejection indistinguishable from
+    # a transport failure.
+    detail = (error.text or "").strip()
+    message = "provider returned an error event"
+    if detail:
+        message = f"{message}: {detail}"
+    return OrchestrationError(code=error.error_code or "PROVIDER_RESPONSE_ERROR", message=message)
 
 
 def _message_text(events: tuple[NormalizedModelEvent, ...]) -> str:
