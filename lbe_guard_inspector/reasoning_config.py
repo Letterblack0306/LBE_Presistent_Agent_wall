@@ -7,7 +7,7 @@ from typing import Any, Mapping
 from dataclasses import replace
 from urllib.parse import urlsplit
 
-from .reasoning_provider import LBE_MAX_OUTPUT_TOKENS_CEILING, ProviderConfig
+from .reasoning_provider import LBE_MAX_REQUESTED_OUTPUT_TOKENS, ProviderConfig
 
 _ALLOWED_FIELDS = frozenset({
     "endpoint",
@@ -61,10 +61,10 @@ def provider_config_from_mapping(raw: Mapping[str, Any]) -> ProviderConfig:
             raise ValueError("provider max_output_tokens must be a positive integer when supplied")
         if max_output_tokens <= 0:
             raise ValueError("provider max_output_tokens must be a positive integer when supplied")
-        if max_output_tokens > LBE_MAX_OUTPUT_TOKENS_CEILING:
+        if max_output_tokens > LBE_MAX_REQUESTED_OUTPUT_TOKENS:
             raise ValueError(
-                "provider max_output_tokens exceeds the LBE ceiling of "
-                f"{LBE_MAX_OUTPUT_TOKENS_CEILING}"
+                "provider max_output_tokens exceeds the LBE request-policy maximum of "
+                f"{LBE_MAX_REQUESTED_OUTPUT_TOKENS}"
             )
     return ProviderConfig(
         endpoint=raw["endpoint"],

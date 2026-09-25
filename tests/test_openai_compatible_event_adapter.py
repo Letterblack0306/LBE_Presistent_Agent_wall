@@ -7,8 +7,8 @@ import pytest
 from lbe_guard_inspector.openai_compatible_event_adapter import OpenAICompatibleEventAdapter
 from lbe_guard_inspector.professional_provider_events import ModelEventType
 from lbe_guard_inspector.reasoning_provider import (
-    LBE_DEFAULT_MAX_OUTPUT_TOKENS,
-    LBE_MAX_OUTPUT_TOKENS_CEILING,
+    LBE_DEFAULT_REQUESTED_OUTPUT_TOKENS,
+    LBE_MAX_REQUESTED_OUTPUT_TOKENS,
     ProviderConfig,
     ProviderError,
 )
@@ -150,8 +150,8 @@ def test_tool_call_request_carries_a_bounded_output_limit() -> None:
     )
 
     sent = transport.payloads[0]
-    assert sent["max_tokens"] == LBE_DEFAULT_MAX_OUTPUT_TOKENS
-    assert sent["max_tokens"] <= LBE_MAX_OUTPUT_TOKENS_CEILING
+    assert sent["max_tokens"] == LBE_DEFAULT_REQUESTED_OUTPUT_TOKENS
+    assert sent["max_tokens"] <= LBE_MAX_REQUESTED_OUTPUT_TOKENS
     assert events[0].metadata["max_output_tokens"] == sent["max_tokens"]
 
 
@@ -178,10 +178,10 @@ def test_unsupported_configured_cap_fails_before_any_provider_call() -> None:
         endpoint="http://provider/v1/chat/completions",
         model="model-a",
         timeout_seconds=5,
-        max_output_tokens=LBE_MAX_OUTPUT_TOKENS_CEILING + 1,
+        max_output_tokens=LBE_MAX_REQUESTED_OUTPUT_TOKENS + 1,
     )
 
-    with pytest.raises(ValueError, match="ceiling"):
+    with pytest.raises(ValueError, match="request-policy maximum"):
         OpenAICompatibleEventAdapter(config=config, transport=transport).complete(
             messages=({"role": "user", "content": "rename a symbol"},),
         )

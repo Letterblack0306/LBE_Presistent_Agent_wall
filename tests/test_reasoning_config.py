@@ -10,8 +10,8 @@ from lbe_guard_inspector.reasoning_config import (
     provider_config_from_mapping,
 )
 from lbe_guard_inspector.reasoning_provider import (
-    LBE_DEFAULT_MAX_OUTPUT_TOKENS,
-    LBE_MAX_OUTPUT_TOKENS_CEILING,
+    LBE_DEFAULT_REQUESTED_OUTPUT_TOKENS,
+    LBE_MAX_REQUESTED_OUTPUT_TOKENS,
     ProviderConfig,
     resolve_max_output_tokens,
 )
@@ -125,7 +125,7 @@ def test_configured_output_cap_is_accepted_from_the_provider_config() -> None:
         (0, "positive integer"),
         (-10, "positive integer"),
         (True, "positive integer"),
-        (LBE_MAX_OUTPUT_TOKENS_CEILING + 1, "ceiling"),
+        (LBE_MAX_REQUESTED_OUTPUT_TOKENS + 1, "request-policy maximum"),
     ],
 )
 def test_malformed_or_unsupported_config_output_caps_fail_truthfully(value, message) -> None:
@@ -134,7 +134,7 @@ def test_malformed_or_unsupported_config_output_caps_fail_truthfully(value, mess
 
 
 def test_configured_output_cap_is_honored_and_never_exceeds_the_lbe_ceiling() -> None:
-    assert resolve_max_output_tokens() == LBE_DEFAULT_MAX_OUTPUT_TOKENS
+    assert resolve_max_output_tokens() == LBE_DEFAULT_REQUESTED_OUTPUT_TOKENS
     assert resolve_max_output_tokens(configured=2048) == 2048
     # A request-specific need can only lower the cap, never raise it.
     assert resolve_max_output_tokens(configured=2048, requirement=256) == 256
@@ -146,7 +146,7 @@ def test_configured_output_cap_is_honored_and_never_exceeds_the_lbe_ceiling() ->
     [
         (0, None, "positive"),
         (-1, None, "positive"),
-        (LBE_MAX_OUTPUT_TOKENS_CEILING + 1, None, "ceiling"),
+        (LBE_MAX_REQUESTED_OUTPUT_TOKENS + 1, None, "request-policy maximum"),
         (None, 0, "positive"),
         (None, -5, "positive"),
     ],
@@ -161,8 +161,8 @@ def test_malformed_or_unsupported_output_caps_fail_truthfully(
 def test_default_output_bound_is_a_step_not_the_context_window() -> None:
     """Regression: an omitted max_tokens made the provider substitute the model's full
     output ceiling (131072 on OpenRouter), which a governed step must never request."""
-    assert LBE_DEFAULT_MAX_OUTPUT_TOKENS < LBE_MAX_OUTPUT_TOKENS_CEILING
-    assert LBE_MAX_OUTPUT_TOKENS_CEILING <= 8192
+    assert LBE_DEFAULT_REQUESTED_OUTPUT_TOKENS < LBE_MAX_REQUESTED_OUTPUT_TOKENS
+    assert LBE_MAX_REQUESTED_OUTPUT_TOKENS <= 8192
 
 
 def test_file_loader_reads_only_the_supplied_path(tmp_path) -> None:

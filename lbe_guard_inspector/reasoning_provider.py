@@ -33,8 +33,8 @@ _REASONING_MAX_TOKENS = 512
 # This is a static, LBE-owned bound. It is deliberately not credit-aware: provider
 # billing state is not a runtime policy owner, and shrinking a request because an
 # account balance changed would be a silent substitution.
-LBE_MAX_OUTPUT_TOKENS_CEILING = 8192
-LBE_DEFAULT_MAX_OUTPUT_TOKENS = 4096
+LBE_MAX_REQUESTED_OUTPUT_TOKENS = 8192
+LBE_DEFAULT_REQUESTED_OUTPUT_TOKENS = 4096
 
 
 def resolve_max_output_tokens(
@@ -52,14 +52,14 @@ def resolve_max_output_tokens(
             raise ValueError("configured max_output_tokens must be an integer")
         if configured <= 0:
             raise ValueError("configured max_output_tokens must be positive")
-        if configured > LBE_MAX_OUTPUT_TOKENS_CEILING:
+        if configured > LBE_MAX_REQUESTED_OUTPUT_TOKENS:
             raise ValueError(
-                "configured max_output_tokens exceeds the LBE ceiling of "
-                f"{LBE_MAX_OUTPUT_TOKENS_CEILING}"
+                "configured max_output_tokens exceeds the LBE request-policy maximum of "
+                f"{LBE_MAX_REQUESTED_OUTPUT_TOKENS}"
             )
         limit = configured
     else:
-        limit = LBE_DEFAULT_MAX_OUTPUT_TOKENS
+        limit = LBE_DEFAULT_REQUESTED_OUTPUT_TOKENS
 
     if requirement is not None:
         if isinstance(requirement, bool) or not isinstance(requirement, int):
