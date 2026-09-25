@@ -510,7 +510,10 @@ impl App {
         if let Some(panel) = self.panel {
             match panel {
                 MockPanel::Provider => {
-                    let index = line.saturating_sub(5);
+                    // The provider panel adds a connected-state line and two
+                    // explanatory lines before its key hint; the first row is
+                    // therefore one line lower than model/session rows.
+                    let index = line.saturating_sub(6);
                     if index < self.snapshot.providers.len() {
                         self.provider_picker_index = index;
                         self.submit_or_approve(wrapper, now);
@@ -1252,8 +1255,30 @@ impl App {
                 }
             }
             LbeEvent::SnapshotUpdated { snapshot } => {
+                // Provider/model catalogs arrive through their own discovery
+                // events. A later session snapshot may not carry those
+                // projections, so do not erase live picker data with an
+                // unrelated snapshot refresh.
+                let providers = std::mem::take(&mut self.snapshot.providers);
+                let models = std::mem::take(&mut self.snapshot.models);
+                let selected_model = self.snapshot.selected_model.take();
                 self.agent_mode = snapshot.active_mode;
                 self.snapshot = snapshot;
+                if self.snapshot.providers.is_empty() {
+                    self.snapshot.providers = providers;
+                }
+                if self.snapshot.models.is_empty() {
+                    self.snapshot.models = models;
+                }
+                if self.snapshot.selected_model.is_none() {
+                    self.snapshot.selected_model = selected_model;
+                }
+                self.provider_picker_index = self
+                    .provider_picker_index
+                    .min(self.snapshot.providers.len().saturating_sub(1));
+                self.model_picker_index = self
+                    .model_picker_index
+                    .min(self.snapshot.models.len().saturating_sub(1));
             }
             LbeEvent::WorkspaceListingReady {
                 path,

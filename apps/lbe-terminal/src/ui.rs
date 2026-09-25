@@ -1429,11 +1429,11 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             rows.extend(snapshot.models.iter().map(|model| {
                 format!(
                     "  streaming {} · tools {} · reasoning {} · images {} · caching {}",
-                    capability_marker(model.capabilities.streaming),
-                    capability_marker(model.capabilities.tools),
-                    capability_marker(model.capabilities.reasoning),
-                    capability_marker(model.capabilities.images),
-                    capability_marker(model.capabilities.prompt_caching),
+                    capability_marker(model.capabilities.streaming, model.capabilities_known),
+                    capability_marker(model.capabilities.tools, model.capabilities_known),
+                    capability_marker(model.capabilities.reasoning, model.capabilities_known),
+                    capability_marker(model.capabilities.images, model.capabilities_known),
+                    capability_marker(model.capabilities.prompt_caching, model.capabilities_known),
                 )
             }));
             ("Models", rows)
@@ -2405,10 +2405,25 @@ fn model_picker_text(app: &App) -> Text<'static> {
     )));
     lines.push(Line::default());
     if app.snapshot.models.is_empty() {
-        lines.push(Line::from(Span::styled(
-            "No discovered models are available.",
-            Style::default().fg(PALETTE.red),
-        )));
+        if let Some(model) = app.snapshot.selected_model.as_ref() {
+            lines.push(Line::from(Span::styled(
+                format!(
+                    "[x] {}  {} · active session model",
+                    model.provider_id.label(),
+                    model.model_id
+                ),
+                Style::default().fg(PALETTE.green),
+            )));
+            lines.push(Line::from(Span::styled(
+                "The runtime did not provide an alternate model catalog; no capability claims are inferred.",
+                Style::default().fg(PALETTE.faint),
+            )));
+        } else {
+            lines.push(Line::from(Span::styled(
+                "No discovered models are available.",
+                Style::default().fg(PALETTE.red),
+            )));
+        }
     } else {
         for (index, model) in app.snapshot.models.iter().enumerate() {
             let is_cursor = index == app.model_picker_index;
@@ -2436,26 +2451,22 @@ fn model_picker_text(app: &App) -> Text<'static> {
                 Style::default().fg(PALETTE.muted)
             };
             lines.push(Line::from(Span::styled(
-                format!(
-                    "{icon} {}  {} · context {} · output {}",
-                    model.provider_id.label(),
-                    model.display_name,
-                    model
-                        .context_window
-                        .map_or_else(|| "unknown".to_owned(), |v| v.to_string()),
-                    model
-                        .max_output_tokens
-                        .map_or_else(|| "unknown".to_owned(), |v| v.to_string())
-                ),
+                format!("{icon} {}  {}", model.provider_id.label(), model.model_id),
                 style,
             )));
         }
+        lines.push(Line::from(Span::styled(
+            "Provider-declared IDs only · context, capabilities, and generation support are unknown.",
+            Style::default().fg(PALETTE.faint),
+        )));
     }
     Text::from(lines)
 }
 
-fn capability_marker(enabled: bool) -> &'static str {
-    if enabled {
+fn capability_marker(enabled: bool, known: bool) -> &'static str {
+    if !known {
+        "?"
+    } else if enabled {
         display_token("●", "[x]", ascii_mode_enabled())
     } else {
         display_token("○", "[ ]", ascii_mode_enabled())

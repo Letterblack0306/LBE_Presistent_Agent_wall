@@ -2825,59 +2825,64 @@ impl RealLbeWrapper {
         let payload: serde_json::Value = serde_json::from_str(&stdout)
             .map_err(|error| LbeError::new(format!("invalid provider.list JSON: {error}")))?;
         let provider_ids = parse_provider_list_payload(&payload)?;
-        let checks = provider_ids
-            .iter()
-            .filter_map(|provider_id| {
-                let provider_config = self.provider_config.as_ref()?;
+        // Discovery must not execute model inference. A provider health check
+        // calls the model and can take the configured inference timeout (often
+        // minutes), which used to block catalog projection while probing every
+        // registered provider with the same endpoint. Keep discovery bounded
+        // and truthful: the attached session identifies its configured
+        // provider; explicit validation remains the only place that probes it.
+        let configured_provider = self
+            .provider_config
+            .as_ref()
+            .and_then(|_| self.snapshot.selected_model.as_ref())
+            .map(|model| model.provider_id);
+        let mut configured_provider_is_local = matches!(
+            configured_provider,
+            Some(ProviderId::LmStudio | ProviderId::Ollama)
+        );
+        let models = if matches!(
+            configured_provider,
+            Some(ProviderId::OpenAiCompatible | ProviderId::LmStudio | ProviderId::Ollama)
+        ) {
+            if let Some(provider_config) = self.provider_config.as_ref() {
                 let output = configured_lbe_command(&python, &wall_root)
                     .current_dir(&wall_root)
                     .args([
                         "-m",
                         "lbe_guard_inspector.product_entry",
+                        "--format",
+                        "json",
                         "provider",
-                        "check",
-                        "--provider",
-                        provider_id.cli_name(),
+                        "models",
                         "--provider-config",
                     ])
                     .arg(provider_config)
-                    .output()
-                    .ok()?;
-                let payload = serde_json::from_slice::<serde_json::Value>(&output.stdout).ok()?;
-                Some((*provider_id, payload))
-            })
-            .collect::<Vec<_>>();
-        let providers = provider_ids
-            .iter()
-            .map(|provider_id| {
-                let checked = checks
-                    .iter()
-                    .find(|(checked_id, _)| checked_id == provider_id)
-                    .and_then(|(_, payload)| parse_provider_check_status(payload).ok());
-                ProviderProjection {
-                    provider_id: *provider_id,
-                    auth_state: match checked.as_deref() {
-                        Some("READY") => AuthState::Ready,
-                        Some(_) => AuthState::Error,
-                        None if self.provider_config.is_some() => AuthState::Error,
-                        None => AuthState::NotConfigured,
-                    },
-                    health: match checked.as_deref() {
-                        Some("READY") => ProviderHealth::Ready,
-                        Some(_) => ProviderHealth::Error,
-                        None if self.provider_config.is_some() => ProviderHealth::Error,
-                        None => ProviderHealth::Unknown,
-                    },
-                    is_local: false,
-                }
-            })
-            .collect::<Vec<_>>();
-        let models = checks
-            .iter()
-            .filter_map(|(provider_id, payload)| {
-                parse_provider_check_payload(payload, *provider_id).ok()
-            })
-            .collect::<Vec<_>>();
+                    .output();
+                output
+                    .ok()
+                    .filter(|output| output.status.success())
+                    .and_then(|output| {
+                        serde_json::from_slice::<serde_json::Value>(&output.stdout).ok()
+                    })
+                    .and_then(|payload| {
+                        parse_provider_models_payload(&payload, configured_provider.unwrap()).ok()
+                    })
+                    .map(|(models, is_local)| {
+                        configured_provider_is_local = is_local;
+                        models
+                    })
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+        let providers = project_provider_catalog(
+            &provider_ids,
+            configured_provider,
+            configured_provider_is_local,
+        );
         self.snapshot.providers = providers.clone();
         self.snapshot.models = models.clone();
         self.pending_events
@@ -4701,6 +4706,83 @@ impl RealLbeWrapper {
     }
 }
 
+pub(crate) fn project_provider_catalog(
+    provider_ids: &[ProviderId],
+    configured_provider: Option<ProviderId>,
+    configured_provider_is_local: bool,
+) -> Vec<ProviderProjection> {
+    provider_ids
+        .iter()
+        .map(|provider_id| {
+            let configured = Some(*provider_id) == configured_provider;
+            ProviderProjection {
+                provider_id: *provider_id,
+                auth_state: if configured {
+                    AuthState::Configured
+                } else {
+                    AuthState::NotConfigured
+                },
+                health: ProviderHealth::Unknown,
+                is_local: if configured {
+                    configured_provider_is_local
+                } else {
+                    matches!(provider_id, ProviderId::LmStudio | ProviderId::Ollama)
+                },
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn parse_provider_models_payload(
+    payload: &serde_json::Value,
+    provider_id: ProviderId,
+) -> Result<(Vec<ModelDescriptor>, bool), LbeError> {
+    if payload.get("ok").and_then(serde_json::Value::as_bool) != Some(true)
+        || payload.get("action").and_then(serde_json::Value::as_str) != Some("provider.models")
+    {
+        return Err(LbeError::new("provider.models response failed contract"));
+    }
+    let is_local = payload
+        .get("is_local")
+        .and_then(serde_json::Value::as_bool)
+        .ok_or_else(|| LbeError::new("provider.models response omitted is_local"))?;
+    let models = payload
+        .get("models")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| LbeError::new("provider.models response omitted models"))?;
+    let descriptors = models
+        .iter()
+        .enumerate()
+        .map(|(index, item)| {
+            let model_id = item
+                .as_str()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| {
+                    LbeError::new(format!("provider.models model {index} was invalid"))
+                })?;
+            Ok(ModelDescriptor {
+                provider_id,
+                model_id: model_id.to_owned(),
+                display_name: model_id.to_owned(),
+                context_window: None,
+                max_output_tokens: None,
+                capabilities: ProviderCapabilities {
+                    streaming: false,
+                    tools: false,
+                    reasoning: false,
+                    images: false,
+                    prompt_caching: false,
+                    max_context: None,
+                    max_output: None,
+                },
+                capabilities_known: false,
+            })
+        })
+        .collect::<Result<Vec<_>, LbeError>>()?;
+    Ok((descriptors, is_local))
+}
+
 fn parse_mcp_registry_payload(
     payload: &serde_json::Value,
 ) -> Result<(u64, Vec<McpIntegration>), LbeError> {
@@ -4915,6 +4997,7 @@ pub(crate) fn parse_provider_check_payload(
         context_window: caps.max_context,
         max_output_tokens: caps.max_output,
         capabilities: caps,
+        capabilities_known: true,
     })
 }
 

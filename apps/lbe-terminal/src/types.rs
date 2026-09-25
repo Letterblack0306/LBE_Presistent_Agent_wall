@@ -642,6 +642,7 @@ pub(crate) struct ModelDescriptor {
     pub(crate) context_window: Option<u32>,
     pub(crate) max_output_tokens: Option<u32>,
     pub(crate) capabilities: ProviderCapabilities,
+    pub(crate) capabilities_known: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -991,6 +992,7 @@ pub(crate) fn mock_model_catalog() -> Vec<ModelDescriptor> {
             max_context: Some(1_000_000),
             max_output: Some(65_536),
         },
+        capabilities_known: true,
     }]
 }
 // ---------------------------------------------------------------------------

@@ -7,8 +7,9 @@ use crate::{
     ui::{mock_panel_text_for_app, *},
     wrapper::{
         executed_receipt_id, governed_response_status, parse_governed_tool_projection,
-        parse_provider_check_payload, parse_provider_list_payload, parse_workspace_payload,
-        validate_provenance, validate_validation, workspace_glob_matches, workspace_list_entries,
+        parse_provider_check_payload, parse_provider_list_payload, parse_provider_models_payload,
+        parse_workspace_payload, project_provider_catalog, validate_provenance,
+        validate_validation, workspace_glob_matches, workspace_list_entries,
         workspace_patch_result, workspace_read_content, workspace_search_results, LbeWrapper,
         MockLbeWrapper, RealLbeWrapper,
     },
@@ -1992,6 +1993,7 @@ fn model_picker_navigates_and_selects_only_from_the_discovered_catalog() {
                 max_context: Some(100),
                 max_output: Some(20),
             },
+            capabilities_known: true,
         },
         ModelDescriptor {
             provider_id: ProviderId::OpenAi,
@@ -2008,6 +2010,7 @@ fn model_picker_navigates_and_selects_only_from_the_discovered_catalog() {
                 max_context: Some(200),
                 max_output: Some(40),
             },
+            capabilities_known: true,
         },
     ];
     app.panel = Some(MockPanel::Model);
@@ -2772,6 +2775,196 @@ fn provider_panel_projects_authoritative_provider_catalog_when_connected() {
     assert!(text.contains("OpenAI-compatible  READY · READY · LOCAL"));
     assert!(!text.contains("MOCK / NOT CONNECTED"));
     assert!(!text.contains("UI CONTRACT PREVIEW"));
+}
+
+#[test]
+fn live_provider_discovery_projects_registry_without_claiming_health() {
+    let providers = project_provider_catalog(
+        &[
+            ProviderId::Anthropic,
+            ProviderId::OpenAiCompatible,
+            ProviderId::LmStudio,
+        ],
+        Some(ProviderId::OpenAiCompatible),
+        false,
+    );
+
+    assert_eq!(providers.len(), 3);
+    assert_eq!(providers[0].auth_state, AuthState::NotConfigured);
+    assert_eq!(providers[0].health, ProviderHealth::Unknown);
+    assert_eq!(providers[1].auth_state, AuthState::Configured);
+    assert_eq!(providers[1].health, ProviderHealth::Unknown);
+    assert!(!providers[1].is_local);
+    assert!(providers[2].is_local);
+    assert_eq!(providers[2].health, ProviderHealth::Unknown);
+}
+
+#[test]
+fn real_provider_row_mouse_click_targets_the_row_under_the_pointer() {
+    let provider_ids = [
+        ProviderId::Anthropic,
+        ProviderId::Bedrock,
+        ProviderId::Gemini,
+        ProviderId::LmStudio,
+        ProviderId::Ollama,
+        ProviderId::OpenAi,
+        ProviderId::OpenAiCompatible,
+        ProviderId::OpenAiNative,
+        ProviderId::OpenCode,
+        ProviderId::OpenRouter,
+        ProviderId::Vertex,
+    ];
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.panel = Some(MockPanel::Provider);
+    app.snapshot.connection = RuntimeConnection::Connected;
+    app.snapshot.providers =
+        project_provider_catalog(&provider_ids, Some(ProviderId::OpenAiCompatible), true);
+    let mut wrapper = RecordingWrapper::new();
+
+    // At the 80x24 layout, OpenAI-compatible is rendered on terminal row 17.
+    // Ratatui mouse coordinates are zero-based, so row=16 must map to catalog
+    // index 6 (not OpenAI native, index 7).
+    app.handle_mouse_with_wrapper(
+        MouseEvent {
+            kind: MouseEventKind::Down(ratatui::termina::event::MouseButton::Left),
+            column: 30,
+            row: 16,
+            modifiers: Modifiers::NONE,
+        },
+        &mut wrapper,
+        Instant::now(),
+    );
+
+    assert_eq!(app.provider_picker_index, 6);
+    assert_eq!(
+        wrapper.requests,
+        vec![UserRequest::ValidateProvider {
+            provider_id: ProviderId::OpenAiCompatible
+        }]
+    );
+}
+
+#[test]
+fn provider_model_inventory_preserves_ids_and_marks_capabilities_unknown() {
+    let (models, is_local) = parse_provider_models_payload(
+        &serde_json::json!({
+            "ok": true,
+            "action": "provider.models",
+            "is_local": true,
+            "models": ["google/gemma-4-e4b", "qwen2.5-7b-instruct"]
+        }),
+        ProviderId::OpenAiCompatible,
+    )
+    .expect("valid provider model inventory");
+
+    assert!(is_local);
+    assert_eq!(models.len(), 2);
+    assert_eq!(models[1].model_id, "qwen2.5-7b-instruct");
+    assert!(!models[0].capabilities_known);
+}
+
+#[test]
+fn model_picker_mouse_selects_the_visible_provider_model_row() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.panel = Some(MockPanel::Model);
+    app.snapshot.models = ["model-one", "model-two"]
+        .into_iter()
+        .map(|model_id| ModelDescriptor {
+            provider_id: ProviderId::OpenAiCompatible,
+            model_id: model_id.to_owned(),
+            display_name: model_id.to_owned(),
+            context_window: None,
+            max_output_tokens: None,
+            capabilities: ProviderCapabilities {
+                streaming: false,
+                tools: false,
+                reasoning: false,
+                images: false,
+                prompt_caching: false,
+                max_context: None,
+                max_output: None,
+            },
+            capabilities_known: false,
+        })
+        .collect();
+    let mut wrapper = RecordingWrapper::new();
+
+    // At 80x24 the second model is rendered on terminal row 9 (zero-based 8).
+    app.handle_mouse_with_wrapper(
+        MouseEvent {
+            kind: MouseEventKind::Down(ratatui::termina::event::MouseButton::Left),
+            column: 30,
+            row: 8,
+            modifiers: Modifiers::NONE,
+        },
+        &mut wrapper,
+        Instant::now(),
+    );
+
+    assert_eq!(app.model_picker_index, 1);
+    assert_eq!(
+        wrapper.requests,
+        vec![UserRequest::SelectModel {
+            model: ModelRef {
+                provider_id: ProviderId::OpenAiCompatible,
+                model_id: "model-two".to_owned(),
+            },
+        }]
+    );
+}
+
+#[test]
+fn provider_and_model_catalogs_survive_later_session_snapshot_updates() {
+    let mut app = App::default();
+    app.snapshot.connection = RuntimeConnection::Connected;
+    app.reduce_lbe_event(LbeEvent::ProviderCatalogDiscovered {
+        providers: vec![ProviderProjection {
+            provider_id: ProviderId::OpenAiCompatible,
+            auth_state: AuthState::Ready,
+            health: ProviderHealth::Ready,
+            is_local: true,
+        }],
+    });
+    app.reduce_lbe_event(LbeEvent::ModelCatalogDiscovered {
+        models: vec![ModelDescriptor {
+            provider_id: ProviderId::OpenAiCompatible,
+            model_id: "google/gemma-4-e4b".to_owned(),
+            display_name: "google/gemma-4-e4b".to_owned(),
+            context_window: None,
+            max_output_tokens: None,
+            capabilities: ProviderCapabilities {
+                streaming: false,
+                tools: false,
+                reasoning: false,
+                images: false,
+                prompt_caching: false,
+                max_context: None,
+                max_output: None,
+            },
+            capabilities_known: false,
+        }],
+    });
+
+    let mut refreshed_snapshot = LbeSnapshot::default();
+    refreshed_snapshot.connection = RuntimeConnection::Connected;
+    refreshed_snapshot.providers.clear();
+    refreshed_snapshot.models.clear();
+    refreshed_snapshot.selected_model = None;
+    app.reduce_lbe_event(LbeEvent::SnapshotUpdated {
+        snapshot: refreshed_snapshot,
+    });
+
+    assert_eq!(app.snapshot.providers.len(), 1);
+    assert_eq!(app.snapshot.models.len(), 1);
+    assert!(app.snapshot.selected_model.is_some());
+    let provider_text = mock_panel_text_for_app(MockPanel::Provider, &app).to_string();
+    let model_text = mock_panel_text_for_app(MockPanel::Model, &app).to_string();
+    assert!(provider_text.contains("OpenAI-compatible  READY · READY · LOCAL"));
+    assert!(model_text.contains("google/gemma-4-e4b"));
+    assert!(!provider_text.contains("No provider catalog projected"));
+    assert!(!model_text.contains("No model catalog projected"));
 }
 
 #[test]
