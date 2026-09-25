@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -204,6 +205,114 @@ def test_mode_commands_route_through_existing_gateway(
     assert request.project_workspace_id == "project-1"
     assert request.workspace_root == workspace.resolve()
     assert request.operation_id == "reasoning.inspect"
+
+
+def test_mode_command_persists_an_operational_receipt_for_the_turn(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    """A governed turn must leave a durable receipt, not only a command-line answer.
+
+    The single-shot mode command used to skip the operational history owner that the
+    TUI path uses, so a completed turn left no turn/item/event rows to review.
+    """
+    workspace, database = _session(
+        tmp_path,
+        mode="audit",
+        permission="read_only",
+        runtime_policy="audit",
+    )
+    config = _provider_config(tmp_path)
+    handle = SimpleNamespace(
+        descriptor=SimpleNamespace(
+            provider_id="openai-compatible",
+            model_id="model-a",
+        )
+    )
+    monkeypatch.setattr(
+        "lbe_guard_inspector.cli.build_provider_controller",
+        lambda **kwargs: (object(), handle),
+    )
+
+    class FakeGateway:
+        def __init__(self, *, runtime, reasoning_controller):
+            assert runtime.session_id == "session-1"
+            assert reasoning_controller is not None
+
+        def invoke(self, request):
+            return SimpleNamespace(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                task_id=request.task_id,
+                mode=request.mode,
+                mode_decision=ModeDecision(
+                    mode=request.mode.value,
+                    allowed_behaviors=(),
+                    capabilities=(),
+                    rationale="test",
+                ),
+                status=TaskStatus.COMPLETED,
+                outcome="COMPLETED",
+                response=LBEResponse(
+                    task_id=request.task_id,
+                    workspace_identity={
+                        "workspace_id": "project-1",
+                        "target_project_root": str(workspace.resolve()),
+                    },
+                    workspace_profile={},
+                    plan=None,
+                    deterministic_result=None,
+                    explanation=None,
+                    outcome="COMPLETED",
+                    read_only=True,
+                ),
+            )
+
+    monkeypatch.setattr("lbe_guard_inspector.cli.GovernedAgentGateway", FakeGateway)
+
+    code = main([
+        "audit",
+        "--database",
+        str(database),
+        "--session-id",
+        "session-1",
+        "--task-id",
+        "task-1",
+        "--provider-config",
+        str(config),
+        "--problem",
+        "Inspect current workspace",
+    ])
+
+    payload = _json_output(capsys)
+    assert code == 0
+    turn_id = payload["operational_turn_id"]
+    assert turn_id
+
+    with sqlite3.connect(database) as connection:
+        connection.row_factory = sqlite3.Row
+        turn = connection.execute(
+            "SELECT * FROM operational_turns WHERE turn_id = ?", (turn_id,)
+        ).fetchone()
+        assert turn["status"] == "completed"
+        assert turn["finalized_at"] is not None
+
+        item = connection.execute(
+            "SELECT * FROM operational_items WHERE turn_id = ?", (turn_id,)
+        ).fetchone()
+        assert item["kind"] == "reasoning"
+        assert item["status"] == "completed"
+        assert item["finalized_at"] is not None
+
+        events = [
+            row["event_type"]
+            for row in connection.execute(
+                "SELECT event_type FROM operational_events WHERE turn_id = ?"
+                " ORDER BY turn_sequence",
+                (turn_id,),
+            )
+        ]
+
+    assert events == ["governed.reasoning.requested", "governed.reasoning.completed"]
 
 
 def test_mode_command_binds_stale_config_model_to_session_before_composition(

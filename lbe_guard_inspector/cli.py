@@ -754,21 +754,93 @@ def _run_mode_command(
 
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
     request_id = args.request_id.strip() if args.request_id else f"request-{uuid4()}"
-    result = gateway.invoke(
-        AgentRequestEnvelope(
-            request_id=request_id,
-            session_id=state.session_id,
-            task_id=args.task_id,
-            project_workspace_id=state.project_workspace_id,
-            workspace_root=state.canonical_workspace_root,
-            mode=mode,
-            operation_id="reasoning.inspect",
-            arguments={
-                "problem": args.problem,
-                "max_results": args.max_results,
-            },
-        )
+    envelope = AgentRequestEnvelope(
+        request_id=request_id,
+        session_id=state.session_id,
+        task_id=args.task_id,
+        project_workspace_id=state.project_workspace_id,
+        workspace_root=state.canonical_workspace_root,
+        mode=mode,
+        operation_id="reasoning.inspect",
+        arguments={
+            "problem": args.problem,
+            "max_results": args.max_results,
+        },
     )
+    # A governed turn must leave an operational receipt behind, not only answer on the
+    # command line. The TUI path already records the turn; the single-shot mode command
+    # used to skip it, so a completed turn left no reviewable receipt or event trail.
+    from .memory.operational_history import (
+        ItemStatus,
+        OperationalEvent,
+        SessionOperationalHistory,
+        TurnStatus,
+    )
+
+    history = SessionOperationalHistory(store=WorkspaceMemoryStore(args.database))
+    turn = history.start_turn(session_id=state.session_id)
+    item = history.start_item(turn_id=turn.turn_id, kind="reasoning")
+    history.append_event(OperationalEvent(
+        session_id=state.session_id,
+        turn_id=turn.turn_id,
+        item_id=item.item_id,
+        event_type="governed.reasoning.requested",
+        payload={
+            "action": action,
+            "task_id": args.task_id,
+            "operation_id": envelope.operation_id,
+            "mode": mode.value,
+        },
+        provider_id=state.provider_id,
+        model_id=state.provider_model,
+        runtime_operation_id=envelope.operation_id,
+    ))
+    try:
+        result = gateway.invoke(envelope)
+    except Exception as error:  # fail closed with a durable receipt, never a silent turn
+        history.append_event(OperationalEvent(
+            session_id=state.session_id,
+            turn_id=turn.turn_id,
+            item_id=item.item_id,
+            event_type="governed.reasoning.failed",
+            payload={"error_type": type(error).__name__, "message": str(error)},
+            provider_id=state.provider_id,
+            model_id=state.provider_model,
+            runtime_operation_id=envelope.operation_id,
+        ))
+        history.finalize_item(item_id=item.item_id, status=ItemStatus.FAILED)
+        history.finalize_turn(turn_id=turn.turn_id, status=TurnStatus.FAILED)
+        raise
+
+    deterministic = asdict(result.response).get("deterministic_result") or {}
+    history.append_event(OperationalEvent(
+        session_id=state.session_id,
+        turn_id=turn.turn_id,
+        item_id=item.item_id,
+        event_type="governed.reasoning.completed",
+        payload={
+            "status": result.status.value,
+            "outcome": result.outcome,
+            "guard_id": deterministic.get("guard_id"),
+            "result_id": deterministic.get("result_id"),
+            "verdict": deterministic.get("verdict"),
+            "evidence_refs": list(deterministic.get("evidence_refs") or ()),
+            "validation_refs": list(deterministic.get("validation_refs") or ()),
+        },
+        provider_id=state.provider_id,
+        model_id=state.provider_model,
+        runtime_operation_id=envelope.operation_id,
+    ))
+    turn_status = {
+        "completed": TurnStatus.COMPLETED,
+        "failed": TurnStatus.FAILED,
+    }.get(result.status.value, TurnStatus.INCOMPLETE)
+    item_status = {
+        "completed": ItemStatus.COMPLETED,
+        "failed": ItemStatus.FAILED,
+    }.get(result.status.value, ItemStatus.DENIED)
+    history.finalize_item(item_id=item.item_id, status=item_status)
+    finalized_turn = history.finalize_turn(turn_id=turn.turn_id, status=turn_status)
     return {
         "action": action,
         "request_id": result.request_id,
@@ -779,6 +851,7 @@ def _run_mode_command(
         "status": result.status.value,
         "outcome": result.outcome,
         "response": asdict(result.response),
+        "operational_turn_id": finalized_turn.turn_id,
     }
 
 
