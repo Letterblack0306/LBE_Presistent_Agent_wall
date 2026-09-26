@@ -976,6 +976,7 @@ impl App {
             }
             "/evidence" => Some(MockPanel::Evidence),
             "/receipts" => Some(MockPanel::Receipts),
+            "/inspector" | "/inspect" => Some(MockPanel::Inspector),
             "/activity" | "/timeline" => Some(MockPanel::Activity),
             "/status" => Some(MockPanel::Status),
             "/memory" => {

@@ -5841,3 +5841,117 @@ fn action_gate_generates_no_receipt_or_evidence_of_its_own() {
     assert_eq!(app.evidence_records.len(), evidence_before);
 }
 
+
+// ---------------------------------------------------------------------------
+// Inspector
+// ---------------------------------------------------------------------------
+
+fn receipt_with_evidence() -> App {
+    let mut app = App::default();
+    app.receipt_records.push(ReceiptProjection {
+        receipt_id: "receipt-1".to_owned(),
+        source: "workspace.read".to_owned(),
+        session_id: Some("session-1".to_owned()),
+        execution_id: Some("op-1".to_owned()),
+        tool_id: Some("workspace.read".to_owned()),
+        status: "EXECUTED".to_owned(),
+        evidence_ref: Some("evidence-1".to_owned()),
+    });
+    app.evidence_records.push(EvidenceProjection {
+        reference: "evidence-1".to_owned(),
+        source: "workspace.read".to_owned(),
+        session_id: Some("session-1".to_owned()),
+        execution_id: Some("op-1".to_owned()),
+        tool_id: Some("workspace.read".to_owned()),
+        summary: "2 line(s) read with verified content hash".to_owned(),
+    });
+    app
+}
+
+#[test]
+fn inspector_reports_nothing_before_records_are_projected() {
+    let app = App::default();
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    assert!(
+        text.contains("No receipt or evidence has been projected"),
+        "{text}"
+    );
+}
+
+#[test]
+fn inspector_links_a_receipt_to_its_cited_evidence() {
+    let app = receipt_with_evidence();
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    assert!(text.contains("INSPECTOR // EVIDENCE AND RECEIPTS"), "{text}");
+    // Both authoritative identities are shown and cross-linked.
+    assert!(text.contains("receipt-1"), "{text}");
+    assert!(text.contains("evidence-1"), "{text}");
+    assert!(text.contains("op-1"), "{text}");
+    assert!(text.contains("verified content hash"), "{text}");
+}
+
+#[test]
+fn inspector_marks_a_missing_evidence_link_instead_of_inventing_one() {
+    let mut app = receipt_with_evidence();
+    // The runtime cites a reference that was never projected.
+    app.receipt_records[0].evidence_ref = Some("evidence-missing".to_owned());
+
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    assert!(text.contains("not projected"), "{text}");
+    // The unbacked reference is not resolved to the unrelated evidence record.
+    assert!(
+        !text.contains("evidence-missing · verified"),
+        "a dangling reference must not borrow another record: {text}"
+    );
+}
+
+#[test]
+fn inspector_reports_orphan_evidence_without_fabricating_a_receipt() {
+    let mut app = receipt_with_evidence();
+    app.evidence_records.push(EvidenceProjection {
+        reference: "evidence-orphan".to_owned(),
+        source: "governed_coding".to_owned(),
+        session_id: Some("session-1".to_owned()),
+        execution_id: Some("op-2".to_owned()),
+        tool_id: Some("workspace.write".to_owned()),
+        summary: "unclaimed evidence".to_owned(),
+    });
+
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    assert!(
+        text.contains("1 evidence record(s) have no receipt citing them."),
+        "{text}"
+    );
+}
+
+#[test]
+fn inspector_does_not_claim_completion_it_cannot_prove() {
+    let app = receipt_with_evidence();
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    let completion = text
+        .split("completion")
+        .nth(1)
+        .map(|tail| tail.chars().take(30).collect::<String>())
+        .unwrap_or_default();
+    // No client-derived completion verdict is ever asserted.
+    assert!(
+        completion.contains("not projected"),
+        "completion must stay unproven: {text}"
+    );
+}
+
+#[test]
+fn inspector_creates_no_records_of_its_own() {
+    let mut app = receipt_with_evidence();
+    let mut wrapper = RecordingWrapper::new();
+    let receipts = app.receipt_records.len();
+    let evidence = app.evidence_records.len();
+
+    app.handle_command("/inspector", &mut wrapper);
+    app.dismiss_or_reject(&mut wrapper);
+
+    assert_eq!(app.receipt_records.len(), receipts);
+    assert_eq!(app.evidence_records.len(), evidence);
+    assert!(wrapper.requests.is_empty());
+}
+

@@ -1203,6 +1203,10 @@ pub(crate) enum MockPanel {
     /// Dedicated authorization surface over runtime-owned approval state. It renders
     /// only what the runtime projected; it never decides or executes an approval.
     ActionGate,
+    /// Single cross-linked view over the existing receipt and evidence
+    /// projections. It correlates records that already exist; it never creates
+    /// a record, an identifier, or a correlation the runtime did not project.
+    Inspector,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1388,6 +1388,10 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             "Action Gate",
             vec!["requires runtime authorization state".to_owned()],
         ),
+        MockPanel::Inspector => (
+            "Inspector",
+            vec!["requires projected receipt and evidence records".to_owned()],
+        ),
         MockPanel::Activity => (
             "Activity",
             vec![
@@ -1914,6 +1918,9 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
 pub(crate) fn mock_panel_text_for_app(panel: MockPanel, app: &App) -> Text<'static> {
     if panel == MockPanel::ActionGate {
         return action_gate_panel_text(app);
+    }
+    if panel == MockPanel::Inspector {
+        return inspector_panel_text(app);
     }
     // Activity is rendered from the app projection below.
     if panel == MockPanel::Activity {
@@ -2450,6 +2457,123 @@ fn action_gate_panel_text(app: &App) -> Text<'static> {
             ),
             Span::styled(effect, Style::default().fg(PALETTE.faint)),
         ]));
+    }
+    Text::from(lines)
+}
+
+/// Single cross-linked evidence/receipt inspector.
+///
+/// This is a read-only correlation over records the runtime already projected.
+/// A link is drawn only when the two sides already share an authoritative
+/// identity: a receipt's own `evidence_ref`, or a shared `execution_id`. When
+/// a side is missing, the row says so rather than inferring a link.
+fn inspector_panel_text(app: &App) -> Text<'static> {
+    const MISSING: &str = "not projected";
+    let connected = app.snapshot.connection == RuntimeConnection::Connected;
+    let mut lines = vec![Line::from(Span::styled(
+        "INSPECTOR // EVIDENCE AND RECEIPTS",
+        Style::default()
+            .fg(PALETTE.ink)
+            .add_modifier(Modifier::BOLD),
+    ))];
+    lines.push(Line::from(Span::styled(
+        if connected {
+            "LBE-OWNED · correlation over projected records only"
+        } else {
+            "MOCK / NOT CONNECTED · no authoritative record to correlate"
+        },
+        Style::default().fg(if connected { PALETTE.info } else { PALETTE.muted }),
+    )));
+    lines.push(Line::default());
+
+    if app.receipt_records.is_empty() && app.evidence_records.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "No receipt or evidence has been projected for this session.",
+            Style::default().fg(PALETTE.muted),
+        )));
+        return Text::from(lines);
+    }
+
+    let label = |text: &str| {
+        Line::from(Span::styled(
+            format!("{text:<18}"),
+            Style::default()
+                .fg(PALETTE.faint)
+                .add_modifier(Modifier::BOLD),
+        ))
+    };
+    let value = |text: &str, known: bool| {
+        Line::from(Span::styled(
+            text.to_owned(),
+            Style::default().fg(if known { PALETTE.ink } else { PALETTE.muted }),
+        ))
+    };
+    let or_missing = |present: bool, text: String| {
+        if present {
+            text
+        } else {
+            MISSING.to_owned()
+        }
+    };
+
+    for record in &app.receipt_records {
+        // The receipt's own evidence reference is the authoritative link. It is
+        // never synthesized from a matching tool or a shared execution id.
+        let linked = record
+            .evidence_ref
+            .as_deref()
+            .filter(|reference| {
+                app.evidence_records
+                    .iter()
+                    .any(|evidence| evidence.reference == **reference)
+            })
+            .map(str::to_owned);
+        let evidence_summary = linked
+            .as_ref()
+            .and_then(|reference| {
+                app.evidence_records
+                    .iter()
+                    .find(|evidence| &evidence.reference == reference)
+            })
+            .map(|evidence| format!("{} · {}", evidence.reference, evidence.summary));
+
+        lines.push(Line::from(Span::styled(
+            format!("OPERATION {}", record.execution_id.as_deref().unwrap_or(MISSING)),
+            Style::default().fg(PALETTE.amber),
+        )));
+        lines.push(label("  receipt"));
+        lines.push(value(&record.receipt_id, true));
+        lines.push(label("  capability"));
+        lines.push(value(&or_missing(record.tool_id.is_some(), record.tool_id.clone().unwrap_or_default()), record.tool_id.is_some()));
+        lines.push(label("  status"));
+        lines.push(value(&record.status, true));
+        lines.push(label("  evidence"));
+        lines.push(value(
+            &or_missing(evidence_summary.is_some(), evidence_summary.clone().unwrap_or_default()),
+            evidence_summary.is_some(),
+        ));
+        lines.push(label("  completion"));
+        lines.push(value(
+            &or_missing(false, String::new()),
+            false,
+        ));
+        lines.push(Line::default());
+    }
+
+    let unlinked = app
+        .evidence_records
+        .iter()
+        .filter(|evidence| {
+            !app.receipt_records
+                .iter()
+                .any(|receipt| receipt.evidence_ref.as_deref() == Some(evidence.reference.as_str()))
+        })
+        .count();
+    if unlinked > 0 {
+        lines.push(Line::from(Span::styled(
+            format!("{unlinked} evidence record(s) have no receipt citing them."),
+            Style::default().fg(PALETTE.muted),
+        )));
     }
     Text::from(lines)
 }
