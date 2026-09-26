@@ -56,8 +56,26 @@ current authority. Nothing from the reference may create runtime truth in the cl
 - `RealLBERuntimeAdapter` placeholder `ws://127.0.0.1:9099/lbe/stream` - design boundary only; the Rust wrapper and the current Python transport remain authoritative.
 - Reference `PROJECT_INDEX.md` and `README.md` runtime-status text - stale copies, not authority.
 
+## Action Gate and Patch Review are separate controls
+
+The Action Gate projects LBE authority escalation (`REQUIRE_APPROVAL`). It is not a
+mandatory confirmation step for operations already delegated by the active mode and
+policy. This documents semantics that the runtime already enforces; it is not an
+architecture change.
+
+| Control | Question it answers | Path |
+| --- | --- | --- |
+| Patch Review | "Is this the change I intend to submit?" | `/patch` -> `PatchReview` -> Enter submits through the Agent Wall |
+| Action Gate | "Does this operation have authority to execute?" | `AuthorizationRequired` -> ALLOW ONCE / DENY |
+
+Consequence, measured against the real runtime: for capability `modify` the runtime
+returns only `ALLOW` (already delegated) or `DENY` (`explicitly_forbidden`), so `/patch`
+cannot reach the gate by design. `REQUIRE_APPROVAL` requires a capability the active
+mode does not delegate, reachable via `/authorize <capability>` for a non-delegated
+capability. `/patch` is therefore left unchanged.
+
 ## Next bounded slices (require user authorization each)
 
-1. Action Gate surface driven only by the existing governed projection (no new authority, no synthetic data).
-2. Single cross-linked Inspector surface over existing receipt/evidence/validation projections.
-3. Typed risk level in the client projection with an explicit `CRITICAL` value.
+1. Action Gate surface driven only by the existing governed projection (no new authority, no synthetic data). - CLOSED (bounded implementation; PTY visual acceptance remains open at final-product level)
+2. Single cross-linked Inspector surface over existing receipt/evidence/validation projections. - IN PROGRESS
+3. Typed risk level in the client projection with an explicit `CRITICAL` value. - CLOSED / NOT YET AUTHORIZED

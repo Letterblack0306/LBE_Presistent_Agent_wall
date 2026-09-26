@@ -5955,3 +5955,47 @@ fn inspector_creates_no_records_of_its_own() {
     assert!(wrapper.requests.is_empty());
 }
 
+
+#[test]
+fn inspector_shows_authorization_only_for_the_correlated_operation() {
+    let mut app = receipt_with_evidence();
+    app.last_authorization_operation_id = Some("op-1".to_owned());
+    app.last_authorization_approval_id = Some("approval-9".to_owned());
+    app.last_authorization_verdict = Some("ALLOW".to_owned());
+    app.last_authorization_rationale = Some("Explicit Agent Wall approval".to_owned());
+
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    assert!(text.contains("approval-9"), "{text}");
+    assert!(text.contains("ALLOW"), "{text}");
+    assert!(text.contains("Explicit Agent Wall approval"), "{text}");
+}
+
+#[test]
+fn inspector_refuses_to_reuse_another_operations_authorization() {
+    let mut app = receipt_with_evidence();
+    // A real authorization exists, but for a different operation.
+    app.last_authorization_operation_id = Some("op-unrelated".to_owned());
+    app.last_authorization_approval_id = Some("approval-other".to_owned());
+    app.last_authorization_verdict = Some("ALLOW".to_owned());
+
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    assert!(
+        !text.contains("approval-other"),
+        "authorization must not be attached to an unrelated receipt: {text}"
+    );
+    assert!(text.contains("not projected"), "{text}");
+}
+
+#[test]
+fn inspector_never_asserts_per_operation_validation() {
+    let app = receipt_with_evidence();
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    let tail = text
+        .split("validation")
+        .nth(1)
+        .map(|rest| rest.chars().take(30).collect::<String>())
+        .unwrap_or_default();
+    // Validation is checkpoint-scoped; no per-operation verdict may be claimed.
+    assert!(tail.contains("not projected"), "{text}");
+}
+

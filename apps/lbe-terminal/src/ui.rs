@@ -2552,6 +2552,38 @@ fn inspector_panel_text(app: &App) -> Text<'static> {
             &or_missing(evidence_summary.is_some(), evidence_summary.clone().unwrap_or_default()),
             evidence_summary.is_some(),
         ));
+        // Authorization is shown only when the runtime correlated it to this
+        // exact operation. The most recent authorization is not reused for an
+        // unrelated receipt.
+        let authorization = record.execution_id.as_deref().and_then(|operation_id| {
+            (app.last_authorization_operation_id.as_deref() == Some(operation_id)).then(|| {
+                (
+                    app.last_authorization_approval_id.clone(),
+                    app.last_authorization_verdict.clone(),
+                    app.last_authorization_rationale.clone(),
+                )
+            })
+        });
+        let (approval_id, verdict, rationale) = authorization.clone().unwrap_or_default();
+        lines.push(label("  approval"));
+        lines.push(value(
+            &or_missing(approval_id.is_some(), approval_id.clone().unwrap_or_default()),
+            approval_id.is_some(),
+        ));
+        lines.push(label("  auth verdict"));
+        lines.push(value(
+            &or_missing(verdict.is_some(), verdict.clone().unwrap_or_default()),
+            verdict.is_some(),
+        ));
+        lines.push(label("  auth rationale"));
+        lines.push(value(
+            &or_missing(rationale.is_some(), rationale.clone().unwrap_or_default()),
+            rationale.is_some(),
+        ));
+        lines.push(label("  validation"));
+        // Validation is projected per checkpoint, not per operation, so no
+        // per-operation validation can be asserted from an existing projection.
+        lines.push(value(MISSING, false));
         lines.push(label("  completion"));
         lines.push(value(
             &or_missing(false, String::new()),
