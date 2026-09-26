@@ -37,8 +37,8 @@ current authority. Nothing from the reference may create runtime truth in the cl
 | Reference screen | Reference evidence | Rust owner | Status |
 |---|---|---|---|
 | Agent Cockpit | `PrimaryScreen = cockpit` | main working surface, transcript + governed timeline | ALREADY-OWNED |
-| **Action Gate** | `PrimaryScreen = action_gate`; `ToolProposalProjection`, `AuthorizationProjection`, `RiskLevel` | `MockPanel::Tools` shows the last governed tool projection; approval flows exist as `UserRequest::Approve`/`Reject` and `SessionStatus::WaitingForApproval` | **GAP**: no surface shows capability, target, risk, operation, diff, and allow-once/deny together. The client has the data (`risk_class`, `authorization_verdict`, `authorization_rationale` in the governed projection) but no dedicated surface |
-| **Evidence / Receipt Inspector** | `PrimaryScreen = inspector`; one chain from proposal to validation | `MockPanel::Evidence` and `MockPanel::Receipts` are two independent panels | **GAP**: the cross-linked single-item chain (proposal to authorization to execution to receipt to evidence to validation) is not a surface; the two panels are not linked |
+| **Action Gate** | `PrimaryScreen = action_gate`; `ToolProposalProjection`, `AuthorizationProjection`, `RiskLevel` | `MockPanel::ActionGate` over `LbeEvent::AuthorizationRequired`/`AuthorizationResolved` | IMPLEMENTED (3f9dc1e): dedicated surface showing capability, tool, target, risk, operation ID, approval ID, and rationale together. `Enter` -> existing `UserRequest::Approve`, `Esc` -> existing `UserRequest::Reject`, `D` view-diff is display-only. No new authority, no synthetic IDs. PTY visual acceptance remains open at final-product level |
+| **Evidence / Receipt Inspector** | `PrimaryScreen = inspector`; one chain from proposal to validation | `MockPanel::Inspector` over existing `receipt_records` / `evidence_records` / `snapshot.validation` | IMPLEMENTED (19715a7, a440904): single cross-linked chain per operation. Receipt, status, evidence ref, authorization (approval ID, verdict, rationale), validation (verdict + evidence IDs), completion. Correlated only on projected identities; foreign records are refused and absent links read "not projected". Completion has no authoritative projection and stays unproven |
 | Agent Wall | `PrimaryScreen = agent_wall`; `ChildRunProjection` | `MockPanel::Agents`, `ChildAgentRunsUpdated` event, `ChildAgentRun` status | ALREADY-OWNED |
 | Extensions | `PrimaryScreen = extensions`; `CapabilityExtension`, `PluginManagerModal` | `MockPanel::Mcp`, `McpRegistryUpdated` | PARTIAL: registry coverage exists; capability extension model is not carried |
 | Editor / file tree | `CodeEditor.tsx`, `FileExplorer.tsx` | `MockPanel::Changes`, `Undo`, `Processes` | OUT-OF-SCOPE: a terminal IDE editor is not part of this convergence |
@@ -48,7 +48,7 @@ current authority. Nothing from the reference may create runtime truth in the cl
 | Reference | Reference evidence | Rust owner | Status |
 |---|---|---|---|
 | `TimelineItem`, `OperationalStepProjection` | `src/types/ide.ts` | `LbeEvent` typed operational events, operational history receipts | ALREADY-OWNED |
-| Risk typing | `RiskLevel` `LOW`/`MEDIUM`/`HIGH`/`CRITICAL` | governed projection `risk_class` string | GAP (minor): untyped string with no `CRITICAL` level |
+| Risk typing | `RiskLevel` `LOW`/`MEDIUM`/`HIGH`/`CRITICAL` | `GovernedRiskClass` (typed), parsed at the projection boundary | IMPLEMENTED (5f33eab): strict `LOW`/`MEDIUM`/`HIGH` mirroring the runtime `ToolRiskClass` contract, failing closed on anything else. `CRITICAL` is reference-only and rejected: the runtime cannot emit it |
 
 ## Explicitly not ported
 
