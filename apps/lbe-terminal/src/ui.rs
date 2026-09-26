@@ -2581,9 +2581,67 @@ fn inspector_panel_text(app: &App) -> Text<'static> {
             rationale.is_some(),
         ));
         lines.push(label("  validation"));
-        // Validation is projected per checkpoint, not per operation, so no
-        // per-operation validation can be asserted from an existing projection.
-        lines.push(value(MISSING, false));
+        // ValidationData and ValidationEvidence both carry an authoritative
+        // operation_id, so a per-operation verdict can be correlated when the
+        // runtime projected one for this exact operation.
+        let validation = record.execution_id.as_deref().and_then(|operation_id| {
+            app.snapshot.validation.as_ref().and_then(|projection| {
+                let data = &projection.data;
+                let evidence: Vec<&ValidationEvidence> = data
+                    .evidence
+                    .iter()
+                    .filter(|item| item.operation_id == operation_id)
+                    .collect();
+                let task_matches = data.operation_id == operation_id;
+                if !task_matches && evidence.is_empty() {
+                    return None;
+                }
+                // The runtime projects PASS, FAIL, or STALE per evidence item.
+                // A single stale or failing item is reported as such rather than
+                // being averaged into a client-side verdict.
+                let status = if !evidence.is_empty() {
+                    let failing = evidence
+                        .iter()
+                        .any(|item| item.status == ValidationEvidenceStatus::Fail);
+                    let stale = evidence
+                        .iter()
+                        .any(|item| item.status == ValidationEvidenceStatus::Stale);
+                    if failing {
+                        "FAIL".to_owned()
+                    } else if stale {
+                        "STALE".to_owned()
+                    } else {
+                        "PASS".to_owned()
+                    }
+                } else if task_matches {
+                    data.task_status
+                        .map(|status| format!("{status:?}").to_uppercase())
+                        .unwrap_or_else(|| "PROJECTED".to_owned())
+                } else {
+                    "EVIDENCE ONLY".to_owned()
+                };
+                let evidence_refs: Vec<&str> = evidence
+                    .iter()
+                    .map(|item| item.evidence_id.as_str())
+                    .collect();
+                Some((status, evidence_refs))
+            })
+        });
+        match validation {
+            Some((status, evidence_refs)) => {
+                lines.push(value(&status, true));
+                lines.push(label("  validation evidence"));
+                lines.push(value(
+                    &or_missing(!evidence_refs.is_empty(), evidence_refs.join(", ")),
+                    !evidence_refs.is_empty(),
+                ));
+            }
+            None => {
+                lines.push(value(MISSING, false));
+                lines.push(label("  validation evidence"));
+                lines.push(value(MISSING, false));
+            }
+        }
         lines.push(label("  completion"));
         lines.push(value(
             &or_missing(false, String::new()),

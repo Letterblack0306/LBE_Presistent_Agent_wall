@@ -5987,15 +5987,86 @@ fn inspector_refuses_to_reuse_another_operations_authorization() {
 }
 
 #[test]
-fn inspector_never_asserts_per_operation_validation() {
-    let app = receipt_with_evidence();
+fn inspector_correlates_per_operation_validation_when_projected() {
+    let mut app = receipt_with_evidence();
+    app.snapshot.validation = Some(ValidationProjection {
+        schema_version: "1".to_owned(),
+        projection_type: "validation".to_owned(),
+        generated_at: "2026-01-01T00:00:00Z".to_owned(),
+        workspace_id: "workspace-1".to_owned(),
+        session_id: "session-1".to_owned(),
+        read_only: true,
+        data: ValidationData {
+            task_id: "task-1".to_owned(),
+            operation_id: "op-1".to_owned(),
+            mode: ValidationMode::Coding,
+            requirements: Vec::new(),
+            policies: Vec::new(),
+            evidence: vec![ValidationEvidence {
+                evidence_id: "validation-evidence-1".to_owned(),
+                kind: "test".to_owned(),
+                status: ValidationEvidenceStatus::Pass,
+                producer_id: "pytest".to_owned(),
+                operation_id: "op-1".to_owned(),
+                details: OpaqueOwnerPayload {
+                    owner_payload_version: "1.0".to_owned(),
+                    opaque: true,
+                    payload: serde_json::json!({}),
+                },
+            }],
+            task_status: Some(ValidationTaskStatus::Completed),
+        },
+    });
+
     let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
-    let tail = text
+    // ValidationData.operation_id matches this receipt's operation, so the
+    // verdict and its evidence are authoritatively correlated.
+    assert!(text.contains("validation-evidence-1"), "{text}");
+    let validation = text
         .split("validation")
         .nth(1)
-        .map(|rest| rest.chars().take(30).collect::<String>())
+        .map(|rest| rest.chars().take(20).collect::<String>())
         .unwrap_or_default();
-    // Validation is checkpoint-scoped; no per-operation verdict may be claimed.
-    assert!(tail.contains("not projected"), "{text}");
+    assert!(validation.contains("PASS"), "{text}");
+}
+
+#[test]
+fn inspector_refuses_to_borrow_validation_from_another_operation() {
+    let mut app = receipt_with_evidence();
+    app.snapshot.validation = Some(ValidationProjection {
+        schema_version: "1".to_owned(),
+        projection_type: "validation".to_owned(),
+        generated_at: "2026-01-01T00:00:00Z".to_owned(),
+        workspace_id: "workspace-1".to_owned(),
+        session_id: "session-1".to_owned(),
+        read_only: true,
+        data: ValidationData {
+            task_id: "task-9".to_owned(),
+            operation_id: "op-other".to_owned(),
+            mode: ValidationMode::Coding,
+            requirements: Vec::new(),
+            policies: Vec::new(),
+            evidence: vec![ValidationEvidence {
+                evidence_id: "validation-evidence-other".to_owned(),
+                kind: "test".to_owned(),
+                status: ValidationEvidenceStatus::Pass,
+                producer_id: "pytest".to_owned(),
+                operation_id: "op-other".to_owned(),
+                details: OpaqueOwnerPayload {
+                    owner_payload_version: "1.0".to_owned(),
+                    opaque: true,
+                    payload: serde_json::json!({}),
+                },
+            }],
+            task_status: Some(ValidationTaskStatus::Completed),
+        },
+    });
+
+    let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
+    assert!(
+        !text.contains("validation-evidence-other"),
+        "validation must not be borrowed from an unrelated operation: {text}"
+    );
+    assert!(text.contains("not projected"), "{text}");
 }
 
