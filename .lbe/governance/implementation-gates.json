@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
+  "active_slice": "INSTALLED_PTY_CONPTY_FINAL_ACCEPTANCE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,16 +64,16 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001",
-    "owner": "apps/lbe-terminal presentation surfaces and docs/reference",
+    "intent_id": "LBE-INTENT-INSTALLED-PTY-CONPTY-FINAL-ACCEPTANCE-001",
+    "owner": "installed PTY/ConPTY and final-product acceptance evidence owners",
     "index_revision": "FFB8FF6D389869947C47DDF7F853EDC6FE8EC3D0915070C037F81144BD6591CD"
   },
   "closure": {
     "status": "OPEN",
-    "last_completed_slice": "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION",
-    "last_completed_intent": "LBE-INTENT-REASONING-ENGINE-PROVIDER-BINDING-SEPARATION-001",
+    "last_completed_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
+    "last_completed_intent": "LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001",
     "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
+    "next_slice": "INSTALLED_PTY_CONPTY_FINAL_ACCEPTANCE",
     "publication": "LOCKED"
   },
  "active_execution_plan": {

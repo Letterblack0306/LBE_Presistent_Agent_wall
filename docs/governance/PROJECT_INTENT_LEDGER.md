@@ -980,7 +980,7 @@ AUTHORIZATION: EXPLICIT_USER_REQUEST_TO_FOLLOW_GOVERNANCE_AND_SUCCESSFULLY_PUSH_
 
 ## INTENT LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001
 
-STATUS: AUTHORIZED
+STATUS: COMPLETED
 REQUEST: Converge the canonical Rust/Ratatui client surfaces onto the reviewed LBE HTML/React interaction contract, keeping all runtime authority in LBE and the projection truthfulness rules intact.
 OWNER: apps/lbe-terminal presentation surfaces and docs/reference; the Rust client remains projection and operator control only.
 FAILURE_CLASS: UI_CONTRACT_DIVERGENCE_FROM_APPROVED_REFERENCE.
@@ -993,5 +993,27 @@ AUTHORITY_IMPACT: Presentation and reference documentation only. No runtime, aut
 EXPECTED_PATH_PREFIXES: docs/reference/,docs/governance/,docs/acceptance/,PROJECT_INDEX.md,.lbe/governance/,apps/lbe-terminal/
 REQUIRED_EVIDENCE: classified surface mapping with file evidence from both the reference and the current Rust owners; explicit classification of every gap as already-owned, gap, or out of scope; no synthetic identity or receipt generation introduced; full Python and Rust suites green for any code change; runtime proof only for claims that need it.
 MACHINE_SLICE: TERMINAL_UI_CONTRACT_CONVERGENCE
-RESULT: IMPLEMENTATION_PENDING
+RESULT: PASS
+RESULT_SCOPE: COMPLETED_IMPLEMENTED_AND_TESTED. Surface mapping delivered at docs/reference/TERMINAL_UI_CONTRACT_MAPPING.md (dacb888) and resynchronized with the implemented state at 46420a9. Three bounded slices delivered under this intent, each separately authorized: Action Gate (3f9dc1e), cross-linked Inspector (19715a7, e8d51a2, a440904), strict LOW/MEDIUM/HIGH risk typing with CRITICAL rejected as reference-only (5f33eab). No synthetic identity, receipt, or evidence generation; no new runtime authority.
+EVIDENCE: Rust suite 251 passed, 0 failed, 2 ignored. Python suite 905 passed, 1 skipped, 0 failed, run under Python 3.13 with an explicit writable --basetemp; the default pytest base_temp is permission-locked under this account and yields setup-only PermissionError noise unrelated to code. Real runtime authorization escalation independently measured against state/workspace.db: REQUIRE_APPROVAL with a runtime-issued approval_id, plus real DENY and real ALLOW resolutions.
+SCOPE_NOT_CLAIMED: This PASS covers presentation surfaces and reference documentation only. It does NOT satisfy clean_pty_conpty_exit or any other phase-level required evidence for INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE. Real event to Rust TUI render, PTY/ConPTY operator interaction, and TUI ALLOW to EXECUTE to RECEIPT remain UNVERIFIED THROUGH TUI and are carried forward under LBE-INTENT-INSTALLED-PTY-CONPTY-FINAL-ACCEPTANCE-001.
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_MAP_REFERENCE_SURFACES_INTO_EXISTING_RUST_OWNERS_2026_09_25
+CLOSURE_AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_CLOSE_CONVERGENCE_INTENT_AND_OPEN_SUCCESSOR_PTY_ACCEPTANCE_INTENT
+
+## INTENT LBE-INTENT-INSTALLED-PTY-CONPTY-FINAL-ACCEPTANCE-001
+
+STATUS: AUTHORIZED
+REQUEST: Obtain current real interactive terminal evidence for the installed LBE product, covering real REQUIRE_APPROVAL to Rust TUI render, operator ALLOW/DENY interaction, ALLOW to correlated execution to receipt/evidence, and clean PTY/ConPTY lifecycle.
+OWNER: Installed PTY/ConPTY and final-product acceptance evidence owners.
+FAILURE_CLASS: MISSING_INTERACTIVE_TERMINAL_ACCEPTANCE_EVIDENCE.
+WHY: The terminal UI contract convergence is implemented and tested, and the real authorization backend has been proven independently, but no genuine interactive terminal run has demonstrated the gate rendering a real REQUIRE_APPROVAL event or driven ALLOW through to a real receipt. A nested ConPTY harness was attempted and failed to attach in the agent environment, which is an environment limitation and not a product defect. That evidence can only come from a real interactive terminal session.
+EXISTING_OWNER: apps/lbe-terminal plus the canonical LBE runtime plus existing PTY acceptance tooling (apps/lbe-terminal/tty-acceptance-test.ps1). No new owner is created.
+DESIRED_RESULT: Real, current, reproducible interactive-terminal evidence for the installed product covering the gate render, operator allow/deny interaction, correlated execution to receipt/evidence, and clean PTY/ConPTY lifecycle, recorded against the existing acceptance checkpoint.
+NON_GOALS: No new UI feature work; no authorization-policy redesign; no runtime authority changes; no synthetic PTY evidence; no bypass of a blocked environment; no publication or release; no changes to install.ps1 or verify_clean_install.py unless separately authorized.
+REUSE_DECISION: REUSE the existing apps/lbe-terminal PTY acceptance tooling, the existing Rust client, and the canonical LBE runtime. No parallel harness or second acceptance path is introduced.
+AUTHORITY_IMPACT: None. Acceptance and evidence only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: .lbe/governance/,docs/governance/,docs/acceptance/,apps/lbe-terminal/,tools/,tty-acceptance-test.ps1
+REQUIRED_EVIDENCE: real interactive terminal session transcript showing a genuine REQUIRE_APPROVAL event rendered by the Rust Action Gate with runtime-projected capability, target, risk, operation ID, approval ID, and rationale; operator DENY producing zero consequential execution; operator ALLOW ONCE permitting only the correlated operation and followed by a real receipt and evidence; clean PTY/ConPTY startup and exit; current installed-command acceptance where applicable. Synthetic or replayed evidence does not satisfy this intent.
+MACHINE_SLICE: INSTALLED_PTY_CONPTY_FINAL_ACCEPTANCE
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_OPEN_SUCCESSOR_PTY_ACCEPTANCE_INTENT_WHILE_LEAVING_PTY_ACCEPTANCE_OPEN
