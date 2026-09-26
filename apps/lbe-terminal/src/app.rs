@@ -120,7 +120,10 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
         ("/history", "show persisted session history"),
         ("/agents", "show delegated child-agent runs"),
         ("/agent-cancel", "cancel a delegated child-agent run"),
-        ("/extensions", "refresh MCP, skills, plugins, hooks and connectors"),
+        (
+            "/extensions",
+            "refresh MCP, skills, plugins, hooks and connectors",
+        ),
         ("/mcp", "refresh extension registry (MCP alias)"),
         ("/tools", "inspect the last governed tool projection"),
         ("/processes", "inspect process activity"),
@@ -732,7 +735,9 @@ impl App {
                     },
                     Instant::now(),
                 ));
-                input_trace(format!("action=deny_pending_approval approval_id={approval_id}"));
+                input_trace(format!(
+                    "action=deny_pending_approval approval_id={approval_id}"
+                ));
                 return;
             }
         }
@@ -799,21 +804,23 @@ impl App {
             }
             "/provider-config" => {
                 let args = argument.split_whitespace().collect::<Vec<_>>();
-                let provider_id = args.get(1).and_then(|value| match value.to_ascii_lowercase().as_str() {
-                    "gemini" | "google" => Some(ProviderId::Gemini),
-                    "openai" => Some(ProviderId::OpenAi),
-                    "openai-native" => Some(ProviderId::OpenAiNative),
-                    "anthropic" => Some(ProviderId::Anthropic),
-                    "bedrock" => Some(ProviderId::Bedrock),
-                    "vertex" => Some(ProviderId::Vertex),
-                    "mistral" => Some(ProviderId::Mistral),
-                    "openai-compatible" => Some(ProviderId::OpenAiCompatible),
-                    "lmstudio" | "lm-studio" => Some(ProviderId::LmStudio),
-                    "ollama" => Some(ProviderId::Ollama),
-                    "openrouter" => Some(ProviderId::OpenRouter),
-                    "opencode" => Some(ProviderId::OpenCode),
-                    _ => None,
-                });
+                let provider_id =
+                    args.get(1)
+                        .and_then(|value| match value.to_ascii_lowercase().as_str() {
+                            "gemini" | "google" => Some(ProviderId::Gemini),
+                            "openai" => Some(ProviderId::OpenAi),
+                            "openai-native" => Some(ProviderId::OpenAiNative),
+                            "anthropic" => Some(ProviderId::Anthropic),
+                            "bedrock" => Some(ProviderId::Bedrock),
+                            "vertex" => Some(ProviderId::Vertex),
+                            "mistral" => Some(ProviderId::Mistral),
+                            "openai-compatible" => Some(ProviderId::OpenAiCompatible),
+                            "lmstudio" | "lm-studio" => Some(ProviderId::LmStudio),
+                            "ollama" => Some(ProviderId::Ollama),
+                            "openrouter" => Some(ProviderId::OpenRouter),
+                            "opencode" => Some(ProviderId::OpenCode),
+                            _ => None,
+                        });
                 if args.len() >= 4 {
                     if let Some(provider_id) = provider_id {
                         self.apply_wrapper_result(wrapper.submit(
@@ -915,9 +922,8 @@ impl App {
             }
             "/agent-cancel" => {
                 if argument.is_empty() {
-                    self.transcript.push(
-                        "SYSTEM  usage: /agent-cancel <child-agent-run-id>".to_owned(),
-                    );
+                    self.transcript
+                        .push("SYSTEM  usage: /agent-cancel <child-agent-run-id>".to_owned());
                 } else if let Some(turn_id) = self.snapshot.turn_id.clone() {
                     self.apply_wrapper_result(wrapper.submit(
                         UserRequest::CancelChildAgent {
@@ -1160,7 +1166,7 @@ impl App {
                     wrapper.submit(UserRequest::RefreshCheckpoint, Instant::now()),
                 );
                 Some(MockPanel::Undo)
-            },
+            }
             "/diff" | "/changes" => Some(MockPanel::Changes),
             "/mode" => {
                 self.transcript

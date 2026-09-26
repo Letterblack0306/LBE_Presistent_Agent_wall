@@ -1482,7 +1482,8 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                     "MOCK / NOT CONNECTED".to_owned()
                 },
                 if snapshot.connection == RuntimeConnection::Connected {
-                    "Registry metadata is projected read-only; execution remains runtime-owned.".to_owned()
+                    "Registry metadata is projected read-only; execution remains runtime-owned."
+                        .to_owned()
                 } else {
                     "No MCP server registry or transport is connected.".to_owned()
                 },
@@ -1816,17 +1817,22 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
             if let Some(checkpoint) = &snapshot.latest_checkpoint {
                 rows.push(format!(
                     "{} · {}",
-                    checkpoint.checkpoint_id,
-                    checkpoint.created_at
+                    checkpoint.checkpoint_id, checkpoint.created_at
                 ));
                 rows.push(format!(
                     "workspace revision {}",
                     checkpoint.workspace_revision
                 ));
                 if connected {
-                    rows.push("Changed-file list is not part of the canonical checkpoint projection.".to_owned());
+                    rows.push(
+                        "Changed-file list is not part of the canonical checkpoint projection."
+                            .to_owned(),
+                    );
                 } else {
-                    rows.push(format!("{} file(s) changed", checkpoint.changed_files.len()));
+                    rows.push(format!(
+                        "{} file(s) changed",
+                        checkpoint.changed_files.len()
+                    ));
                 }
             } else {
                 rows.push(if connected {
@@ -2212,8 +2218,7 @@ pub(crate) fn mock_panel_text_for_app(panel: MockPanel, app: &App) -> Text<'stat
             if let Some(checkpoint) = &app.snapshot.latest_checkpoint {
                 lines.push(Line::from(format!(
                     "{} · {}",
-                    checkpoint.checkpoint_id,
-                    checkpoint.created_at
+                    checkpoint.checkpoint_id, checkpoint.created_at
                 )));
                 if app.snapshot.connection == RuntimeConnection::Connected {
                     lines.push(Line::from(Span::styled(
@@ -2389,7 +2394,11 @@ fn action_gate_panel_text(app: &App) -> Text<'static> {
             } else {
                 "MOCK / NOT CONNECTED · UI CONTRACT PREVIEW"
             },
-            Style::default().fg(if connected { PALETTE.info } else { PALETTE.muted }),
+            Style::default().fg(if connected {
+                PALETTE.info
+            } else {
+                PALETTE.muted
+            }),
         )),
         Line::default(),
     ];
@@ -2420,10 +2429,7 @@ fn action_gate_panel_text(app: &App) -> Text<'static> {
     };
 
     lines.push(field("Capability", Some(pending.capability.clone())));
-    lines.push(field(
-        "Tool",
-        tool.map(|tool| tool.tool_id.clone()),
-    ));
+    lines.push(field("Tool", tool.map(|tool| tool.tool_id.clone())));
     lines.push(field(
         "Target / Input",
         tool.map(|tool| tool.access_class.clone()),
@@ -2485,7 +2491,11 @@ fn inspector_panel_text(app: &App) -> Text<'static> {
         } else {
             "MOCK / NOT CONNECTED · no authoritative record to correlate"
         },
-        Style::default().fg(if connected { PALETTE.info } else { PALETTE.muted }),
+        Style::default().fg(if connected {
+            PALETTE.info
+        } else {
+            PALETTE.muted
+        }),
     )));
     lines.push(Line::default());
 
@@ -2541,18 +2551,30 @@ fn inspector_panel_text(app: &App) -> Text<'static> {
             .map(|evidence| format!("{} · {}", evidence.reference, evidence.summary));
 
         lines.push(Line::from(Span::styled(
-            format!("OPERATION {}", record.execution_id.as_deref().unwrap_or(MISSING)),
+            format!(
+                "OPERATION {}",
+                record.execution_id.as_deref().unwrap_or(MISSING)
+            ),
             Style::default().fg(PALETTE.amber),
         )));
         lines.push(label("  receipt"));
         lines.push(value(&record.receipt_id, true));
         lines.push(label("  capability"));
-        lines.push(value(&or_missing(record.tool_id.is_some(), record.tool_id.clone().unwrap_or_default()), record.tool_id.is_some()));
+        lines.push(value(
+            &or_missing(
+                record.tool_id.is_some(),
+                record.tool_id.clone().unwrap_or_default(),
+            ),
+            record.tool_id.is_some(),
+        ));
         lines.push(label("  status"));
         lines.push(value(&record.status, true));
         lines.push(label("  evidence"));
         lines.push(value(
-            &or_missing(evidence_summary.is_some(), evidence_summary.clone().unwrap_or_default()),
+            &or_missing(
+                evidence_summary.is_some(),
+                evidence_summary.clone().unwrap_or_default(),
+            ),
             evidence_summary.is_some(),
         ));
         // Authorization is shown only when the runtime correlated it to this
@@ -2570,7 +2592,10 @@ fn inspector_panel_text(app: &App) -> Text<'static> {
         let (approval_id, verdict, rationale) = authorization.clone().unwrap_or_default();
         lines.push(label("  approval"));
         lines.push(value(
-            &or_missing(approval_id.is_some(), approval_id.clone().unwrap_or_default()),
+            &or_missing(
+                approval_id.is_some(),
+                approval_id.clone().unwrap_or_default(),
+            ),
             approval_id.is_some(),
         ));
         lines.push(label("  auth verdict"));
@@ -2646,10 +2671,7 @@ fn inspector_panel_text(app: &App) -> Text<'static> {
             }
         }
         lines.push(label("  completion"));
-        lines.push(value(
-            &or_missing(false, String::new()),
-            false,
-        ));
+        lines.push(value(&or_missing(false, String::new()), false));
         lines.push(Line::default());
     }
 

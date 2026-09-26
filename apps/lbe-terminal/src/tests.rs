@@ -2330,10 +2330,8 @@ fn compact_command_stays_hidden_until_canonical_payload_exists_and_doctor_still_
         app.reduce_lbe_event(event);
     }
     assert_ne!(app.snapshot.compaction_state, CompactionState::Completed);
-    assert!(app
-        .transcript
-        .iter()
-        .any(|line| line.contains("compaction is not exposed until a canonical compaction payload is available")));
+    assert!(app.transcript.iter().any(|line| line
+        .contains("compaction is not exposed until a canonical compaction payload is available")));
 
     app.handle_command("/doctor", &mut wrapper);
     while let Some(event) = wrapper.poll_event(Instant::now()).unwrap() {
@@ -5552,7 +5550,6 @@ fn workspace_patch_payload_requires_complete_governed_result() {
     .unwrap();
 }
 
-
 #[test]
 fn real_wrapper_requires_connected_runtime_for_session_memory_recall() {
     let mut wrapper = RealLbeWrapper::new();
@@ -5568,7 +5565,6 @@ fn real_wrapper_requires_connected_runtime_for_session_memory_recall() {
     assert!(error.message.contains("requires a connected LBE runtime"));
 }
 
-
 #[test]
 fn production_command_palette_omits_unwired_restore_compaction_and_browser_controls() {
     let commands = command_palette_commands()
@@ -5582,7 +5578,6 @@ fn production_command_palette_omits_unwired_restore_compaction_and_browser_contr
     assert!(commands.contains(&"/checkpoints"));
     assert!(commands.contains(&"/memory"));
 }
-
 
 #[test]
 fn real_wrapper_requires_connected_runtime_for_checkpoint_refresh() {
@@ -5604,7 +5599,6 @@ fn checkpoints_command_routes_read_only_refresh_request() {
     assert_eq!(app.panel, Some(MockPanel::Undo));
 }
 
-
 #[test]
 fn real_wrapper_requires_connected_runtime_for_checkpoint_compare() {
     let mut wrapper = RealLbeWrapper::new();
@@ -5619,7 +5613,6 @@ fn real_wrapper_requires_connected_runtime_for_checkpoint_compare() {
     assert!(error.message.contains("requires a connected LBE runtime"));
 }
 
-
 #[test]
 fn connected_close_command_does_not_dispatch_unwired_session_close() {
     let mut app = App::default();
@@ -5629,10 +5622,8 @@ fn connected_close_command_does_not_dispatch_unwired_session_close() {
     app.handle_command("/close session-2", &mut wrapper);
 
     assert!(wrapper.requests.is_empty());
-    assert!(app
-        .transcript
-        .iter()
-        .any(|line| line.contains("close is not exposed until the canonical session lifecycle owner supports it")));
+    assert!(app.transcript.iter().any(|line| line
+        .contains("close is not exposed until the canonical session lifecycle owner supports it")));
 }
 
 // ---------------------------------------------------------------------------
@@ -5673,7 +5664,10 @@ fn action_gate_appears_only_from_runtime_authorization_state() {
     assert_eq!(app.panel, Some(MockPanel::ActionGate));
     assert!(matches!(app.phase, Phase::AwaitingApproval { .. }));
     let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
-    assert!(text.contains("ACTION GATE // AUTHORIZATION REQUIRED"), "{text}");
+    assert!(
+        text.contains("ACTION GATE // AUTHORIZATION REQUIRED"),
+        "{text}"
+    );
 }
 
 #[test]
@@ -5689,7 +5683,10 @@ fn action_gate_shows_runtime_identity_verbatim_and_invents_nothing() {
     assert!(text.contains("op-gate"), "{text}");
     assert!(text.contains("approval-gate"), "{text}");
     // Values the runtime did not project stay unknown instead of being inferred.
-    assert!(text.contains("unknown - runtime projected no value"), "{text}");
+    assert!(
+        text.contains("unknown - runtime projected no value"),
+        "{text}"
+    );
 }
 
 #[test]
@@ -5808,7 +5805,10 @@ fn action_gate_view_diff_key_toggles_only_local_display() {
     // The runtime projects no diff for this operation, so the surface says so
     // rather than rendering one.
     assert!(text.contains("Diff"), "{text}");
-    assert!(text.contains("unknown - runtime projected no value"), "{text}");
+    assert!(
+        text.contains("unknown - runtime projected no value"),
+        "{text}"
+    );
 
     app.handle_key(KeyCode::Char('d').into(), &mut wrapper, Instant::now());
     assert!(!app.action_gate.show_diff);
@@ -5840,7 +5840,6 @@ fn action_gate_generates_no_receipt_or_evidence_of_its_own() {
     assert_eq!(app.receipt_records.len(), receipts_before);
     assert_eq!(app.evidence_records.len(), evidence_before);
 }
-
 
 // ---------------------------------------------------------------------------
 // Inspector
@@ -5882,7 +5881,10 @@ fn inspector_reports_nothing_before_records_are_projected() {
 fn inspector_links_a_receipt_to_its_cited_evidence() {
     let app = receipt_with_evidence();
     let text = mock_panel_text_for_app(MockPanel::Inspector, &app).to_string();
-    assert!(text.contains("INSPECTOR // EVIDENCE AND RECEIPTS"), "{text}");
+    assert!(
+        text.contains("INSPECTOR // EVIDENCE AND RECEIPTS"),
+        "{text}"
+    );
     // Both authoritative identities are shown and cross-linked.
     assert!(text.contains("receipt-1"), "{text}");
     assert!(text.contains("evidence-1"), "{text}");
@@ -5954,7 +5956,6 @@ fn inspector_creates_no_records_of_its_own() {
     assert_eq!(app.evidence_records.len(), evidence);
     assert!(wrapper.requests.is_empty());
 }
-
 
 #[test]
 fn inspector_shows_authorization_only_for_the_correlated_operation() {
@@ -6070,7 +6071,6 @@ fn inspector_refuses_to_borrow_validation_from_another_operation() {
     assert!(text.contains("not projected"), "{text}");
 }
 
-
 // ---------------------------------------------------------------------------
 // Governed risk contract (LOW / MEDIUM / HIGH, fail closed)
 // ---------------------------------------------------------------------------
@@ -6153,4 +6153,3 @@ fn action_gate_renders_the_typed_risk_from_the_projection() {
     let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
     assert!(text.contains("HIGH"), "{text}");
 }
-

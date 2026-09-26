@@ -1163,7 +1163,9 @@ impl LbeWrapper for MockLbeWrapper {
                     || model.trim().is_empty()
                     || endpoint.trim().is_empty()
                     || timeout_seconds <= 0.0
-                    || credential_ref.as_deref().is_some_and(|value| value.trim().is_empty())
+                    || credential_ref
+                        .as_deref()
+                        .is_some_and(|value| value.trim().is_empty())
                 {
                     return Err(LbeError::new(
                         "provider profile values must not be blank and timeout must be positive",
@@ -2983,7 +2985,9 @@ impl RealLbeWrapper {
     ) -> Result<(), LbeError> {
         self.require_connected()?;
         if turn_id.trim().is_empty() {
-            return Err(LbeError::new("delegated-run cancellation requires a turn_id"));
+            return Err(LbeError::new(
+                "delegated-run cancellation requires a turn_id",
+            ));
         }
         if child_agent_run_id.trim().is_empty() {
             return Err(LbeError::new(
@@ -3108,10 +3112,18 @@ impl RealLbeWrapper {
             return Err(LbeError::new(message));
         }
         if payload.get("action").and_then(serde_json::Value::as_str) != Some("checkpoint.latest") {
-            return Err(LbeError::new("checkpoint refresh returned unexpected action"));
+            return Err(LbeError::new(
+                "checkpoint refresh returned unexpected action",
+            ));
         }
-        if payload.get("session_id").and_then(serde_json::Value::as_str) != Some(session_id.as_str()) {
-            return Err(LbeError::new("checkpoint refresh session identity mismatch"));
+        if payload
+            .get("session_id")
+            .and_then(serde_json::Value::as_str)
+            != Some(session_id.as_str())
+        {
+            return Err(LbeError::new(
+                "checkpoint refresh session identity mismatch",
+            ));
         }
 
         let Some(checkpoint) = payload.get("checkpoint") else {
@@ -3147,8 +3159,9 @@ impl RealLbeWrapper {
             changed_files: Vec::new(),
         };
         self.snapshot.latest_checkpoint = Some(descriptor.clone());
-        self.pending_events
-            .push_back(LbeEvent::CheckpointCreated { checkpoint: descriptor });
+        self.pending_events.push_back(LbeEvent::CheckpointCreated {
+            checkpoint: descriptor,
+        });
         Ok(())
     }
 
@@ -3202,9 +3215,15 @@ impl RealLbeWrapper {
             return Err(LbeError::new(message));
         }
         if payload.get("action").and_then(serde_json::Value::as_str) != Some("checkpoint.compare") {
-            return Err(LbeError::new("checkpoint comparison returned unexpected action"));
+            return Err(LbeError::new(
+                "checkpoint comparison returned unexpected action",
+            ));
         }
-        if payload.get("checkpoint_id").and_then(serde_json::Value::as_str) != Some(checkpoint_id) {
+        if payload
+            .get("checkpoint_id")
+            .and_then(serde_json::Value::as_str)
+            != Some(checkpoint_id)
+        {
             return Err(LbeError::new("checkpoint comparison identity mismatch"));
         }
         let revalidation = payload
@@ -3262,7 +3281,9 @@ impl RealLbeWrapper {
             .unwrap_or_else(|| PathBuf::from("python"));
 
         self.pending_events
-            .push_back(LbeEvent::MemoryRecallStarted { query: query.to_owned() });
+            .push_back(LbeEvent::MemoryRecallStarted {
+                query: query.to_owned(),
+            });
 
         let limit_arg = limit.to_string();
         let output = configured_lbe_command(&python, &wall_root)
@@ -3300,7 +3321,11 @@ impl RealLbeWrapper {
         if payload.get("action").and_then(serde_json::Value::as_str) != Some("memory.recall") {
             return Err(LbeError::new("memory recall returned unexpected action"));
         }
-        if payload.get("session_id").and_then(serde_json::Value::as_str) != Some(session_id.as_str()) {
+        if payload
+            .get("session_id")
+            .and_then(serde_json::Value::as_str)
+            != Some(session_id.as_str())
+        {
             return Err(LbeError::new("memory recall session identity mismatch"));
         }
 
@@ -3340,7 +3365,11 @@ impl RealLbeWrapper {
                 "stale" => MemoryTruth::Stale,
                 "contradicted" => MemoryTruth::Contradicted,
                 "superseded" => MemoryTruth::Superseded,
-                other => return Err(LbeError::new(format!("unsupported memory validation status: {other}"))),
+                other => {
+                    return Err(LbeError::new(format!(
+                        "unsupported memory validation status: {other}"
+                    )))
+                }
             };
             let subject = raw
                 .get("subject")
@@ -3382,14 +3411,14 @@ impl RealLbeWrapper {
         self.snapshot.memory.indexed_memories = records.len();
         self.snapshot.memory.recent_records = records.clone();
         if records.is_empty() {
-            self.pending_events
-                .push_back(LbeEvent::MemoryRecallEmpty { query: query.to_owned() });
+            self.pending_events.push_back(LbeEvent::MemoryRecallEmpty {
+                query: query.to_owned(),
+            });
         } else {
-            self.pending_events
-                .push_back(LbeEvent::MemoryRecallResult {
-                    query: query.to_owned(),
-                    records,
-                });
+            self.pending_events.push_back(LbeEvent::MemoryRecallResult {
+                query: query.to_owned(),
+                records,
+            });
         }
         Ok(())
     }
@@ -3406,7 +3435,9 @@ impl RealLbeWrapper {
     ) -> Result<(), LbeError> {
         self.require_connected()?;
         if profile_name.trim().is_empty() || model.trim().is_empty() || endpoint.trim().is_empty() {
-            return Err(LbeError::new("provider profile name, model, and endpoint are required"));
+            return Err(LbeError::new(
+                "provider profile name, model, and endpoint are required",
+            ));
         }
         if timeout_seconds <= 0.0 {
             return Err(LbeError::new("provider timeout must be positive"));
@@ -3444,9 +3475,9 @@ impl RealLbeWrapper {
         if activate {
             command.arg("--use");
         }
-        let output = command
-            .output()
-            .map_err(|error| LbeError::new(format!("provider profile configuration failed: {error}")))?;
+        let output = command.output().map_err(|error| {
+            LbeError::new(format!("provider profile configuration failed: {error}"))
+        })?;
         let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
             .map_err(|error| LbeError::new(format!("invalid provider.add JSON: {error}")))?;
         if !output.status.success() || payload.get("ok") != Some(&serde_json::Value::Bool(true)) {
@@ -3520,18 +3551,16 @@ impl RealLbeWrapper {
         self.pending_events
             .push_back(LbeEvent::ProviderValidationStarted { provider_id });
         let mut command = configured_lbe_command(&python, &wall_root);
-        command
-            .current_dir(&wall_root)
-            .args([
-                "-m",
-                "lbe_guard_inspector.product_entry",
-                "--format",
-                "json",
-                "provider",
-                "check",
-                "--provider",
-                provider_id.cli_name(),
-            ]);
+        command.current_dir(&wall_root).args([
+            "-m",
+            "lbe_guard_inspector.product_entry",
+            "--format",
+            "json",
+            "provider",
+            "check",
+            "--provider",
+            provider_id.cli_name(),
+        ]);
         if let Some(provider_config) = self.provider_config.as_ref() {
             command.arg("--provider-config").arg(provider_config);
         }
@@ -5627,7 +5656,7 @@ impl LbeWrapper for RealLbeWrapper {
             }
             UserRequest::RemoveProvider { profile_name } => {
                 self.remove_real_provider_profile(&profile_name)
-            },
+            }
             UserRequest::RefreshRuntimeSnapshot => {
                 self.require_connected()?;
                 self.attach()
