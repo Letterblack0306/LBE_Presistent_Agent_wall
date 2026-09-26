@@ -1515,7 +1515,7 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                         tool.tool_id,
                         tool.capability,
                         tool.access_class,
-                        tool.risk_class,
+                        tool.risk_class.label(),
                         tool.network_behavior,
                         tool.authorization_verdict,
                     ));
@@ -2428,7 +2428,10 @@ fn action_gate_panel_text(app: &App) -> Text<'static> {
         "Target / Input",
         tool.map(|tool| tool.access_class.clone()),
     ));
-    lines.push(field("Risk", tool.map(|tool| tool.risk_class.clone())));
+    lines.push(field(
+        "Risk",
+        tool.map(|tool| tool.risk_class.label().to_owned()),
+    ));
     lines.push(field("Operation ID", Some(pending.operation_id.clone())));
     lines.push(field("Approval ID", Some(pending.approval_id.clone())));
     lines.push(field("Rationale", Some(pending.rationale.clone())));

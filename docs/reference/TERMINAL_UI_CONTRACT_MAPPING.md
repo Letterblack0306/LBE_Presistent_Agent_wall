@@ -74,8 +74,31 @@ cannot reach the gate by design. `REQUIRE_APPROVAL` requires a capability the ac
 mode does not delegate, reachable via `/authorize <capability>` for a non-delegated
 capability. `/patch` is therefore left unchanged.
 
+## Governed risk levels
+
+The runtime risk contract is `ToolRiskClass` in `external_capabilities.py`: `low`,
+`medium`, `high`. The client mirrors it exactly as a strict typed projection
+(`GovernedRiskClass`), and a value outside that set is rejected at the projection
+boundary rather than coerced or defaulted.
+
+```text
+runtime "low"    -> Rust Low
+runtime "medium" -> Rust Medium
+runtime "high"   -> Rust High
+anything else    -> fail closed
+```
+
+```text
+CRITICAL = REFERENCE-ONLY / UNSUPPORTED BY CURRENT RUNTIME CONTRACT
+```
+
+The reference UI defines a `CRITICAL` risk level. It is deliberately not ported:
+the LBE runtime cannot emit it, so a client-side `CRITICAL` would be a risk
+statement the runtime never made. No runtime semantics were changed to manufacture
+a fourth level.
+
 ## Next bounded slices (require user authorization each)
 
 1. Action Gate surface driven only by the existing governed projection (no new authority, no synthetic data). - CLOSED (bounded implementation; PTY visual acceptance remains open at final-product level)
-2. Single cross-linked Inspector surface over existing receipt/evidence/validation projections. - IN PROGRESS
-3. Typed risk level in the client projection with an explicit `CRITICAL` value. - CLOSED / NOT YET AUTHORIZED
+2. Single cross-linked Inspector surface over existing receipt/evidence/validation projections. - CLOSED / ACCEPTED
+3. Typed risk level in the client projection with an explicit `CRITICAL` value. - CLOSED AS SPECIFIED: strict LOW/MEDIUM/HIGH typing only; `CRITICAL` rejected as reference-only.

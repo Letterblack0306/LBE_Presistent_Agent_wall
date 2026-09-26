@@ -380,9 +380,46 @@ pub(crate) struct GovernedToolProjection {
     pub(crate) capability: String,
     pub(crate) access_class: String,
     pub(crate) network_behavior: String,
-    pub(crate) risk_class: String,
+    pub(crate) risk_class: GovernedRiskClass,
     pub(crate) authorization_verdict: String,
     pub(crate) authorization_rationale: String,
+}
+
+/// Strict typed view of the runtime's governed risk contract.
+///
+/// The runtime contract is exactly `low`, `medium`, `high`
+/// (`ToolRiskClass` in `external_capabilities.py`). There is no `CRITICAL`
+/// value, so the client does not define one: inventing a fourth level would
+/// create a risk statement the runtime can never emit. Any value outside the
+/// contract is rejected at the projection boundary rather than coerced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GovernedRiskClass {
+    Low,
+    Medium,
+    High,
+}
+
+impl GovernedRiskClass {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Low => "LOW",
+            Self::Medium => "MEDIUM",
+            Self::High => "HIGH",
+        }
+    }
+
+    /// Parse the runtime's value, failing closed on anything outside the
+    /// contract instead of defaulting to a level the runtime did not assert.
+    pub(crate) fn parse(value: &str) -> Result<Self, String> {
+        match value.trim() {
+            "low" => Ok(Self::Low),
+            "medium" => Ok(Self::Medium),
+            "high" => Ok(Self::High),
+            other => Err(format!(
+                "unsupported governed risk class {other:?}; runtime contract is low|medium|high"
+            )),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

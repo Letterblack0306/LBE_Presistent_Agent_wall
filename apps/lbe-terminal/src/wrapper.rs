@@ -1704,7 +1704,10 @@ pub(crate) fn parse_governed_tool_projection(
                 capability: required("capability")?,
                 access_class: required("access_class")?,
                 network_behavior: required("network_behavior")?,
-                risk_class: required("risk_class")?,
+                // Fail closed: a risk value outside the runtime contract is a
+                // rejected projection, not a coerced or defaulted level.
+                risk_class: GovernedRiskClass::parse(&required("risk_class")?)
+                    .map_err(LbeError::new)?,
                 authorization_verdict,
                 authorization_rationale: required("authorization_rationale")?,
             })

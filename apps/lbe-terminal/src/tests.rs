@@ -5702,7 +5702,7 @@ fn action_gate_correlates_risk_from_the_governed_projection() {
         capability: "modify".to_owned(),
         access_class: "workspace-write".to_owned(),
         network_behavior: "none".to_owned(),
-        risk_class: "HIGH".to_owned(),
+        risk_class: GovernedRiskClass::High,
         authorization_verdict: "REQUIRE_APPROVAL".to_owned(),
         authorization_rationale: "workspace mutation".to_owned(),
     });
@@ -6068,5 +6068,89 @@ fn inspector_refuses_to_borrow_validation_from_another_operation() {
         "validation must not be borrowed from an unrelated operation: {text}"
     );
     assert!(text.contains("not projected"), "{text}");
+}
+
+
+// ---------------------------------------------------------------------------
+// Governed risk contract (LOW / MEDIUM / HIGH, fail closed)
+// ---------------------------------------------------------------------------
+
+fn governed_tool_payload(risk_class: &str) -> serde_json::Value {
+    serde_json::json!({
+        "governed_tool_projection": [{
+            "tool_id": "workspace.patch",
+            "capability": "modify",
+            "access_class": "workspace-write",
+            "network_behavior": "none",
+            "risk_class": risk_class,
+            "authorization_verdict": "ESCALATE",
+            "authorization_rationale": "workspace mutation"
+        }]
+    })
+}
+
+#[test]
+fn governed_risk_accepts_exactly_the_runtime_contract() {
+    for (runtime_value, expected) in [
+        ("low", GovernedRiskClass::Low),
+        ("medium", GovernedRiskClass::Medium),
+        ("high", GovernedRiskClass::High),
+    ] {
+        let parsed = parse_governed_tool_projection(&governed_tool_payload(runtime_value))
+            .expect("contract value must parse");
+        assert_eq!(parsed[0].risk_class, expected, "for {runtime_value}");
+    }
+}
+
+#[test]
+fn governed_risk_fails_closed_on_critical_and_on_any_unknown_value() {
+    // CRITICAL is reference-only: the runtime cannot emit it, so the client
+    // must not be able to display it as if the runtime had asserted it.
+    for rejected in ["critical", "CRITICAL", "severe", "", "highest"] {
+        let result = parse_governed_tool_projection(&governed_tool_payload(rejected));
+        assert!(
+            result.is_err(),
+            "{rejected:?} must be rejected rather than coerced"
+        );
+    }
+}
+
+#[test]
+fn governed_risk_error_names_the_supported_contract() {
+    let error = parse_governed_tool_projection(&governed_tool_payload("critical"))
+        .expect_err("critical is outside the runtime contract");
+    let message = error.message;
+    assert!(message.contains("low|medium|high"), "{message}");
+    assert!(message.contains("critical"), "{message}");
+}
+
+#[test]
+fn governed_risk_label_is_the_authoritative_uppercase_form() {
+    assert_eq!(GovernedRiskClass::Low.label(), "LOW");
+    assert_eq!(GovernedRiskClass::Medium.label(), "MEDIUM");
+    assert_eq!(GovernedRiskClass::High.label(), "HIGH");
+}
+
+#[test]
+fn action_gate_renders_the_typed_risk_from_the_projection() {
+    let mut app = gate_with_pending_approval();
+    app.snapshot.governed_tools.push(GovernedToolProjection {
+        tool_id: "workspace.patch".to_owned(),
+        capability: "modify".to_owned(),
+        access_class: "workspace-write".to_owned(),
+        network_behavior: "none".to_owned(),
+        risk_class: GovernedRiskClass::High,
+        authorization_verdict: "REQUIRE_APPROVAL".to_owned(),
+        authorization_rationale: "workspace mutation".to_owned(),
+    });
+    app.reduce_lbe_event(LbeEvent::AuthorizationRequired {
+        operation_id: "op-gate".to_owned(),
+        approval_id: "approval-gate".to_owned(),
+        capability: "modify".to_owned(),
+        rationale: "workspace mutation requires approval".to_owned(),
+    });
+
+    let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
+    assert!(text.contains("HIGH"), "{text}");
 }
 
