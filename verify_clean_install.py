@@ -65,19 +65,78 @@ for ep in d.entry_points:
         print("FAILED: Could not check entrypoints")
         return 1
 
-    # Check textual_tui absence
-    print("\n=== Checking textual_tui absence ===")
+    # The legacy Textual TUI is a tracked, deliberately retained diagnostic module.
+    # Shipping it in the installed wheel is permitted; being reachable from the
+    # supported installed product path is not. This probe therefore tests
+    # reachability through the supported entrypoint instead of module absence.
+    # It never imports the legacy module (that would require and execute the
+    # optional Textual UI); it observes attempted imports instead. Import attempts
+    # are recorded with a sys.meta_path hook, which is consulted for every import
+    # including ones that fail resolution, so a legacy route cannot stay invisible.
+    print("\n=== Checking legacy textual TUI reachability ===")
     check_tui = """
+import importlib.metadata
+import importlib.util
+import sys
+
+LEGACY = "lbe_guard_inspector.textual_tui"
+
+if importlib.util.find_spec(LEGACY) is not None:
+    print(f"shipped legacy module (permitted, must stay unreachable): {LEGACY}")
+else:
+    print(f"legacy module not shipped: {LEGACY}")
+
+distribution = importlib.metadata.distribution("lbe-guard-inspector")
+entrypoints = sorted(f"{ep.name}={ep.value}" for ep in distribution.entry_points)
+legacy_entrypoints = [entry for entry in entrypoints if LEGACY in entry]
+print(f"supported entrypoints: {entrypoints}")
+
+
+class LegacyImportRecorder:
+    def __init__(self):
+        self.attempts = []
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == LEGACY or fullname.startswith(LEGACY + "."):
+            self.attempts.append(fullname)
+        return None
+
+
+recorder = LegacyImportRecorder()
+sys.meta_path.insert(0, recorder)
+
 try:
-    import lbe_guard_inspector.cli.textual_tui
-    print("ERROR: textual_tui.py IS present in installed wheel!")
-except ImportError:
-    print("OK: textual_tui.py is NOT in installed wheel")
+    from lbe_guard_inspector.product_entry import main
+except Exception as exc:
+    main = None
+    print(f"ERROR: supported product entrypoint did not import: {type(exc).__name__}: {exc}")
+
+if main is not None:
+    for label, argv in (
+        ("delegated path lbe --help", ["--help"]),
+        ("product command path lbe capabilities --help", ["capabilities", "--help"]),
+    ):
+        try:
+            exit_code = main(argv)
+        except SystemExit as exit_request:
+            exit_code = 0 if exit_request.code is None else exit_request.code
+        except Exception as exc:
+            exit_code = f"ERROR {type(exc).__name__}: {exc}"
+        print(f"{label} -> exit {exit_code}")
+
+if legacy_entrypoints:
+    print(f"ERROR: supported entrypoint routes into the legacy TUI: {legacy_entrypoints}")
+elif recorder.attempts:
+    print(f"ERROR: supported product path resolved the legacy TUI: {recorder.attempts}")
+elif main is None:
+    print("supported product path was not exercised; reachability not established")
+else:
+    print("OK: no supported installed entrypoint or invocation reaches the legacy textual TUI")
 """
     result = run([venv_python, "-c", check_tui])
 
     if "ERROR" in result.stdout:
-        print("FAILED: textual_tui.py should not be present")
+        print("FAILED: legacy textual TUI is reachable from the supported product path")
         return 1
 
     # Check that lbe, lbe start work

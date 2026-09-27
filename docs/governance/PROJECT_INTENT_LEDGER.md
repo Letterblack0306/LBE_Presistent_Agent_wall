@@ -1017,3 +1017,21 @@ REQUIRED_EVIDENCE: real interactive terminal session transcript showing a genuin
 MACHINE_SLICE: INSTALLED_PTY_CONPTY_FINAL_ACCEPTANCE
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_OPEN_SUCCESSOR_PTY_ACCEPTANCE_INTENT_WHILE_LEAVING_PTY_ACCEPTANCE_OPEN
+
+## INTENT LBE-INTENT-LAUNCHER-CLEAN-INSTALL-RECONCILIATION-001
+
+STATUS: AUTHORIZED
+REQUEST: Reconcile the validated launcher / clean-install implementation with the already documented product behavior and commit the four verified files.
+OWNER: Launcher / clean-install reconciliation owner; no new runtime authority is created.
+FAILURE_CLASS: LAUNCHER_CLEAN_INSTALL_IMPLEMENTATION_UNDOCUMENTED_AND_UNCOMMITTED.
+WHY: The root installer delegation, proof-Python selection, writable pytest proof execution, native-command error handling, and clean-install legacy-TUI reachability probe are implemented and validated at focused level, but remain an uncommitted dirty worktree boundary that is explicitly outside the active PTY/ConPTY acceptance intent scope.
+EXISTING_OWNER: tools/lbe_product_integration.ps1 package owner; verified by tests/test_product_launcher_contract.py and verify_clean_install.py. No new owner is created.
+DESIRED_RESULT: The four verified launcher / clean-install files are committed as a bounded reconciliation; the proactive evidence (focused contract tests, focused proof suite, fresh-venv clean-install, installed launcher resolution, supported-invocation results, legacy-TUI unreachability, clean diff-check) is recorded as the intent acceptance.
+NON_GOALS: No PTY/ConPTY implementation changes; no packaging exclusions; no pyproject.toml changes; no MANIFEST.in changes; no textual_tui.py changes; no unrelated test creation; no cleanup of untracked artifacts; no line-ending normalization; no BirdEye product changes from this intent.
+REUSE_DECISION: REUSE the existing tools/lbe_product_integration.ps1 package owner, the existing tests/test_product_launcher_contract.py contract, and the existing verify_clean_install.py verifier. No parallel installer or second packaging path is introduced.
+AUTHORITY_IMPACT: None. Reconciliation and commit only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: install.ps1,verify_clean_install.py,tools/,tests/test_product_launcher_contract.py,.lbe/governance/,docs/governance/,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: launcher contract 4 passed; focused proof suite 60 passed 1 skipped; clean-install verifier PASS in fresh venv; installed lbe.exe present; lbe --help exit 0; lbe capabilities --help exit 0; legacy textual TUI UNREACHABLE on exercised paths; git diff --check clean.
+MACHINE_SLICE: LAUNCHER_CLEAN_INSTALL_RECONCILIATION
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_OPEN_BOUNDED_LAUNCHER_CLEAN_INSTALL_INTENT_2026_09_27

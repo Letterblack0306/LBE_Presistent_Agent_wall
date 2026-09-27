@@ -40,12 +40,25 @@ function Invoke-Native {
         [string]$WorkingDirectory
     )
     $previous = Get-Location
+    # Native commands such as git routinely write to stderr for non-fatal
+    # reasons (fetch progress, "fatal: path does not exist" for an optional
+    # file). Under a Stop preference, redirecting 2>&1 turns that text into a
+    # terminating error, so $LASTEXITCODE was never reached and the
+    # -AllowFailure / -AllowMissing handling below could not apply. Capture the
+    # streams as text and let the exit code govern, which is what every caller
+    # already assumes.
+    $previousPreference = $ErrorActionPreference
     try {
+        $ErrorActionPreference = 'Continue'
         if ($WorkingDirectory) { Set-Location $WorkingDirectory }
-        $lines = @(& $FilePath @Arguments 2>&1)
+        # Coerce to string at capture time. Merging 2>&1 yields ErrorRecord
+        # objects, and under Set-StrictMode those can fail formatting because they
+        # do not carry the properties a native-command record is expected to.
+        $lines = @(& $FilePath @Arguments 2>&1 | ForEach-Object { "$_" })
         $exitCode = $LASTEXITCODE
     }
     finally {
+        $ErrorActionPreference = $previousPreference
         Set-Location $previous
     }
     [pscustomobject]@{
@@ -419,11 +432,60 @@ function Export-OriginMain {
     Remove-Item -LiteralPath $archive -Force
 }
 
+function Get-ProofPython {
+    # The proof suite must run on an interpreter that satisfies the package
+    # requirement. A bare `python` on PATH can be older than 3.11 and need not
+    # carry pytest, which made agent.focused_tests fail for environmental
+    # reasons and blocked the whole product build. Resolution mirrors
+    # launch-lbe.ps1 Resolve-LbePython so the installer and the launcher agree.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $candidates = New-Object System.Collections.Generic.List[string]
+        $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+        if ($pyLauncher) {
+            $listing = (& $pyLauncher.Source '-0p' 2>$null | Out-String)
+            foreach ($line in ($listing -split "`r?`n")) {
+                if ($line -match '-V:(?<major>\d+)\.(?<minor>\d+)\s+\*?\s*(?<path>[A-Za-z]:\\.*?python\.exe)\s*$') {
+                    if ([int]$Matches['major'] -eq 3 -and [int]$Matches['minor'] -ge 11) {
+                        $candidates.Add($Matches['path'].Trim())
+                    }
+                }
+            }
+            if ($candidates.Count -eq 0) {
+                foreach ($tag in @('-3.14', '-3.13', '-3.12', '-3.11')) {
+                    $probe = (& $pyLauncher.Source $tag -c 'import sys; print(sys.executable)' 2>$null | Out-String).Trim()
+                    if ($LASTEXITCODE -eq 0 -and $probe) { $candidates.Add($probe) }
+                }
+            }
+        }
+        $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+        if ($pythonCommand) { $candidates.Add($pythonCommand.Source) }
+
+        # The proof suite runs pytest, so the interpreter must actually be able
+        # to import it. Several 3.11+ interpreters exist on this machine and the
+        # newest one is not necessarily the one carrying the test dependencies.
+        foreach ($candidate in ($candidates | Select-Object -Unique)) {
+            if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) { continue }
+            & $candidate -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>$null
+            if ($LASTEXITCODE -ne 0) { continue }
+            & $candidate -c 'import pytest' 2>$null
+            if ($LASTEXITCODE -ne 0) { continue }
+            return $candidate
+        }
+        return $null
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+    }
+}
+
 function Invoke-Proof {
     param([string]$AgentStage, [string]$TuiStage)
 
     $proofs = [System.Collections.Generic.List[object]]::new()
-    $python = Get-Command python -ErrorAction SilentlyContinue
+    $pythonPath = Get-ProofPython
+    $python = if ($pythonPath) { [pscustomobject]@{ Source = $pythonPath } } else { $null }
     if (-not $python) {
         $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = "BLOCKED"; blocking = $true; exit_code = $null; command = "python"; output = @("python not found") })
     }
@@ -443,7 +505,12 @@ function Invoke-Proof {
                 $proofs.Add([pscustomobject]@{ id = "agent.$([IO.Path]::GetFileNameWithoutExtension($candidate))"; status = "BLOCKED"; blocking = $true; exit_code = $null; command = "pytest"; output = @("required child-agent proof missing: $candidate") })
             }
         }
-        $agent = Invoke-Native -FilePath $python.Source -WorkingDirectory $AgentStage -Arguments (@("-m", "pytest", "-q") + @($agentTests))
+        # pytest's default base_temp lives under the user profile temp root, which
+    # can be ACL-locked on a real machine. Every test here failed at setup with
+    # PermissionError before running a single assertion, which read as a product
+    # failure. Point the proof run at a unique directory the installer creates.
+    $proofBaseTemp = Join-Path ([IO.Path]::GetTempPath()) ("lbe-proof-" + [guid]::NewGuid().ToString("N").Substring(0, 8))
+    $agent = Invoke-Native -FilePath $python.Source -WorkingDirectory $AgentStage -Arguments (@("-m", "pytest", "-q", "--basetemp", $proofBaseTemp) + @($agentTests))
         $proofs.Add([pscustomobject]@{ id = "agent.focused_tests"; status = $(if ($agent.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $true; exit_code = $agent.exit_code; command = $agent.command; output = $agent.output })
     }
 
@@ -494,7 +561,9 @@ function Build-Product {
     $workerOut = Join-Path $BuildRoot "cline-worker"
     New-Item -ItemType Directory -Path $runtimeOut, $clientOut, $workerOut -Force | Out-Null
 
-    $python = Get-Command python -ErrorAction Stop
+    $pythonPath = Get-ProofPython
+    if (-not $pythonPath) { throw "No Python 3.11+ interpreter is available to build the Agent Wall wheel." }
+    $python = [pscustomobject]@{ Source = $pythonPath }
     $pipWheel = Invoke-Native -FilePath $python.Source -WorkingDirectory $AgentStage -Arguments @("-m", "pip", "wheel", ".", "--no-deps", "--wheel-dir", $runtimeOut)
     if ($pipWheel.exit_code -ne 0) { throw "Agent Wall wheel build failed." }
 
