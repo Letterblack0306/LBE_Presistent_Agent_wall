@@ -66,7 +66,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-LAUNCHER-CLEAN-INSTALL-RECONCILIATION-001",
     "owner": "Launcher / clean-install reconciliation owner",
-    "index_revision": "9F64FE4FA080E35C8BD26C50E3F2A7C892B861D03DED2F52B402653E2EA69642"
+    "index_revision": "4282995E5A82D62B1539D41E4A57A1CDAF9702672187AB67B948AFCF3DE28A37"
   },
   "closure": {
     "status": "OPEN",
