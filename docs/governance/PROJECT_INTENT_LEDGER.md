@@ -1030,7 +1030,7 @@ DESIRED_RESULT: The four verified launcher / clean-install files are committed a
 NON_GOALS: No PTY/ConPTY implementation changes; no packaging exclusions; no pyproject.toml changes; no MANIFEST.in changes; no textual_tui.py changes; no unrelated test creation; no cleanup of untracked artifacts; no line-ending normalization; no BirdEye product changes from this intent.
 REUSE_DECISION: REUSE the existing tools/lbe_product_integration.ps1 package owner, the existing tests/test_product_launcher_contract.py contract, and the existing verify_clean_install.py verifier. No parallel installer or second packaging path is introduced.
 AUTHORITY_IMPACT: None. Reconciliation and commit only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
-EXPECTED_PATH_PREFIXES: install.ps1,verify_clean_install.py,tools/,tests/test_product_launcher_contract.py,.lbe/governance/,docs/governance/,PROJECT_INDEX.md
+EXPECTED_PATH_PREFIXES: install.ps1,verify_clean_install.py,tools/,tests/test_product_launcher_contract.py,.lbe/governance/,docs/governance/,PROJECT_INDEX.md,lbe_guard_inspector/
 REQUIRED_EVIDENCE: launcher contract 4 passed; focused proof suite 60 passed 1 skipped; clean-install verifier PASS in fresh venv; installed lbe.exe present; lbe --help exit 0; lbe capabilities --help exit 0; legacy textual TUI UNREACHABLE on exercised paths; git diff --check clean.
 MACHINE_SLICE: LAUNCHER_CLEAN_INSTALL_RECONCILIATION
 RESULT: IMPLEMENTATION_PENDING

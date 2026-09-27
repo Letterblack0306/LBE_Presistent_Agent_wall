@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Callable, Protocol, TypeVar
 
-from .invocation_adapter import InvocationAdapterError
+from .invocation_adapter import (
+    CancellationSignal,
+    InvocationAdapterError,
+)
 from .memory import (
     CandidateClaim,
     MemoryPromoter,
@@ -30,11 +33,6 @@ class FailureClass(StrEnum):
     MISSING_DEPENDENCY = "missing_dependency"
     CANCELLATION = "cancellation"
     UNKNOWN = "unknown"
-
-
-class CancellationSignal(Protocol):
-    def is_cancelled(self) -> bool:
-        """Return whether recovery should stop before another attempt."""
 
 
 class RecoveryStoppedError(RuntimeError):
