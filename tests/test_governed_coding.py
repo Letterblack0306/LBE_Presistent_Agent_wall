@@ -118,6 +118,99 @@ def test_complete_walk_still_prunes_genuinely_deleted_file(_isolated_index_state
     assert "root/file-b.txt" not in _indexed_paths(database), (
         "a genuinely deleted file must still be pruned after a complete walk"
     )
+
+
+# --- Gap #2: --resume must resume, not merely set a flag ---
+
+
+def _run_rows(database):
+    connection = sqlite3.connect(database)
+    try:
+        connection.row_factory = sqlite3.Row
+        return [dict(row) for row in connection.execute("SELECT * FROM runs")]
+    finally:
+        connection.close()
+
+
+def test_resume_continues_from_recorded_position(
+    _isolated_index_state, monkeypatch
+):
+    """A resumed run must start after the recorded position, not at the first file.
+
+    The falsifier for the old behaviour was that `resume_requested` was recorded
+    as a flag while the walk always restarted at root[0]. Here the first run
+    aborts after file-b, and the second run must re-index only file-c onward.
+    """
+    workspace = _isolated_index_state.parent / "ws"
+    workspace.mkdir()
+    for name in ("file-a.txt", "file-b.txt", "file-c.txt"):
+        (workspace / name).write_text(f"{name}\n", encoding="utf-8")
+    database = _isolated_index_state / "workspace.db"
+
+    real_rglob = Path.rglob
+
+    def failing_rglob(self, pattern):
+        for index, item in enumerate(real_rglob(self, pattern)):
+            if index >= 2:
+                raise PermissionError(13, "simulated traversal failure")
+            yield item
+
+    monkeypatch.setattr(Path, "rglob", failing_rglob)
+    first = agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]})
+    )
+    assert first["statistics"]["incomplete_roots_this_run"] == ["root"]
+
+    aborted = _run_rows(database)
+    interrupted = [row for row in aborted if row["status"] == "root_incomplete:root"]
+    assert interrupted, (
+        "an aborted root must persist a run row with status root_incomplete:<name>"
+    )
+    assert interrupted[0]["current_file"], (
+        "an aborted root must persist the walk position for --resume to use"
+    )
+
+    # Second run: the walk now completes in full.
+    monkeypatch.setattr(Path, "rglob", real_rglob)
+    second = agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]}),
+        resume=True,
+    )
+
+    assert second["statistics"]["files_resumed_this_run"] == 1, (
+        "a resumed run must record that it continued from a recorded position"
+    )
+    assert second["statistics"]["files_seen_this_run"] < 3, (
+        "a resumed run must not re-index files already committed before the "
+        "recorded position"
+    )
+    assert {"root/file-a.txt", "root/file-b.txt", "root/file-c.txt"} <= (
+        _indexed_paths(database)
+    ), "a resumed run must still index every file by the time it completes"
+
+
+def test_resume_is_inert_without_a_prior_interrupted_run(
+    _isolated_index_state
+):
+    """A completed run leaves nothing to continue; --resume must not fake a resume."""
+    workspace = _isolated_index_state.parent / "ws"
+    workspace.mkdir()
+    for name in ("file-a.txt", "file-b.txt"):
+        (workspace / name).write_text(f"{name}\n", encoding="utf-8")
+    database = _isolated_index_state / "workspace.db"
+
+    agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]})
+    )
+    summary = agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]}),
+        resume=True,
+    )
+
+    assert summary["statistics"]["files_resumed_this_run"] == 0, (
+        "with no interrupted run there is no position to resume from; the run must "
+        "report a full scan rather than claiming a resume it did not perform"
+    )
     assert summary["status"] == "completed"
     assert summary["statistics"]["reconciled"] is True
 

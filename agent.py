@@ -59,6 +59,7 @@ _AUTHORIZED_TRACE_STATISTICS_FIELDS: frozenset[str] = frozenset({
     "metadata_errors_this_run",
     "traversal_errors_this_run",
     "incomplete_roots_this_run",
+    "files_resumed_this_run",
     "bytes_seen_this_run",
     "bytes_hashed_this_run",
     "files_per_second",
@@ -403,6 +404,7 @@ class TraceStats:
     metadata_errors: int = 0
     traversal_errors: int = 0
     incomplete_roots: tuple[str, ...] = ()
+    files_resumed: int = 0
     bytes_seen: int = 0
     bytes_hashed: int = 0
 
@@ -534,6 +536,31 @@ def update_run(
     )
 
 
+def _load_resume_positions(connection: sqlite3.Connection) -> dict[str, str]:
+    """Return the last committed walk position per root from the previous run.
+
+    Only a run that did not finish its root is resumable. A completed run has
+    nothing left to continue, so its rows are deliberately ignored.
+    """
+    rows = connection.execute(
+        """
+        SELECT current_root, current_file
+        FROM runs
+        WHERE current_root IS NOT NULL
+          AND current_file IS NOT NULL
+          AND current_file <> ''
+          AND status NOT IN ('completed', 'finished_with_gaps')
+        ORDER BY started_at DESC
+        """
+    ).fetchall()
+    positions: dict[str, str] = {}
+    for row in rows:
+        name = str(row["current_root"])
+        if name not in positions:
+            positions[name] = str(row["current_file"])
+    return positions
+
+
 def trace_workspace(
     ctx: Context,
     *,
@@ -556,12 +583,19 @@ def trace_workspace(
 
     try:
         completed_roots: list[str] = []
+        # Real positional resume. A previous interrupted/aborted run's last
+        # committed position is recorded per root; this run skips the walk up to
+        # that point instead of restarting at the first entry. resume_requested
+        # alone never implied continuation - it is only recorded as a flag.
+        resume_positions = _load_resume_positions(connection) if resume else {}
         for root in ctx.roots:
             stats.current_root = root.name
             # iter_files raises TraversalIncomplete when rglob fails mid-iteration.
             # Drive it explicitly so a completed walk and an aborted walk stay
             # distinguishable without re-indenting the indexing body.
             walker = iter_files(ctx, root)
+            resume_after = resume_positions.get(root.name)
+            resumed = False
             walk_incomplete = False
             while True:
                 try:
@@ -578,6 +612,15 @@ def trace_workspace(
                         "no pruning for this root."
                     )
                     break
+                if not resumed and resume_after is not None and virtual <= resume_after:
+                    # Everything at or before the recorded position was already
+                    # committed by the prior run. Skip it without counting it as
+                    # newly seen, so a resumed run does not double-count work.
+                    continue
+                if not resumed and resume_after is not None:
+                    resumed = True
+                    stats.files_resumed = 1
+                    print(f"Resuming root '{root.name}' after '{resume_after}'.")
                 stats.current_file = virtual
                 try:
                     stat = path.stat()
@@ -654,11 +697,39 @@ def trace_workspace(
                     update_run(connection, run_id, stats, "checkpoint_saved")
                     connection.commit()
                     write_json(PROGRESS_PATH, progress_payload(run_id, stats, "checkpoint_saved"))
+                elif stats.files_seen % progress_every == 0:
+                    # Commit the walk position often enough that an interrupt or
+                    # abort leaves a resume point close to where the walk stopped,
+                    # rather than only at the last checkpoint boundary.
+                    update_run(connection, run_id, stats, "running")
+                    connection.commit()
 
             if not walk_incomplete:
                 completed_roots.append(root.name)
+                if resumed:
+                    # A resumed walk did not observe the files at or before the
+                    # recorded position, so it cannot prove they are still present.
+                    # Re-stamp those rows as seen this run; otherwise the prune
+                    # below would delete exactly the entries resume preserved.
+                    carried = connection.execute(
+                        """
+                        UPDATE files SET last_seen_run=?
+                        WHERE root=? AND path<=?
+                          AND last_seen_run<>?
+                        """,
+                        (run_id, root.name, str(resume_after), run_id),
+                    ).rowcount
+                    if carried:
+                        print(
+                            f"Carried {carried} pre-resume index row(s) forward for "
+                            f"root '{root.name}' without re-walking them."
+                        )
 
             print_progress(stats, newline=True)
+            # A root that aborted leaves the walk position persisted with an
+            # interrupted status, so `--resume` has a real position to continue
+            # from. A completed root records its terminal position and is not
+            # resumable by _load_resume_positions.
             update_run(
                 connection,
                 run_id,
@@ -724,6 +795,7 @@ def trace_workspace(
                 "metadata_errors_this_run": stats.metadata_errors,
                 "traversal_errors_this_run": stats.traversal_errors,
                 "incomplete_roots_this_run": list(stats.incomplete_roots),
+                "files_resumed_this_run": stats.files_resumed,
                 "bytes_seen_this_run": stats.bytes_seen,
                 "bytes_hashed_this_run": stats.bytes_hashed,
                 "files_per_second": round(stats.rate(), 3),
