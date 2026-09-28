@@ -1,0 +1,18 @@
+{
+  "id": "OWNER_AUTHORITY_BLOCKER",
+  "version": 1,
+  "severity": "BLOCKER",
+  "ui_label": "Wrong Owner / Wrong Scope",
+  "purpose": "Prevent patches against an unproven responsibility owner or outside the explicitly authorized mutation scope.",
+  "authority": "LBE Core",
+  "default": "enabled",
+  "requires": ["issue_id", "owner_file_or_module", "owner_reason", "owner_evidence", "owner_status", "allowed_paths", "validation_command"],
+  "deny_when": ["owner_not_proven", "proposed_path_not_in_allowed_paths", "proposed_layer_conflicts_with_owner_layer", "runtime_issue_has_docs_only_patch", "backend_issue_has_ui_only_patch_without_evidence", "owner_conflict_unresolved"],
+  "post_execution_rule": "OWNER_SCOPE_VIOLATION",
+  "outcomes": {
+    "OWNER_PROVEN": "allow normal governance evaluation",
+    "OWNER_UNPROVEN": "block",
+    "OWNER_CONFLICT": "block",
+    "WRONG_SCOPE": "block"
+  }
+}
