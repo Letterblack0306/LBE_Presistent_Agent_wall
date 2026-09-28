@@ -4,12 +4,158 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 
 import agent
 import pytest
 
+# --- IDX-1 / IDX-2 / IDX-3: indexer traversal and governance revalidation ---
+
+
+@pytest.fixture()
+def _isolated_index_state(tmp_path, monkeypatch):
+    state = tmp_path / "state"
+    state.mkdir()
+    monkeypatch.setattr(agent, "STATE_DIR", state)
+    monkeypatch.setattr(agent, "DATABASE_PATH", state / "workspace.db")
+    monkeypatch.setattr(agent, "PROGRESS_PATH", state / "trace_progress.json")
+    monkeypatch.setattr(agent, "SUMMARY_PATH", state / "workspace_trace.json")
+    return state
+
+
+def _index_context(workspace, governance):
+    return agent.Context(
+        config={"knowledge_roots": [{"name": "root", "path": str(workspace)}]},
+        governance=governance,
+        roots=(agent.KnowledgeRoot(name="root", path=workspace),),
+        missing_roots=(),
+    )
+
+
+def _seed_index(database, workspace):
+    connection = sqlite3.connect(database)
+    connection.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS files (
+            root TEXT NOT NULL, path TEXT NOT NULL, physical_path TEXT NOT NULL,
+            size INTEGER NOT NULL, modified_ns INTEGER NOT NULL, sha256 TEXT,
+            hash_status TEXT, error TEXT, first_seen_at TEXT NOT NULL,
+            last_seen_at TEXT NOT NULL, last_seen_run TEXT NOT NULL,
+            PRIMARY KEY (root, path)
+        );
+        """
+    )
+    for name in ("file-a.txt", "file-b.txt"):
+        connection.execute(
+            "INSERT OR REPLACE INTO files VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            ("root", f"root/{name}", str(workspace / name), 5, 1, "oldhash",
+             "hashed", None, "2026-01-01T00:00:00+00:00",
+             "2026-01-01T00:00:00+00:00", "run-old"),
+        )
+    connection.commit()
+    connection.close()
+
+
+def _indexed_paths(database):
+    connection = sqlite3.connect(database)
+    try:
+        return {row[0] for row in connection.execute("SELECT path FROM files")}
+    finally:
+        connection.close()
+
+
+def test_incomplete_walk_preserves_unreached_index_rows(
+    _isolated_index_state, monkeypatch
+):
+    """IDX-1/IDX-2: a walk aborted mid-root must not prune unreached rows."""
+    workspace = _isolated_index_state.parent / "ws"
+    workspace.mkdir()
+    (workspace / "file-a.txt").write_text("alpha\n", encoding="utf-8")
+    (workspace / "file-b.txt").write_text("beta\n", encoding="utf-8")
+    database = _isolated_index_state / "workspace.db"
+    _seed_index(database, workspace)
+
+    real_rglob = Path.rglob
+
+    def failing_rglob(self, pattern):
+        for index, item in enumerate(real_rglob(self, pattern)):
+            if index >= 1:
+                raise PermissionError(13, "simulated traversal failure")
+            yield item
+
+    monkeypatch.setattr(Path, "rglob", failing_rglob)
+
+    summary = agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]})
+    )
+
+    assert "root/file-b.txt" in _indexed_paths(database), (
+        "a row for a file the walk never reached must be preserved, not pruned"
+    )
+    assert summary["status"] == "finished_with_gaps"
+    assert summary["statistics"]["reconciled"] is False
+    assert summary["statistics"]["incomplete_roots_this_run"] == ["root"]
+    assert summary["statistics"]["traversal_errors_this_run"] == 1
+
+
+def test_complete_walk_still_prunes_genuinely_deleted_file(_isolated_index_state):
+    """Pruning must still work after a complete walk with a real deletion."""
+    workspace = _isolated_index_state.parent / "ws"
+    workspace.mkdir()
+    (workspace / "file-a.txt").write_text("alpha\n", encoding="utf-8")
+    database = _isolated_index_state / "workspace.db"
+    _seed_index(database, workspace)
+    (workspace / "file-b.txt").unlink(missing_ok=True)
+
+    summary = agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]})
+    )
+
+    assert "root/file-b.txt" not in _indexed_paths(database), (
+        "a genuinely deleted file must still be pruned after a complete walk"
+    )
+    assert summary["status"] == "completed"
+    assert summary["statistics"]["reconciled"] is True
+
+
+def test_search_revalidates_current_policy_against_stale_index_rows(
+    _isolated_index_state,
+):
+    """IDX-3: a row indexed under an older policy must not be searchable now."""
+    workspace = _isolated_index_state.parent / "ws"
+    workspace.mkdir()
+    secret = workspace / "secret.txt"
+    secret.write_text("classified needle\n", encoding="utf-8")
+    database = _isolated_index_state / "workspace.db"
+    _seed_index(database, workspace)
+    connection = sqlite3.connect(database)
+    connection.execute(
+        "INSERT OR REPLACE INTO files VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        ("root", "root/secret.txt", str(secret), 19, 1, "oldhash", "hashed", None,
+         "2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00", "run-old"),
+    )
+    connection.commit()
+    connection.close()
+
+    permissive = _index_context(
+        workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]}
+    )
+    assert agent.search_workspace(permissive, "needle")["result_count"] == 1
+
+    now_forbidden = _index_context(
+        workspace, {"forbidden_globs": ["**/secret.txt"], "allowed_read_paths": ["."]}
+    )
+    result = agent.search_workspace(now_forbidden, "needle")
+
+    assert result["result_count"] == 0, (
+        "search must re-check the current policy, not trust the stored index row"
+    )
+    assert result["policy_blocked_files"] >= 1
+
+
 from lbe_guard_inspector.runtime.governed_coding import (
+    _ReceiptTrackingOrchestrator,
     _provider_tool_definition,
     _tool_id_for_provider_name,
     build_git_commit_staged_handler,
@@ -24,6 +170,10 @@ from lbe_guard_inspector.runtime.governed_coding import (
     workspace_write_text_spec,
     build_workspace_patch_handler,
     workspace_patch_spec,
+)
+from lbe_guard_inspector.authority_ownership import (
+    OwnerAuthorityAuthorization,
+    OwnerAuthorityStatus,
 )
 from lbe_guard_inspector.runtime.mode_controller import ModeDecision
 from lbe_guard_inspector.runtime.tool_orchestration import (
@@ -87,6 +237,56 @@ def _orchestrator() -> GovernedToolOrchestrator:
     registry = ToolRegistry()
     registry.register(workspace_create_candidate_text_spec(), build_workspace_create_candidate_text_handler())
     return GovernedToolOrchestrator(registry=registry)
+
+
+def test_owner_authority_blocker_denies_unproven_write_before_handler(
+    tmp_path: Path, monkeypatch
+) -> None:
+    workspace = _configure_runtime_files(tmp_path, monkeypatch)
+    registry = ToolRegistry()
+    registry.register(
+        workspace_create_candidate_text_spec(),
+        build_workspace_create_candidate_text_handler(),
+    )
+    authority: OwnerAuthorityAuthorization | None = None
+    orchestrator = _ReceiptTrackingOrchestrator(
+        registry=registry,
+        owner_authority=lambda: authority,
+    )
+    request = ToolRequest(
+        operation_id="owner-blocked",
+        tool_id="workspace.create_candidate_text",
+        arguments={"path": "candidate.txt", "content": "blocked\n"},
+        context=_context(workspace),
+    )
+
+    blocked = orchestrator.invoke(request)
+    assert blocked.status is ToolReceiptStatus.DENIED
+    assert blocked.error_code == "OWNER_AUTHORITY_BLOCKER"
+    assert not (workspace / "candidate.txt").exists()
+
+    authority = OwnerAuthorityAuthorization(
+        issue_id="BRD-00027",
+        owner_file_or_module="owner.py",
+        owner_reason="owner evidence traces the relevant effect",
+        owner_evidence=("BRD-00027:E12",),
+        owner_status=OwnerAuthorityStatus.OWNER_PROVEN,
+        allowed_paths=("candidate.txt",),
+        validation_command="pytest tests/test_governed_coding.py",
+    )
+    allowed = _ReceiptTrackingOrchestrator(
+        registry=registry,
+        owner_authority=lambda: authority,
+    ).invoke(
+        ToolRequest(
+            operation_id="owner-allowed",
+            tool_id="workspace.create_candidate_text",
+            arguments={"path": "candidate.txt", "content": "allowed\n"},
+            context=_context(workspace),
+        )
+    )
+    assert allowed.status is ToolReceiptStatus.EXECUTED
+    assert (workspace / "candidate.txt").read_text(encoding="utf-8") == "allowed\n"
 
 
 def test_create_candidate_text_executes_once_and_is_idempotent(tmp_path: Path, monkeypatch) -> None:

@@ -57,6 +57,8 @@ _AUTHORIZED_TRACE_STATISTICS_FIELDS: frozenset[str] = frozenset({
     "files_large_this_run",
     "files_unreadable_this_run",
     "metadata_errors_this_run",
+    "traversal_errors_this_run",
+    "incomplete_roots_this_run",
     "bytes_seen_this_run",
     "bytes_hashed_this_run",
     "files_per_second",
@@ -302,6 +304,10 @@ def split_virtual_path(ctx: Context, value: str) -> tuple[KnowledgeRoot, Path]:
     return root, candidate
 
 
+class TraversalIncomplete(RuntimeError):
+    """A root walk could not finish, so its index rows must not be pruned."""
+
+
 def iter_files(ctx: Context, root: KnowledgeRoot) -> Iterable[tuple[Path, str]]:
     forbidden = list(ctx.governance.get("forbidden_globs", []))
     allowed = list(ctx.governance.get("allowed_read_paths", ["."]))
@@ -319,8 +325,14 @@ def iter_files(ctx: Context, root: KnowledgeRoot) -> Iterable[tuple[Path, str]]:
             if not path_allowed(relative, allowed):
                 continue
             yield path, virtual
-    except (OSError, PermissionError):
-        return
+    except (OSError, PermissionError) as exc:
+        # rglob can fail during iteration, not only at construction, so the guard
+        # must wrap consumption. Silently returning here would let the caller
+        # believe the walk completed, and reconciliation would then prune index
+        # rows for every file the aborted walk never reached.
+        raise TraversalIncomplete(
+            f"walk of root '{root.name}' aborted: {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def open_database() -> sqlite3.Connection:
@@ -389,6 +401,8 @@ class TraceStats:
     files_large: int = 0
     files_unreadable: int = 0
     metadata_errors: int = 0
+    traversal_errors: int = 0
+    incomplete_roots: tuple[str, ...] = ()
     bytes_seen: int = 0
     bytes_hashed: int = 0
 
@@ -465,6 +479,20 @@ def progress_payload(
 
 
 def _reconciliation_blocked_reason(stats: TraceStats) -> str | None:
+    # An incomplete walk is the most severe condition: the root's files were never
+    # all observed, so a missing row means "not reached", not "deleted".
+    if stats.incomplete_roots:
+        return (
+            f"traversal incomplete for root(s): {', '.join(stats.incomplete_roots)}; "
+            "their index rows were preserved and not pruned"
+        )
+    # A stat() failure skips the file before files_seen is incremented, so the
+    # arithmetic below cannot detect it. Treat it as a reconciliation gap.
+    if stats.metadata_errors:
+        return (
+            f"{stats.metadata_errors} file(s) failed metadata inspection during "
+            "this run; the file set may be incomplete"
+        )
     expected = (
         stats.files_hashed
         + stats.files_cached
@@ -527,9 +555,29 @@ def trace_workspace(
     write_json(PROGRESS_PATH, progress_payload(run_id, stats, "starting"))
 
     try:
+        completed_roots: list[str] = []
         for root in ctx.roots:
             stats.current_root = root.name
-            for path, virtual in iter_files(ctx, root):
+            # iter_files raises TraversalIncomplete when rglob fails mid-iteration.
+            # Drive it explicitly so a completed walk and an aborted walk stay
+            # distinguishable without re-indenting the indexing body.
+            walker = iter_files(ctx, root)
+            walk_incomplete = False
+            while True:
+                try:
+                    path, virtual = next(walker)
+                except StopIteration:
+                    break
+                except TraversalIncomplete as exc:
+                    stats.traversal_errors += 1
+                    stats.incomplete_roots = stats.incomplete_roots + (root.name,)
+                    walk_incomplete = True
+                    print(f"\nIncomplete traversal for root '{root.name}': {exc}")
+                    print(
+                        f"Preserving existing index rows for '{root.name}'; "
+                        "no pruning for this root."
+                    )
+                    break
                 stats.current_file = virtual
                 try:
                     stat = path.stat()
@@ -607,16 +655,37 @@ def trace_workspace(
                     connection.commit()
                     write_json(PROGRESS_PATH, progress_payload(run_id, stats, "checkpoint_saved"))
 
+            if not walk_incomplete:
+                completed_roots.append(root.name)
+
             print_progress(stats, newline=True)
-            update_run(connection, run_id, stats, f"root_completed:{root.name}")
+            update_run(
+                connection,
+                run_id,
+                stats,
+                f"root_incomplete:{root.name}"
+                if walk_incomplete
+                else f"root_completed:{root.name}",
+            )
             connection.commit()
 
-        root_names = [root.name for root in ctx.roots]
-        placeholders = ",".join("?" for _ in root_names)
-        connection.execute(
-            f"DELETE FROM files WHERE root IN ({placeholders}) AND last_seen_run<>?",
-            (*root_names, run_id),
-        )
+        # Prune only roots whose walk completed. A row missing from an incomplete
+        # root means "not reached", not "deleted", so deleting it would destroy
+        # valid index entries. This must be decided before any pruning, not after
+        # reconciliation is reported.
+        if completed_roots:
+            placeholders = ",".join("?" for _ in completed_roots)
+            connection.execute(
+                f"DELETE FROM files WHERE root IN ({placeholders}) AND last_seen_run<>?",
+                (*completed_roots, run_id),
+            )
+        else:
+            print("No root completed a full traversal; no index rows pruned.")
+        if stats.incomplete_roots:
+            print(
+                "Preserved index rows for incomplete root(s): "
+                + ", ".join(stats.incomplete_roots)
+            )
         completed_at = utc_now()
         connection.commit()
 
@@ -653,6 +722,8 @@ def trace_workspace(
                 "files_large_this_run": stats.files_large,
                 "files_unreadable_this_run": stats.files_unreadable,
                 "metadata_errors_this_run": stats.metadata_errors,
+                "traversal_errors_this_run": stats.traversal_errors,
+                "incomplete_roots_this_run": list(stats.incomplete_roots),
                 "bytes_seen_this_run": stats.bytes_seen,
                 "bytes_hashed_this_run": stats.bytes_hashed,
                 "files_per_second": round(stats.rate(), 3),
@@ -802,11 +873,18 @@ def search_workspace(
     terms = [term for term in raw_terms if term not in stop_words and len(term) > 2] or raw_terms
     required = 1 if len(terms) == 1 else 2
     max_bytes = int(ctx.config.get("max_file_bytes", 5_000_000))
+    # Re-evaluate the current policy for every candidate row. The index may be
+    # older than the active governance rules, so a stored physical_path must not
+    # be trusted to still be readable. inspect_file() re-checks the same two
+    # controls; search must fail closed in the same way.
+    forbidden = list(ctx.governance.get("forbidden_globs", []))
+    allowed_read_paths = list(ctx.governance.get("allowed_read_paths", ["."]))
     started = time.monotonic()
     connection = None
     try:
         connection = open_database()
         scanned = skipped = serial = 0
+        policy_blocked = 0
         candidates: list[tuple[int, int, dict[str, Any]]] = []
 
         sql = "SELECT root,path,physical_path,size,sha256 FROM files"
@@ -829,6 +907,15 @@ def search_workspace(
             physical = Path(str(row["physical_path"]))
             size = int(row["size"])
             if physical.suffix.lower() not in allowed_extensions:
+                continue
+            # Current-policy revalidation of the stored row. A row indexed under an
+            # older policy is not evidence that the file is still readable now.
+            relative = virtual.split("/", 1)[1] if "/" in virtual else "."
+            if matches_any(virtual, forbidden) or matches_any(relative, forbidden):
+                policy_blocked += 1
+                continue
+            if not path_allowed(relative, allowed_read_paths):
+                policy_blocked += 1
                 continue
             scanned += 1
             virtual_lower = virtual.lower()
@@ -948,6 +1035,7 @@ def search_workspace(
             "minimum_required_matches": required,
             "scanned_files": scanned,
             "skipped_unreadable_files": skipped,
+            "policy_blocked_files": policy_blocked,
             "duplicate_hashes_collapsed": len(ordered) - len(results),
             "source_classifications": class_counts,
             "applied_filters": {
