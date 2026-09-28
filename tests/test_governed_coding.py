@@ -10,6 +10,9 @@ import subprocess
 import agent
 import pytest
 
+from lbe_guard_inspector.reasoning_provider import ProviderConfig
+from lbe_guard_inspector.session_memory_runtime import SessionMemoryRuntimeBridge
+
 # --- IDX-1 / IDX-2 / IDX-3: indexer traversal and governance revalidation ---
 
 
@@ -152,6 +155,248 @@ def test_search_revalidates_current_policy_against_stale_index_rows(
         "search must re-check the current policy, not trust the stored index row"
     )
     assert result["policy_blocked_files"] >= 1
+
+
+# --- PROV-1: provider config model must follow the persisted session model ---
+
+
+def _prov_runtime(tmp_path, *, provider_model, provider_id="openrouter"):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "README.md").write_text("governed evidence\n", encoding="utf-8")
+    return SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "state.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=workspace,
+        session_id="session-prov",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id=provider_id,
+        provider_model=provider_model,
+        reasoning_engine="cline",
+    )
+
+
+def test_provider_config_model_binds_to_persisted_session_model(tmp_path, monkeypatch):
+    """PROV-1: an endpoint default model must not break the governed turn."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+
+    # Endpoint config carries a different default model than the session selected.
+    controller = _GovernedCodingControllerBase(
+        runtime=runtime,
+        provider_id="openrouter",
+        provider_config=ProviderConfig(
+            endpoint="https://openrouter.ai/api/v1/chat/completions",
+            model="gemma-endpoint-default",
+            timeout_seconds=5,
+            api_key="test-key",
+        ),
+        engine_id="cline",
+    )
+
+    assert controller._provider_config.model == "qwen-selected", (
+        "the persisted session is the model authority; the config must bind to it"
+    )
+    assert runtime.session_state.provider_model == "qwen-selected", (
+        "binding must not mutate the persisted session selection"
+    )
+
+
+def test_provider_identity_mismatch_remains_fail_closed(tmp_path, monkeypatch):
+    """PROV-1 must not weaken provider identity, which decides credential routing."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+
+    with pytest.raises(ValueError, match="provider identity does not match"):
+        _GovernedCodingControllerBase(
+            runtime=runtime,
+            provider_id="some-other-provider",
+            provider_config=ProviderConfig(
+                endpoint="https://openrouter.ai/api/v1/chat/completions",
+                model="qwen-selected",
+                timeout_seconds=5,
+                api_key="test-key",
+            ),
+            engine_id="cline",
+        )
+
+
+def test_declared_config_provider_id_mismatch_fails_closed(tmp_path, monkeypatch):
+    """A declared config provider_id that disagrees must not reach the turn."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+
+    # provider_id argument matches the session, but the config declares another
+    # identity. The canonical helper must still refuse to route credentials.
+    with pytest.raises(ValueError, match="identity does not match persisted session"):
+        _GovernedCodingControllerBase(
+            runtime=runtime,
+            provider_id="openrouter",
+            provider_config=ProviderConfig(
+                endpoint="https://openrouter.ai/api/v1/chat/completions",
+                model="qwen-selected",
+                timeout_seconds=5,
+                api_key="test-key",
+                provider_id="attacker-endpoint",
+            ),
+            engine_id="cline",
+        )
+
+
+def test_generic_compatible_config_binds_to_session_provider(tmp_path, monkeypatch):
+    """A config with no provider_id binds to the persisted session provider."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+
+    controller = _GovernedCodingControllerBase(
+        runtime=runtime,
+        provider_id="openrouter",
+        provider_config=ProviderConfig(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="qwen-selected",
+            timeout_seconds=5,
+            api_key="test-key",
+        ),
+        engine_id="cline",
+    )
+
+    # A native/undeclared-identity config is accepted: the controller routes under
+    # the session provider it was constructed with. Binding a config's declared
+    # provider_id is the product-entry config owner's job, not this layer.
+    assert controller._provider_id == "openrouter"
+    assert controller._provider_config.provider_id is None
+    assert controller._provider_config.model == "qwen-selected"
+
+
+def test_declared_matching_provider_id_is_preserved(tmp_path, monkeypatch):
+    """A declared provider_id equal to the session survives construction."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+
+    controller = _GovernedCodingControllerBase(
+        runtime=runtime,
+        provider_id="openrouter",
+        provider_config=ProviderConfig(
+            endpoint="https://openrouter.ai/api/v1/chat/completions",
+            model="qwen-selected",
+            timeout_seconds=5,
+            api_key="test-key",
+            provider_id="openrouter",
+        ),
+        engine_id="cline",
+    )
+
+    assert controller._provider_config.provider_id == "openrouter"
+
+
+def test_native_transport_without_provider_id_is_accepted(tmp_path, monkeypatch):
+    """Native transports carry no provider_id and must not be rejected here."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    for index, endpoint in enumerate(
+        (
+            "https://api.anthropic.com/v1/messages",
+            "https://generativelanguage.googleapis.com/v1beta/models/g:generateContent",
+            "https://api.openai.com/v1/responses",
+        )
+    ):
+        root = tmp_path / f"native-{index}"
+        root.mkdir()
+        runtime = SessionMemoryRuntimeBridge(
+            database_path=root / "state.sqlite",
+            project_workspace_id="project-native",
+            workspace_root=root,
+            session_id="session-native",
+            mode="coding",
+            permission="write_allowed",
+            runtime_policy="permissive",
+            provider_id="openrouter",
+            provider_model="model-a",
+            reasoning_engine="cline",
+        )
+        controller = _GovernedCodingControllerBase(
+            runtime=runtime,
+            provider_id="openrouter",
+            provider_config=ProviderConfig(
+                endpoint=endpoint,
+                model="model-a",
+                timeout_seconds=5,
+                api_key="test-key",
+            ),
+            engine_id="cline",
+        )
+        assert controller._provider_config.endpoint == endpoint
+
+
+def test_binding_preserves_endpoint_credentials_and_timeout(tmp_path, monkeypatch):
+    """Only the model and provider identity may change; the rest is preserved."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+
+    controller = _GovernedCodingControllerBase(
+        runtime=runtime,
+        provider_id="openrouter",
+        provider_config=ProviderConfig(
+            endpoint="https://openrouter.ai/api/v1/chat/completions",
+            model="gemma-endpoint-default",
+            timeout_seconds=17,
+            api_key="test-key",
+        ),
+        engine_id="cline",
+    )
+
+    bound = controller._provider_config
+    assert bound.model == "qwen-selected"
+    assert bound.endpoint == "https://openrouter.ai/api/v1/chat/completions"
+    assert bound.api_key == "test-key"
+    assert bound.timeout_seconds == 17
+    assert runtime.session_state.provider_model == "qwen-selected"
+    assert runtime.session_state.provider_id == "openrouter"
+
+
+def test_missing_persisted_model_is_rejected(tmp_path, monkeypatch):
+    """An empty session model must not silently adopt the endpoint default."""
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+    object.__setattr__(runtime.session_state, "provider_model", "  ")
+
+    with pytest.raises(ValueError, match="does not have a selected model"):
+        _GovernedCodingControllerBase(
+            runtime=runtime,
+            provider_id="openrouter",
+            provider_config=ProviderConfig(
+                endpoint="https://openrouter.ai/api/v1/chat/completions",
+                model="gemma-endpoint-default",
+                timeout_seconds=5,
+                api_key="test-key",
+            ),
+            engine_id="cline",
+        )
 
 
 from lbe_guard_inspector.runtime.governed_coding import (

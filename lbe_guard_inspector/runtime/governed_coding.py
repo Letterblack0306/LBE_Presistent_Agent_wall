@@ -11,6 +11,7 @@ import json
 import os
 import re
 import difflib
+from dataclasses import replace
 from pathlib import Path
 import shutil
 import subprocess
@@ -22,6 +23,11 @@ from uuid import uuid4
 
 from agent import Context, GovernanceError, matches_any, path_allowed
 
+from ..authority_ownership import (
+    OWNER_AUTHORITY_BLOCKER,
+    OWNER_SCOPE_VIOLATION,
+    OwnerAuthorityAuthorization,
+)
 from ..evidence_service import EvidenceService
 from ..professional_provider_events import ModelEventType, NormalizedModelEvent
 from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
@@ -667,21 +673,69 @@ _TOOL_STEP_MAX_OUTPUT_TOKENS = 2048
 
 
 class _ReceiptTrackingOrchestrator(GovernedToolOrchestrator):
-    def __init__(self, *, registry: ToolRegistry) -> None:
+    def __init__(
+        self,
+        *,
+        registry: ToolRegistry,
+        owner_authority: Callable[[], OwnerAuthorityAuthorization | None],
+    ) -> None:
         super().__init__(registry=registry)
         self._observed_receipts: list[ToolReceipt] = []
         self._observed_receipt_ids: set[str] = set()
+        self._owner_authority = owner_authority
 
     @property
     def observed_receipts(self) -> tuple[ToolReceipt, ...]:
         return tuple(self._observed_receipts)
 
     def invoke(self, request: ToolRequest) -> ToolReceipt:
+        registered = self._registry.get(request.tool_id)
+        if registered is not None and registered.spec.access_class is ToolAccessClass.WRITE:
+            authority = self._owner_authority()
+            proposed_paths = _proposed_mutation_paths(request)
+            blocker = "no proven owner evidence package was supplied"
+            if authority is not None:
+                blocker = next(
+                    (
+                        reason
+                        for path in proposed_paths
+                        if (reason := authority.pre_execution_blocker(path)) is not None
+                    ),
+                    None,
+                )
+            if authority is None or blocker is not None:
+                receipt = ToolReceipt(
+                    operation_id=request.operation_id,
+                    tool_id=request.tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=None,
+                    error_code=OWNER_AUTHORITY_BLOCKER,
+                    error_message=blocker or "owner authority was not proven",
+                )
+                if receipt.receipt_id not in self._observed_receipt_ids:
+                    self._observed_receipt_ids.add(receipt.receipt_id)
+                    self._observed_receipts.append(receipt)
+                return receipt
         receipt = super().invoke(request)
         if receipt.receipt_id not in self._observed_receipt_ids:
             self._observed_receipt_ids.add(receipt.receipt_id)
             self._observed_receipts.append(receipt)
         return receipt
+
+
+def _proposed_mutation_paths(request: ToolRequest) -> tuple[str, ...]:
+    if request.tool_id in {"workspace.create_candidate_text", "workspace.write_text", "workspace.patch"}:
+        path = str(request.arguments.get("path", "")).replace("\\", "/").strip()
+        return (path,) if path else ("<missing-path>",)
+    if request.tool_id == "git.stage_paths":
+        try:
+            paths = json.loads(str(request.arguments.get("paths_json", "[]")))
+        except json.JSONDecodeError:
+            return ("<invalid-paths-json>",)
+        return tuple(str(path).replace("\\", "/").strip() for path in paths)
+    if request.tool_id == "git.commit_staged":
+        return ()
+    return ("<unresolved-write-target>",)
 
 
 class _GovernedCodingControllerBase:
@@ -708,8 +762,25 @@ class _GovernedCodingControllerBase:
             raise ValueError("engine_id must be non-empty")
         if runtime.session_state.provider_id != clean_provider:
             raise ValueError("provider identity does not match persisted session")
-        if runtime.session_state.provider_model != provider_config.model.strip():
-            raise ValueError("provider model does not match persisted session")
+        # The persisted session is the single model authority for the model, and a
+        # declared config provider_id must still agree with the session before
+        # credentials are routed. Only the model is bound: a native transport
+        # (anthropic, gemini, openai responses) is not an OpenAI-compatible
+        # endpoint and never carried a provider_id, so the compatible-endpoint
+        # rules in reasoning_config.bind_provider_config_to_session do not apply
+        # at this layer. That helper owns the product-entry config path, not the
+        # controller, and delegating to it here rejected implemented transports.
+        session_model = (runtime.session_state.provider_model or "").strip()
+        if not session_model:
+            raise ValueError("persisted session does not have a selected model")
+        declared_provider_id = provider_config.provider_id
+        if declared_provider_id is not None and declared_provider_id.strip() != clean_provider:
+            raise ValueError(
+                "provider config identity does not match persisted session provider; "
+                "refusing to route credentials"
+            )
+        if provider_config.model.strip() != session_model:
+            provider_config = replace(provider_config, model=session_model)
         persisted_engine = runtime.session_state.reasoning_engine or "native-lbe"
         if persisted_engine != clean_engine:
             raise ValueError(
@@ -738,6 +809,7 @@ class _GovernedCodingControllerBase:
             configured_root_id=runtime.project_workspace_id,
         )
         self._governed_mutation_paths: set[str] = set()
+        self._owner_authority: OwnerAuthorityAuthorization | None = None
 
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
@@ -765,7 +837,10 @@ class _GovernedCodingControllerBase:
                 register_external_capabilities(self._registry, external_capabilities)
             )
         self._rebuild_guidance()
-        self._orchestrator = _ReceiptTrackingOrchestrator(registry=registry)
+        self._orchestrator = _ReceiptTrackingOrchestrator(
+            registry=registry,
+            owner_authority=lambda: self._owner_authority,
+        )
 
     def _rebuild_guidance(self) -> None:
         self._guidance = build_agent_guidance(
@@ -805,6 +880,37 @@ class _GovernedCodingControllerBase:
         extra: Mapping[str, object] | None = None,
     ) -> dict[str, object]:
         receipts = self._orchestrator.observed_receipts
+        actual_paths = tuple(sorted(self._governed_mutation_paths))
+        owner_scope_violation = None
+        if self._owner_authority is not None:
+            owner_scope_violation = next(
+                (
+                    self._owner_authority.pre_execution_blocker(path)
+                    for path in actual_paths
+                    if self._owner_authority.pre_execution_blocker(path) is not None
+                ),
+                None,
+            )
+        owner_decision = (
+            self._owner_authority.decision_payload(
+                decision="DENY" if owner_scope_violation else "ALLOW",
+                actual_paths=actual_paths,
+                blocking_reason=owner_scope_violation,
+            )
+            if self._owner_authority is not None
+            else {
+                "rule": OWNER_AUTHORITY_BLOCKER,
+                "post_execution_rule": OWNER_SCOPE_VIOLATION,
+                "decision": (
+                    "DENY"
+                    if self._mutated()
+                    or any(receipt.error_code == OWNER_AUTHORITY_BLOCKER for receipt in receipts)
+                    else "NOT_APPLICABLE"
+                ),
+                "blocking_reason": "no proven owner evidence package was supplied",
+                "scope": {"actual_paths": list(actual_paths)},
+            }
+        )
         payload: dict[str, object] = {
             "runtime": "governed_provider",
             "turn_id": turn_id,
@@ -821,7 +927,8 @@ class _GovernedCodingControllerBase:
             ],
             "provider_output": provider_output,
             "agent_guidance": self._guidance.audit_payload(),
-            "governed_mutation_paths": sorted(self._governed_mutation_paths),
+            "governed_mutation_paths": list(actual_paths),
+            "owner_authority_decision": owner_decision,
             "external_capabilities": [
                 getattr(item, "audit_payload", lambda: {})()
                 for item in self._external_capabilities
@@ -832,6 +939,14 @@ class _GovernedCodingControllerBase:
         if extra:
             payload.update(dict(extra))
         return payload
+
+    def _bind_owner_authority(self, request: LBERequest) -> None:
+        package = request.owner_authority_package()
+        self._owner_authority = (
+            OwnerAuthorityAuthorization.from_mapping(package)
+            if package is not None
+            else None
+        )
 
     def _mutated(self) -> bool:
         return any(
@@ -903,6 +1018,7 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         task_id = str(request.task_id or "").strip()
         if not task_id:
             raise ValueError("governed coding requires a task_id")
+        self._bind_owner_authority(request)
 
         turn_id = f"turn-{uuid4().hex}"
         messages: list[dict[str, object]] = [
@@ -1030,6 +1146,7 @@ class GovernedClineCodingController(_GovernedCodingControllerBase):
         task_id = str(request.task_id or "").strip()
         if not task_id:
             raise ValueError("governed coding requires a task_id")
+        self._bind_owner_authority(request)
 
         # Cline remains feature-scoped: importing the adapter/worker occurs only
         # after an explicitly persisted Cline engine selection.
@@ -1238,19 +1355,24 @@ def _governed_tool_projection(
         )
     spec = registered.spec
     authorization = receipt.authorization
-    return {
+    payload: dict[str, object] = {
         "tool_id": receipt.tool_id,
         "capability": spec.capability,
         "access_class": spec.access_class.value,
         "network_behavior": spec.network_behavior.value,
         "risk_class": spec.risk_class.value,
         "authorization_verdict": (
-            None if authorization is None else authorization.verdict.value
+            "DENY" if authorization is None else authorization.verdict.value
         ),
         "authorization_rationale": (
-            None if authorization is None else authorization.rationale
+            receipt.error_message if authorization is None else authorization.rationale
         ),
     }
+    if receipt.error_code in {OWNER_AUTHORITY_BLOCKER, OWNER_SCOPE_VIOLATION}:
+        payload["governance_rule"] = receipt.error_code
+        payload["ui_label"] = "Wrong Owner / Wrong Scope"
+        payload["blocking_reason"] = receipt.error_message
+    return payload
 
 
 def _receipt_payload(receipt: ToolReceipt) -> dict[str, object]:
