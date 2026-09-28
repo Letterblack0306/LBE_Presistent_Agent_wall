@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "policyId": "LB-WORKSPACE-GOVERNANCE-V1",
+  "mode": "enforce",
+  "failClosed": true,
+  "scopeRequiresOperatorSignature": true,
+  "operatorPublicKey": ".governance/operator-public.pem",
+  "scopeFile": ".governance/task-scope.json",
+  "scopeSignatureFile": ".governance/task-scope.sig.json",
+  "protectedPaths": [
+    ".governance/**",
+    ".lbe/**",
+    "docs/GOVERNANCE_RULES.md",
+    "docs/BLOCKER_GUIDE.md",
+    "scripts/governance-check.mjs",
+    "scripts/action-preflight.mjs"
+  ],
+  "defaults": {
+    "filesystem": "deny-unless-scoped",
+    "shell": "deny-unless-scoped",
+    "git": "deny-unless-scoped",
+    "release": "deny",
+    "publish": "deny",
+    "scopeLocked": true
+  }
+}

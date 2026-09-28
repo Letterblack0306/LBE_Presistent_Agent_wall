@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "scopeId": "GOVERNANCE-BOOTSTRAP-001",
+  "objective": "Install and commit the standard Letterblack workspace governance kit only.",
+  "mode": "IMPLEMENT",
+  "active": true,
+  "scopeLocked": true,
+  "allowedFiles": [
+    "AGENTS.md",
+    "README.md",
+    "Install-Governance.ps1",
+    ".governance/**",
+    ".githooks/**",
+    "docs/GOVERNANCE_RULES.md",
+    "docs/BLOCKER_GUIDE.md",
+    "docs/OPERATOR_AUTHORIZATION.md",
+    "scripts/governance-lib.mjs",
+    "scripts/governance-check.mjs",
+    "scripts/action-preflight.mjs",
+    "scripts/propose-scope.mjs",
+    "operator-kit/**",
+    "MANIFEST.sha256"
+  ],
+  "forbiddenFiles": ["src/**", "electron/**", "app/**", "packages/**"],
+  "allowedActions": ["read", "write", "commit", "push"],
+  "forbiddenActions": ["tag", "publish", "release"],
+  "requiredReading": ["AGENTS.md", "docs/GOVERNANCE_RULES.md", "docs/BLOCKER_GUIDE.md", "docs/OPERATOR_AUTHORIZATION.md"],
+  "requiredValidation": ["node scripts/governance-check.mjs staged", "node scripts/governance-check.mjs head"]
+}
