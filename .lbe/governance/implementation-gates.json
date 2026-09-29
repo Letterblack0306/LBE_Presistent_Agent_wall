@@ -66,7 +66,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-PROVIDER-MODEL-CATALOG-RECONCILIATION-001",
     "owner": "Provider/runtime owner",
-    "index_revision": "B44CC08840FB18BD2A440D6C9143A7EB789E861A25348F23AE083C94C5175A3F"
+    "index_revision": "87D61E305B2A7FF7669DC7F76838715E83A078E245D9A770F4C58EAE30891BB2"
   },
   "closure": {
     "status": "OPEN",
