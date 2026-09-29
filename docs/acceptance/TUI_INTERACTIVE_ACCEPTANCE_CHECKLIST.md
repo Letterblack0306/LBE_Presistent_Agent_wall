@@ -1,4 +1,4 @@
-# TUI Interactive Acceptance Checklist and Plan
+﻿# TUI Interactive Acceptance Checklist and Plan
 
 Status: checklist open; no live row is filled.
 Registered under `LBE-INTENT-TUI-INTERACTIVE-ACCEPTANCE-AND-CLEAN-CLONE-001`.
@@ -27,7 +27,7 @@ click paths in a real PTY.
 
 Retained here so the error is not repeated.
 
-## Keyboard — read from executed branches of `app.rs::handle_key`
+## Keyboard â€” read from executed branches of `app.rs::handle_key`
 
 | Input | Guard | Action / owner | Auth | Live |
 |---|---|---|---|---|
@@ -57,7 +57,7 @@ Retained here so the error is not repeated.
 Not present, and not expected: Ctrl+D and Ctrl+L specifically. The
 capability exists via `q` and `/clear` under different keys.
 
-## Mouse — 3 `MouseEventKind`s carrying 8 actions
+## Mouse â€” 3 `MouseEventKind`s carrying 8 actions
 
 | Event | Guard | Action | Live |
 |---|---|---|---|
@@ -81,21 +81,22 @@ paths and do not extend to any other row.
 | resolves to the existing audit/read-only owner | SOURCE-VERIFIED (`mode_controller.py:105-114`, fail-closed) |
 | cannot be overridden by `write_allowed` | SOURCE-VERIFIED (`mode_controller.py:112-113`) |
 | visibly changes UI | SOURCE-VERIFIED (`ui.rs:433` label; `ui.rs:509,515` suppress welcome and split layout; `app.rs:430-437` audit scroll) |
-| **refuses a mutation at execution time** | **NOT ENFORCED** — see `AUDIT_MODE_ENFORCEMENT_FINDING.md` and `C0_RUNTIME_POLICY_COMPOSITION_ROADMAP.md` |
-| audit cannot gain coding capability via provider output | UNVERIFIED — C0 regression item 3 |
+| **refuses a mutation at execution time** | SOURCE-VERIFIED - mode resolution and R6C routing are composed into the production path; see `AUDIT_MODE_ENFORCEMENT_FINDING.md`. Residual is C0.5: absent typed policy defaults to read-only rather than surfacing an error |
+| audit cannot gain coding capability via provider output | UNVERIFIED â€” C0 regression item 3 |
 
 ## Plan
 
-1. Clean-clone cargo baseline. **DONE** — 251 passed, 0 failed, 2 ignored at 1874461.
-2. Explain the 2 ignored tests. **DONE** — `real_wrapper_workspace_glob_*` and `real_wrapper_workspace_search_*`; need a real wrapper workspace with agent-wall receipts and evidence. Not counted as passing.
-3. Derive the keyboard/mouse checklist. **DONE** — this document.
-4. Register and activate the TUI intent. **DONE** — 1874461.
-5. Commit the bounded TUI files. **DONE** — 1874461.
-6. Clean-clone cargo recheck at the named commit. **DONE** — 251 passed.
-7. Human live-terminal acceptance. **OPEN** — requires an operator.
-8. Record only observed results. **OPEN** — no row may be filled from automation.
+1. Clean-clone cargo baseline. **DONE** â€” 251 passed, 0 failed, 2 ignored at 1874461.
+2. Explain the 2 ignored tests. **DONE** â€” `real_wrapper_workspace_glob_*` and `real_wrapper_workspace_search_*`; need a real wrapper workspace with agent-wall receipts and evidence. Not counted as passing.
+3. Derive the keyboard/mouse checklist. **DONE** â€” this document.
+4. Register and activate the TUI intent. **DONE** â€” 1874461.
+5. Commit the bounded TUI files. **DONE** â€” 1874461.
+6. Clean-clone cargo recheck at the named commit. **DONE** â€” 251 passed.
+7. Human live-terminal acceptance. **OPEN** â€” requires an operator.
+8. Record only observed results. **OPEN** â€” no row may be filled from automation.
 
 Prerequisite that changed during step 7: the configured provider endpoint
 `localhost:1234` (LM Studio) is now reachable, so a live provider turn
 is no longer blocked on provider setup. The 2026-09-21 report recorded it
 UNVERIFIED only because no `reasoning-provider.json` was present.
+

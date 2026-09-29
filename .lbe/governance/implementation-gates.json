@@ -66,7 +66,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-AUDIT-ENFORCEMENT-RECORD-CORRECTION-001",
     "owner": "LBE governance and behavior-contract owner",
-    "index_revision": "C30A28CB8812710F23008CFD3DBEC20DF67FD5E6445408FE06FA95F44DCB7B47"
+    "index_revision": "445EEA7F40462AB89200286831FE7A3068668235FBD15A4BE1D8A26B4DCFFAE8"
   },
   "closure": {
     "status": "OPEN",
