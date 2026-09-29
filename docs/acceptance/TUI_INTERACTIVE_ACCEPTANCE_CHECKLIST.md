@@ -231,23 +231,40 @@ The Action Gate row carries the strongest requirement in the skill:
 denial must result in zero execution. That is a testable behavioral
 claim and no row above covered it.
 
-## A.4 Accessibility contract - entirely absent above
+## A.4 Accessibility contract - CORRECTED, not "entirely absent"
 
-| Requirement | Live |
-|---|---|
-| red critical/high-impact | ___ |
-| green VERIFIED SUCCESS ONLY | ___ |
-| amber approval/risk/uncertainty | ___ |
-| gray metadata/history | ___ |
-| non-colour state and focus cues | ___ |
-| keyboard-only operation for every interactive region | ___ |
-| NO_COLOR support | ___ |
-| ASCII mode | ___ |
-| no-animation mode | ___ |
-| wide layout | ___ |
-| standard layout | ___ |
-| compact layout | ___ |
-| very-short layout, deliberate rather than clipping | ___ |
+This section originally read "entirely absent above" and listed every
+row with no status. That was wrong. Three of these ship today and were
+recorded as missing because the search looked for design vocabulary and
+found nothing, rather than for the CLI flags and palette branches that
+implement them. Corrected against source below.
+
+| Requirement | Source status | Evidence | Live |
+|---|---|---|---|
+| NO_COLOR support | IMPLEMENTED | `main.rs:38,65,123` `--no-color` sets `NO_COLOR`; `ui.rs:28,186` `no_color_enabled()` gates the palette | ___ |
+| ASCII mode | IMPLEMENTED | `--ascii` flag, 26 source sites | ___ |
+| no-animation mode | IMPLEMENTED | `--no-animation` flag | ___ |
+| resize handling | IMPLEMENTED | `main.rs:700,706,714` `Event::WindowResized` arm | ___ |
+| red critical/high-impact | NOT AUDITED | semantic palette mapping not traced to the contract | ___ |
+| green VERIFIED SUCCESS ONLY | NOT AUDITED | as above | ___ |
+| amber approval/risk/uncertainty | NOT AUDITED | as above | ___ |
+| gray metadata/history | NOT AUDITED | as above | ___ |
+| non-colour state and focus cues | NOT AUDITED | as above | ___ |
+| keyboard-only operation for every interactive region | SOURCE-VERIFIED for keys | every binding in `handle_key` is keyboard reachable; the mouse table is additive | ___ |
+| wide layout | IMPLEMENTED | `LayoutTier::Wide`, 136x24 and up | ___ |
+| standard layout | IMPLEMENTED | `LayoutTier::Standard`, 100x20 and up | ___ |
+| compact layout | IMPLEMENTED | `LayoutTier::Compact`, body 6 rows and up | ___ |
+| very-short layout | IMPLEMENTED | `LayoutTier::VeryShort` + `draw_very_short_body` at 22aa9d2 | ___ |
+
+**Source-implemented is not live-verified.** Every Live cell stays blank
+until a human operates the product. The distinction the skill requires,
+"missing data is unknown/unavailable, not inferred", applies to the
+`Live` column only: the three previously-blank rows that now read
+IMPLEMENTED are implementation facts from source, not acceptance.
+
+The four semantic-colour rows are marked NOT AUDITED rather than
+absent. I have not traced the palette to the contract and will not
+claim either way.
 
 ## A.5 Proof scope - FOUR behaviours were missing above
 
