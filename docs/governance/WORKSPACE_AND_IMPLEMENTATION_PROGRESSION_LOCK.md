@@ -32,9 +32,69 @@ The agent must establish all of the following from live Git/workspace evidence:
 4. HEAD is attached to `refs/heads/main`;
 5. remote is exactly `origin` and resolves to the canonical repository;
 6. no merge/rebase/cherry-pick/revert is in progress;
-7. `.lbe/governance/implementation-gates.json` permits the current slice.
+7. `.lbe/governance/implementation-gates.json` permits the current slice;
+8. deep workspace inventory has classified tracked, untracked, ignored, hidden, nested, generated, stale, copied, backup, temp, and agent-created files or explicitly excluded them by rule.
 
 If any item is not proven, classify the step as `BLOCKED_WORKSPACE_AUTHORITY` and stop write-capable work.
+
+## Deep workspace inventory blocker
+
+Agents must not only inspect noticeable root files or ordinary Git status output.
+
+Before any new authority investigation, implementation slice, patch, validation claim, or forward progression, the agent must prove what exists across the full workspace depth.
+
+This gate covers:
+
+- tracked files;
+- untracked files;
+- ignored-but-present files;
+- hidden root entries;
+- nested hidden files and folders;
+- nested package roots;
+- generated/runtime folders;
+- stale validation output;
+- report, receipt, proof, audit, checkpoint, backup, copy, temp, and agent-created files;
+- copied repositories or nested workspace roots;
+- any file or folder that could be mistaken by a future agent for current authority.
+
+Required classification labels:
+
+```text
+CANONICAL
+GENERATED_ALLOWED
+RUNTIME_ALLOWED
+HISTORICAL_REFERENCE
+STALE_AGENT_OUTPUT
+UNKNOWN_OWNER
+DELETE_CANDIDATE
+BLOCKED_UNTIL_CLASSIFIED
+```
+
+Hard blocker:
+
+```text
+UNCLASSIFIED_DEEP_WORKSPACE_CONTENT
+```
+
+Trigger:
+
+```text
+Any disk-present file, folder, hidden path, ignored artifact, nested package root, generated output, backup, report, receipt, proof, checkpoint, temp file, copied workspace, or agent-created file exists without classification or explicit exclusion by rule.
+```
+
+Rules:
+
+```text
+No deep inventory = no next investigation.
+No classification = no patch.
+Ignored does not mean nonexistent.
+Untracked does not mean irrelevant.
+Hidden does not mean safe.
+Visible root inspection is not workspace proof.
+Git status alone is not workspace proof.
+```
+
+If this blocker is triggered, the agent must stop before Authorization/Governance Ownership, owner-boundary traces, or implementation work.
 
 ## Mandatory implementation checkpoints
 
@@ -43,6 +103,7 @@ Every implementation slice must follow this sequence:
 ```text
 G0 authoritative plan loaded
 G1 canonical workspace/main/primary-worktree proven
+G1A deep workspace inventory complete and non-obvious files classified
 G2 exact base SHA recorded
 G3 existing owner(s) inspected
 G4 reuse/adaptation options evaluated
@@ -56,7 +117,7 @@ G11 only then unlock the next slice
 G12 delivery allowed only from canonical main
 ```
 
-`FAIL`, `UNVERIFIED`, `DOCUMENT_CONFLICT`, or `MISSING_EVIDENCE` blocks forward progression.
+`FAIL`, `UNVERIFIED`, `DOCUMENT_CONFLICT`, `MISSING_EVIDENCE`, `UNKNOWN_OWNER`, `BLOCKED_UNTIL_CLASSIFIED`, or `UNCLASSIFIED_DEEP_WORKSPACE_CONTENT` blocks forward progression.
 
 A unit test cannot satisfy a LIVE_RUNTIME or USER_FLOW requirement. Evidence must match the level of the claim.
 
