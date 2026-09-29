@@ -6168,3 +6168,43 @@ fn action_gate_renders_the_typed_risk_from_the_projection() {
     let text = mock_panel_text_for_app(MockPanel::ActionGate, &app).to_string();
     assert!(text.contains("HIGH"), "{text}");
 }
+
+#[test]
+fn layout_tiers_resolve_deliberately_not_by_clipping() {
+    // Wide keeps the navigation sidebar.
+    assert_eq!(LayoutTier::for_area(200, 50), LayoutTier::Wide);
+    assert_eq!(LayoutTier::for_area(136, 24), LayoutTier::Wide);
+
+    // Standard drops the sidebar but keeps the split body.
+    assert_eq!(LayoutTier::for_area(120, 30), LayoutTier::Standard);
+    assert_eq!(LayoutTier::for_area(100, 20), LayoutTier::Standard);
+
+    // Compact is single column but still full height.
+    assert_eq!(LayoutTier::for_area(80, 30), LayoutTier::Compact);
+    assert_eq!(LayoutTier::for_area(80, 10), LayoutTier::Compact);
+
+    // VeryShort is the deliberate reduced layout, not a clipped one.
+    assert_eq!(LayoutTier::for_area(200, 5), LayoutTier::VeryShort);
+    assert_eq!(LayoutTier::for_area(20, 4), LayoutTier::VeryShort);
+    // A normal compact terminal whose BODY sub-area is short is still
+    // Compact, not VeryShort. Chrome consumes rows before draw_body runs.
+    assert_eq!(LayoutTier::for_area(60, 11), LayoutTier::Compact);
+}
+
+#[test]
+fn wide_and_standard_are_split_and_others_are_not() {
+    assert!(LayoutTier::for_area(200, 50).is_split());
+    assert!(LayoutTier::for_area(120, 30).is_split());
+    assert!(!LayoutTier::for_area(80, 30).is_split());
+    assert!(!LayoutTier::for_area(200, 6).is_split());
+}
+
+#[test]
+fn every_tier_is_reachable_so_no_width_falls_through_unhandled() {
+    // Regression guard: the previous implementation had one hard-coded
+    // breakpoint, so a 200x6 terminal took the same path as an 80x20 one.
+    for (w, h) in [(200u16, 50u16), (120, 30), (80, 30), (200, 6), (20, 4)] {
+        let tier = LayoutTier::for_area(w, h);
+        assert!(!format!("{tier:?}").is_empty(), "{w}x{h} produced no tier");
+    }
+}

@@ -271,14 +271,97 @@ pub(crate) fn draw_body(frame: &mut Frame, area: Rect, app: &App) {
     // useful transcript column can fit without clipping. This mirrors the
     // compact behavior of terminal clients while preserving the navigation
     // rail on genuinely wide displays.
-    if area.width >= 136 && area.height >= 24 {
-        let columns = Layout::horizontal([Constraint::Length(24), Constraint::Min(1)]).split(area);
-        draw_navigation_sidebar(frame, columns[0], app);
-        draw_main_body(frame, columns[1], app, true);
-        return;
+    match LayoutTier::for_area(area.width, area.height) {
+        LayoutTier::Wide => {
+            let columns =
+                Layout::horizontal([Constraint::Length(24), Constraint::Min(1)]).split(area);
+            draw_navigation_sidebar(frame, columns[0], app);
+            draw_main_body(frame, columns[1], app, true);
+        }
+        LayoutTier::Standard => {
+            // No sidebar, but the split body is still meaningful.
+            draw_main_body(frame, area, app, true);
+        }
+        LayoutTier::Compact => {
+            // One column. Keep every affordance reachable; drop the split
+            // rather than clipping panels against the frame edge.
+            draw_main_body(frame, area, app, false);
+        }
+        LayoutTier::VeryShort => {
+            // Deliberately reduced, not clipped. Navigation moves to the
+            // palette, already keyboard reachable, so nothing is lost.
+            draw_very_short_body(frame, area, app);
+        }
+    }
+}
+
+/// Deliberate terminal layout tiers, per the LBE TUI interaction
+/// contract. Layouts are selected by name and are never produced by
+/// clipping panels against the frame edge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LayoutTier {
+    Wide,
+    Standard,
+    Compact,
+    VeryShort,
+}
+
+impl LayoutTier {
+    /// Resolve the tier from the drawable area.
+    ///
+    /// IMPORTANT: `draw_body` receives the body sub-area, not the whole
+    /// frame. Chrome already consumes several rows before this is called,
+    /// so the sub-area is always shorter than the terminal. The very-short
+    /// tier is therefore reserved for a genuinely unusable area rather
+    /// than a normal compact terminal whose body is simply short.
+    ///
+    /// The previous implementation had a single hard-coded 136x24
+    /// breakpoint: wider kept a sidebar and everything narrower fell
+    /// through to the same single-column path regardless of how little
+    /// room was available. Each step is now explicit.
+    pub(crate) fn for_area(width: u16, height: u16) -> Self {
+
+        if width >= 136 && height >= 24 {
+            LayoutTier::Wide
+        } else if width >= 100 && height >= 20 {
+            LayoutTier::Standard
+        } else if height >= 6 {
+            LayoutTier::Compact
+        } else {
+            LayoutTier::VeryShort
+        }
     }
 
-    draw_main_body(frame, area, app, false);
+    pub(crate) fn is_split(self) -> bool {
+        matches!(self, LayoutTier::Wide | LayoutTier::Standard)
+    }
+}
+
+/// Reduced layout for very short terminals: mode, session, composer and
+/// the key hints. Nothing here is interactive, so no affordance is
+/// removed; every binding in `handle_key` still applies.
+fn draw_very_short_body(frame: &mut Frame, area: Rect, app: &App) {
+    let mode = match app.agent_mode {
+        AgentMode::Build => "BUILD",
+        AgentMode::Plan => "PLAN",
+        AgentMode::Audit => "AUDIT",
+    };
+    let session = app.snapshot.session_id.as_deref().unwrap_or("not attached");
+    let lines = vec![
+        Line::from(format!("{mode}  session: {session}")),
+        Line::from(format!("input: {}", app.input)),
+        Line::from(Span::styled(
+            "Ctrl-P commands  q quit",
+            Style::default().fg(PALETTE.muted),
+        )),
+    ];
+    let block = Block::default()
+        .borders(Borders::TOP)
+        .border_style(Style::default().fg(PALETTE.line))
+        .style(Style::default().bg(PALETTE.bg));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    frame.render_widget(Paragraph::new(Text::from(lines)), inner);
 }
 
 fn draw_navigation_sidebar(frame: &mut Frame, area: Rect, app: &App) {
