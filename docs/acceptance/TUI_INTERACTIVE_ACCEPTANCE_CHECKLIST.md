@@ -141,6 +141,32 @@ paths and do not extend to any other row.
 6. Clean-clone cargo recheck at the named commit. **DONE** â€” 251 passed.
 7. Human live-terminal acceptance. **OPEN** â€” requires an operator.
 8. Record only observed results. **OPEN** â€” no row may be filled from automation.
+9. Restore the product README. **OPEN** - see below. Needs an intent
+   naming `README.md`; not started.
+
+## Step 9 - Restore the product README
+
+Commit `4c8a52d` ("governance: install the standard Letterblack
+workspace governance kit", never pushed) replaced `README.md` with the
+kit's own README, deleting 290 lines.
+
+    origin/main:README.md   "# LBE Guard Inspector"   (the product)
+    this branch:README.md   "# Letterblack Workspace
+                              Governance Kit v1.1"    (a tool absent
+                                                      from this repository)
+
+The product front page currently documents a governance tool that is
+not in the repository, and the real product description is gone from
+this branch. The kit that caused it was retired upstream at `4f1449a`,
+and its `scripts/`, `operator-kit/` and `.governance/` are absent from
+`origin/main`.
+
+Scope when authorized: restore `README.md` from `origin/main`. Nothing
+else. Do not restore the kit, its hooks, or its scope files. Those
+remain local-only state and their disposition is a separate decision.
+
+Done when: `git show HEAD:README.md` begins `# LBE Guard Inspector`,
+and `docs/README.md` and `pyproject.toml` metadata are unaffected.
 
 Prerequisite that changed during step 7: the configured provider endpoint
 `localhost:1234` (LM Studio) is now reachable, so a live provider turn
