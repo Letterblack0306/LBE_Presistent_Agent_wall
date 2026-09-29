@@ -191,6 +191,7 @@ def test_cline_and_native_engines_share_lbe_governed_coding_owner(
     ]
     assert projection[0]["authorization_rationale"]
     assert result.deterministic_result["direct_native_mutation_tools_exposed"] is False
+    assert result.deterministic_result["owner_authority_decision"]["decision"] == "NOT_APPLICABLE"
     start = _FakeGovernedClineWorker.last_start
     assert start is not None
     assert start.payload["provider"]["provider_id"] == "openrouter"

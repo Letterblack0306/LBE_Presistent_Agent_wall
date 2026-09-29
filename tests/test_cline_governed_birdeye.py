@@ -139,6 +139,20 @@ def _patch_executor(workspace: Path, calls: list[str]):
     return fake_patch_handler
 
 
+def _owner_authority(path: str = "target.txt") -> dict[str, object]:
+    return {
+        "issue_id": "BRD-00027",
+        "owner_file_or_module": "lbe_guard_inspector/session_lifecycle.py",
+        "owner_reason": "runtime trace proves the responsibility owner",
+        "owner_evidence": ["BRD-00027:E12", "BRD-00027:E19"],
+        "owner_status": "OWNER_PROVEN",
+        "allowed_paths": [path],
+        "validation_command": "pytest tests/test_cline_governed_birdeye.py",
+        "issue_layer": "runtime",
+        "proposed_layer": "source",
+    }
+
+
 def test_governed_write_requires_approval_then_executes_exact_operation_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -166,6 +180,7 @@ def test_governed_write_requires_approval_then_executes_exact_operation_once(
             "expected_sha256": "a" * 64,
         },
         "operation_id": "op-approved-patch",
+        "owner_authority": _owner_authority(),
     })
     payload = json.loads(escalated["result"]["content"][0]["text"])
     assert payload["status"] == "ESCALATED"
@@ -196,6 +211,7 @@ def test_governed_write_requires_approval_then_executes_exact_operation_once(
             "expected_sha256": "a" * 64,
         },
         "operation_id": "op-approved-patch",
+        "owner_authority": _owner_authority(),
     })
     executed_payload = json.loads(executed["result"]["content"][0]["text"])
     assert executed_payload["status"] == "EXECUTED"
@@ -211,6 +227,7 @@ def test_governed_write_requires_approval_then_executes_exact_operation_once(
             "expected_sha256": "a" * 64,
         },
         "operation_id": "op-approved-patch",
+        "owner_authority": _owner_authority(),
     })
     replay_payload = json.loads(replay["result"]["content"][0]["text"])
     assert replay_payload["status"] == "EXECUTED"
@@ -225,10 +242,47 @@ def test_governed_write_requires_approval_then_executes_exact_operation_once(
             "expected_sha256": "a" * 64,
         },
         "operation_id": "op-approved-patch",
+        "owner_authority": _owner_authority(),
     })
     assert "error" in substituted
     assert substituted["error"]["code"] == -32603
     assert calls == ["op-approved-patch"]
+
+
+def test_governed_write_without_owner_authority_is_blocked_before_approval_persistence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = workspace / "target.txt"
+    target.write_text("before", encoding="utf-8")
+    database = tmp_path / "lbe.sqlite"
+    store = WorkspaceMemoryStore(database)
+    _write_session(store, workspace=workspace)
+    calls: list[str] = []
+    monkeypatch.setattr(
+        addon_module,
+        "build_workspace_patch_handler",
+        _patch_executor(workspace, calls),
+    )
+    addon = _addon(store, session_id="session-addon", workspace=workspace)
+
+    denied = _call(addon, "lbe_governed_execute", arguments={
+        "tool_id": "workspace.patch",
+        "arguments": {
+            "path": "target.txt",
+            "content": "after",
+            "expected_sha256": "a" * 64,
+        },
+        "operation_id": "op-owner-blocked",
+    })
+    payload = json.loads(denied["result"]["content"][0]["text"])
+    assert payload["status"] == "DENIED"
+    assert payload["error_code"] == "OWNER_AUTHORITY_BLOCKER"
+    assert calls == []
+    assert target.read_text(encoding="utf-8") == "before"
+    assert _governed_count(database) == 0
 
 
 def test_read_tool_is_read_only_and_writes_no_wall_rows(tmp_path: Path) -> None:
@@ -308,6 +362,7 @@ def test_read_only_session_denies_write_before_executor(tmp_path: Path) -> None:
             "expected_sha256": "a" * 64,
         },
         "operation_id": "op-denied-patch",
+        "owner_authority": _owner_authority(),
     })
     payload = json.loads(denied["result"]["content"][0]["text"])
     assert payload["status"] == "DENIED"

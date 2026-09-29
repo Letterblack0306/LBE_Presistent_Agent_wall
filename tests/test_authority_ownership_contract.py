@@ -4,6 +4,8 @@ import pytest
 
 from lbe_guard_inspector.authority_ownership import (
     AuthorityOwnershipDeclaration,
+    OwnerAuthorityAuthorization,
+    OwnerAuthorityStatus,
     OwnershipEvidenceState,
     OwnershipRole,
     PersistenceContract,
@@ -139,3 +141,61 @@ def test_contract_rejects_duplicate_role_members_and_empty_required_fields() -> 
         declaration(operation_id=" ")
     with pytest.raises(ValueError, match="allowed_mutation_capabilities must not be empty"):
         declaration(allowed_mutation_capabilities=())
+
+
+def test_owner_authority_distinguishes_responsibility_owner_from_mutation_target() -> None:
+    authority = OwnerAuthorityAuthorization(
+        issue_id="BRD-00001",
+        owner_file_or_module="lbe_guard_inspector/invocation_adapter.py",
+        owner_reason="canonical cancellation signal owner",
+        owner_evidence=("BRD-00001:E12",),
+        owner_status=OwnerAuthorityStatus.OWNER_PROVEN,
+        allowed_paths=("lbe_guard_inspector/recovery.py",),
+        validation_command="pytest tests/test_recovery.py",
+        forbidden_layers=("ui", "docs"),
+        issue_layer="runtime",
+        proposed_layer="source",
+    )
+
+    assert authority.pre_execution_blocker("lbe_guard_inspector/recovery.py") is None
+    assert "outside allowed_paths" in str(
+        authority.pre_execution_blocker("lbe_guard_inspector/invocation_adapter.py")
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (OwnerAuthorityStatus.OWNER_UNPROVEN, "OWNER_UNPROVEN"),
+        (OwnerAuthorityStatus.OWNER_CONFLICT, "OWNER_CONFLICT"),
+        (OwnerAuthorityStatus.WRONG_SCOPE, "WRONG_SCOPE"),
+    ],
+)
+def test_owner_authority_blocks_any_status_other_than_proven(
+    status: OwnerAuthorityStatus, expected: str
+) -> None:
+    authority = OwnerAuthorityAuthorization(
+        issue_id="BRD-00027",
+        owner_file_or_module="session_lifecycle.py",
+        owner_reason="candidate owner",
+        owner_evidence=("BRD-00027:E12",),
+        owner_status=status,
+        allowed_paths=("session_lifecycle.py",),
+        validation_command="pytest",
+    )
+    assert expected in str(authority.pre_execution_blocker("session_lifecycle.py"))
+
+
+def test_runtime_issue_rejects_docs_only_patch() -> None:
+    authority = OwnerAuthorityAuthorization(
+        issue_id="BRD-00028",
+        owner_file_or_module="runtime.py",
+        owner_reason="runtime state owner",
+        owner_evidence=("BRD-00028:E1",),
+        owner_status=OwnerAuthorityStatus.OWNER_PROVEN,
+        allowed_paths=("docs/*.md",),
+        validation_command="pytest",
+        issue_layer="runtime",
+        proposed_layer="docs",
+    )
+    assert "docs-only" in str(authority.pre_execution_blocker("docs/status.md"))

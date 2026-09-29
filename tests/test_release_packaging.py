@@ -48,8 +48,10 @@ def test_wheel_contains_only_runtime_modules_and_contracts(
         "lbe_guard_inspector/module_registry_vertical_slice.py",
         "rules/cep_callback.py",
         "rules/module_registry.py",
+        "rules/owner_authority_blocker.json",
         "schemas/evidence_package.schema.json",
         "schemas/guard_result.schema.json",
+        "schemas/owner_authority_authorization.schema.json",
     } <= names
     assert not any(name.startswith("tests/") for name in names)
     assert not any(name.startswith("state/") for name in names)

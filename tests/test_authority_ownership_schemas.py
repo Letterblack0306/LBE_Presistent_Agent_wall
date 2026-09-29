@@ -117,3 +117,20 @@ def test_result_cannot_authorize_pass_fail() -> None:
                 "inspected_at": "2026-07-28T00:00:00+00:00",
             },
         )
+
+
+def test_owner_authority_authorization_schema_accepts_birdeye_evidence_package() -> None:
+    payload = {
+        "issue_id": "BRD-00027",
+        "owner_file_or_module": "lbe_guard_inspector/session_lifecycle.py",
+        "owner_reason": "live lifecycle transition owns the incorrect state",
+        "owner_evidence": ["BRD-00027:E12", "BRD-00027:E19"],
+        "owner_status": "OWNER_PROVEN",
+        "allowed_paths": ["lbe_guard_inspector/session_lifecycle.py"],
+        "validation_command": "pytest tests/test_session_lifecycle.py",
+        "forbidden_layers": ["ui", "docs"],
+        "issue_layer": "runtime",
+        "proposed_layer": "source",
+        "conflicting_owner_candidates": [],
+    }
+    assert validate_contract("owner_authority_authorization", payload) == payload
