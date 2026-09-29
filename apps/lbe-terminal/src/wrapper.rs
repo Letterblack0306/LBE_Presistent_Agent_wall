@@ -1712,6 +1712,24 @@ pub(crate) fn parse_governed_tool_projection(
                     .map_err(LbeError::new)?,
                 authorization_verdict,
                 authorization_rationale: required("authorization_rationale")?,
+                governance_rule: item
+                    .get("governance_rule")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_owned),
+                ui_label: item
+                    .get("ui_label")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_owned),
+                blocking_reason: item
+                    .get("blocking_reason")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_owned),
             })
         })
         .collect()

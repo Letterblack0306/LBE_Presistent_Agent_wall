@@ -1036,6 +1036,25 @@ MACHINE_SLICE: LAUNCHER_CLEAN_INSTALL_RECONCILIATION
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_OPEN_BOUNDED_LAUNCHER_CLEAN_INSTALL_INTENT_2026_09_27
 
+## INTENT LBE-INTENT-TUI-INTERACTIVE-ACCEPTANCE-AND-CLEAN-CLONE-001
+
+STATUS: AUTHORIZED
+REQUEST: Land the existing bounded Rust/Ratatui TUI work, establish its revision-attributed clean-clone test truth, and obtain real human keyboard/mouse acceptance evidence.
+OWNER: Terminal/TUI acceptance owner; no second UI or runtime authority is created.
+FAILURE_CLASS: TUI_INTERACTIVE_BEHAVIOR_UNPROVEN_AND_CARGO_CLAIM_UNVERIFIED_AT_CLEAN_CLONE.
+WHY: The TUI keyboard and mouse claim rests on 52 key handlers and 9 mouse handlers in a working tree whose tests.rs is uncommitted, so the previously reported 251-cargo-passed figure has not been established from a clean clone. A clean-clone baseline is required before the claim can be attributed to a named revision. The 2 ignored tests are real_wrapper workspace tests and are not treated as passing.
+EXISTING_OWNER: apps/lbe-terminal Ratatui surface; verified by apps/lbe-terminal/src/tests.rs. Rust/Ratatui remains the canonical visible terminal. No new UI or runtime authority is created.
+DESIRED_RESULT: The four bounded TUI files are committed under real authority, the cargo result is attributed to the named commit from a fresh clone, and human interactive acceptance evidence is recorded for keyboard and mouse behavior.
+NON_GOALS: No TUI redesign. No feature-parity work. No Desktop, Kanban, or Agent Teams surface. No provider architecture change. Human UX acceptance is never inferred from cargo results, and ignored tests are never treated as passing. No expansion outside the listed prefixes.
+REUSE_DECISION: REUSE the existing Ratatui terminal surface, the existing app.rs key and mouse handlers, and the existing tests.rs assertions. No parallel TUI or duplicate input path is introduced.
+AUTHORITY_IMPACT: None. Landing and acceptance evidence only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes. The engine-neutral reasoning boundary and existing LBE runtime/governance authority are preserved.
+EXPECTED_PATH_PREFIXES: apps/lbe-terminal/src/,apps/lbe-terminal/Cargo.toml,apps/lbe-terminal/Cargo.lock,docs/acceptance/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: clean-clone cargo test attributed to the named commit; reason for each ignored test recorded; per-row human keyboard and mouse acceptance from a live terminal; ignored tests explicitly not counted as passing.
+MACHINE_SLICE: TUI_INTERACTIVE_ACCEPTANCE_AND_CLEAN_CLONE
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DECISION_TO_OPEN_TUI_INTERACTIVE_ACCEPTANCE_AND_CLEAN_CLONE_INTENT_2026_09_29
+
+
 ## INTENT LBE-INTENT-AUTHORITY-OWNERSHIP-ENGINE-NEUTRAL-TESTS-002
 
 STATUS: AUTHORIZED

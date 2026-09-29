@@ -69,7 +69,10 @@ fn governed_tool_projection_parser_preserves_authorization_truth() {
             "network_behavior": "none",
             "risk_class": "high",
             "authorization_verdict": "ESCALATE",
-            "authorization_rationale": "approval required"
+            "authorization_rationale": "approval required",
+            "governance_rule": "OWNER_AUTHORITY_BLOCKER",
+            "ui_label": "Wrong Owner / Wrong Scope",
+            "blocking_reason": "owner conflict remains unresolved"
         }]
     }))
     .expect("valid governed tool projection");
@@ -78,6 +81,12 @@ fn governed_tool_projection_parser_preserves_authorization_truth() {
     assert_eq!(projected[0].tool_id, "workspace.delete");
     assert_eq!(projected[0].authorization_verdict, "ESCALATE");
     assert_eq!(projected[0].authorization_rationale, "approval required");
+    assert_eq!(projected[0].governance_rule.as_deref(), Some("OWNER_AUTHORITY_BLOCKER"));
+    assert_eq!(projected[0].ui_label.as_deref(), Some("Wrong Owner / Wrong Scope"));
+    assert_eq!(
+        projected[0].blocking_reason.as_deref(),
+        Some("owner conflict remains unresolved")
+    );
 }
 
 #[test]
@@ -5702,6 +5711,9 @@ fn action_gate_correlates_risk_from_the_governed_projection() {
         risk_class: GovernedRiskClass::High,
         authorization_verdict: "REQUIRE_APPROVAL".to_owned(),
         authorization_rationale: "workspace mutation".to_owned(),
+        governance_rule: None,
+        ui_label: None,
+        blocking_reason: None,
     });
     app.reduce_lbe_event(LbeEvent::AuthorizationRequired {
         operation_id: "op-gate".to_owned(),
@@ -6142,6 +6154,9 @@ fn action_gate_renders_the_typed_risk_from_the_projection() {
         risk_class: GovernedRiskClass::High,
         authorization_verdict: "REQUIRE_APPROVAL".to_owned(),
         authorization_rationale: "workspace mutation".to_owned(),
+        governance_rule: None,
+        ui_label: None,
+        blocking_reason: None,
     });
     app.reduce_lbe_event(LbeEvent::AuthorizationRequired {
         operation_id: "op-gate".to_owned(),

@@ -383,6 +383,9 @@ pub(crate) struct GovernedToolProjection {
     pub(crate) risk_class: GovernedRiskClass,
     pub(crate) authorization_verdict: String,
     pub(crate) authorization_rationale: String,
+    pub(crate) governance_rule: Option<String>,
+    pub(crate) ui_label: Option<String>,
+    pub(crate) blocking_reason: Option<String>,
 }
 
 /// Strict typed view of the runtime's governed risk contract.

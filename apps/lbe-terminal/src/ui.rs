@@ -1521,6 +1521,19 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                         tool.authorization_verdict,
                     ));
                     rows.push(format!("  {}", tool.authorization_rationale));
+                    if let Some(rule) = &tool.governance_rule {
+                        rows.push(format!(
+                            "  {} // {}",
+                            tool.ui_label.as_deref().unwrap_or("Wrong Owner / Wrong Scope"),
+                            rule
+                        ));
+                        rows.push(format!(
+                            "  Blocking reason: {}",
+                            tool.blocking_reason
+                                .as_deref()
+                                .unwrap_or("owner authority or mutation scope was not proven")
+                        ));
+                    }
                 }
             }
 

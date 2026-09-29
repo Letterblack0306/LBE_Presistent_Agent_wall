@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "AUTHORITY_OWNERSHIP_ENGINE_NEUTRAL_TEST_RECONCILIATION",
+  "active_slice": "TUI_INTERACTIVE_ACCEPTANCE_AND_CLEAN_CLONE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,8 +64,8 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-AUTHORITY-OWNERSHIP-ENGINE-NEUTRAL-TESTS-002",
-    "owner": "Authority-ownership and engine-neutral test reconciliation owner",
+    "intent_id": "LBE-INTENT-TUI-INTERACTIVE-ACCEPTANCE-AND-CLEAN-CLONE-001",
+    "owner": "Terminal/TUI acceptance owner",
     "index_revision": "69C3764E1048BA9322387D50BA7A60406188D6B8BCC4DEFFE1E881799856097F"
   },
   "closure": {
