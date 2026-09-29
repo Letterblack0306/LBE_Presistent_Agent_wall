@@ -61,6 +61,7 @@ must map to one row before it may be changed.
 | `launch-lbe.ps1` | Canonical source-tree launcher that bootstraps a governed session before starting the Rust client | LBE product entry/runtime owners | `docs/governance/TUI_END_TO_END_TRACEABILITY.md` | Launcher/bootstrap only; authority remains in LBE runtime |
 | `reasoning-provider.json` | Explicit local OpenAI-compatible provider endpoint/model configuration used by the governed launcher; contains no copied Cline OAuth secrets | LBE provider-runtime configuration owner | `docs/governance/PROJECT_INTENT_LEDGER.md` | Provider configuration only; credentials remain external and governed |
 | `README.md` | Product and installation entrypoint | Product documentation | `docs/README.md` | Product-doc intent only |
+| `docs/acceptance/AUDIT_MODE_ENFORCEMENT_FINDING.md` | Records that AUDIT mode is correctly declared in `behavior/contracts.py` and `mode_controller.py` but is not consulted on the normal tool-execution path; `validate_mode_behavior` has no production caller | LBE behavior-contract and tool-orchestration owners | `docs/acceptance/AUDIT_MODE_ENFORCEMENT_FINDING.md` | Evidence record only; AUDIT must not be described as enforced read-only until an executed refusal test exists |
 | `PROJECT_INDEX.md` | Root structural authority registry | LBE governance | `docs/governance/PROJECT_INTENT_LEDGER.md` | Protected; update before new structure |
 | `pyproject.toml` | Package metadata and version authority | Release governance | Active publication gates | Publication intent only |
 
