@@ -21,6 +21,16 @@ class LBERequest:
     task_id: str | None = None
     max_results: int = 10
 
+    def owner_authority_package(self) -> Mapping[str, Any] | None:
+        packages = tuple(
+            item["owner_authority"]
+            for item in self.reference_context
+            if isinstance(item, Mapping) and isinstance(item.get("owner_authority"), Mapping)
+        )
+        if len(packages) > 1:
+            raise ValueError("reference_context contains multiple owner_authority packages")
+        return packages[0] if packages else None
+
 
 @dataclass(frozen=True)
 class EvidenceRequest:

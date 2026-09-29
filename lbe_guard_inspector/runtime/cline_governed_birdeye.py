@@ -37,6 +37,10 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 from agent import Context
 
 from lbe_guard_inspector import cli as _cli
+from lbe_guard_inspector.authority_ownership import (
+    OWNER_AUTHORITY_BLOCKER,
+    OwnerAuthorityAuthorization,
+)
 from lbe_guard_inspector.evidence_service import EvidenceService
 from lbe_guard_inspector.product_entry import (
     _governed_operation_approval_id,
@@ -300,6 +304,10 @@ class GovernedBirdeyeAddon:
                         "type": "string",
                         "description": "Caller-chosen operation id. Omitted ids are generated as op-<uuid4.hex>.",
                     },
+                    "owner_authority": {
+                        "type": "object",
+                        "description": "Required for writes: BirdEye owner evidence package evaluated by LBE Core before approval persistence or execution.",
+                    },
                 },
                 "required": ["tool_id", "arguments"],
             },
@@ -453,12 +461,65 @@ class GovernedBirdeyeAddon:
         if registered is None:
             raise ValueError(f"tool is not registered: {tool_id}")
         capability = registered.spec.capability
+        owner_authority_payload = arguments.get("owner_authority")
+        owner_authority: OwnerAuthorityAuthorization | None = None
+        if registered.spec.access_class is ToolAccessClass.WRITE:
+            if not isinstance(owner_authority_payload, Mapping):
+                receipt = ToolReceipt(
+                    operation_id=operation_id,
+                    tool_id=tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=AuthorizationDecision(
+                        verdict=AuthorizationVerdict.DENY,
+                        capability=capability,
+                        rationale="No proven owner evidence package was supplied.",
+                    ),
+                    error_code=OWNER_AUTHORITY_BLOCKER,
+                    error_message="No proven owner evidence package was supplied.",
+                )
+                return _tool_receipt_payload(receipt)
+            try:
+                owner_authority = OwnerAuthorityAuthorization.from_mapping(owner_authority_payload)
+            except (TypeError, ValueError) as exc:
+                receipt = ToolReceipt(
+                    operation_id=operation_id,
+                    tool_id=tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=AuthorizationDecision(
+                        verdict=AuthorizationVerdict.DENY,
+                        capability=capability,
+                        rationale=f"Owner evidence package is invalid: {exc}",
+                    ),
+                    error_code=OWNER_AUTHORITY_BLOCKER,
+                    error_message=f"Owner evidence package is invalid: {exc}",
+                )
+                return _tool_receipt_payload(receipt)
+            proposed_path = str(normalized.get("path", "<unresolved-write-target>"))
+            if blocker := owner_authority.pre_execution_blocker(proposed_path):
+                receipt = ToolReceipt(
+                    operation_id=operation_id,
+                    tool_id=tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=AuthorizationDecision(
+                        verdict=AuthorizationVerdict.DENY,
+                        capability=capability,
+                        rationale=blocker,
+                    ),
+                    error_code=OWNER_AUTHORITY_BLOCKER,
+                    error_message=blocker,
+                )
+                return _tool_receipt_payload(receipt)
+        fingerprint_arguments = dict(normalized)
+        if owner_authority is not None:
+            fingerprint_arguments["owner_authority"] = owner_authority.decision_payload(
+                decision="ALLOW"
+            )
         fingerprint, request_binding = _governed_operation_fingerprint(
             session_id=session.session_id,
             workspace_id=session.project_workspace_id,
             workspace_root=requested_root,
             tool_id=tool_id,
-            arguments=normalized,
+            arguments=fingerprint_arguments,
         )
         approval_id = _governed_operation_approval_id(
             operation_id=operation_id,
