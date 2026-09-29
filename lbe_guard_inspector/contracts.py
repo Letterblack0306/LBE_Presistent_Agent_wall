@@ -20,6 +20,7 @@ SCHEMA_FILES = {
     "authority_ownership_request": "authority_ownership_request.schema.json",
     "authority_ownership_evidence_package": "authority_ownership_evidence_package.schema.json",
     "authority_ownership_result": "authority_ownership_result.schema.json",
+    "owner_authority_authorization": "owner_authority_authorization.schema.json",
     "project_truth_projection": "project_truth_projection.schema.json",
     "session_context_projection": "session_context_projection.schema.json",
     "provenance_projection": "provenance_projection.schema.json",
