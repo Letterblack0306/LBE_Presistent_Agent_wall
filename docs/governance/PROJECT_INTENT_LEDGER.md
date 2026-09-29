@@ -1035,3 +1035,21 @@ REQUIRED_EVIDENCE: launcher contract 4 passed; focused proof suite 60 passed 1 s
 MACHINE_SLICE: LAUNCHER_CLEAN_INSTALL_RECONCILIATION
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_TO_OPEN_BOUNDED_LAUNCHER_CLEAN_INSTALL_INTENT_2026_09_27
+
+## INTENT LBE-INTENT-AUTHORITY-OWNERSHIP-ENGINE-NEUTRAL-TESTS-002
+
+STATUS: AUTHORIZED
+REQUEST: Reconcile and land the already-implemented authority-ownership, engine-neutral/provider, Cline/BirdEye integration, and related test coverage that is blocked only by intent path mismatch.
+OWNER: Authority-ownership and engine-neutral test reconciliation owner; no new runtime authority is created.
+FAILURE_CLASS: VERIFIED_TEST_COVERAGE_BLOCKED_BY_INTENT_PATH_SCOPE.
+WHY: tests/test_authority_ownership_contract.py and tests/test_authority_ownership_schemas.py depend on rules/owner_authority_blocker.json and schemas/owner_authority_authorization.schema.json, committed at 3b2b546. The owner-authority capability is therefore unverified on a clean clone until these tests are committed. The active LAUNCHER_CLEAN_INSTALL_RECONCILIATION intent authorizes only tests/test_product_launcher_contract.py and cannot cover them.
+EXISTING_OWNER: lbe_guard_inspector/authority_ownership.py and lbe_guard_inspector/contracts.py owners; verified by the authority-ownership contract and schema tests. No new owner is created.
+DESIRED_RESULT: The five verified test files are committed as a bounded reconciliation, with the owner-authority capability reproducible from a clean clone.
+NON_GOALS: No runtime redesign; no second authority owner; no bypass of LBE authorization; no removal of additive implemented capabilities; no expansion into unrelated files; no publish or release; no removal of useful existing features.
+REUSE_DECISION: REUSE the existing authority-ownership contracts, the existing owner-authority blocker rule, and the existing authorization schema. No parallel authority or duplicate contract is introduced.
+AUTHORITY_IMPACT: None. Reconciliation and commit only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes. Implementation-gate enforcement, publication and destructive-action protections are preserved.
+EXPECTED_PATH_PREFIXES: tests/,rules/,schemas/,lbe_guard_inspector/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: pytest 927 passed 1 skipped under a fresh --basetemp; cargo test 251 passed 0 failed 2 ignored; node scripts/governance-check.mjs staged PASS; python scripts/check-implementation-gate.py PASS; clean-clone reproduction of the 31 authority tests to be observed.
+MACHINE_SLICE: AUTHORITY_OWNERSHIP_ENGINE_NEUTRAL_TEST_RECONCILIATION
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DECISION_TO_OPEN_AUTHORITY_OWNERSHIP_ENGINE_NEUTRAL_TEST_RECONCILIATION_INTENT_2026_09_29
