@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "WORKSPACE_COMMIT_BACKLOG",
+  "active_slice": "PROVIDER_CREDENTIAL_PERSISTENCE",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-WORKSPACE-COMMIT-BACKLOG-001",
-    "owner": "Workspace/repository hygiene owner",
-    "index_revision": "587B17951BCAD90C8E934C0317D19661F36C1921D3A3DE3156C9CCE06ADA8980"
+    "intent_id": "LBE-INTENT-PROVIDER-CREDENTIAL-PERSISTENCE-001",
+    "owner": "Provider/runtime and repository hygiene owner",
+    "index_revision": "1E2F039F5447FC786EBFFE10093ABE3E5A9F13A40AF89BC77B0DE3788DCFD78A"
   },
   "closure": {
     "status": "OPEN",

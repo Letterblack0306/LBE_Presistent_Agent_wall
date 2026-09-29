@@ -1092,6 +1092,23 @@ REQUIRED_EVIDENCE: focused tests pass; live reconciliation against the configure
 MACHINE_SLICE: PROVIDER_MODEL_CATALOG_RECONCILIATION
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_GOAHEAD_2026_09_29
+## INTENT LBE-INTENT-PROVIDER-CREDENTIAL-PERSISTENCE-001
+
+STATUS: AUTHORIZED
+REQUEST: Remove the credential-persistence hazard in the live provider configuration without breaking first-run setup.
+OWNER: Provider/runtime and repository hygiene owner; no new authority is created.
+FAILURE_CLASS: CREDENTIAL_PERSISTENCE_HAZARD_LIVE_PROVIDER_CONFIG_TRACKED.
+WHY: `reasoning_config._ALLOWED_FIELDS` accepts `api_key`, and `reasoning-provider.json` is the live config that the launcher reads. That file is Git-tracked and not ignored, so a real key written to it would be committed by an ordinary add. The file currently contains no api_key; this is a confirmed latent risk with NO CURRENT SECRET EXPOSURE.
+EXISTING_OWNER: Existing `reasoning-provider.example.json` remains the tracked, placeholder-only template and the owner of example configuration. No new template or config owner is created.
+DESIRED_RESULT: `reasoning-provider.json` is ignored and untracked while remaining present on the local disk; `reasoning-provider.example.json` remains tracked and unchanged; a fresh clone still has a deterministic, actionable path to create the live config.
+NON_GOALS: No change to the config schema, no key rotation, no provider code change, no active dependency audit, and no modification of the example file. Git history is not rewritten.
+REUSE_DECISION: REUSE the existing launcher error path in `launch-lbe.ps1`, which already instructs the user to create the live config from the example.
+AUTHORITY_IMPACT: None. Repository hygiene only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: .gitignore,reasoning-provider.json,reasoning-provider.example.json,docs/acceptance/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md,tests/
+REQUIRED_EVIDENCE: `git ls-files reasoning-provider.json` returns nothing; the local file still exists and still loads; `git check-ignore` confirms the rule; `launch-lbe.ps1` line 71 still provides the from-example path; example file unchanged and tracked.
+MACHINE_SLICE: PROVIDER_CREDENTIAL_PERSISTENCE
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_2026_09_29
 ## INTENT LBE-INTENT-WORKSPACE-COMMIT-BACKLOG-001
 
 STATUS: AUTHORIZED
@@ -1125,3 +1142,4 @@ REQUIRED_EVIDENCE: pytest 927 passed 1 skipped under a fresh --basetemp; cargo t
 MACHINE_SLICE: AUTHORITY_OWNERSHIP_ENGINE_NEUTRAL_TEST_RECONCILIATION
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DECISION_TO_OPEN_AUTHORITY_OWNERSHIP_ENGINE_NEUTRAL_TEST_RECONCILIATION_INTENT_2026_09_29
+

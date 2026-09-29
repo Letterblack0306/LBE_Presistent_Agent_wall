@@ -113,3 +113,6 @@ lbe-tui/
 
 # BirdEye MCP skill state - local cache, not product source
 .skills/
+
+# Live provider config - may carry an api_key; never commit
+reasoning-provider.json
