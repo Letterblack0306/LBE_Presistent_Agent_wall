@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from fnmatch import fnmatch
+from typing import Mapping
 
 
 class OwnershipRole(str, Enum):
@@ -29,6 +31,117 @@ def _clean_unique(values: tuple[str, ...], field_name: str) -> tuple[str, ...]:
     if len(set(cleaned)) != len(cleaned):
         raise ValueError(f"{field_name} must not contain duplicates")
     return cleaned
+
+
+
+class OwnerAuthorityStatus(str, Enum):
+    OWNER_PROVEN = "OWNER_PROVEN"
+    OWNER_UNPROVEN = "OWNER_UNPROVEN"
+    OWNER_CONFLICT = "OWNER_CONFLICT"
+    WRONG_SCOPE = "WRONG_SCOPE"
+
+
+OWNER_AUTHORITY_BLOCKER = "OWNER_AUTHORITY_BLOCKER"
+OWNER_SCOPE_VIOLATION = "OWNER_SCOPE_VIOLATION"
+
+
+@dataclass(frozen=True, slots=True)
+class OwnerAuthorityAuthorization:
+    """LBE-owned authorization input for one bounded governed mutation."""
+
+    issue_id: str
+    owner_file_or_module: str
+    owner_reason: str
+    owner_evidence: tuple[str, ...]
+    owner_status: OwnerAuthorityStatus
+    allowed_paths: tuple[str, ...]
+    validation_command: str
+    forbidden_layers: tuple[str, ...] = ()
+    issue_layer: str = "source"
+    proposed_layer: str = "source"
+    conflicting_owner_candidates: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "issue_id", "owner_file_or_module", "owner_reason", "validation_command",
+            "issue_layer", "proposed_layer",
+        ):
+            object.__setattr__(self, field_name, _clean(getattr(self, field_name), field_name))
+        for field_name in (
+            "owner_evidence", "allowed_paths", "forbidden_layers",
+            "conflicting_owner_candidates",
+        ):
+            object.__setattr__(
+                self, field_name, _clean_unique(tuple(getattr(self, field_name)), field_name)
+            )
+        if not self.owner_evidence:
+            raise ValueError("owner_evidence must not be empty")
+        if not self.allowed_paths:
+            raise ValueError("allowed_paths must not be empty")
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, object]) -> "OwnerAuthorityAuthorization":
+        def strings(name: str) -> tuple[str, ...]:
+            raw = value.get(name, ())
+            if not isinstance(raw, (list, tuple)) or not all(isinstance(item, str) for item in raw):
+                raise ValueError(f"{name} must be an array of strings")
+            return tuple(raw)
+
+        return cls(
+            issue_id=str(value.get("issue_id", "")),
+            owner_file_or_module=str(value.get("owner_file_or_module", value.get("proposed_owner", ""))),
+            owner_reason=str(value.get("owner_reason", "")),
+            owner_evidence=strings("owner_evidence"),
+            owner_status=OwnerAuthorityStatus(str(value.get("owner_status", "")).strip()),
+            allowed_paths=strings("allowed_paths"),
+            validation_command=str(value.get("validation_command", "")),
+            forbidden_layers=strings("forbidden_layers"),
+            issue_layer=str(value.get("issue_layer", "source")),
+            proposed_layer=str(value.get("proposed_layer", "source")),
+            conflicting_owner_candidates=strings("conflicting_owner_candidates"),
+        )
+
+    def pre_execution_blocker(self, proposed_path: str) -> str | None:
+        path = proposed_path.replace("\\", "/").strip()
+        if self.owner_status is not OwnerAuthorityStatus.OWNER_PROVEN:
+            return f"owner status is {self.owner_status.value}"
+        if self.conflicting_owner_candidates:
+            return "owner conflict remains unresolved"
+        if not any(fnmatch(path, pattern.replace("\\", "/")) for pattern in self.allowed_paths):
+            return f"proposed path is outside allowed_paths: {path}"
+        if self.proposed_layer.lower() in {layer.lower() for layer in self.forbidden_layers}:
+            return f"proposed layer is forbidden: {self.proposed_layer}"
+        if self.issue_layer.lower() in {"runtime", "backend"} and self.proposed_layer.lower() == "docs":
+            return f"{self.issue_layer.lower()} defect cannot be repaired by a docs-only patch"
+        if self.issue_layer.lower() == "backend" and self.proposed_layer.lower() == "ui":
+            return "backend defect cannot be repaired by a UI-only patch without owner evidence"
+        return None
+
+    def decision_payload(
+        self, *, decision: str, actual_paths: tuple[str, ...] = (),
+        blocking_reason: str | None = None,
+    ) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "rule": OWNER_AUTHORITY_BLOCKER,
+            "post_execution_rule": OWNER_SCOPE_VIOLATION,
+            "issue": self.issue_id,
+            "decision": decision,
+            "owner": {
+                "path": self.owner_file_or_module,
+                "status": self.owner_status.value,
+                "reason": self.owner_reason,
+                "evidence_refs": list(self.owner_evidence),
+            },
+            "scope": {
+                "allowed_paths": list(self.allowed_paths),
+                "forbidden_layers": list(self.forbidden_layers),
+                "actual_paths": list(actual_paths),
+            },
+            "validation_command": self.validation_command,
+        }
+        if blocking_reason:
+            payload["blocking_reason"] = blocking_reason
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
