@@ -1109,6 +1109,23 @@ REQUIRED_EVIDENCE: `git ls-files reasoning-provider.json` returns nothing; the l
 MACHINE_SLICE: PROVIDER_CREDENTIAL_PERSISTENCE
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_2026_09_29
+## INTENT LBE-INTENT-TEXTUAL-RETAINED-MODULE-FINDING-001
+
+STATUS: AUTHORIZED
+REQUEST: Record that the retained legacy Textual module fabricates receipt and session identifiers, and that it must NOT be deleted, because live verification depends on its presence.
+OWNER: Product-surface owner and clean-install verifier owner. No new authority is created.
+FAILURE_CLASS: RETAINED_DIAGNOSTIC_MODULE_FABRICATES_EVIDENCE_SHAPED_VALUES.
+WHY: `lbe_guard_inspector/textual_tui.py` is 285 lines, starts in `PREVIEW`, imports real LBE owners without wiring them into the visible methods, and fabricates receipt-shaped and session-shaped values. It is not dead code: `verify_clean_install.py:66-73` states the module is a "tracked, deliberately retained diagnostic module" whose PRESENCE is the premise of a reachability probe; `tests/test_cline_launcher_contract.py:51` is a named launcher contract test; `.lbe/governance/implementation-gates.json` registers the structure; and `apps/lbe-terminal/PROVENANCE.md:47` names the module path. Deleting it would break all four.
+EXISTING_OWNER: The clean-install verifier and the launcher contract test own the retention invariant. The product-surface owner owns the module contents.
+DESIRED_RESULT: The fabrication is recorded with line-level evidence, the retention invariant is recorded as the reason deletion is refused, and the disposition question is named for the owner rather than decided here.
+NON_GOALS: No deletion. No rewrite. No change to `verify_clean_install.py`, the launcher contract test, the gate file, or the provenance document. No runtime change of any kind.
+REUSE_DECISION: REUSE the existing retention invariant in `verify_clean_install.py`, which already states the design: shipped in the wheel, unreachable from the supported product path.
+AUTHORITY_IMPACT: None. Evidence record only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: docs/acceptance/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: every fabrication claim cites a current source line; the retention evidence cites verify_clean_install.py, the launcher contract test, the gate registration, and the provenance row; the record states the disposition is undecided.
+MACHINE_SLICE: TEXTUAL_RETAINED_MODULE_FINDING
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_CONTINUE_2026_09_29
 ## INTENT LBE-INTENT-AUDIT-ENFORCEMENT-RECORD-CORRECTION-001
 
 STATUS: AUTHORIZED

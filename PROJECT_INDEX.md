@@ -1,4 +1,5 @@
-﻿# Project Structural Authority Index
+﻿| `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Records that `textual_tui.py` fabricates receipt-shaped and session-shaped values at L226/L312 and renders a PREVIEW state, while being a **deliberately retained** module that must NOT be deleted: `verify_clean_install.py:68-73` proves unreachability by presence, a launcher contract test names it, and the gate file and PROVENANCE.md register it. Records the retraction of an earlier dead-code classification | Product-surface owner and clean-install verifier owner | `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Evidence record only. No deletion is authorized. The live risk is that the shipped-but-unreachable invariant has no guard against becoming reachable |
+# Project Structural Authority Index
 
 Status: **CANONICAL GOVERNANCE INDEX**
 

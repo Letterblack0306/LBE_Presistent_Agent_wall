@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "AUDIT_ENFORCEMENT_RECORD_CORRECTION",
+  "active_slice": "TEXTUAL_RETAINED_MODULE_FINDING",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-AUDIT-ENFORCEMENT-RECORD-CORRECTION-001",
-    "owner": "LBE governance and behavior-contract owner",
-    "index_revision": "445EEA7F40462AB89200286831FE7A3068668235FBD15A4BE1D8A26B4DCFFAE8"
+    "intent_id": "LBE-INTENT-TEXTUAL-RETAINED-MODULE-FINDING-001",
+    "owner": "Product-surface owner; clean-install verifier owner",
+    "index_revision": "16A85206A9961FD4DB2C76D5F1693064CE9BFE20A3565E332FA8DD8D0A09C8B5"
   },
   "closure": {
     "status": "OPEN",
