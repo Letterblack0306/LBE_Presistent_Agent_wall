@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "PROVIDER_CREDENTIAL_PERSISTENCE",
+  "active_slice": "AUDIT_ENFORCEMENT_RECORD_CORRECTION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-PROVIDER-CREDENTIAL-PERSISTENCE-001",
-    "owner": "Provider/runtime and repository hygiene owner",
-    "index_revision": "1E2F039F5447FC786EBFFE10093ABE3E5A9F13A40AF89BC77B0DE3788DCFD78A"
+    "intent_id": "LBE-INTENT-AUDIT-ENFORCEMENT-RECORD-CORRECTION-001",
+    "owner": "LBE governance and behavior-contract owner",
+    "index_revision": "C30A28CB8812710F23008CFD3DBEC20DF67FD5E6445408FE06FA95F44DCB7B47"
   },
   "closure": {
     "status": "OPEN",

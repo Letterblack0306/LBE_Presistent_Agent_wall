@@ -1109,6 +1109,23 @@ REQUIRED_EVIDENCE: `git ls-files reasoning-provider.json` returns nothing; the l
 MACHINE_SLICE: PROVIDER_CREDENTIAL_PERSISTENCE
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_2026_09_29
+## INTENT LBE-INTENT-AUDIT-ENFORCEMENT-RECORD-CORRECTION-001
+
+STATUS: AUTHORIZED
+REQUEST: Correct a load-bearing acceptance record that asserts AUDIT mode is not composed into the production path, when the source shows it is.
+OWNER: LBE governance and behavior-contract owner; no new authority is created.
+FAILURE_CLASS: ACCEPTANCE_RECORD_CONTRADICTED_BY_CURRENT_SOURCE.
+WHY: `docs/acceptance/AUDIT_MODE_ENFORCEMENT_FINDING.md`, committed at 430b0dc and amended at 4ac446a and indexed as a load-bearing record, states that the resolved ModeDecision is not composed into the normal agent/CLI request path. Direct source inspection shows the typed policy fields exist, `resolve_mode` is called on the production coding and CLI paths, and R6E requires a ModeDecision and routes through R6C. The record's central claim is false against current source and must be corrected before it misleads a later reader.
+EXISTING_OWNER: The existing `mode_controller`, `authorization_resolver`, and `tool_orchestration` owners. No owner changes.
+DESIRED_RESULT: The record states the implemented composition accurately, identifies the real residual (C0.5 fail-closed on absent typed policy), and preserves the correction trail rather than erasing it.
+NON_GOALS: No runtime change. C0.5 behavior is NOT changed under this intent; it is recorded as a bounded open question for a separate decision. No history rewrite. `MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` and `C0_RUNTIME_POLICY_COMPOSITION_ROADMAP.md` are historical records and are not edited.
+REUSE_DECISION: REUSE existing owners and existing evidence. Correct the record only.
+AUTHORITY_IMPACT: None. Evidence correction only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: docs/acceptance/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: every corrected claim cites a current source line; the correction trail from 430b0dc and 4ac446a is preserved; git grep shows the original false claim no longer asserted; python scripts/check-implementation-gate.py PASS.
+MACHINE_SLICE: AUDIT_ENFORCEMENT_RECORD_CORRECTION
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_2026_09_29
 ## INTENT LBE-INTENT-WORKSPACE-COMMIT-BACKLOG-001
 
 STATUS: AUTHORIZED

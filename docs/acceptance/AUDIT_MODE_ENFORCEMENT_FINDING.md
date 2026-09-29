@@ -1,149 +1,108 @@
-# AUDIT Mode Enforcement Finding
+﻿# AUDIT Mode Enforcement Finding
 
-Date: 2026-09-29
-Revision examined: 1874461 (and origin/main for documentation claims)
-Method: source trace from TUI mode selection to the execution-time guard
+Date: 2026-09-29 (original), corrected 2026-09-29 at
+`LBE-INTENT-AUDIT-ENFORCEMENT-RECORD-CORRECTION-001`
+Revision examined: 1c54f2e
 
 ## Status
 
-DECLARED, NOT ENFORCED
+COMPOSED INTO THE PRODUCTION PATH
+With one bounded residual (C0.5), recorded below.
 
-## Claim under examination
+**This record previously said the opposite. The prior text was wrong and
+was corrected against source, not against a document.**
 
-Upstream `README.md` states:
+## Correction trail
 
-> "Audit and investigation routes remain read-only; coding actions are
-> limited to registered capabilities and their active policy."
+- `430b0dc` framed the defect as "`validate_mode_behavior` has no
+  production caller."
+- `4ac446a` corrected that to the composition-path framing and cited
+  `MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` as primary.
+- That was still wrong, and this entry corrects it. The correction trail
+  is retained deliberately: each version asserted less evidence than the
+  one before, and the repository should show that rather than hide it.
 
-`lbe_guard_inspector/behavior/contracts.py:112-137` declares the same
-guarantee as a typed contract (`audit_mode_constraints`), with
-`forbidden_actions` including `modify`, `execute_changes`,
-`create_guards`, and `bypass_guards`.
+## What the current source actually shows
 
-The question this record answers: is the mode decision actually composed
-into the production request path, such that a write in audit mode is
-refused?
+`lbe_guard_inspector/memory/memory_schema.sql`, `session_state`:
 
-## Primary evidence — this finding was already documented
+    permission     TEXT CHECK (permission IN
+                     ('read_only','write_allowed','audit_only','elevated'))
+    runtime_policy TEXT CHECK (runtime_policy IN
+                     ('audit','development','strict','permissive'))
 
-The authoritative analysis is
-`docs/reference/MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` (updated
-2026-08-10). It predates this record and states the gap more precisely
-than a fresh trace can. Key citations:
+`lbe_guard_inspector/memory/models.py`, `SessionState` carries both fields
+with the same vocabulary as R6B's `Permission` and `RuntimePolicy`.
 
-- line 8: the typed R6B mode engine, R6C authorization resolver, and
-  R6E governed tool orchestration "exist and are tested, but are not yet
-  composed into the normal agent/CLI request path"
-- lines 13-15: `MODE_HIT_COUNT=0`, `AUTH_HIT_COUNT=0`
-- line 70: R6B "does not grant these values; it consumes them. Current
-  production inspection found no normal-path consumer supplying them"
-- line 76: R6C has "no external normal-path callers; it is currently
-  consumed by the standalone R6E orchestrator implementation rather than
-  by the gateway/CLI composition path"
-- line 80: R6E **already** requires `ToolExecutionContext.mode_decision`
-  and routes registered capabilities through R6C before execution
+`lbe_guard_inspector/runtime/governed_coding.py:791-797`:
 
-**Correction to an earlier draft of this record.** An initial revision of
-this file framed the defect as "`validate_mode_behavior` has no
-production caller." That observation was true of a side function but
-understated the defect. Per line 80, the R6B-to-R6C-to-R6E wiring exists
-*inside* R6E. The break is upstream, at the composition boundary where
-authoritative runtime policy would be resolved and supplied. Adding a
-call to `validate_mode_behavior` would not close the gap.
+    state = runtime.session_state
+    decision = resolve_mode(ModeRequest(
+        intent="fix_issue",
+        permission=state.permission or "read_only",
+        runtime_policy=state.runtime_policy or "audit",
+        workspace_root=str(runtime.workspace_root),
+    ))
+    if decision.mode != "coding":
+        raise ValueError("governed coding controller requires resolved coding mode")
 
-- line 19: "C0 must be broader than merely calling `resolve_mode()`. It
-  must establish the smallest authoritative runtime-policy composition
-  path using the owners already implemented."
-- line 31: classified as "informative engineering discipline, not a hard
-  runtime blocker" — which is why the gap persisted while the read-only
-  guarantee shipped in the README and the Audit label shipped in the TUI.
+`lbe_guard_inspector/product_entry.py:609-618` performs the same resolution
+on the installed CLI path, and additionally forbids `workspace.patch` and
+`process.run_registered` when the permission is `read_only` or `audit_only`.
 
-## What a fresh source trace adds
+`lbe_guard_inspector/runtime/tool_orchestration.py`:
 
-1. `lbe_guard_inspector/runtime/mode_controller.py:105-114` resolves the
-   mode correctly and fail-closed:
-   - unknown permission defaults to `audit`
-   - an audit intent downgrades to `audit` even when the request carries
-     `write_allowed` (line 112-113)
-   - the module docstring (line 4) states it cannot modify files or grant
-     permissions beyond its supplied policy inputs
+    line 80    mode_decision: ModeDecision      (required field)
+    line 94-95 raises TypeError if it is not a ModeDecision
+    line 199   authorization_resolver defaults to resolve_authorization
 
-2. The mode decision is therefore sound, and the TUI cannot influence it.
-   `app.rs::set_mode` only issues `UserRequest::SetMode` through the
-   wrapper.
+`lbe_guard_inspector/runtime/cline_governed_birdeye.py:370` and
+`lbe_guard_inspector/runtime/external_capabilities.py:316` resolve mode on
+their respective paths.
 
-3. `behavior/contracts.py:112-137` declares `audit_mode_constraints`
-   with `forbidden_actions` including `modify`, `execute_changes`,
-   `create_guards`, and `bypass_guards`, and states "Audit mode is
-   read-only."
+Therefore the chain the C0 roadmap specifies is present:
 
-   ```python
-   def validate_mode_behavior(mode: Mode, behavior_name: str) -> bool:
-       return behavior_name in MODE_BEHAVIOR_MAP[mode]
-   ```
+    persisted typed policy -> resolve_mode() -> ModeDecision
+      -> ToolExecutionContext.mode_decision -> resolve_authorization()
+      -> GovernedToolOrchestrator
 
-   It returns a boolean. It raises nothing and denies nothing.
+## Why the earlier records were wrong
 
-4. A repository-wide search for callers of `validate_mode_behavior`
-   returns exactly one call site, and it is in a test:
-   `tests/test_mode_controller.py:151`. This is a side observation, not
-   the defect — see the correction above.
+`docs/reference/MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` recorded
+`MODE_HIT_COUNT=0` and `AUTH_HIT_COUNT=0` on 2026-08-10. Those counts
+were true when taken. The typed schema fields and the production call
+sites were added afterwards. The evidence document is now stale; it is
+not edited here, because it is a dated historical record.
 
-5. That test is self-referential. It calls `resolve_mode(...)` and then
-   asserts each returned `allowed_behaviors` entry passes
-   `validate_mode_behavior`. Since `resolve_mode` derives those entries
-   from the same `MODE_BEHAVIOR_MAP`, the assertion holds regardless of
-   whether the map itself is correct. It cannot fail for the reason that
-   matters.
+## The real residual: C0.5 fail-closed on absent typed policy
 
-## Consequence
+`governed_coding.py:794`, `product_entry.py:611` and `:617` all read
 
-Selecting AUDIT mode changes the mode decision, the projected label, the
-main-body layout (`ui.rs:509,515` suppress the welcome panel and split
-transcript in audit), and scroll targeting. It does not currently cause a
-write to be refused, because no production composition supplies the
-resolved `ModeDecision` to the authorization layer on the normal request
-path. The read-only guarantee is a correct declaration with no
-enforcement behind it.
+    permission=state.permission or "read_only"
 
-This is a real gap in the most important guarantee in the product, not a
-documentation defect.
+When `state.permission` is `None`, the session silently resolves as
+read-only. The C0 roadmap requires a bounded policy-state error or
+escalation instead.
+
+Two things must be stated precisely:
+
+- This is NOT a live write hole. The default is read-only, so a session
+  lacking typed policy cannot obtain write authority. The roadmap's
+  prohibitions against assuming `write_allowed` from `mode=coding`,
+  reinterpreting opaque policy IDs, or accepting provider-proposed
+  authority are all satisfied.
+- It IS a deviation. The affirmative requirement is to surface the
+  absence, not to proceed quietly.
+
+Whether to raise, escalate, or record the resolution basis is an
+ownership decision about the behavior-contract owner. It is not made
+here, and no runtime change is made under this intent.
 
 ## What this record does NOT claim
 
-- It does not claim a write has been demonstrated to succeed in audit
-  mode. That was not observed and was not attempted.
-- It does not claim the R6E orchestrator is incorrect. Per the wiring
-  evidence line 80, R6E already requires `mode_decision` and routes
-  through R6C. The finding is that nothing supplies it on the normal
-  path.
-- It does not claim the design work is missing.
-  `MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md:208-263` already specifies
-  the C0 boundary, the owning files, the prohibitions, and an 11-point
-  acceptance proof. That work should be implemented, not redesigned.
-- It does not supersede `R6B_TYPED_MODE_POLICY_ACCEPTANCE_GATE.md` or
-  `R6C_PERMISSION_AUTHORIZATION_ACCEPTANCE_GATE.md`. Those govern
-  different layers.
-
-## Required to close
-
-Route the resolved `ModeDecision` through the normal gateway/runtime
-composition boundary so that a mutation attempt in audit mode is refused
-and produces a ToolReceipt recording the refusal.
-
-Per `MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md:208-247`, the owning
-surfaces are `memory/models.py`, `memory_schema.sql`, `memory/store.py`,
-`session_memory_runtime.py`, and `agent_integration.py`. R6C and R6E are
-to be reused, not rewritten. The named prohibitions include creating a
-parallel `RuntimePolicyResolver`, creating a second permission system,
-reinterpreting opaque policy IDs as typed authority, and inferring write
-authority from legacy `mode=coding`.
-
-Acceptance requires the 11-point proof at lines 251-263 of that document,
-executed through the installed/normal request path. Its item 9 —
-"audit/investigation cannot gain coding capabilities through model output
-alone" — is the direct test of the guarantee this record examines.
-
-Until that evidence exists, no record may describe AUDIT as enforced
-read-only. The contract may be cited as a declared invariant; it may not
-be cited as an enforced control.
+- It does not claim the C0.5 residual is exploitable. It is not; the
+  default is the safe direction.
+- It does not claim any write succeeded in audit mode. That was never
+  observed and was never attempted.
+- It does not delete or edit the dated evidence document.
+- It does not authorize a runtime change.
