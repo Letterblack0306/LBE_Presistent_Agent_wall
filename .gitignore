@@ -110,3 +110,6 @@ Desktop.ini
 .tmp.drivecloud/
 LetterBlack-LBE-Core-main/
 lbe-tui/
+
+# BirdEye MCP skill state - local cache, not product source
+.skills/

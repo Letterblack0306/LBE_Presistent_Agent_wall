@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "PROVIDER_MODEL_CATALOG_RECONCILIATION",
+  "active_slice": "WORKSPACE_COMMIT_BACKLOG",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-PROVIDER-MODEL-CATALOG-RECONCILIATION-001",
-    "owner": "Provider/runtime owner",
-    "index_revision": "87D61E305B2A7FF7669DC7F76838715E83A078E245D9A770F4C58EAE30891BB2"
+    "intent_id": "LBE-INTENT-WORKSPACE-COMMIT-BACKLOG-001",
+    "owner": "Workspace/repository hygiene owner",
+    "index_revision": "587B17951BCAD90C8E934C0317D19661F36C1921D3A3DE3156C9CCE06ADA8980"
   },
   "closure": {
     "status": "OPEN",

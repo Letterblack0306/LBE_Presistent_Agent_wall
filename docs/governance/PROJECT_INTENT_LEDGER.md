@@ -1092,6 +1092,23 @@ REQUIRED_EVIDENCE: focused tests pass; live reconciliation against the configure
 MACHINE_SLICE: PROVIDER_MODEL_CATALOG_RECONCILIATION
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_GOAHEAD_2026_09_29
+## INTENT LBE-INTENT-WORKSPACE-COMMIT-BACKLOG-001
+
+STATUS: AUTHORIZED
+REQUEST: Commit the set of already-correct workspace files that have never been tracked, and record the `.skills/` ignore rule that is already working.
+OWNER: Workspace/repository hygiene owner; no new authority is created.
+FAILURE_CLASS: VERIFIED_WORK_NEVER_TRACKED.
+WHY: Six files exist in the working tree, are referenced by PROJECT_INDEX.md or the launcher, and have never been committed. The `.gitignore` change adding `.skills/` is working and confirmed by `git check-ignore`, but was staged during an earlier merge and never landed. Separately, `.governance/task-scope.json` and `.governance/task-scope.sig.json` are modified state belonging to the local-only governance kit that commit 4f1449a retired upstream; origin/main contains no `.governance/` directory at all, so committing that state would re-introduce a retired authority into the tree.
+EXISTING_OWNER: Existing project files already owned by their registered rows in PROJECT_INDEX.md. No new file owner is created.
+DESIRED_RESULT: `.skills/` is ignored in the committed tree; VERSION, docs/INTEGRATION.md, docs/reference/ui/lbe-logo.svg, scripts/install-governance.mjs, test_index_reconciliation_safety.py, and the relocated pasted-input record are tracked.
+NON_GOALS: The local `.governance/task-scope.json` and `.governance/task-scope.sig.json` are explicitly EXCLUDED and must remain uncommitted. No packaging change, no version change, no runtime change, no launcher logic change, no deletion of `textual_tui.py`, and no C0 work.
+REUSE_DECISION: REUSE the existing registered owners. Nothing is created, renamed, or re-scoped.
+AUTHORITY_IMPACT: None. Tracking hygiene only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: .gitignore,VERSION,docs/INTEGRATION.md,docs/reference/ui/lbe-logo.svg,scripts/install-governance.mjs,test_index_reconciliation_safety.py,docs/history/pasted-inputs/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md,tests/
+REQUIRED_EVIDENCE: git check-ignore confirms .skills/; `git status --porcelain` shows the six files tracked and `.governance/task-scope*` still uncommitted; python scripts/check-implementation-gate.py PASS; git diff --check clean.
+MACHINE_SLICE: WORKSPACE_COMMIT_BACKLOG
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_GOAHEAD_2026_09_29
 
 STATUS: AUTHORIZED
 REQUEST: Reconcile and land the already-implemented authority-ownership, engine-neutral/provider, Cline/BirdEye integration, and related test coverage that is blocked only by intent path mismatch.
