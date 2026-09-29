@@ -70,6 +70,35 @@ must map to one row before it may be changed.
 | `PROJECT_INDEX.md` | Root structural authority registry | LBE governance | `docs/governance/PROJECT_INTENT_LEDGER.md` | Protected; update before new structure |
 | `pyproject.toml` | Package metadata and version authority | Release governance | Active publication gates | Publication intent only |
 
+## Load-bearing records — existence notes
+
+These records exist because a real guarantee, gap, or proof depends on
+them. They are not commentary and must not be deleted, summarised away,
+or superseded by a PASS elsewhere in this index.
+
+| Record | Why it must continue to exist |
+|---|---|
+| `docs/reference/MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` | The only record that the typed R6B mode engine, R6C authorization resolver, and R6E tool orchestrator are **not** composed into the normal request path. It was classified "informative, not a hard runtime blocker" on 2026-08-10 and consequently enforced by nothing for over three months while `README.md` asserted the read-only guarantee. Its `MODE_HIT_COUNT=0` / `AUTH_HIT_COUNT=0` observations are the load-bearing fact. |
+| `docs/design/C0_RUNTIME_POLICY_COMPOSITION_ROADMAP.md` | The design of record for closing that gap. Its root cause — `session_state` has no typed `permission` or `runtime_policy`, so no `ModeDecision` can reach R6C — is not visible anywhere else. It carries the 10 regression tests and the acceptance gate, and it gates C1–C5. Implementing it is required; redesigning it is not. |
+| `docs/acceptance/AUDIT_MODE_ENFORCEMENT_FINDING.md` | The standing record that AUDIT mode's read-only guarantee is **declared and correctly resolved but not enforced**. It exists to prevent any future document, README, or TUI label from restating audit as an enforced control. It also records a self-correction: the defect is a missing composition path, not a missing function call. |
+| `docs/acceptance/TUI_INTERACTIVE_ACCEPTANCE_CHECKLIST.md` | The per-row live-acceptance record for the visible TUI, and the only place that distinguishes SOURCE-VERIFIED, TESTED, and live-observed. It retains the correction history of a draft that wrongly claimed no modifier or menu-click support, so that inference-from-symbol-count is not repeated. |
+| `docs/acceptance/MACHINE_FEATURE_TEST_REPORT_2026-09-21.json` | Carries the only **machine-observed** interactive evidence in the project: real release-PTY runs with SGR mouse capture at `5168763`, proving `mouse_enter_landing` and `mouse_command_palette_select`. Its value is bounded and it says so itself: keyboard, live provider turn, and the attached-session provider/model/session/workspace/approval/wheel rows are UNVERIFIED and must not inherit the two PASS rows. |
+
+Two structural observations that these records make necessary:
+
+```text
+UNINDEXED_STRUCTURE = NO_MUTATION
+  also means unindexed = never consulted.
+  An unregistered record cannot be changed and cannot be surfaced.
+  Every one of the five records above was unindexed until 39988cb
+  and 82acfc1, which is how a diagnosed blocker stayed invisible.
+
+A PASS in docs/acceptance/ is a component-scoped result.
+  R6B proved audit -> ESCALATE. R6E proved ESCALATE -> no execution.
+  Neither claims the composed path. No PASS in that directory
+  substitutes for the C0 acceptance gate.
+```
+
 ## Structural law
 
 ```text
