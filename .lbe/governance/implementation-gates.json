@@ -66,7 +66,7 @@
   "active_intent": {
     "intent_id": "LBE-INTENT-TUI-INTERACTIVE-ACCEPTANCE-AND-CLEAN-CLONE-001",
     "owner": "Terminal/TUI acceptance owner",
-    "index_revision": "5D6AC53DC191986B0D3B6FFD40B3CDE07D466050F95E8A01AEFB6309677BA887"
+    "index_revision": "01F75D5CD0854AE827DD6E220E0AF5166B47B33C00CFDD75616C8B5EF9C20A2F"
   },
   "closure": {
     "status": "OPEN",
