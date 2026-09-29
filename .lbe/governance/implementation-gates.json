@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "TUI_INTERACTIVE_ACCEPTANCE_AND_CLEAN_CLONE",
+  "active_slice": "RELEASE_PACKAGE_MANIFEST_INCLUSION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-TUI-INTERACTIVE-ACCEPTANCE-AND-CLEAN-CLONE-001",
-    "owner": "Terminal/TUI acceptance owner",
-    "index_revision": "583CEF6FA7363AB004684BD4F0B99E12C60A4EF0985617372F7998892274A82D"
+    "intent_id": "LBE-INTENT-RELEASE-PACKAGE-MANIFEST-INCLUSION-001",
+    "owner": "Release/package owner",
+    "index_revision": "9DBDC29E5095D7715A8493B85A10332BD495E3B6C9AD818B01DA1758E3EF2488"
   },
   "closure": {
     "status": "OPEN",

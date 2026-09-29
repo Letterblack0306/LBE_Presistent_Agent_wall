@@ -1057,6 +1057,25 @@ AUTHORIZATION: EXPLICIT_USER_DECISION_TO_OPEN_TUI_INTERACTIVE_ACCEPTANCE_AND_CLE
 
 ## INTENT LBE-INTENT-AUTHORITY-OWNERSHIP-ENGINE-NEUTRAL-TESTS-002
 
+
+## INTENT LBE-INTENT-RELEASE-PACKAGE-MANIFEST-INCLUSION-001
+
+STATUS: AUTHORIZED
+REQUEST: Include the JSON rule and schema files under `rules/` in the built wheel so the owner-authority capability is present in a packaged install.
+OWNER: Release/package owner; no new packaging or runtime authority is created.
+FAILURE_CLASS: PACKAGED_ARTIFACT_OMITS_OWNER_AUTHORITY_FILES.
+WHY: `rules/owner_authority_blocker.json` is a JSON file, but `MANIFEST.in` at HEAD declares `recursive-include rules *.py`, which ships no JSON from `rules/`. The owner-authority blocker rule and its schema, committed at 3b2b546, are therefore absent from the built wheel. Clean-clone evidence at a0793a4 shows `test_wheel_contains_only_runtime_modules_and_contracts` failing for this reason. The correction is already present in the working tree and has never been committed because the preceding launcher intent listed `no MANIFEST.in changes` as an explicit non-goal.
+EXISTING_OWNER: Existing MANIFEST.in and the existing pyproject packaging configuration. No new packaging path is introduced.
+DESIRED_RESULT: The built wheel contains the owner-authority rule and schema; clean-clone pytest reports 927 passed, 0 failed, 1 skipped.
+NON_GOALS: No version bump. No publish, tag, or release. No pyproject.toml change. No new packaging tool or parallel manifest. No change to the launcher, installer, or TUI. No alteration of any runtime behavior.
+REUSE_DECISION: REUSE the existing MANIFEST.in. One existing include directive is extended; nothing is added alongside it.
+AUTHORITY_IMPACT: None. Package data inclusion only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: MANIFEST.in,docs/acceptance/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md,tests/test_release_packaging.py
+REQUIRED_EVIDENCE: fresh git clone; pytest 927 passed 0 failed 1 skipped; wheel content assertion passes; python scripts/check-implementation-gate.py PASS; git diff --check clean.
+MACHINE_SLICE: RELEASE_PACKAGE_MANIFEST_INCLUSION
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_GOAHEAD_WITH_PLAN_2026_09_29
+
 STATUS: AUTHORIZED
 REQUEST: Reconcile and land the already-implemented authority-ownership, engine-neutral/provider, Cline/BirdEye integration, and related test coverage that is blocked only by intent path mismatch.
 OWNER: Authority-ownership and engine-neutral test reconciliation owner; no new runtime authority is created.

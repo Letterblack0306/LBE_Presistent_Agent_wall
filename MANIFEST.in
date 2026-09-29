@@ -1,7 +1,7 @@
 include README.md
 include LICENSE
 recursive-include lbe_guard_inspector *.py
-recursive-include rules *.py
+recursive-include rules *.py *.json
 recursive-include schemas *.json
 recursive-include lbe_guard_inspector/runtime/cline_worker *.mjs *.json
 prune tests
