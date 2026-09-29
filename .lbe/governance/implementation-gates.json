@@ -2,7 +2,7 @@
   "schema_version": 1,
   "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
   "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "RELEASE_PACKAGE_MANIFEST_INCLUSION",
+  "active_slice": "PROVIDER_MODEL_CATALOG_RECONCILIATION",
   "status": "OPEN",
   "implementation_allowed": true,
   "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
     "fail_closed": true
   },
   "active_intent": {
-    "intent_id": "LBE-INTENT-RELEASE-PACKAGE-MANIFEST-INCLUSION-001",
-    "owner": "Release/package owner",
-    "index_revision": "9DBDC29E5095D7715A8493B85A10332BD495E3B6C9AD818B01DA1758E3EF2488"
+    "intent_id": "LBE-INTENT-PROVIDER-MODEL-CATALOG-RECONCILIATION-001",
+    "owner": "Provider/runtime owner",
+    "index_revision": "B44CC08840FB18BD2A440D6C9143A7EB789E861A25348F23AE083C94C5175A3F"
   },
   "closure": {
     "status": "OPEN",

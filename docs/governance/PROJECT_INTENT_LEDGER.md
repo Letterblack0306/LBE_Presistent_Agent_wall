@@ -1,4 +1,4 @@
-# Project Intent Ledger
+﻿# Project Intent Ledger
 
 Status: **CANONICAL PRE-MUTATION INTENT LEDGER**
 
@@ -6,7 +6,7 @@ Every meaningful repository mutation must resolve to exactly one intent record b
 The machine gate binds the active slice to the `INTENT_ID`, and the affected structure must exist
 in `PROJECT_INDEX.md`.
 
-## Current reconciliation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 2026-09-05
+## Current reconciliation ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â 2026-09-05
 
 The current implementation uses the originating project-planning concepts as a
 bounded LBE startup projection. `lbe start` profiles the selected workspace and
@@ -23,7 +23,7 @@ configuration.
 Current proof for this bounded integration is recorded as:
 
 ```text
-focused adapter validation         = PASS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 15/15
+focused adapter validation         = PASS ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â 15/15
 live parent->child->parent proof   = PASS
 live cancellation terminality      = PASS
 canonical verifier proof           = PASS
@@ -48,7 +48,7 @@ REUSE_DECISION: REUSE ProjectProfiler, select_guard_catalog, existing audit load
 AUTHORITY_IMPACT: None. LBE remains the sole authority for authorization, governed execution, receipts, evidence, persistence, validation, and completion.
 EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,audit_controller.py,rules/,examples/reference/,docs/contracts/,docs/acceptance/,docs/governance/,docs/CURRENT_STATUS.md
 REQUIRED_EVIDENCE: startup profile/catalog projection; canonical CEP rule resolution; target-profile audit scope; no duplicate callback rule discovery; focused integration regression; full Python regression; preserved active TUI gate.
-MACHINE_SLICE: NONE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bounded implementation record; does not alter the machine-declared active slice.
+MACHINE_SLICE: NONE ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â bounded implementation record; does not alter the machine-declared active slice.
 SUPERSEDES: none
 RESULT: PASS
 COMPLETION_CHECKPOINT: docs/CURRENT_STATUS.md and .agent/evidence/CURRENT_TASK.md
@@ -342,8 +342,8 @@ REUSE_DECISION: REUSE existing LBE persistence, continuation, receipt, validatio
 AUTHORITY_IMPACT: LBE remains sole authority. The projection is bookkeeping only.
 EXPECTED_PATH_PREFIXES: PROJECT_INDEX.md,.lbe/governance/,docs/CURRENT_STATUS.md,docs/IMPLEMENTATION_PLAN.md,docs/acceptance/,docs/governance/
 REQUIRED_EVIDENCE: parent consumes persisted authoritative LBE child terminal result; no transient
-                   local/Cline result is authoritative; provider_tool_call_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â lbe_call_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
-                   child_run_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â runtime_operation_id ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â tool_receipt_id are all correlated;
+                   local/Cline result is authoritative; provider_tool_call_id ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â lbe_call_id ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â
+                   child_run_id ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â runtime_operation_id ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â tool_receipt_id are all correlated;
                    no heuristic correlation; focused adapter validation; live continuation proof;
                    cancellation terminality proof; canonical verifier proof.
 MACHINE_SLICE: PERSISTED_CHILD_RESULT_PARENT_CONTINUATION_AND_CORRELATION
@@ -421,7 +421,7 @@ RESULT: PASS (focused)
 MACHINE_SLICE: CLINE_RUNTIME_WIRING
 ```
 
-## INTENT LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â SUPERSEDED / REFERENCE ONLY
+## INTENT LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â SUPERSEDED / REFERENCE ONLY
 
 ```text
 INTENT_ID: LBE-INTENT-CLINE-NATIVE-SURFACE-INTEGRATION-001
@@ -522,7 +522,7 @@ RESULT: SUPERSEDED_IN_CLIENT_SURFACE_SCOPE
 COMPLETION_CHECKPOINT: docs/acceptance/TUI_P2_P3_GOVERNED_EXECUTION_INTEGRATION_CHECKPOINT.md
 ```
 
-## Historical product-owner correction ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â HTML-based TUI (superseded in scope)
+## Historical product-owner correction ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â HTML-based TUI (superseded in scope)
 
 The prior Cline surface-direction record is amended by the current product decision: the
 supplied `docs/reference/ui/lbe_runtime_console.html` and
@@ -751,7 +751,7 @@ REUSE_DECISION: REUSE existing machine governance, project index, intent ledger,
 AUTHORITY_IMPACT: None. This intent changes documentation routing only and does not create a new runtime, reasoning, execution, validation, persistence, or completion authority.
 EXPECTED_PATH_PREFIXES: docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md,docs/governance/AGENT_DOCUMENT_WRITE_POLICY.md,docs/governance/PROJECT_INTENT_LEDGER.md
 REQUIRED_EVIDENCE: created source-of-truth document; created document-write policy; no product-code changes; no existing docs deleted; canonical GitHub commit(s) available for local pull.
-MACHINE_SLICE: NONE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â explicit user-authorized documentation-governance bootstrap; does not advance the closed product gate.
+MACHINE_SLICE: NONE ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â explicit user-authorized documentation-governance bootstrap; does not advance the closed product gate.
 SUPERSEDES: none
 RESULT: ACTIVE
 ```
@@ -910,7 +910,7 @@ RESULT: NOT_STARTED
 INTENT_ID: LBE-INTENT-INTERACTIVE-PROVIDER-CATALOG-PROJECTION-001
 STATUS: AUTHORIZED
 REQUEST: Preserve live provider and model catalog projections across asynchronous session/runtime snapshot updates in the canonical Rust TUI.
-WHY: A real attached-provider PTY run on 2026-09-22 showed provider discovery completing with 11 providers while the provider picker rendered ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“No provider catalog projected.ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â This is a live UI data-loss defect, not a source-only concern.
+WHY: A real attached-provider PTY run on 2026-09-22 showed provider discovery completing with 11 providers while the provider picker rendered ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNo provider catalog projected.ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â This is a live UI data-loss defect, not a source-only concern.
 EXISTING_OWNER: LBE runtime provider/model catalog and authoritative session snapshot; Rust/Ratatui app reducer and provider picker.
 DESIRED_RESULT: Provider/model discovery survives later authoritative session snapshot events, and the interactive picker displays and selects live catalog rows without fabricating provider state.
 NON_GOALS: No new provider authority, second catalog, credentials copied from Cline, provider configuration/removal, or change to session/runtime ownership.
@@ -1075,6 +1075,23 @@ REQUIRED_EVIDENCE: fresh git clone; pytest 927 passed 0 failed 1 skipped; wheel 
 MACHINE_SLICE: RELEASE_PACKAGE_MANIFEST_INCLUSION
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_GOAHEAD_WITH_PLAN_2026_09_29
+## INTENT LBE-INTENT-PROVIDER-MODEL-CATALOG-RECONCILIATION-001
+
+STATUS: AUTHORIZED
+REQUEST: Add a bounded, additive reconciliation that classifies the persisted session model against the provider's observed live catalog, without ever substituting a model.
+OWNER: Provider/runtime owner; no new provider, session, or authorization authority is created.
+FAILURE_CLASS: PERSISTED_MODEL_NOT_RECONCILED_AGAINST_LIVE_CATALOG.
+WHY: `reasoning_config.bind_provider_config_to_session` unconditionally takes the model from the persisted session and discards the configured one, with no comparison against what the provider actually serves. A model that has been withdrawn upstream therefore fails at request time with no bounded, evidence-bearing condition describing the divergence. The defect is an absence of classification, not a wrong result.
+EXISTING_OWNER: Existing `provider_capability_discovery`, `provider_health`, and `reasoning_config` owners. The new module is additive and is not wired into any existing execution path by this intent.
+DESIRED_RESULT: One pure function that returns a deterministic verdict for a persisted model against an observed catalog, distinguishing live-discovered, absent-from-catalog, and catalog-unavailable, and never choosing a replacement model.
+NON_GOALS: No fallback list. No automatic model substitution. No change to `bind_provider_config_to_session` or to provider request behavior. No hardcoded model identifier. No change to any receipt, evidence, or authorization path. No wiring into the normal request path; that remains a separate authorized slice.
+REUSE_DECISION: REUSE the existing discovery and health owners as the future catalog source. No new provider registry, cache, or catalog store is introduced.
+AUTHORITY_IMPACT: None. Read-only classification only. R7's "silent substitution of models or providers is strictly forbidden" invariant is the design constraint; the module cannot violate it because it cannot substitute.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/model_catalog_reconciliation.py,tests/test_model_catalog_reconciliation.py,docs/acceptance/,docs/governance/,.lbe/governance/,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: focused tests pass; live reconciliation against the configured LM Studio endpoint reports live_discovered; absent and unavailable cases are distinguished; no test asserts a substituted model.
+MACHINE_SLICE: PROVIDER_MODEL_CATALOG_RECONCILIATION
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_GOAHEAD_2026_09_29
 
 STATUS: AUTHORIZED
 REQUEST: Reconcile and land the already-implemented authority-ownership, engine-neutral/provider, Cline/BirdEye integration, and related test coverage that is blocked only by intent path mismatch.
