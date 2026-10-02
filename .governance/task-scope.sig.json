@@ -1,8 +1,0 @@
-{
-  "version": 1,
-  "algorithm": "Ed25519",
-  "scopeSha256": "ab4a33d52531f106d61fe1e836fad7000e2ca5f123b9957f1303b8cccc90198c",
-  "signatureBase64": "lypf5erieyzWH7uPDdH2IIhqcRx2H7Y4S3B+r7t4GsarqcsxrG10W9OnVzgfI27BwGYAVuOw2dSkFTeYezT7DA==",
-  "signedAt": "2026-09-27T17:45:36.943Z",
-  "operator": "prave"
-}

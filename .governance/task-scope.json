@@ -1,29 +1,26 @@
 {
   "version": 1,
-  "scopeId": "GOVERNANCE-BOOTSTRAP-001",
-  "objective": "Install and commit the standard Letterblack workspace governance kit only.",
-  "mode": "IMPLEMENT",
+  "scopeId": "GOVERNANCE-NO-EXTERNAL-SIGNING-001",
+  "objective": "Remove external cryptographic scope signing while retaining active locked task scopes, file/action allowlists, fail-closed governance checks, pre-commit validation, and pre-push validation.",
+  "mode": "GOVERNANCE",
   "active": true,
   "scopeLocked": true,
   "allowedFiles": [
+    ".governance/**",
     "AGENTS.md",
     "README.md",
-    "Install-Governance.ps1",
-    ".governance/**",
-    ".githooks/**",
-    "docs/GOVERNANCE_RULES.md",
     "docs/BLOCKER_GUIDE.md",
     "docs/OPERATOR_AUTHORIZATION.md",
-    "scripts/governance-lib.mjs",
-    "scripts/governance-check.mjs",
-    "scripts/action-preflight.mjs",
-    "scripts/propose-scope.mjs",
+    "docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md",
     "operator-kit/**",
-    "MANIFEST.sha256"
+    "scripts/governance-lib.mjs"
   ],
-  "forbiddenFiles": ["src/**", "electron/**", "app/**", "packages/**"],
-  "allowedActions": ["read", "write", "commit", "push"],
-  "forbiddenActions": ["tag", "publish", "release"],
-  "requiredReading": ["AGENTS.md", "docs/GOVERNANCE_RULES.md", "docs/BLOCKER_GUIDE.md", "docs/OPERATOR_AUTHORIZATION.md"],
-  "requiredValidation": ["node scripts/governance-check.mjs staged", "node scripts/governance-check.mjs head"]
+  "forbiddenFiles": ["state/**","memory/**","build/**","dist/**","vendor/**",".env",".git/**"],
+  "allowedActions": ["read","write","delete","validate","commit","push"],
+  "forbiddenActions": ["tag","publish","release","worktree","branch"],
+  "requiredValidation": [
+    "node --check scripts/governance-lib.mjs",
+    "node scripts/governance-check.mjs staged",
+    "node scripts/governance-check.mjs head"
+  ]
 }

@@ -10,28 +10,20 @@ Read, in order:
 4. `.governance/task-scope.json`
 5. this file
 
-## If the reason is `NO_ACTIVE_SCOPE`, `SCOPE_UNSIGNED`, `SCOPE_SIGNATURE_STALE`, or `SCOPE_SIGNATURE_INVALID`
+## Scope activation
 
-Do **not** activate authority by simply editing governance files.
+Authorization uses the active locked `.governance/task-scope.json`. There is no external signature, operator key, detached signature, or signing step.
 
-The permitted workflow is:
+The scope must declare the intended files and actions before execution. File/action allowlists and forbidden boundaries remain fail-closed.
 
-```text
-agent/user prepares proposed task-scope.json
-→ node scripts/propose-scope.mjs
-→ external operator reviews exact scope
-→ operator signs exact canonical scope using external private key
-→ signature is written to .governance/task-scope.sig.json
-→ gate independently verifies signature
-→ only then can authorized actions proceed
-```
+## If the reason is `NO_ACTIVE_SCOPE` or `SCOPE_NOT_LOCKED`
 
-The signing private key must remain outside governed workspaces and outside agent-accessible tool context.
+Create or select the task scope for the user-authorized work, set `active: true` and `scopeLocked: true`, then run the applicable preflight/check.
 
 ## If the reason is `CHANGED_OUTSIDE_SCOPE`
 
-Restore the unrelated change, or request a new operator-signed scope **before** changing that file.
+Restore the unrelated change or update the task scope to the user-authorized boundary before changing that file.
 
 ## If commit/push is blocked
 
-The active signed scope must explicitly include `commit` and/or `push` in `allowedActions`, and the actual staged/HEAD files must all match `allowedFiles` and not match `forbiddenFiles`.
+The active scope must include `commit` and/or `push` in `allowedActions`. Staged/HEAD files must match `allowedFiles`, avoid `forbiddenFiles`, and required validation must pass before publication.

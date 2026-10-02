@@ -10,13 +10,12 @@ Before any mutation, read:
 ## Mandatory behavior
 
 - Do not treat documentation as authorization.
-- Do not mutate source without a valid externally signed active scope.
-- Do not edit scope/signature files merely to make a blocked action pass.
-- Scope proposals are not authorization.
+- Mutations require an active locked task scope whose file/action boundaries cover the operation.
+- No external signature, operator key, detached signature, or signing ceremony is required.
 - If the gate blocks, follow `docs/BLOCKER_GUIDE.md`.
 - Before direct filesystem/shell/Git mutations, use the governed controller or `node scripts/action-preflight.mjs <action> [target]` where integrated.
 - Do not claim enforcement for any mutation route that bypasses governance.
 
 ## Blocked state
 
-If no signed scope exists, report the blocker and the exact scope/action required. The external operator must authorize it.
+If no active locked scope exists, report the exact missing scope/action. Once the authorized scope and required validation pass, normal commit/push may proceed when those actions are allowed.

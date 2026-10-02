@@ -119,29 +119,18 @@ Rejects push operations not matching canonical main HEAD -> origin/main.
 ### `scripts/check-implementation-gate.py`
 Fail-closed structural validation of the machine gate.
 
-## Retired signed-scope kit
+## Active-scope governance
 
-The former repository-local signed-scope kit is **not current authorization authority** and must not
-block ordinary implementation or governance maintenance after the user has already authorized the
-relevant direction through the canonical LBE governance state.
+External cryptographic scope signing is retired. Normal workspace governance uses an active locked
+`.governance/task-scope.json` together with the canonical `.lbe/governance/` machine gate,
+`PROJECT_INTENT_LEDGER.md`, the active slice/intent, and explicit user decisions.
 
-The following former surfaces are retired as mandatory gates and must not be recreated or required
-for normal work:
+No operator private/public key, detached task-scope signature, approval script, or signature-staleness
+gate is required. File/action allowlists, protected paths, preflight checks, Git hooks, validation,
+intent/slice matching, and fail-closed behavior remain active.
 
-```text
-.governance/task-scope.json
-.governance/task-scope.sig.json
-scripts/propose-scope.mjs
-scripts/action-preflight.mjs
-operator-kit/Approve-Scope.mjs
-operator-private.pem / operator-public.pem signing flow
-SCOPE_SIGNATURE_STALE as a normal implementation blocker
-```
-
-Current authorization is expressed through the canonical `.lbe/governance/` machine gate,
-`PROJECT_INTENT_LEDGER.md`, the active slice/intent, and explicit user decisions already recorded
-there. Agents must not stop merely to request an additional cryptographic scope signature when those
-current authorities already permit the work.
+When the user-authorized scope permits commit/push and required validation passes, normal Git
+publication may proceed without a separate signing ceremony.
 
 This does **not** weaken protected approvals. Explicit user authorization remains required where the
 current machine gate says it is required, including architecture-owner changes, publication/release,

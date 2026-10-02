@@ -3,10 +3,7 @@
   "policyId": "LB-WORKSPACE-GOVERNANCE-V1",
   "mode": "enforce",
   "failClosed": true,
-  "scopeRequiresOperatorSignature": true,
-  "operatorPublicKey": ".governance/operator-public.pem",
   "scopeFile": ".governance/task-scope.json",
-  "scopeSignatureFile": ".governance/task-scope.sig.json",
   "protectedPaths": [
     ".governance/**",
     ".lbe/**",
