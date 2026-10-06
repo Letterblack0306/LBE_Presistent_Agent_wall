@@ -2,7 +2,7 @@
     "schema_version": 1,
     "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
     "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-    "active_slice": "WORKSPACE_COMMIT_BACKLOG",
+    "active_slice": "MAIN_SOURCE_TEST_CONSISTENCY_REPAIR",
     "status": "OPEN",
     "implementation_allowed": true,
     "architecture_changes_allowed": true,
@@ -64,8 +64,8 @@
         "fail_closed": true
     },
     "active_intent": {
-        "intent_id": "LBE-INTENT-WORKSPACE-COMMIT-BACKLOG-001",
-        "owner": "Workspace/repository hygiene owner",
+        "intent_id": "LBE-INTENT-MAIN-SOURCE-TEST-CONSISTENCY-REPAIR-001",
+        "owner": "Repository consistency owner (repair of commit 314f399)",
         "index_revision": "16A85206A9961FD4DB2C76D5F1693064CE9BFE20A3565E332FA8DD8D0A09C8B5"
     },
     "closure": {
