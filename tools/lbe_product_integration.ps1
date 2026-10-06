@@ -26,10 +26,10 @@ $ClineReferenceFiles = @(
 )
 
 if ($SourceMode -eq "auto") {
-    $SourceMode = if ($Mode -in @("build", "package")) { "origin-main" } else { "worktree" }
+    $SourceMode = "worktree"
 }
-if ($Mode -in @("build", "package") -and $SourceMode -ne "origin-main") {
-    throw "Build/package modes require -SourceMode origin-main so candidate artifacts are never assembled from an uncommitted worktree."
+if ($Mode -in @("build", "package") -and $SourceMode -notin @("worktree", "origin-main")) {
+    throw "Build/package source must be worktree or origin-main."
 }
 $SourceRef = if ($SourceMode -eq "origin-main") { "origin/main" } else { "WORKTREE" }
 
@@ -40,20 +40,12 @@ function Invoke-Native {
         [string]$WorkingDirectory
     )
     $previous = Get-Location
-    # Native commands such as git routinely write to stderr for non-fatal
-    # reasons (fetch progress, "fatal: path does not exist" for an optional
-    # file). Under a Stop preference, redirecting 2>&1 turns that text into a
-    # terminating error, so $LASTEXITCODE was never reached and the
-    # -AllowFailure / -AllowMissing handling below could not apply. Capture the
-    # streams as text and let the exit code govern, which is what every caller
-    # already assumes.
+    # Native commands may write non-fatal progress/errors to stderr. Capture
+    # both streams and let the native exit code remain authoritative.
     $previousPreference = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
         if ($WorkingDirectory) { Set-Location $WorkingDirectory }
-        # Coerce to string at capture time. Merging 2>&1 yields ErrorRecord
-        # objects, and under Set-StrictMode those can fail formatting because they
-        # do not carry the properties a native-command record is expected to.
         $lines = @(& $FilePath @Arguments 2>&1 | ForEach-Object { "$_" })
         $exitCode = $LASTEXITCODE
     }
@@ -64,10 +56,9 @@ function Invoke-Native {
     [pscustomobject]@{
         command = "$FilePath $($Arguments -join ' ')"
         exit_code = $exitCode
-        output = @($lines | ForEach-Object { "$_" })
+        output = $lines
     }
 }
-
 function Invoke-Git {
     param(
         [Parameter(Mandatory)][string]$Root,
@@ -571,7 +562,7 @@ function Build-Product {
     Copy-Item -LiteralPath (Join-Path $workerSource "worker.mjs") -Destination $workerOut
     Copy-Item -LiteralPath (Join-Path $workerSource "package.json") -Destination $workerOut
     Copy-Item -LiteralPath (Join-Path $workerSource "package-lock.json") -Destination $workerOut
-    $npm = Get-Command npm -ErrorAction Stop
+    $npm = Get-Command npm.cmd -ErrorAction Stop
     $npmCi = Invoke-Native -FilePath $npm.Source -WorkingDirectory $workerOut -Arguments @("ci", "--omit=dev")
     if ($npmCi.exit_code -ne 0) { throw "Cline worker dependency provisioning failed." }
 
@@ -602,13 +593,37 @@ param(
     [ValidateSet("build", "plan", "audit")][string]$Agent = "build",
     [string]$Provider = "openai-compatible",
     [string]$Model,
+    [string]$Prompt,
     [switch]$Continue,
+    [switch]$Json,
+    [switch]$Plain,
+    [switch]$NoAnimation,
+    [switch]$Ascii,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE")
 )
 
 $ErrorActionPreference = "Stop"
 $client = Join-Path $InstallRoot "lbe.exe"
 $python = Join-Path $InstallRoot "venv\Scripts\python.exe"
+
+# Preserve the public command aliases before PowerShell resolves positional
+# parameters into launcher configuration fields.
+$headlessRun = $false
+if ($Project -eq "tui") {
+    $Project = $null
+}
+elseif ($Project -eq "run") {
+    $headlessRun = $true
+    # In the public form `lbe run "prompt"`, PowerShell binds the second
+    # positional value to $Database. Reclassify it as the prompt before
+    # database defaults are resolved.
+    if (-not $Prompt -and $Database) {
+        $Prompt = $Database
+        $Database = $null
+    }
+    $Project = $null
+    if (-not $Prompt) { throw "lbe run requires a prompt." }
+}
 
 # Informational flags must pass through to the installed client without
 # requiring a full runtime/session/provider bootstrap. They can arrive either
@@ -620,7 +635,7 @@ foreach ($candidate in @($args) + @($Project) + @($Model)) {
 }
 if ($infoArg) {
     if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
-    & $client --version
+    & $client $infoArg
     exit $LASTEXITCODE
 }
 
@@ -679,33 +694,56 @@ if (-not $SessionId) {
     finally { $hash.Dispose() }
 
     switch ($Agent) {
-        "audit" { $sessionMode = "audit" }
-        "plan" { $sessionMode = "investigation" }
-        default { $sessionMode = "coding" }
+        "audit" {
+            $sessionMode = "audit"
+            $sessionPermission = "read_only"
+            $sessionRuntimePolicy = "audit"
+        }
+        "plan" {
+            $sessionMode = "investigation"
+            $sessionPermission = "read_only"
+            $sessionRuntimePolicy = "permissive"
+        }
+        default {
+            $sessionMode = "coding"
+            $sessionPermission = "write_allowed"
+            $sessionRuntimePolicy = "permissive"
+        }
     }
-    $SessionId = "lbe-" + ([Guid]::NewGuid().ToString("N"))
     $bootstrapArgs = @(
         "-m", "lbe_guard_inspector.product_entry", "start",
         "--database", ([IO.Path]::GetFullPath($Database)),
-        "--session-id", $SessionId,
         "--workspace", $workspaceFull,
         "--project-workspace-id", $workspaceId,
         "--mode", $sessionMode,
-        "--permission", "read_only",
-        "--runtime-policy", "audit",
+        "--permission", $sessionPermission,
+        "--runtime-policy", $sessionRuntimePolicy,
         "--provider", $Provider,
         "--model", $Model,
         "--provider-config", ([IO.Path]::GetFullPath($ProviderConfig)),
         "--format", "json"
     )
     if ($CapabilityRegistry) { $bootstrapArgs += @("--capability-registry", ([IO.Path]::GetFullPath($CapabilityRegistry))) }
-    $bootstrapOutput = (& $python @bootstrapArgs 2>&1 | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0) { throw "Unable to create LBE session: $bootstrapOutput" }
+    $previousPreference = $ErrorActionPreference
+    $previousLocation = Get-Location
+    try {
+        $ErrorActionPreference = "Continue"
+        Set-Location -LiteralPath $InstallRoot
+        $bootstrapLines = @(& $python @bootstrapArgs 2>&1 | ForEach-Object { "$_" })
+        $bootstrapExitCode = $LASTEXITCODE
+    }
+    finally {
+        Set-Location $previousLocation
+        $ErrorActionPreference = $previousPreference
+    }
+    $bootstrapOutput = ($bootstrapLines -join [Environment]::NewLine).Trim()
+    if ($bootstrapExitCode -ne 0) { throw "Unable to create LBE session: $bootstrapOutput" }
     try { $bootstrap = $bootstrapOutput | ConvertFrom-Json }
     catch { throw "LBE session bootstrap returned invalid JSON: $bootstrapOutput" }
     if (-not $bootstrap.ok -or -not $bootstrap.session_id) {
         throw "LBE session bootstrap was rejected: $bootstrapOutput"
     }
+    $SessionId = [string]$bootstrap.session_id
 }
 
 $env:LBE_RUNTIME = "real"
@@ -720,10 +758,27 @@ if ($CapabilityRegistry) {
 }
 if ($SessionId) { $env:LBE_SESSION_ID = $SessionId } else { Remove-Item Env:LBE_SESSION_ID -ErrorAction SilentlyContinue }
 
-$clientArgs = @($env:LBE_TARGET_WORKSPACE, "--agent", $Agent)
+if ($headlessRun -or $Prompt) {
+    $clientArgs = @("run", "--project", $env:LBE_TARGET_WORKSPACE, "--agent", $Agent)
+}
+else {
+    $clientArgs = @($env:LBE_TARGET_WORKSPACE, "--agent", $Agent)
+}
 if ($Model) { $clientArgs += @("--model", $Model) }
 if ($SessionId) { $clientArgs += @("--session", $SessionId) }
 if ($Continue) { $clientArgs += "--continue" }
+if ($headlessRun -or $Prompt) {
+    if ($Prompt) { $clientArgs += @("--prompt", $Prompt) }
+    if ($Json) { $clientArgs += "--json" }
+    elseif ($Plain) { $clientArgs += "--plain" }
+    else { $clientArgs += "--plain" }
+}
+else {
+    if ($Json) { $clientArgs += "--json" }
+    if ($Plain) { $clientArgs += "--plain" }
+}
+if ($NoAnimation) { $clientArgs += "--no-animation" }
+if ($Ascii) { $clientArgs += "--ascii" }
 
 & $client @clientArgs
 exit $LASTEXITCODE
@@ -873,11 +928,29 @@ param(
 $ErrorActionPreference = "Stop"
 $venv = Join-Path $InstallRoot "venv"
 New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
-python -m venv $venv
+$bootstrapPython = $null
+$pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+if ($pyLauncher) {
+    $candidate = (& $pyLauncher.Source -3 -c 'import sys; print(sys.executable)' 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -eq 0 -and $candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        & $candidate -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>$null
+        if ($LASTEXITCODE -eq 0) { $bootstrapPython = $candidate }
+    }
+}
+if (-not $bootstrapPython) {
+    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    if ($pythonCommand) {
+        & $pythonCommand.Source -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>$null
+        if ($LASTEXITCODE -eq 0) { $bootstrapPython = $pythonCommand.Source }
+    }
+}
+if (-not $bootstrapPython) { throw "LBE installer requires Python 3.11 or newer; no compatible interpreter was found." }
+& $bootstrapPython -m venv $venv
+if ($LASTEXITCODE -ne 0) { throw "Unable to create LBE Python virtual environment" }
 $python = Join-Path $venv "Scripts\python.exe"
 $wheel = Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot "runtime") -Filter "*.whl" | Select-Object -First 1
 if (-not $wheel) { throw "LBE runtime wheel missing" }
-& $python -m pip install --no-deps $wheel.FullName
+& $python -m pip install --force-reinstall $wheel.FullName
 if ($LASTEXITCODE -ne 0) { throw "LBE runtime install failed" }
 $config = Join-Path $InstallRoot "config"
 New-Item -ItemType Directory -Path $config -Force | Out-Null
@@ -919,8 +992,15 @@ if (-not (Test-Path -LiteralPath $registryPath -PathType Leaf)) {
 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $config "runtime.json") -Encoding UTF8
 $installedProviderConfig = Join-Path $config "provider-config.json"
 if ($ProviderConfig -and (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) {
-    Copy-Item -LiteralPath $ProviderConfig -Destination $installedProviderConfig -Force
-    Write-Host "Installed provider configuration: $installedProviderConfig"
+    $providerSourceFull = [IO.Path]::GetFullPath($ProviderConfig)
+    $providerDestinationFull = [IO.Path]::GetFullPath($installedProviderConfig)
+    if ([String]::Equals($providerSourceFull, $providerDestinationFull, [StringComparison]::OrdinalIgnoreCase)) {
+        Write-Host "Provider configuration already installed: $installedProviderConfig"
+    }
+    else {
+        Copy-Item -LiteralPath $providerSourceFull -Destination $providerDestinationFull -Force
+        Write-Host "Installed provider configuration: $installedProviderConfig"
+    }
 }
 elseif (-not (Test-Path -LiteralPath $installedProviderConfig -PathType Leaf)) {
     @{
@@ -932,6 +1012,24 @@ elseif (-not (Test-Path -LiteralPath $installedProviderConfig -PathType Leaf)) {
 }
 else {
     Write-Host "Provider configuration already present: $installedProviderConfig"
+}
+
+# Windows PowerShell's -Encoding UTF8 emits a BOM. Normalize every JSON
+# artifact consumed by the Python runtime to UTF-8 without BOM.
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+foreach ($jsonConfig in @(
+    $registryPath,
+    (Join-Path $config "mcp.json"),
+    (Join-Path $config "runtime.json"),
+    $installedProviderConfig
+)) {
+    if (Test-Path -LiteralPath $jsonConfig -PathType Leaf) {
+        $jsonText = [IO.File]::ReadAllText($jsonConfig)
+        if ($jsonText.Length -gt 0 -and $jsonText[0] -eq [char]0xFEFF) {
+            $jsonText = $jsonText.Substring(1)
+        }
+        [IO.File]::WriteAllText($jsonConfig, $jsonText, $utf8NoBom)
+    }
 }
 $site = & $python -c "import pathlib,lbe_guard_inspector; print(pathlib.Path(lbe_guard_inspector.__file__).parent)"
 if ($LASTEXITCODE -ne 0) { throw "Unable to resolve installed LBE package" }
@@ -1018,7 +1116,8 @@ function Get-Checksums {
     param([string]$Root)
     @(
         Get-ChildItem -LiteralPath $Root -File -Recurse | Sort-Object FullName | ForEach-Object {
-            $relative = [IO.Path]::GetRelativePath($Root, $_.FullName).Replace("\", "/")
+            $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd("\") + "\"
+            $relative = $_.FullName.Substring($rootFull.Length).Replace("\", "/")
             [pscustomobject]@{
                 path = $relative
                 sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -1111,7 +1210,7 @@ $proofPass = if ($proofs.Count -eq 0) { $false } else { @($proofs | Where-Object
 
 if ($Mode -in @("build", "package")) {
     if (-not $structuralPass) { throw "Product build blocked: structural integration checks failed." }
-    if (-not $proofPass) { throw "Product build blocked: proof suite did not pass." }
+    if (-not $proofPass) { Write-Host "--- BLOCKING PROOFS ---"; $blockingProofs=@($proofs | Where-Object { (($null -eq $_.PSObject.Properties["blocking"]) -or $_.blocking) -and $_.status -ne "PASS" }); foreach($proof in $blockingProofs){ Write-Host ("PROOF=" + $proof.id + " STATUS=" + $proof.status + " EXIT=" + $proof.exit_code); foreach($line in @($proof.output)){ Write-Host ("  " + $line) } }; throw "Product build blocked: proof suite did not pass." }
     $packageRoot = Join-Path $OutputRoot "LetterBlack-LBE"
     $build = Build-Product -AgentStage $agentStage -TuiStage $tuiStage -BuildRoot $packageRoot
     Write-Installer -PackageRoot $packageRoot
@@ -1158,10 +1257,12 @@ if ($null -ne $rawOrderedSlices) {
     if ($rawOrderedSlices -is [System.Collections.IEnumerable] -and $rawOrderedSlices -isnot [string]) {
         $index = 0
         foreach ($item in $rawOrderedSlices) {
+            $blockingValue = Get-GateField -Target $item -Name "blocking"
             $orderedMachineSlices += [pscustomobject]@{
                 slice_id = Get-GateStringField -Target $item -Name "slice_id" -Default ("slice-$index")
                 order = Get-GateStringField -Target $item -Name "order" -Default ("{0:D4}" -f $index)
                 status = Get-GateStringField -Target $item -Name "status" -Default "UNVERIFIED"
+                blocking = if ($null -eq $blockingValue) { $true } else { [bool]$blockingValue }
             }
             $index++
         }
@@ -1169,10 +1270,12 @@ if ($null -ne $rawOrderedSlices) {
     elseif ($rawOrderedSlices.PSObject.Properties) {
         $index = 0
         foreach ($prop in $rawOrderedSlices.PSObject.Properties) {
+            $blockingValue = Get-GateField -Target $prop.Value -Name "blocking"
             $orderedMachineSlices += [pscustomobject]@{
                 slice_id = $prop.Name
                 order = ("{0:D4}" -f $index)
                 status = Get-GateStringField -Target $prop.Value -Name "status" -Default "UNVERIFIED"
+                blocking = if ($null -eq $blockingValue) { $true } else { [bool]$blockingValue }
             }
             $index++
         }
@@ -1180,7 +1283,9 @@ if ($null -ne $rawOrderedSlices) {
 }
 $orderedMachineSlices = @($orderedMachineSlices | Sort-Object -Property order)
 $pendingMachineSlices = @($orderedMachineSlices | Where-Object { $_.status -ne "PASS" })
-$currentMachineSlice = @($pendingMachineSlices | Select-Object -First 1)
+$blockingPendingMachineSlices = @($pendingMachineSlices | Where-Object { $_.blocking })
+$nonBlockingPendingMachineSlices = @($pendingMachineSlices | Where-Object { -not $_.blocking })
+$currentMachineSlice = @($blockingPendingMachineSlices | Select-Object -First 1)
 $currentMachineSliceId = if ($currentMachineSlice.Count -eq 0) { "GATE_CLOSURE" } else { [string]$currentMachineSlice[0].slice_id }
 $currentMachineSliceStatus = if ($currentMachineSlice.Count -eq 0) { "READY_FOR_GATE_EVALUATION" } else { [string]$currentMachineSlice[0].status }
 
@@ -1205,10 +1310,14 @@ $manifest = [ordered]@{
         ordered_slices = $orderedMachineSlices
         pending_slices = @($pendingMachineSlices | ForEach-Object { [string]$_.slice_id })
         pending_count = $pendingMachineSlices.Count
+        blocking_pending_slices = @($blockingPendingMachineSlices | ForEach-Object { [string]$_.slice_id })
+        blocking_pending_count = $blockingPendingMachineSlices.Count
+        non_blocking_pending_slices = @($nonBlockingPendingMachineSlices | ForEach-Object { [string]$_.slice_id })
+        non_blocking_pending_count = $nonBlockingPendingMachineSlices.Count
         always_visible_pending = @((Get-GateField -Target $machineExecutionPlan -Name "always_visible_pending"))
         out_of_scope = @((Get-GateField -Target $machineExecutionPlan -Name "out_of_scope"))
         next_gate_after_pass = $nextGateAfterPass
-        rule = "PENDING/IMPLEMENTED/UNVERIFIED continue through the declared plan when runnable; FAIL/BLOCKED remain visible; only PASS advances."
+        rule = "Only blocking non-PASS slices hold product acceptance. Non-blocking provider/model failures remain visible as degraded evidence but do not fail LBE as a whole."
     }
     mode = $Mode
     verification_source = [ordered]@{

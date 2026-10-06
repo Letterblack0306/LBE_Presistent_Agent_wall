@@ -213,6 +213,7 @@ class GovernedCodingTurnRuntime:
                 mode=AgentMode.CODING,
                 operation_id="reasoning.inspect",
                 arguments={"problem": text, "max_results": 10},
+                parent_turn_id=turn_id,
             ))
             deterministic = dict(result.response.deterministic_result or {})
             guidance = deterministic.get("agent_guidance")
@@ -223,13 +224,27 @@ class GovernedCodingTurnRuntime:
                     event_type="runtime.guidance.loaded",
                     payload=dict(guidance),
                 ))
+            projected_receipt_ids = {
+                event.tool_receipt_id
+                for event in self.history.events_for_turn(turn_id=turn_id)
+                if event.tool_receipt_id
+            }
             for receipt in deterministic.get("governed_tool_receipts", []):
                 if isinstance(receipt, dict):
+                    receipt_id = str(receipt.get("receipt_id") or "").strip()
+                    if receipt_id and receipt_id in projected_receipt_ids:
+                        continue
                     self.history.append_event(OperationalEvent(
                         session_id=turn.session_id, turn_id=turn_id,
                         event_type={"EXECUTED": "tool.completed", "DENIED": "tool.denied", "ESCALATED": "tool.escalated"}.get(str(receipt.get("status")), "tool.failed"),
-                        payload=receipt, tool_receipt_id=receipt.get("receipt_id"), runtime_operation_id=receipt.get("operation_id"),
+                        payload=receipt,
+                        provider_tool_call_id=receipt.get("provider_tool_call_id"),
+                        lbe_call_id=receipt.get("lbe_call_id"),
+                        tool_receipt_id=receipt.get("receipt_id"),
+                        runtime_operation_id=receipt.get("operation_id"),
                     ))
+                    if receipt_id:
+                        projected_receipt_ids.add(receipt_id)
             output = deterministic.get("provider_output")
             if isinstance(output, str) and output:
                 self.history.append_event(OperationalEvent(
@@ -251,6 +266,37 @@ class GovernedCodingTurnRuntime:
                         "outcome": result.outcome,
                         "governed_tool_projection": tool_projection,
                     },
+                ))
+                self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.COMPLETED)
+                return
+            # A coding task can legitimately produce a conversational provider
+            # response (for example, a clarification request) or execute read/investigation
+            # tools without completing a code mutation. The task completion gate must
+            # remain failed/blocked; the surrounding user turn should nevertheless finish
+            # so the agent can continue the session instead of converting a truthful
+            # validation result into a transport-style turn failure.
+            if (
+                result.outcome in ("VALIDATION_FAILED", "VALIDATION_INCOMPLETE")
+                and not result.response.error
+            ):
+                tool_projection = [
+                    dict(item)
+                    for item in deterministic.get("governed_tool_projection", [])
+                    if isinstance(item, dict)
+                ]
+                self.history.append_event(OperationalEvent(
+                    session_id=turn.session_id,
+                    turn_id=turn_id,
+                    event_type="model.turn.completed",
+                    payload={
+                        "task_id": result.task_id,
+                        "outcome": "CONVERSATION_COMPLETED",
+                        "task_outcome": result.outcome,
+                        "continuation": True,
+                        "governed_tool_projection": tool_projection,
+                    },
+                    provider_id=state.provider_id,
+                    model_id=state.provider_model,
                 ))
                 self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.COMPLETED)
                 return
