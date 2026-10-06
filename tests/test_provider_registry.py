@@ -205,15 +205,21 @@ def test_default_registry_exposes_engine_provider_bindings():
     assert registry.provider_ids() == (
         "anthropic",
         "bedrock",
+        "deepseek",
+        "fireworks",
         "gemini",
+        "groq",
         "lmstudio",
+        "mistral",
         "ollama",
         "openai",
         "openai-compatible",
         "openai-native",
         "opencode",
         "openrouter",
+        "together",
         "vertex",
+        "xai",
     )
     assert registry.engine_ids() == (CLINE_ENGINE_ID, NATIVE_LBE_ENGINE_ID)
     assert registry.engines_for_provider("lmstudio") == (

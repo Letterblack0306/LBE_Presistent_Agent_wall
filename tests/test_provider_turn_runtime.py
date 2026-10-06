@@ -7,7 +7,7 @@ from lbe_guard_inspector.memory.operational_history import SessionOperationalHis
 from lbe_guard_inspector.memory.store import WorkspaceMemoryStore
 from lbe_guard_inspector.openai_compatible_event_adapter import OpenAICompatibleEventAdapter
 from lbe_guard_inspector.persistent_turn_control import PersistentTurnControl
-from lbe_guard_inspector.provider_turn_runtime import GovernedProviderTurnRuntime, NonStreamingProviderTurnRuntime
+from lbe_guard_inspector.provider_turn_runtime import GovernedCodingTurnRuntime, GovernedProviderTurnRuntime, NonStreamingProviderTurnRuntime
 from lbe_guard_inspector.reasoning_contracts import ExplanationResult, LBEResponse
 from lbe_guard_inspector.reasoning_provider import ProviderConfig
 from lbe_guard_inspector.runtime.agent_guidance import build_agent_guidance
@@ -90,6 +90,69 @@ def test_governed_provider_runtime_without_guidance_sends_user_problem_only(tmp_
     assert gateway.requests[0].arguments["problem"] == "trace the failure"
     events = history.events_for_session(session_id=state.session_id)
     assert not [event for event in events if event.event_type == "runtime.guidance.loaded"]
+
+
+def test_governed_coding_runtime_persists_provider_lbe_operation_receipt_correlation(tmp_path: Path) -> None:
+    history, state = _service(tmp_path, mode="coding")
+
+    class _CodingGateway:
+        def invoke(self, request: AgentRequestEnvelope) -> AgentResultEnvelope:
+            return AgentResultEnvelope(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                task_id=request.task_id,
+                operation_id=request.operation_id,
+                mode=request.mode,
+                mode_decision=ModeDecision(
+                    mode=request.mode.value,
+                    allowed_behaviors=(),
+                    capabilities=(),
+                    rationale="test",
+                ),
+                status=TaskStatus.COMPLETED,
+                outcome="COMPLETED",
+                response=LBEResponse(
+                    task_id=request.task_id,
+                    workspace_identity={},
+                    workspace_profile={},
+                    plan=None,
+                    deterministic_result={
+                        "governed_tool_receipts": [
+                            {
+                                "receipt_id": "receipt-correlation-1",
+                                "operation_id": "provider-turn:lbe-call-1",
+                                "provider_tool_call_id": "provider-call-1",
+                                "lbe_call_id": "lbe-call-1",
+                                "tool_id": "workspace.read",
+                                "status": "EXECUTED",
+                                "output": {"text": "ok"},
+                                "evidence": [],
+                                "error_code": None,
+                                "error_message": None,
+                            }
+                        ],
+                        "governed_tool_projection": [],
+                        "provider_output": "done",
+                    },
+                    explanation=ExplanationResult(explanation="done"),
+                    outcome="COMPLETED",
+                    error=None,
+                ),
+            )
+
+    runtime = GovernedCodingTurnRuntime(history=history, gateway=_CodingGateway())
+    turn = history.start_turn(session_id=state.session_id)
+    runtime.run(turn_id=turn.turn_id, text="read evidence")
+
+    receipt_event = next(
+        event
+        for event in history.events_for_turn(turn_id=turn.turn_id)
+        if event.event_type == "tool.completed"
+    )
+    assert receipt_event.provider_tool_call_id == "provider-call-1"
+    assert receipt_event.lbe_call_id == "lbe-call-1"
+    assert receipt_event.runtime_operation_id == "provider-turn:lbe-call-1"
+    assert receipt_event.tool_receipt_id == "receipt-correlation-1"
 
 
 class _Transport:

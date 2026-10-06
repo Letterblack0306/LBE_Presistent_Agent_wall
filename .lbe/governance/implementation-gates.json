@@ -1,696 +1,700 @@
 {
-  "schema_version": 1,
-  "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-  "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-  "active_slice": "TUI_INTERACTIVE_ACCEPTANCE_AND_CLEAN_CLONE",
-  "status": "OPEN",
-  "implementation_allowed": true,
-  "architecture_changes_allowed": true,
-  "next_phase_locked": true,
-  "required_status_for_advance": "PASS",
-  "selected_reasoning_agent": {
-    "model": "engine-neutral authorized/default/selected/fallback",
-    "status": "ENGINE_NEUTRAL",
-    "boundary": "Reasoning engines own cognition, planning, tool proposals, continuation, and response composition; LBE owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion. Cline is one supported reasoning engine adapter, not the required reasoning owner.",
-    "supported_engines": {
-      "cline": {
-        "status": "SUPPORTED_ADAPTER",
-        "note": "Existing Cline adapter remains available; Cline regression proof retained"
-      }
-    }
-  },
-  "blocking_statuses": [
-    "FAIL",
-    "UNVERIFIED",
-    "DOCUMENT_CONFLICT",
-    "MISSING_EVIDENCE",
-    "PYPI_VERSION_ALREADY_EXISTS",
-    "TRUSTED_PUBLISHING_EXECUTION_FAILURE",
-    "TRACKED_SOURCE_DIRTY",
-    "PACKAGE_VERSION_CONFLICT",
-    "BLOCKED"
-  ],
-  "rules": {
-    "one_active_slice": true,
-    "no_next_phase_without_pass": true,
-    "no_parallel_architecture": true,
-    "checkpoint_required_before_advance": true,
-    "fail_closed": true,
-    "existing_owner_audit_required": true,
-    "reuse_evaluation_required": true,
-    "architecture_change_requires_user_authorization": true,
-    "publication_requires_explicit_user_authorization": true,
-    "primary_main_worktree_only": true,
-    "implementation_head_must_equal_main": true,
-    "deny_branch_creation": true,
-    "deny_worktree_creation": true,
-    "deny_secondary_worktree_writes": true,
-    "python_product_ui_forbidden": false,
-    "ui_technology_requires_explicit_user_selection": true,
-    "gate_transition_requires_explicit_user_intent": true,
-    "agents_may_not_silently_change_gate": true
-  },
-  "intent_and_structure_governance": {
-    "required": true,
-    "root_index": "PROJECT_INDEX.md",
-    "intent_ledger": "docs/governance/PROJECT_INTENT_LEDGER.md",
-    "intent_required_before_mutation": true,
-    "affected_structure_must_be_indexed": true,
-    "existing_owner_must_be_declared": true,
-    "intent_slice_match_required": true,
-    "staged_paths_must_match_intent_scope": true,
-    "structure_change_requires_index_update": true,
-    "completion_requires_intent_result_update": true,
-    "fail_closed": true
-  },
-  "active_intent": {
-    "intent_id": "LBE-INTENT-TUI-INTERACTIVE-ACCEPTANCE-AND-CLEAN-CLONE-001",
-    "owner": "LBE product-surface (Rust/Ratatui client) owner",
-    "index_revision": "16A85206A9961FD4DB2C76D5F1693064CE9BFE20A3565E332FA8DD8D0A09C8B5"
-  },
-  "closure": {
+    "schema_version": 1,
+    "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
+    "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
+    "active_slice": "WORKSPACE_COMMIT_BACKLOG",
     "status": "OPEN",
-    "last_completed_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
-    "last_completed_intent": "LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001",
-    "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-    "next_slice": "INSTALLED_PTY_CONPTY_FINAL_ACCEPTANCE",
-    "publication": "LOCKED"
-  },
-  "active_execution_plan": {
-    "status": "BLOCKED",
-    "current_evidence": "2026-09-22: current-main source-launcher attachment and Qwen model selection are proven; the next real turn fails because the endpoint config model is Gemma, while the persisted selected session model is Qwen. The installed-command path and full governed loop are not yet proven on current main. Historical per-slice evidence below is not current acceptance.",
-    "ordered_slices": {
-      "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
-        "status": "UNVERIFIED",
-        "evidence": "Fresh-shell post-provenance acceptance on 2026-09-18: Get-Command lbe -All resolves first to C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd. Bare `lbe` launches installed lbe-launch.ps1 -> installed Rust/Ratatui lbe.exe, renders LETTERBLACK ENGINE / CONNECTED / AGENT WALL / ACT LIVE, restores sess_lbe_accept_001, projects live LM Studio google/gemma-4-e4b, and completes clean teardown."
-      },
-      "REAL_RUNTIME_ATTACHMENT": {
-        "status": "PASS",
-        "evidence": "Real WinPTY capture projected CONNECTED / AGENT WALL / ACT LIVE with authoritative workspace, session sess_lbe_accept_001, coding/write_allowed/permissive policy, and live runtime state."
-      },
-      "PROVIDER_MODEL_BINDING": {
-        "status": "FAIL",
-        "evidence": "Real PTY projected LM Studio / google/gemma-4-e4b and startup provider discovery of 11 providers against live LM Studio at 127.0.0.1:1234."
-      },
-      "GOVERNED_CODING_FLOW": {
-        "status": "PASS",
-        "evidence": "Real conversational turn requested workspace.read on sample.txt through the governed tool path and returned a real completed operation/receipt/evidence projection. Completion validation then correctly failed because the bounded read-only prompt produced no source change; that does not negate governed-turn execution."
-      },
-      "RECEIPT_EVIDENCE_PROJECTION": {
-        "status": "PASS",
-        "evidence": "Real PTY projected tool.completed for workspace.read with receipt receipt-fecb13df09154dabaa4643997a107790 and evidence workspace:workspace_fac63b08febbb29c:sample.txt; persisted DB rows also contained the governed turn and completion evidence."
-      },
-      "CLEAN_TERMINAL_EXIT": {
-        "status": "PASS",
-        "evidence": "Ctrl+D with empty composer exited the real WinPTY process cleanly (isalive False) with no crash; restart also exited cleanly."
-      },
-      "INSTALLED_RESTART_RESUME": {
-        "status": "PASS",
-        "evidence": "The same canonical release binary relaunched against sess_lbe_accept_001, projected SESSION restored, retained workspace/provider/model state, and exited cleanly again. This proves runtime restart/resume for the tested binary/session; installed command-name launch remains separately unverified."
-      },
-      "STRUCTURAL_LBE_UI": {
-        "status": "PASS",
-        "evidence": "Real PTY rendered the LBE-owned Rust/Ratatui surface with LETTERBLACK ENGINE, authoritative runtime/session/workspace/provider/model/mode/policy footer, governed turn timeline, approval UI, and no synthetic preview state."
-      },
-      "FINAL_PRODUCT_ACCEPTANCE": {
-        "status": "BLOCKED",
-        "evidence": "All defined final-product verdicts pass: canonical Rust/Ratatui surface, authoritative real runtime attachment, live provider/model, governed tool round trip, persisted ToolReceipt/evidence, interactive approve/reject, mode-policy mapping, clean PTY lifecycle, restart/resume, fresh-shell bare `lbe`, and canonical installer/source provenance. Installed lbe.exe SHA256 6E794AF5E2F2E869D0F02F7CCB25EAD105956E9C05EC67ECE43F76F58B4BAB8F matches the canonical built client reported in the acceptance run."
-      },
-      "MODE_POLICY_PRODUCT_MAPPING": {
-        "status": "PASS",
-        "evidence": "Exact-head proof: backend cc0054950153a8c41a48ee0ba60f2675833f7cce tests 125/125; TUI 58104bae1cebd2be04fa1d5544b2ebfce90fe8ff cargo check PASS, cargo fmt -- --check PASS, cargo test 202 passed / 0 failed / 2 ignored; bounded-runtime-validation-003 PASS. PLAN+read_only -> investigation, AUDIT+read_only -> audit, ACT+read_only -> PERMISSION_REQUIRED with persisted state unchanged, ACT+write_allowed -> coding, Real SetMode supported, AUDIT distinct, UI cannot grant permission.",
-        "follow_up_commits": {
-          "backend": "24e3cacf1e2899df0d28beffe27ed1a71a583b08",
-          "tui": "2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf",
-          "tui_default_state": "e22d3ef5acc46814558d92ccaba7a7b232d9921c"
-        },
-        "required_fix": "NONE. Closed. Do not reopen without contradictory runtime evidence."
-      },
-      "CANONICAL_INSTALLER_LAUNCHER_CONTRACT": {
-        "status": "PASS",
-        "evidence": "Canonical backend main 09b5c1cd28806d4381fabaa4723191494f2bc32f publishes the installed command contract in tools/lbe_product_integration.ps1: zero-mandatory-argument launcher defaults from installed runtime.json, provider configuration under the install root, bin\\lbe.cmd generation, idempotent user-PATH prepend, and explicit collision reporting without overwriting npm/Python owners. Product was rebuilt/reinstalled from this exact canonical head and revalidated.",
-        "required_fix": "NONE. Closed."
-      },
-      "INTERACTIVE_PROVIDER_CATALOG_PROJECTION": {
-        "status": "AUTHORIZED",
-        "authorization": "EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22",
-        "scope": [
-          "preserve runtime-discovered provider/model catalogs across session snapshot updates",
-          "interactive provider/model picker row projection and selection",
-          "exact-build PTY validation against the configured live provider",
-          "retain authoritative LBE runtime/catalog ownership"
-        ],
-        "required_evidence": [
-          "regression for provider catalog then snapshot event ordering",
-          "Rust tests and formatting",
-          "exact release PTY provider row rendering and mouse selection",
-          "live provider catalog refresh"
-        ],
-        "non_goals": [
-          "new provider authority or parallel catalog",
-          "copying Cline credentials",
-          "provider configuration/removal workflows",
-          "changing runtime/session ownership"
-        ],
-        "implementation_allowed": true
-      },
-      "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION": {
-        "status": "AUTHORIZED",
-        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_20 + EXPLICIT_USER_CONTINUATION_2026_09_21",
-        "scope": [
-          "engine-neutral reasoning runtime",
-          "optional/supported Cline adapter (not required owner)",
-          "provider binding separation behind LBE authority",
-          "native provider bindings for OpenAI-compatible, Anthropic, Gemini, LM Studio",
-          "engine-neutral governed-turn evidence (replacing headless_cline_provider_turn)",
-          "Cline regression proof retention",
-          "no silent engine/provider fallback",
-          "capability truth from ProviderModelCapabilitySnapshot/normalize_provider_descriptor",
-          "canonical CLI coding entry uses the engine-neutral governed coding factory"
-        ],
-        "required_evidence": [
-          "engine-neutral LBE initialization proof",
-          "Cline-absent LBE initialization proof",
-          "Cline regression proof (existing routes preserved)",
-          "provider binding structure registered in PROJECT_INDEX.md",
-          "gate amendment record",
-          "focused tests for engine-neutral runtime",
-          "full regression"
-        ],
-        "non_goals": [
-          "independent provider transport outside LBE-owned engine/provider bindings",
-          "silent engine fallback",
-          "silent provider fallback",
-          "changes to canonical client workspace (apps/lbe-terminal)",
-          "publication without separate authorization",
-          "branch/worktree creation"
-        ],
-        "first_code_change": "Make module-scope cline_reasoning_provider import optional/feature-scoped; prove Cline-absent LBE initialization before re-pointing provider bindings",
-        "implementation_allowed": true,
-        "completion_checkpoint": "docs/acceptance/REASONING_ENGINE_PROVIDER_BINDING_SEPARATION_CHECKPOINT.md",
-        "scope_amendment": {
-          "date": "2026-09-21",
-          "authorization": "User instructed `goahead build it in the repo` after current gate/scope was disclosed",
-          "added_existing_owner_path": "lbe_guard_inspector/cli.py",
-          "purpose": "Remove native-only product-entry bypass and reuse build_governed_coding_controller",
-          "forbidden": [
-            "apps/lbe-terminal changes",
-            "new authority owner",
-            "branch/worktree creation",
-            "publication",
-            "silent gate closure"
-          ]
+    "implementation_allowed": true,
+    "architecture_changes_allowed": true,
+    "next_phase_locked": true,
+    "required_status_for_advance": "PASS",
+    "selected_reasoning_agent": {
+        "model": "engine-neutral authorized/default/selected/fallback",
+        "status": "ENGINE_NEUTRAL",
+        "boundary": "Reasoning engines own cognition, planning, tool proposals, continuation, and response composition; LBE owns identity, authorization, governed execution, receipts, evidence, persistence, validation, and completion. Cline is one supported reasoning engine adapter, not the required reasoning owner.",
+        "supported_engines": {
+            "cline": {
+                "status": "SUPPORTED_ADAPTER",
+                "note": "Existing Cline adapter remains available; Cline regression proof retained"
+            }
         }
-      }
     },
-    "next_phase": null
-  },
-  "accepted_baseline": {
-    "R3": "PROVEN_COMPLETE",
-    "R4": "PROVEN_COMPLETE",
-    "R5": "PROVEN_COMPLETE",
-    "R6A": "PROVEN_COMPLETE",
-    "R6B": "PROVEN_COMPLETE",
-    "R6C": "PROVEN_COMPLETE",
-    "R6D": "PROVEN_COMPLETE",
-    "R6E": "PROVEN_COMPLETE",
-    "R6F": "PROVEN_COMPLETE",
-    "CLI": "PROVEN_COMPLETE",
-    "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS",
-    "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS",
-    "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS",
-    "PUBLICATION_PRECHECK": "PASS",
-    "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE": "PASS",
-    "WORKSPACE_HYGIENE_GOVERNED_DELETION": "PASS",
-    "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH": "PASS",
-    "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION": "PASS",
-    "FIRST_RUN_LIVE_SESSION_ENTRY": "PASS",
-    "INSTALLED_CAPABILITY_REGISTRY_DISCOVERY": "PASS",
-    "LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES": "PASS"
-  },
-  "release_package_readiness": {
-    "status": "PASS",
-    "decisive_hash": "B0A7F67A78B8DB9DC7BB7A78D0B40F529E1DFFC44143BFE51F6E461407E6CFCA",
-    "previous_canonical_version": "0.2.0",
-    "version_authority": "pyproject.toml",
-    "workflow_contract": "PASS",
-    "manual_only_publish_trigger": true,
-    "package_proof_still_applicable_before_version_change": true,
-    "packaging_tests": "PASS",
-    "publish_allowed": false
-  },
-  "publication_precheck": {
-    "status": "PASS",
-    "decisive_hash": "CB87655106DEB0D947FD03546929CB9B6B0432A2707539C5A3D2B16C8B962D4D",
-    "distribution": "lbe-guard-inspector",
-    "previous_canonical_version": "0.2.0",
-    "pypi_project_present": true,
-    "pypi_existing_versions": [
-      "2.0.1",
-      "2.0.2"
+    "blocking_statuses": [
+        "FAIL",
+        "UNVERIFIED",
+        "DOCUMENT_CONFLICT",
+        "MISSING_EVIDENCE",
+        "PYPI_VERSION_ALREADY_EXISTS",
+        "TRUSTED_PUBLISHING_EXECUTION_FAILURE",
+        "TRACKED_SOURCE_DIRTY",
+        "PACKAGE_VERSION_CONFLICT",
+        "BLOCKED"
     ],
-    "github_pypi_environment": "PASS",
-    "workflow_oidc_contract": "PASS",
-    "trusted_publisher_binding": "PROVEN_BY_USER_SUPPLIED_PYPI_CONFIGURATION",
-    "trusted_publisher_repository": "Letterblack0306/LBE_Presistent_Agent_wall",
-    "trusted_publisher_workflow": "publish-python-runtime.yml",
-    "trusted_publisher_environment": "pypi",
-    "publish_allowed": false
-  },
-  "version_preparation": {
-    "status": "PAUSED_BY_EXPLICIT_USER_PRODUCT_PRIORITY",
-    "distribution": "lbe-guard-inspector",
-    "from_version": "0.2.0",
-    "target_version": "2.0.3",
-    "authorization": "EXPLICIT_USER_AUTHORIZATION",
-    "allowed_paths": [
-      "pyproject.toml",
-      ".lbe/governance/implementation-gates.json",
-      "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md",
-      "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md"
-    ],
-    "publish_allowed": false
-  },
-  "terminal_workspace_foundation": {
-    "status": "SUPERSEDED_BY_COMPLETE_RUNTIME_GATE",
-    "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-22",
-    "allowed_paths": [
-      "lbe_guard_inspector/textual_tui.py",
-      "lbe_guard_inspector/terminal_projection.py",
-      "lbe_guard_inspector/cli.py",
-      "tests/test_textual_tui.py",
-      "tests/test_terminal_projection.py",
-      "tests/test_cli.py",
-      "docs/acceptance/TERMINAL_WORKSPACE_FOUNDATION_GATE.md",
-      "docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md",
-      "docs/CURRENT_STATUS.md",
-      "docs/IMPLEMENTATION_PLAN.md",
-      ".lbe/governance/implementation-gates.json"
-    ],
-    "required_evidence": [
-      "focused_ui_handler_tests",
-      "real_local_tui_launch",
-      "persisted_event_projection"
-    ],
-    "publish_allowed": false
-  },
-  "publication_execution": {
-    "status": "AUTHORIZED_PENDING_VERSION_PREPARATION_AND_VALIDATION",
-    "repository": "Letterblack0306/LBE_Presistent_Agent_wall",
-    "ref": "main",
-    "distribution": "lbe-guard-inspector",
-    "version": "2.0.3",
-    "workflow": ".github/workflows/publish-python-runtime.yml",
-    "environment": "pypi",
-    "publish_allowed": false,
-    "authorization": "User explicitly authorized publication and specified version 2.0.3"
-  },
-  "release_progression": {
-    "user_authorized_release_path": true,
-    "publish_allowed_now": false,
-    "remaining_prerequisites": [
-      "set canonical pyproject.toml version to 2.0.3",
-      "validate exact 2.0.3 wheel and installed runtime",
-      "prove PyPI 2.0.3 is absent immediately before dispatch",
-      "successful live trusted-publishing workflow execution",
-      "post-publish PyPI verification"
+    "rules": {
+        "one_active_slice": true,
+        "no_next_phase_without_pass": true,
+        "no_parallel_architecture": true,
+        "checkpoint_required_before_advance": true,
+        "fail_closed": true,
+        "existing_owner_audit_required": true,
+        "reuse_evaluation_required": true,
+        "architecture_change_requires_user_authorization": true,
+        "publication_requires_explicit_user_authorization": true,
+        "primary_main_worktree_only": true,
+        "implementation_head_must_equal_main": true,
+        "deny_branch_creation": true,
+        "deny_worktree_creation": true,
+        "deny_secondary_worktree_writes": true,
+        "python_product_ui_forbidden": false,
+        "ui_technology_requires_explicit_user_selection": true,
+        "gate_transition_requires_explicit_user_intent": true,
+        "agents_may_not_silently_change_gate": true
+    },
+    "intent_and_structure_governance": {
+        "required": true,
+        "root_index": "PROJECT_INDEX.md",
+        "intent_ledger": "docs/governance/PROJECT_INTENT_LEDGER.md",
+        "intent_required_before_mutation": true,
+        "affected_structure_must_be_indexed": true,
+        "existing_owner_must_be_declared": true,
+        "intent_slice_match_required": true,
+        "staged_paths_must_match_intent_scope": true,
+        "structure_change_requires_index_update": true,
+        "completion_requires_intent_result_update": true,
+        "fail_closed": true
+    },
+    "active_intent": {
+        "intent_id": "LBE-INTENT-WORKSPACE-COMMIT-BACKLOG-001",
+        "owner": "Workspace/repository hygiene owner",
+        "index_revision": "16A85206A9961FD4DB2C76D5F1693064CE9BFE20A3565E332FA8DD8D0A09C8B5"
+    },
+    "closure": {
+        "status": "OPEN",
+        "last_completed_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
+        "last_completed_intent": "LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001",
+        "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
+        "next_slice": "INSTALLED_PTY_CONPTY_FINAL_ACCEPTANCE",
+        "publication": "LOCKED"
+    },
+    "active_execution_plan": {
+        "status": "BLOCKED",
+        "current_evidence": "2026-10-02 FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH is runtime-proven PASS on the installed bare lbe path. Provider/model-specific failures are isolated and non-blocking. Final product acceptance remains open only for the remaining declared blocking product slices and their live evidence.",
+        "ordered_slices": {
+            "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
+                "status": "PASS",
+                "evidence": "2026-10-02 fresh installed acceptance: persisted Windows user PATH resolves bare lbe first to C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd; lbe --version returns lbe 0.1.0. Public lbe run is translated by the installed launcher to lbe.exe run --project C:\\Agents-Memory-Tool-v6-integration, creates/restores an authoritative audit/read_only LBE session, projects a live provider-scoped HTTP 400 as ConversationalTurnError, emits RESULT failed / phase Failed, exits RC=1, and leaves no LBE process running. Provider failure is intentionally non-blocking to this launcher verdict."
+            },
+            "REAL_RUNTIME_ATTACHMENT": {
+                "status": "PASS",
+                "evidence": "Real WinPTY capture projected CONNECTED / AGENT WALL / ACT LIVE with authoritative workspace, session sess_lbe_accept_001, coding/write_allowed/permissive policy, and live runtime state."
+            },
+            "PROVIDER_MODEL_BINDING": {
+                "status": "DEGRADED",
+                "blocking": false,
+                "failure_scope": "PROVIDER_OR_MODEL_INSTANCE",
+                "isolation_status": "PASS",
+                "product_invariant": "A provider endpoint, credential, quota, network path, or individual model may fail without failing LBE. LBE must preserve governance/session state, expose the provider/model failure accurately, and allow another available binding to be selected.",
+                "evidence": "2026-10-02 live fault-isolation proof: openai-compatible / google/gemma-4-e4b was run through the persisted LBE turn path against LM Studio. With a bounded 2-second provider timeout, the control plane remained responsive, persisted runtime.provider.queued + runtime.provider.running + model.turn.started, then persisted model.error with error_code PROVIDER_TIMEOUT and finalized the turn instead of failing or hanging the LBE product. Focused regressions: product-entry/background-provider 14/14 PASS; launcher/gate 5/5 PASS; Rust model-error terminal-state test 1/1 PASS."
+            },
+            "GOVERNED_CODING_FLOW": {
+                "status": "PASS",
+                "evidence": "Real conversational turn requested workspace.read on sample.txt through the governed tool path and returned a real completed operation/receipt/evidence projection. Completion validation then correctly failed because the bounded read-only prompt produced no source change; that does not negate governed-turn execution."
+            },
+            "RECEIPT_EVIDENCE_PROJECTION": {
+                "status": "PASS",
+                "evidence": "Real PTY projected tool.completed for workspace.read with receipt receipt-fecb13df09154dabaa4643997a107790 and evidence workspace:workspace_fac63b08febbb29c:sample.txt; persisted DB rows also contained the governed turn and completion evidence."
+            },
+            "CLEAN_TERMINAL_EXIT": {
+                "status": "PASS",
+                "evidence": "Ctrl+D with empty composer exited the real WinPTY process cleanly (isalive False) with no crash; restart also exited cleanly."
+            },
+            "INSTALLED_RESTART_RESUME": {
+                "status": "PASS",
+                "evidence": "The same canonical release binary relaunched against sess_lbe_accept_001, projected SESSION restored, retained workspace/provider/model state, and exited cleanly again. This proves runtime restart/resume for the tested binary/session; installed command-name launch remains separately unverified."
+            },
+            "STRUCTURAL_LBE_UI": {
+                "status": "PASS",
+                "evidence": "Real PTY rendered the LBE-owned Rust/Ratatui surface with LETTERBLACK ENGINE, authoritative runtime/session/workspace/provider/model/mode/policy footer, governed turn timeline, approval UI, and no synthetic preview state."
+            },
+            "FINAL_PRODUCT_ACCEPTANCE": {
+                "status": "BLOCKED",
+                "evidence": "All defined final-product verdicts pass: canonical Rust/Ratatui surface, authoritative real runtime attachment, live provider/model, governed tool round trip, persisted ToolReceipt/evidence, interactive approve/reject, mode-policy mapping, clean PTY lifecycle, restart/resume, fresh-shell bare `lbe`, and canonical installer/source provenance. Installed lbe.exe SHA256 6E794AF5E2F2E869D0F02F7CCB25EAD105956E9C05EC67ECE43F76F58B4BAB8F matches the canonical built client reported in the acceptance run."
+            },
+            "MODE_POLICY_PRODUCT_MAPPING": {
+                "status": "PASS",
+                "evidence": "Exact-head proof: backend cc0054950153a8c41a48ee0ba60f2675833f7cce tests 125/125; TUI 58104bae1cebd2be04fa1d5544b2ebfce90fe8ff cargo check PASS, cargo fmt -- --check PASS, cargo test 202 passed / 0 failed / 2 ignored; bounded-runtime-validation-003 PASS. PLAN+read_only -> investigation, AUDIT+read_only -> audit, ACT+read_only -> PERMISSION_REQUIRED with persisted state unchanged, ACT+write_allowed -> coding, Real SetMode supported, AUDIT distinct, UI cannot grant permission.",
+                "follow_up_commits": {
+                    "backend": "24e3cacf1e2899df0d28beffe27ed1a71a583b08",
+                    "tui": "2eb57eb7aa8e386bc0b39bfad42f26942e70a5bf",
+                    "tui_default_state": "e22d3ef5acc46814558d92ccaba7a7b232d9921c"
+                },
+                "required_fix": "NONE. Closed. Do not reopen without contradictory runtime evidence."
+            },
+            "CANONICAL_INSTALLER_LAUNCHER_CONTRACT": {
+                "status": "PASS",
+                "evidence": "Canonical backend main 09b5c1cd28806d4381fabaa4723191494f2bc32f publishes the installed command contract in tools/lbe_product_integration.ps1: zero-mandatory-argument launcher defaults from installed runtime.json, provider configuration under the install root, bin\\lbe.cmd generation, idempotent user-PATH prepend, and explicit collision reporting without overwriting npm/Python owners. Product was rebuilt/reinstalled from this exact canonical head and revalidated.",
+                "required_fix": "NONE. Closed."
+            },
+            "INTERACTIVE_PROVIDER_CATALOG_PROJECTION": {
+                "status": "AUTHORIZED",
+                "authorization": "EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22",
+                "scope": [
+                    "preserve runtime-discovered provider/model catalogs across session snapshot updates",
+                    "interactive provider/model picker row projection and selection",
+                    "exact-build PTY validation against the configured live provider",
+                    "retain authoritative LBE runtime/catalog ownership"
+                ],
+                "required_evidence": [
+                    "regression for provider catalog then snapshot event ordering",
+                    "Rust tests and formatting",
+                    "exact release PTY provider row rendering and mouse selection",
+                    "live provider catalog refresh"
+                ],
+                "non_goals": [
+                    "new provider authority or parallel catalog",
+                    "copying Cline credentials",
+                    "provider configuration/removal workflows",
+                    "changing runtime/session ownership"
+                ],
+                "implementation_allowed": true
+            },
+            "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION": {
+                "status": "AUTHORIZED",
+                "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_20 + EXPLICIT_USER_CONTINUATION_2026_09_21",
+                "scope": [
+                    "engine-neutral reasoning runtime",
+                    "optional/supported Cline adapter (not required owner)",
+                    "provider binding separation behind LBE authority",
+                    "native provider bindings for OpenAI-compatible, Anthropic, Gemini, LM Studio",
+                    "engine-neutral governed-turn evidence (replacing headless_cline_provider_turn)",
+                    "Cline regression proof retention",
+                    "no silent engine/provider fallback",
+                    "capability truth from ProviderModelCapabilitySnapshot/normalize_provider_descriptor",
+                    "canonical CLI coding entry uses the engine-neutral governed coding factory"
+                ],
+                "required_evidence": [
+                    "engine-neutral LBE initialization proof",
+                    "Cline-absent LBE initialization proof",
+                    "Cline regression proof (existing routes preserved)",
+                    "provider binding structure registered in PROJECT_INDEX.md",
+                    "gate amendment record",
+                    "focused tests for engine-neutral runtime",
+                    "full regression"
+                ],
+                "non_goals": [
+                    "independent provider transport outside LBE-owned engine/provider bindings",
+                    "silent engine fallback",
+                    "silent provider fallback",
+                    "changes to canonical client workspace (apps/lbe-terminal)",
+                    "publication without separate authorization",
+                    "branch/worktree creation"
+                ],
+                "first_code_change": "Make module-scope cline_reasoning_provider import optional/feature-scoped; prove Cline-absent LBE initialization before re-pointing provider bindings",
+                "implementation_allowed": true,
+                "completion_checkpoint": "docs/acceptance/REASONING_ENGINE_PROVIDER_BINDING_SEPARATION_CHECKPOINT.md",
+                "scope_amendment": {
+                    "date": "2026-09-21",
+                    "authorization": "User instructed `goahead build it in the repo` after current gate/scope was disclosed",
+                    "added_existing_owner_path": "lbe_guard_inspector/cli.py",
+                    "purpose": "Remove native-only product-entry bypass and reuse build_governed_coding_controller",
+                    "forbidden": [
+                        "apps/lbe-terminal changes",
+                        "new authority owner",
+                        "branch/worktree creation",
+                        "publication",
+                        "silent gate closure"
+                    ]
+                }
+            }
+        },
+        "next_phase": null
+    },
+    "accepted_baseline": {
+        "R3": "PROVEN_COMPLETE",
+        "R4": "PROVEN_COMPLETE",
+        "R5": "PROVEN_COMPLETE",
+        "R6A": "PROVEN_COMPLETE",
+        "R6B": "PROVEN_COMPLETE",
+        "R6C": "PROVEN_COMPLETE",
+        "R6D": "PROVEN_COMPLETE",
+        "R6E": "PROVEN_COMPLETE",
+        "R6F": "PROVEN_COMPLETE",
+        "CLI": "PROVEN_COMPLETE",
+        "R7_INSTALLED_END_TO_END_ACCEPTANCE": "PASS",
+        "RELEASE_PACKAGE_CONTRACT_REPAIR": "PASS",
+        "RELEASE_PACKAGE_READINESS_ACCEPTANCE": "PASS",
+        "PUBLICATION_PRECHECK": "PASS",
+        "DOCTRINE_TO_PROVIDER_CONTEXT_BRIDGE": "PASS",
+        "WORKSPACE_HYGIENE_GOVERNED_DELETION": "PASS",
+        "MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH": "PASS",
+        "GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION": "PASS",
+        "FIRST_RUN_LIVE_SESSION_ENTRY": "PASS",
+        "INSTALLED_CAPABILITY_REGISTRY_DISCOVERY": "PASS",
+        "LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES": "PASS"
+    },
+    "release_package_readiness": {
+        "status": "PASS",
+        "decisive_hash": "B0A7F67A78B8DB9DC7BB7A78D0B40F529E1DFFC44143BFE51F6E461407E6CFCA",
+        "previous_canonical_version": "0.2.0",
+        "version_authority": "pyproject.toml",
+        "workflow_contract": "PASS",
+        "manual_only_publish_trigger": true,
+        "package_proof_still_applicable_before_version_change": true,
+        "packaging_tests": "PASS",
+        "publish_allowed": false
+    },
+    "publication_precheck": {
+        "status": "PASS",
+        "decisive_hash": "CB87655106DEB0D947FD03546929CB9B6B0432A2707539C5A3D2B16C8B962D4D",
+        "distribution": "lbe-guard-inspector",
+        "previous_canonical_version": "0.2.0",
+        "pypi_project_present": true,
+        "pypi_existing_versions": [
+            "2.0.1",
+            "2.0.2"
+        ],
+        "github_pypi_environment": "PASS",
+        "workflow_oidc_contract": "PASS",
+        "trusted_publisher_binding": "PROVEN_BY_USER_SUPPLIED_PYPI_CONFIGURATION",
+        "trusted_publisher_repository": "Letterblack0306/LBE_Presistent_Agent_wall",
+        "trusted_publisher_workflow": "publish-python-runtime.yml",
+        "trusted_publisher_environment": "pypi",
+        "publish_allowed": false
+    },
+    "version_preparation": {
+        "status": "PAUSED_BY_EXPLICIT_USER_PRODUCT_PRIORITY",
+        "distribution": "lbe-guard-inspector",
+        "from_version": "0.2.0",
+        "target_version": "2.0.3",
+        "authorization": "EXPLICIT_USER_AUTHORIZATION",
+        "allowed_paths": [
+            "pyproject.toml",
+            ".lbe/governance/implementation-gates.json",
+            "docs/acceptance/PUBLICATION_VERSION_2_0_3_PREPARATION_GATE.md",
+            "docs/acceptance/PUBLICATION_EXECUTION_AUTHORIZATION_GATE.md"
+        ],
+        "publish_allowed": false
+    },
+    "terminal_workspace_foundation": {
+        "status": "SUPERSEDED_BY_COMPLETE_RUNTIME_GATE",
+        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-22",
+        "allowed_paths": [
+            "lbe_guard_inspector/textual_tui.py",
+            "lbe_guard_inspector/terminal_projection.py",
+            "lbe_guard_inspector/cli.py",
+            "tests/test_textual_tui.py",
+            "tests/test_terminal_projection.py",
+            "tests/test_cli.py",
+            "docs/acceptance/TERMINAL_WORKSPACE_FOUNDATION_GATE.md",
+            "docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md",
+            "docs/CURRENT_STATUS.md",
+            "docs/IMPLEMENTATION_PLAN.md",
+            ".lbe/governance/implementation-gates.json"
+        ],
+        "required_evidence": [
+            "focused_ui_handler_tests",
+            "real_local_tui_launch",
+            "persisted_event_projection"
+        ],
+        "publish_allowed": false
+    },
+    "publication_execution": {
+        "status": "AUTHORIZED_PENDING_VERSION_PREPARATION_AND_VALIDATION",
+        "repository": "Letterblack0306/LBE_Presistent_Agent_wall",
+        "ref": "main",
+        "distribution": "lbe-guard-inspector",
+        "version": "2.0.3",
+        "workflow": ".github/workflows/publish-python-runtime.yml",
+        "environment": "pypi",
+        "publish_allowed": false,
+        "authorization": "User explicitly authorized publication and specified version 2.0.3"
+    },
+    "release_progression": {
+        "user_authorized_release_path": true,
+        "publish_allowed_now": false,
+        "remaining_prerequisites": [
+            "set canonical pyproject.toml version to 2.0.3",
+            "validate exact 2.0.3 wheel and installed runtime",
+            "prove PyPI 2.0.3 is absent immediately before dispatch",
+            "successful live trusted-publishing workflow execution",
+            "post-publish PyPI verification"
+        ]
+    },
+    "complete_lbe_agent_runtime": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
+        "active_slice": "COMPLETED",
+        "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
+        "required_evidence": [
+            "focused_configuration_tests",
+            "credential_non_leakage_scan",
+            "provider_profile_lifecycle",
+            "persisted_owner_reuse"
+        ],
+        "publish_allowed": false
+    },
+    "workspace_hygiene_governed_deletion": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
+        "scope": [
+            "workspace_identity",
+            "path_containment",
+            "disposable_classification_enforcement",
+            "protected_path_denial",
+            "governed_deletion_adapter",
+            "receipt_evidence_emission",
+            "post_cleanup_validation"
+        ],
+        "required_evidence": [
+            "inside_workspace_disposable_delete_pass",
+            "outside_workspace_delete_denied",
+            "protected_path_delete_denied",
+            "path_escape_denied",
+            "authorization_before_execution",
+            "direct_adapter_bypass_unavailable",
+            "success_and_failure_receipts",
+            "protected_user_work_preserved"
+        ],
+        "publish_allowed": false,
+        "completion_checkpoint": "docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md"
+    },
+    "mandatory_governed_agent_mutation_dispatch": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
+        "scope": [
+            "provider_tool_exposure",
+            "workspace_text_mutation",
+            "registered_process_execution",
+            "git_main_only_mutation",
+            "direct_mutation_bypass_denial",
+            "authorization_before_execution",
+            "receipt_evidence_emission"
+        ],
+        "required_evidence": [
+            "provider_receives_only_lbe_generated_tool_definitions",
+            "workspace_write_is_contained_and_governed",
+            "stale_overwrite_is_denied",
+            "arbitrary_shell_tool_is_unavailable",
+            "registered_process_command_is_bounded",
+            "git_mutation_requires_primary_main_workspace",
+            "git_staging_is_limited_to_current_governed_mutation_paths",
+            "authorization_occurs_before_execution",
+            "success_and_failure_emit_correlated_tool_receipts",
+            "audit_and_investigation_paths_remain_read_only",
+            "no_parallel_executor_authorization_receipt_or_session_owner"
+        ],
+        "validation": {
+            "implementation_commit": "47885891848ec9a535a4e09694d3129b320da91a",
+            "looptool_command_hash": "D0DA7CA90B549E0C51FC2E65C7B68A30ECF7542710CE9CC1AF006D91FCA7F725",
+            "focused_tests": "80 passed",
+            "full_tests": "713 passed",
+            "head_alignment": "PASS",
+            "protected_reference": "lbe-tui/ remained untracked and untouched"
+        },
+        "publish_allowed": false,
+        "completion_checkpoint": "docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md"
+    },
+    "governed_external_capability_registration": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+        "scope": [
+            "external_capability_registration",
+            "mcp_plugin_registration",
+            "subagent_registration_contract",
+            "network_service_registration_contract",
+            "hosted_service_registration_contract",
+            "provider_tool_projection",
+            "r6c_r6e_dispatch_reuse",
+            "direct_transport_bypass_denial"
+        ],
+        "required_evidence": [
+            "all_external_tools_are_pre_registered",
+            "provider_receives_only_lbe_generated_external_tool_definitions",
+            "raw_endpoint_and_shell_transport_arguments_denied",
+            "network_and_hosted_service_registration_requires_network_metadata",
+            "mcp_plugin_subagent_network_hosted_kinds_are_classified",
+            "authorization_precedes_adapter_execution",
+            "external_execution_returns_correlated_tool_receipt",
+            "unregistered_external_tool_fails_closed",
+            "no_second_executor_authorization_session_or_completion_owner"
+        ],
+        "validation": {
+            "implementation_commit": "02c761ab5ee969edd1c24fed65a6a2d343d20927",
+            "looptool_command_hash": "E474AAD3D03DEC376BF69944FFA3F56251052D534D46369B27547A7E9F563859",
+            "focused_tests": "58 passed",
+            "full_tests": "732 passed",
+            "head_alignment": "PASS",
+            "protected_reference": "lbe-tui/ remained untracked and untouched"
+        },
+        "publish_allowed": false,
+        "completion_checkpoint": "docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION_CHECKPOINT.md"
+    },
+    "first_run_live_session_entry": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+        "scope": [
+            "product_start_command",
+            "new_session_creation",
+            "existing_session_restore",
+            "provider_model_consistency",
+            "provider_config_consistency",
+            "live_tui_entry",
+            "persisted_owner_reuse"
+        ],
+        "required_evidence": [
+            "new_start_creates_one_persisted_session",
+            "existing_start_restores_same_session_identity",
+            "provider_model_pair_is_validated",
+            "provider_config_mismatch_fails_closed",
+            "no_silent_provider_fallback",
+            "live_entry_reuses_existing_tui_and_turn_runtime",
+            "no_duplicate_session_or_provider_owner",
+            "focused_cli_tests",
+            "full_regression"
+        ],
+        "validation": {
+            "implementation_commit": "dbefbc0884cb78be5327100d3e9e648bea5a6e52",
+            "looptool_command_hash": "7C462B292C3978B957701FAB5F8AC719673EFA18207AAB8633C704411C78C736",
+            "focused_tests": "63 passed",
+            "full_tests": "740 passed",
+            "head_alignment": "PASS",
+            "protected_reference": "lbe-tui/ remained untracked and untouched"
+        },
+        "publish_allowed": false,
+        "completion_checkpoint": "docs/acceptance/FIRST_RUN_LIVE_SESSION_ENTRY_CHECKPOINT.md"
+    },
+    "installed_capability_registry_discovery": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+        "scope": [
+            "installed_integration_inventory",
+            "mcp_plugin_subagent_network_hosted_configuration",
+            "configuration_provenance",
+            "availability_projection",
+            "safe_external_registration_materialization",
+            "credential_non_persistence",
+            "cli_terminal_projection"
+        ],
+        "required_evidence": [
+            "persisted_installed_registry_schema",
+            "five_kind_configuration_classification",
+            "invalid_and_duplicate_configuration_denied",
+            "plaintext_credentials_not_persisted",
+            "unavailable_integrations_projected_without_execution",
+            "configured_entries_materialize_to_external_registration",
+            "provider_transport_arguments_hidden",
+            "r6c_r6e_execution_path_reused",
+            "focused_registry_tests",
+            "full_regression"
+        ],
+        "validation": {
+            "implementation_commit": "151136089b63fd9470d3a581a6ad6419cf567595",
+            "looptool_command_hash": "F76DA642DAA71A9CCE6385710D4122AD30699A9B7B4B711578B2461B21D62E90",
+            "focused_tests": "71 passed",
+            "full_tests": "760 passed",
+            "head_alignment": "PASS",
+            "protected_reference": "lbe-tui/ remained untracked and untouched"
+        },
+        "publish_allowed": false,
+        "completion_checkpoint": "docs/acceptance/INSTALLED_CAPABILITY_REGISTRY_DISCOVERY_CHECKPOINT.md"
+    },
+    "lbe_interface_control_evidence_surfaces": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+        "scope": [
+            "terminal_capability_projection",
+            "installed_integration_projection",
+            "mcp_projection",
+            "provider_settings_projection",
+            "session_navigation",
+            "evidence_receipt_detail_projection",
+            "diff_projection",
+            "interrupt_cancel_controls"
+        ],
+        "required_evidence": [
+            "existing_textual_client_reused",
+            "installed_registry_projects_without_execution",
+            "integrations_command_not_hardcoded_unavailable_when_registry_present",
+            "mcp_command_filters_mcp_entries_truthfully",
+            "settings_and_provider_views_remain_owner_backed",
+            "session_navigation_reuses_persisted_session_owner",
+            "detail_view_preserves_receipt_evidence_and_diff_identity",
+            "interrupt_cancel_use_persistent_turn_control",
+            "no_second_runtime_or_execution_owner",
+            "focused_tui_tests",
+            "full_regression"
+        ],
+        "validation": {
+            "implementation_commit": "9ca27a1498afa017ec0c5a449d80882ca0958a73",
+            "looptool_command_hash": "334C15A0913D56BE5D6EC6057BA5B66909B06C72F745FA92A5D3281837821C04",
+            "focused_tests": "53 passed",
+            "full_tests": "763 passed",
+            "head_alignment": "PASS",
+            "protected_reference": "lbe-tui/ remained untracked and untouched"
+        },
+        "publish_allowed": false,
+        "completion_checkpoint": "docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_CHECKPOINT.md"
+    },
+    "recovery_completion_promotion_integration": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+        "scope": [
+            "normal_coding_auto_finalization",
+            "provisional_completion_proof",
+            "verified_completion_promotion",
+            "safe_validation_recovery",
+            "persisted_recovery_state",
+            "duplicate_validation_execution_control",
+            "completion_evidence_reuse",
+            "task_lifecycle_truth"
+        ],
+        "required_evidence": [
+            "provider_completed_remains_provisional_before_gate",
+            "task_complete_memory_is_unverified_before_ready",
+            "normal_gateway_calls_existing_completion_gate_after_trusted_evidence",
+            "ready_decision_sets_task_completed",
+            "only_ready_promotes_task_complete_to_verified",
+            "failed_or_incomplete_never_promotes_verified_completion",
+            "recovery_wraps_only_idempotent_validation_evidence_operations",
+            "mutation_reasoning_is_not_auto_retried",
+            "persisted_recovery_state_survives_runtime_reconstruction",
+            "terminal_success_prevents_duplicate_validation_execution_under_same operation identity",
+            "no_second_recovery_completion_or_memory_owner",
+            "focused_integration_tests",
+            "full_regression"
+        ],
+        "publish_allowed": false,
+        "validation": {
+            "implementation_commit": "6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f",
+            "focused_tests": "59 passed",
+            "full_tests": "767 passed",
+            "git_diff_check": "PASS",
+            "head_alignment": "PASS",
+            "tracked_worktree": "CLEAN",
+            "protected_reference": "lbe-tui/ remained untracked and untouched"
+        },
+        "completion_checkpoint": "docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md"
+    },
+    "installed_package_end_to_end_acceptance": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+        "scope": [
+            "isolated_wheel_and_sdist_build",
+            "installed_entrypoint_and_import_isolation",
+            "persisted_session_provider_lifecycle",
+            "installed_capability_registry_projection",
+            "installed_governed_execution",
+            "installed_receipt_evidence_completion",
+            "installed_recovery_reconstruction",
+            "installed_textual_interface_smoke"
+        ],
+        "required_evidence": [
+            "installed_entrypoint",
+            "installed_import_isolation",
+            "persisted_session_create_and_restore",
+            "provider_model_identity",
+            "installed_registry_fail_closed",
+            "installed_governed_capability_receipt",
+            "installed_deterministic_completion_and_verified_promotion",
+            "installed_recovery_reconstruction",
+            "installed_interface_smoke",
+            "focused_installed_tests",
+            "full_regression"
+        ],
+        "publish_allowed": false,
+        "active_slice": "COMPLETED"
+    },
+    "session_application_contract_unification": {
+        "status": "PASS",
+        "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
+        "scope": [
+            "shared_session_lifecycle_service",
+            "cli_session_provider_lifecycle",
+            "textual_session_provider_lifecycle",
+            "persisted_owner_reuse",
+            "provider_registry_reuse",
+            "persistent_turn_control_reuse"
+        ],
+        "required_evidence": [
+            "preserved_patch_hash_match",
+            "shared_session_service_used_by_cli_and_textual",
+            "session_identity_persists_across_restart",
+            "provider_model_identity_persists",
+            "no_duplicate_session_provider_authority",
+            "focused_lifecycle_cli_textual_provider_tests",
+            "full_regression",
+            "fresh_installed_regression"
+        ],
+        "publish_allowed": false,
+        "completion_checkpoint": "docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md"
+    },
+    "lbe_interface_product_surface": {
+        "status": "AUTHORIZED_RUST_TUI_PRODUCT_SURFACE",
+        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_18",
+        "implementation_technology": "Rust/Ratatui",
+        "canonical_client_workspace": "C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal",
+        "visual_contract": "Existing LBE HTML/React work and canonical GPT-K LBE_TERMINAL_TUI_UI_PLAN.md are reference/specification inputs; browser prototypes are not runtime truth.",
+        "reasoning_mechanics": "Cline is one supported headless reasoning/planning/provider/model/tool-proposal/continuation/response-composition engine adapter behind LBE; engine-neutral reasoning runtime with optional/supported Cline adapter.",
+        "scope": [
+            "lbe_owned_terminal_layout",
+            "conversation_work_timeline",
+            "provider_model_projection",
+            "plan_act_audit_controls",
+            "approval_presentation",
+            "runtime_activity_projection",
+            "context_usage_projection",
+            "keyboard_interaction"
+        ],
+        "required_evidence": [
+            "canonical_rust_client_build",
+            "real_lbe_runtime_attachment",
+            "engine_neutral_governed_turn",
+            "authoritative_provider_model_projection",
+            "governed_tool_and_approval_flow",
+            "tool_receipt_and_evidence_projection",
+            "real_context_usage",
+            "plan_act_audit_policy_mapping",
+            "clean_pty_conpty_exit",
+            "restart_resume",
+            "installed_single_command_lbe_launch",
+            "cline_regression_proof"
+        ],
+        "product_identity": "LBE",
+        "reference_inputs": [
+            "existing LBE HTML/React visual and interaction work",
+            "Cline interaction patterns where useful",
+            "upstream Cline CLI/OpenTUI as reference only"
+        ],
+        "authority_boundary": "Rust/Ratatui owns presentation/input only; reasoning engines own headless cognition/provider continuation mechanics; LBE owns session/workspace identity, provider policy truth, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion.",
+        "non_goals": [
+            "copied or rebranded Cline product UI as a requirement",
+            "native Cline session or persistence authority",
+            "native Cline mutation/shell/MCP authority",
+            "browser/HTML prototype as runtime truth",
+            "Python/Textual final-product UI",
+            "independent session identity",
+            "new runtime authority",
+            "publication without separate authorization",
+            "branch creation",
+            "worktree creation"
+        ],
+        "completion_checkpoint": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
+        "publish_allowed": false
+    },
+    "forbidden": [
+        "publishing before the 2.0.3 artifact is validated",
+        "publishing any version other than 2.0.3",
+        "creating tags or GitHub releases without separate authorization",
+        "adding an npm publication path",
+        "API-token fallback without a separate authorized security decision",
+        "blind retry after publication failure",
+        "runtime or architecture changes outside the complete LBE agent runtime gate",
+        "direct agent exposure of arbitrary external endpoints, shell commands, executables, or service transports",
+        "creating a second session, provider, terminal, or completion authority for first-run flow",
+        "persisting plaintext external-service credentials in the installed capability registry",
+        "auto-executing discovered integrations before governed registration and authorization",
+        "giving the Textual projection execution, authorization, receipt, or completion authority",
+        "auto-retrying mutation-capable provider reasoning",
+        "promoting provider prose or provisional completion claims directly to verified task completion"
     ]
-  },
-  "complete_lbe_agent_runtime": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_RUNTIME_PLAN",
-    "active_slice": "COMPLETED",
-    "accepted_architecture_document": "docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md",
-    "required_evidence": [
-      "focused_configuration_tests",
-      "credential_non_leakage_scan",
-      "provider_profile_lifecycle",
-      "persisted_owner_reuse"
-    ],
-    "publish_allowed": false
-  },
-  "workspace_hygiene_governed_deletion": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
-    "scope": [
-      "workspace_identity",
-      "path_containment",
-      "disposable_classification_enforcement",
-      "protected_path_denial",
-      "governed_deletion_adapter",
-      "receipt_evidence_emission",
-      "post_cleanup_validation"
-    ],
-    "required_evidence": [
-      "inside_workspace_disposable_delete_pass",
-      "outside_workspace_delete_denied",
-      "protected_path_delete_denied",
-      "path_escape_denied",
-      "authorization_before_execution",
-      "direct_adapter_bypass_unavailable",
-      "success_and_failure_receipts",
-      "protected_user_work_preserved"
-    ],
-    "publish_allowed": false,
-    "completion_checkpoint": "docs/acceptance/WORKSPACE_HYGIENE_GOVERNED_DELETION_CHECKPOINT.md"
-  },
-  "mandatory_governed_agent_mutation_dispatch": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_AUTHORIZATION_2026-08-25",
-    "scope": [
-      "provider_tool_exposure",
-      "workspace_text_mutation",
-      "registered_process_execution",
-      "git_main_only_mutation",
-      "direct_mutation_bypass_denial",
-      "authorization_before_execution",
-      "receipt_evidence_emission"
-    ],
-    "required_evidence": [
-      "provider_receives_only_lbe_generated_tool_definitions",
-      "workspace_write_is_contained_and_governed",
-      "stale_overwrite_is_denied",
-      "arbitrary_shell_tool_is_unavailable",
-      "registered_process_command_is_bounded",
-      "git_mutation_requires_primary_main_workspace",
-      "git_staging_is_limited_to_current_governed_mutation_paths",
-      "authorization_occurs_before_execution",
-      "success_and_failure_emit_correlated_tool_receipts",
-      "audit_and_investigation_paths_remain_read_only",
-      "no_parallel_executor_authorization_receipt_or_session_owner"
-    ],
-    "validation": {
-      "implementation_commit": "47885891848ec9a535a4e09694d3129b320da91a",
-      "looptool_command_hash": "D0DA7CA90B549E0C51FC2E65C7B68A30ECF7542710CE9CC1AF006D91FCA7F725",
-      "focused_tests": "80 passed",
-      "full_tests": "713 passed",
-      "head_alignment": "PASS",
-      "protected_reference": "lbe-tui/ remained untracked and untouched"
-    },
-    "publish_allowed": false,
-    "completion_checkpoint": "docs/acceptance/MANDATORY_GOVERNED_AGENT_MUTATION_DISPATCH_CHECKPOINT.md"
-  },
-  "governed_external_capability_registration": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
-    "scope": [
-      "external_capability_registration",
-      "mcp_plugin_registration",
-      "subagent_registration_contract",
-      "network_service_registration_contract",
-      "hosted_service_registration_contract",
-      "provider_tool_projection",
-      "r6c_r6e_dispatch_reuse",
-      "direct_transport_bypass_denial"
-    ],
-    "required_evidence": [
-      "all_external_tools_are_pre_registered",
-      "provider_receives_only_lbe_generated_external_tool_definitions",
-      "raw_endpoint_and_shell_transport_arguments_denied",
-      "network_and_hosted_service_registration_requires_network_metadata",
-      "mcp_plugin_subagent_network_hosted_kinds_are_classified",
-      "authorization_precedes_adapter_execution",
-      "external_execution_returns_correlated_tool_receipt",
-      "unregistered_external_tool_fails_closed",
-      "no_second_executor_authorization_session_or_completion_owner"
-    ],
-    "validation": {
-      "implementation_commit": "02c761ab5ee969edd1c24fed65a6a2d343d20927",
-      "looptool_command_hash": "E474AAD3D03DEC376BF69944FFA3F56251052D534D46369B27547A7E9F563859",
-      "focused_tests": "58 passed",
-      "full_tests": "732 passed",
-      "head_alignment": "PASS",
-      "protected_reference": "lbe-tui/ remained untracked and untouched"
-    },
-    "publish_allowed": false,
-    "completion_checkpoint": "docs/acceptance/GOVERNED_EXTERNAL_CAPABILITY_REGISTRATION_CHECKPOINT.md"
-  },
-  "first_run_live_session_entry": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
-    "scope": [
-      "product_start_command",
-      "new_session_creation",
-      "existing_session_restore",
-      "provider_model_consistency",
-      "provider_config_consistency",
-      "live_tui_entry",
-      "persisted_owner_reuse"
-    ],
-    "required_evidence": [
-      "new_start_creates_one_persisted_session",
-      "existing_start_restores_same_session_identity",
-      "provider_model_pair_is_validated",
-      "provider_config_mismatch_fails_closed",
-      "no_silent_provider_fallback",
-      "live_entry_reuses_existing_tui_and_turn_runtime",
-      "no_duplicate_session_or_provider_owner",
-      "focused_cli_tests",
-      "full_regression"
-    ],
-    "validation": {
-      "implementation_commit": "dbefbc0884cb78be5327100d3e9e648bea5a6e52",
-      "looptool_command_hash": "7C462B292C3978B957701FAB5F8AC719673EFA18207AAB8633C704411C78C736",
-      "focused_tests": "63 passed",
-      "full_tests": "740 passed",
-      "head_alignment": "PASS",
-      "protected_reference": "lbe-tui/ remained untracked and untouched"
-    },
-    "publish_allowed": false,
-    "completion_checkpoint": "docs/acceptance/FIRST_RUN_LIVE_SESSION_ENTRY_CHECKPOINT.md"
-  },
-  "installed_capability_registry_discovery": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
-    "scope": [
-      "installed_integration_inventory",
-      "mcp_plugin_subagent_network_hosted_configuration",
-      "configuration_provenance",
-      "availability_projection",
-      "safe_external_registration_materialization",
-      "credential_non_persistence",
-      "cli_terminal_projection"
-    ],
-    "required_evidence": [
-      "persisted_installed_registry_schema",
-      "five_kind_configuration_classification",
-      "invalid_and_duplicate_configuration_denied",
-      "plaintext_credentials_not_persisted",
-      "unavailable_integrations_projected_without_execution",
-      "configured_entries_materialize_to_external_registration",
-      "provider_transport_arguments_hidden",
-      "r6c_r6e_execution_path_reused",
-      "focused_registry_tests",
-      "full_regression"
-    ],
-    "validation": {
-      "implementation_commit": "151136089b63fd9470d3a581a6ad6419cf567595",
-      "looptool_command_hash": "F76DA642DAA71A9CCE6385710D4122AD30699A9B7B4B711578B2461B21D62E90",
-      "focused_tests": "71 passed",
-      "full_tests": "760 passed",
-      "head_alignment": "PASS",
-      "protected_reference": "lbe-tui/ remained untracked and untouched"
-    },
-    "publish_allowed": false,
-    "completion_checkpoint": "docs/acceptance/INSTALLED_CAPABILITY_REGISTRY_DISCOVERY_CHECKPOINT.md"
-  },
-  "lbe_interface_control_evidence_surfaces": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
-    "scope": [
-      "terminal_capability_projection",
-      "installed_integration_projection",
-      "mcp_projection",
-      "provider_settings_projection",
-      "session_navigation",
-      "evidence_receipt_detail_projection",
-      "diff_projection",
-      "interrupt_cancel_controls"
-    ],
-    "required_evidence": [
-      "existing_textual_client_reused",
-      "installed_registry_projects_without_execution",
-      "integrations_command_not_hardcoded_unavailable_when_registry_present",
-      "mcp_command_filters_mcp_entries_truthfully",
-      "settings_and_provider_views_remain_owner_backed",
-      "session_navigation_reuses_persisted_session_owner",
-      "detail_view_preserves_receipt_evidence_and_diff_identity",
-      "interrupt_cancel_use_persistent_turn_control",
-      "no_second_runtime_or_execution_owner",
-      "focused_tui_tests",
-      "full_regression"
-    ],
-    "validation": {
-      "implementation_commit": "9ca27a1498afa017ec0c5a449d80882ca0958a73",
-      "looptool_command_hash": "334C15A0913D56BE5D6EC6057BA5B66909B06C72F745FA92A5D3281837821C04",
-      "focused_tests": "53 passed",
-      "full_tests": "763 passed",
-      "head_alignment": "PASS",
-      "protected_reference": "lbe-tui/ remained untracked and untouched"
-    },
-    "publish_allowed": false,
-    "completion_checkpoint": "docs/acceptance/LBE_INTERFACE_CONTROL_EVIDENCE_SURFACES_CHECKPOINT.md"
-  },
-  "recovery_completion_promotion_integration": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
-    "scope": [
-      "normal_coding_auto_finalization",
-      "provisional_completion_proof",
-      "verified_completion_promotion",
-      "safe_validation_recovery",
-      "persisted_recovery_state",
-      "duplicate_validation_execution_control",
-      "completion_evidence_reuse",
-      "task_lifecycle_truth"
-    ],
-    "required_evidence": [
-      "provider_completed_remains_provisional_before_gate",
-      "task_complete_memory_is_unverified_before_ready",
-      "normal_gateway_calls_existing_completion_gate_after_trusted_evidence",
-      "ready_decision_sets_task_completed",
-      "only_ready_promotes_task_complete_to_verified",
-      "failed_or_incomplete_never_promotes_verified_completion",
-      "recovery_wraps_only_idempotent_validation_evidence_operations",
-      "mutation_reasoning_is_not_auto_retried",
-      "persisted_recovery_state_survives_runtime_reconstruction",
-      "terminal_success_prevents_duplicate_validation_execution_under_same operation identity",
-      "no_second_recovery_completion_or_memory_owner",
-      "focused_integration_tests",
-      "full_regression"
-    ],
-    "publish_allowed": false,
-    "validation": {
-      "implementation_commit": "6d444de2004acfb8d22f2a7e1bc144ed4e1a5b3f",
-      "focused_tests": "59 passed",
-      "full_tests": "767 passed",
-      "git_diff_check": "PASS",
-      "head_alignment": "PASS",
-      "tracked_worktree": "CLEAN",
-      "protected_reference": "lbe-tui/ remained untracked and untouched"
-    },
-    "completion_checkpoint": "docs/acceptance/RECOVERY_COMPLETION_PROMOTION_CHECKPOINT.md"
-  },
-  "installed_package_end_to_end_acceptance": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
-    "scope": [
-      "isolated_wheel_and_sdist_build",
-      "installed_entrypoint_and_import_isolation",
-      "persisted_session_provider_lifecycle",
-      "installed_capability_registry_projection",
-      "installed_governed_execution",
-      "installed_receipt_evidence_completion",
-      "installed_recovery_reconstruction",
-      "installed_textual_interface_smoke"
-    ],
-    "required_evidence": [
-      "installed_entrypoint",
-      "installed_import_isolation",
-      "persisted_session_create_and_restore",
-      "provider_model_identity",
-      "installed_registry_fail_closed",
-      "installed_governed_capability_receipt",
-      "installed_deterministic_completion_and_verified_promotion",
-      "installed_recovery_reconstruction",
-      "installed_interface_smoke",
-      "focused_installed_tests",
-      "full_regression"
-    ],
-    "publish_allowed": false,
-    "active_slice": "COMPLETED"
-  },
-  "session_application_contract_unification": {
-    "status": "PASS",
-    "authorization": "EXPLICIT_USER_CONTINUATION_2026-08-25",
-    "scope": [
-      "shared_session_lifecycle_service",
-      "cli_session_provider_lifecycle",
-      "textual_session_provider_lifecycle",
-      "persisted_owner_reuse",
-      "provider_registry_reuse",
-      "persistent_turn_control_reuse"
-    ],
-    "required_evidence": [
-      "preserved_patch_hash_match",
-      "shared_session_service_used_by_cli_and_textual",
-      "session_identity_persists_across_restart",
-      "provider_model_identity_persists",
-      "no_duplicate_session_provider_authority",
-      "focused_lifecycle_cli_textual_provider_tests",
-      "full_regression",
-      "fresh_installed_regression"
-    ],
-    "publish_allowed": false,
-    "completion_checkpoint": "docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md"
-  },
-  "lbe_interface_product_surface": {
-    "status": "AUTHORIZED_RUST_TUI_PRODUCT_SURFACE",
-    "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_18",
-    "implementation_technology": "Rust/Ratatui",
-    "canonical_client_workspace": "C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal",
-    "visual_contract": "Existing LBE HTML/React work and canonical GPT-K LBE_TERMINAL_TUI_UI_PLAN.md are reference/specification inputs; browser prototypes are not runtime truth.",
-    "reasoning_mechanics": "Cline is one supported headless reasoning/planning/provider/model/tool-proposal/continuation/response-composition engine adapter behind LBE; engine-neutral reasoning runtime with optional/supported Cline adapter.",
-    "scope": [
-      "lbe_owned_terminal_layout",
-      "conversation_work_timeline",
-      "provider_model_projection",
-      "plan_act_audit_controls",
-      "approval_presentation",
-      "runtime_activity_projection",
-      "context_usage_projection",
-      "keyboard_interaction"
-    ],
-    "required_evidence": [
-      "canonical_rust_client_build",
-      "real_lbe_runtime_attachment",
-      "engine_neutral_governed_turn",
-      "authoritative_provider_model_projection",
-      "governed_tool_and_approval_flow",
-      "tool_receipt_and_evidence_projection",
-      "real_context_usage",
-      "plan_act_audit_policy_mapping",
-      "clean_pty_conpty_exit",
-      "restart_resume",
-      "installed_single_command_lbe_launch",
-      "cline_regression_proof"
-    ],
-    "product_identity": "LBE",
-    "reference_inputs": [
-      "existing LBE HTML/React visual and interaction work",
-      "Cline interaction patterns where useful",
-      "upstream Cline CLI/OpenTUI as reference only"
-    ],
-    "authority_boundary": "Rust/Ratatui owns presentation/input only; reasoning engines own headless cognition/provider continuation mechanics; LBE owns session/workspace identity, provider policy truth, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion.",
-    "non_goals": [
-      "copied or rebranded Cline product UI as a requirement",
-      "native Cline session or persistence authority",
-      "native Cline mutation/shell/MCP authority",
-      "browser/HTML prototype as runtime truth",
-      "Python/Textual final-product UI",
-      "independent session identity",
-      "new runtime authority",
-      "publication without separate authorization",
-      "branch creation",
-      "worktree creation"
-    ],
-    "completion_checkpoint": "docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md",
-    "publish_allowed": false
-  },
-  "forbidden": [
-    "publishing before the 2.0.3 artifact is validated",
-    "publishing any version other than 2.0.3",
-    "creating tags or GitHub releases without separate authorization",
-    "adding an npm publication path",
-    "API-token fallback without a separate authorized security decision",
-    "blind retry after publication failure",
-    "runtime or architecture changes outside the complete LBE agent runtime gate",
-    "direct agent exposure of arbitrary external endpoints, shell commands, executables, or service transports",
-    "creating a second session, provider, terminal, or completion authority for first-run flow",
-    "persisting plaintext external-service credentials in the installed capability registry",
-    "auto-executing discovered integrations before governed registration and authorization",
-    "giving the Textual projection execution, authorization, receipt, or completion authority",
-    "auto-retrying mutation-capable provider reasoning",
-    "promoting provider prose or provisional completion claims directly to verified task completion"
-  ]
 }

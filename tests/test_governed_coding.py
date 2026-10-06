@@ -440,6 +440,97 @@ def test_native_transport_without_provider_id_is_accepted(tmp_path, monkeypatch)
         assert controller._provider_config.endpoint == endpoint
 
 
+
+def test_subagent_receipt_terminalizes_persisted_child_before_parent_continuation(
+    tmp_path,
+) -> None:
+    from lbe_guard_inspector.memory.operational_history import (
+        ChildAgentStatus,
+        SessionOperationalHistory,
+    )
+    from lbe_guard_inspector.runtime.governed_coding import (
+        _GovernedCodingControllerBase,
+    )
+    from lbe_guard_inspector.runtime.tool_orchestration import (
+        ToolReceipt,
+        ToolReceiptStatus,
+    )
+
+    runtime = _prov_runtime(tmp_path, provider_model="qwen-selected")
+    controller = _GovernedCodingControllerBase(
+        runtime=runtime,
+        provider_id="openrouter",
+        provider_config=ProviderConfig(
+            endpoint="https://openrouter.ai/api/v1/chat/completions",
+            model="qwen-selected",
+            timeout_seconds=5,
+            api_key="test-key",
+        ),
+        engine_id="cline",
+    )
+    history = SessionOperationalHistory(store=runtime.store)
+    parent = history.start_turn(session_id=runtime.session_id)
+    controller._activate_parent_turn(parent.turn_id)
+    assert controller._registry.get("subagent.delegate") is not None
+
+    child = history.create_child_agent_run(
+        session_id=runtime.session_id,
+        turn_id=parent.turn_id,
+        correlation_id="runtime-op-1",
+        parent_agent="cline:openrouter",
+        child_tools=("workspace.read",),
+        recursive_spawn_authorized=False,
+    )
+    history.start_child_agent_run(
+        session_id=runtime.session_id,
+        turn_id=parent.turn_id,
+        child_agent_run_id=child.child_agent_run_id,
+        child_session_id="child-session-1",
+    )
+    receipt = ToolReceipt(
+        operation_id="runtime-op-1",
+        tool_id="subagent.delegate",
+        status=ToolReceiptStatus.EXECUTED,
+        authorization=None,
+        output={
+            "child_agent_run_id": child.child_agent_run_id,
+            "child_session_id": "child-session-1",
+            "child_status": ChildAgentStatus.COMPLETED.value,
+            "output_text": "persisted child answer",
+        },
+    )
+
+    continuation = controller._persist_subagent_receipt(
+        receipt=receipt,
+        provider_tool_call_id="provider-call-1",
+        lbe_call_id="lbe-call-1",
+    )
+
+    assert continuation is not None
+    assert continuation.provider_tool_call_id == "provider-call-1"
+    assert continuation.lbe_call_id == "lbe-call-1"
+    assert continuation.runtime_operation_id == "runtime-op-1"
+    assert continuation.tool_receipt_id == receipt.receipt_id
+    assert continuation.output["child_agent_run_id"] == child.child_agent_run_id
+    assert continuation.output["child_session_id"] == "child-session-1"
+    assert continuation.output["child_status"] == "completed"
+    assert continuation.output["output_text"] == "persisted child answer"
+    persisted = history.child_agent_run(
+        session_id=runtime.session_id,
+        turn_id=parent.turn_id,
+        child_agent_run_id=child.child_agent_run_id,
+    )
+    assert persisted is not None
+    assert persisted.status is ChildAgentStatus.COMPLETED
+    assert persisted.receipt_id == receipt.receipt_id
+    matched = [
+        event
+        for event in history.events_for_turn(turn_id=parent.turn_id)
+        if event.tool_receipt_id == receipt.receipt_id
+    ]
+    assert len(matched) == 1
+
+
 def test_binding_preserves_endpoint_credentials_and_timeout(tmp_path, monkeypatch):
     """Only the model and provider identity may change; the rest is preserved."""
     from lbe_guard_inspector.runtime.governed_coding import (
@@ -493,6 +584,7 @@ def test_missing_persisted_model_is_rejected(tmp_path, monkeypatch):
 
 
 from lbe_guard_inspector.runtime.governed_coding import (
+    _GovernedCodingControllerBase,
     _ReceiptTrackingOrchestrator,
     _provider_tool_definition,
     _tool_id_for_provider_name,
@@ -575,6 +667,46 @@ def _orchestrator() -> GovernedToolOrchestrator:
     registry = ToolRegistry()
     registry.register(workspace_create_candidate_text_spec(), build_workspace_create_candidate_text_handler())
     return GovernedToolOrchestrator(registry=registry)
+
+
+def test_governed_coding_deterministic_receipt_preserves_provider_lbe_correlation(tmp_path: Path) -> None:
+    runtime = _prov_runtime(tmp_path, provider_model="model-1")
+    controller = _GovernedCodingControllerBase(
+        runtime=runtime,
+        provider_id="openrouter",
+        provider_config=ProviderConfig(
+            endpoint="https://provider.invalid/v1/chat/completions",
+            model="model-1",
+            timeout_seconds=5,
+            api_key="test-key",
+        ),
+        engine_id="cline",
+    )
+
+    receipt = controller._orchestrator.invoke(
+        ToolRequest(
+            operation_id="provider-turn:lbe-call-1",
+            tool_id="workspace.list",
+            arguments={"path": "."},
+            context=controller._context,
+        )
+    )
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+
+    controller._record_receipt_correlation(
+        receipt,
+        provider_tool_call_id="provider-call-1",
+        lbe_call_id="lbe-call-1",
+    )
+    deterministic = controller._deterministic_result(
+        turn_id="provider-turn",
+        provider_output="",
+    )
+    projected = deterministic["governed_tool_receipts"][0]
+    assert projected["receipt_id"] == receipt.receipt_id
+    assert projected["operation_id"] == "provider-turn:lbe-call-1"
+    assert projected["provider_tool_call_id"] == "provider-call-1"
+    assert projected["lbe_call_id"] == "lbe-call-1"
 
 
 def test_owner_authority_blocker_denies_unproven_write_before_handler(

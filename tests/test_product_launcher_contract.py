@@ -118,3 +118,31 @@ param(
     assert captured["Mode"] == "package"
     assert captured["OutputRoot"] == str(output_root)
     assert captured["NoFetch"] is True
+
+
+def test_provider_model_failure_is_non_blocking_to_product_acceptance() -> None:
+    gate = json.loads(
+        (ROOT / ".lbe" / "governance" / "implementation-gates.json").read_text(encoding="utf-8")
+    )
+    provider_slice = gate["active_execution_plan"]["ordered_slices"]["PROVIDER_MODEL_BINDING"]
+
+    assert provider_slice["status"] == "DEGRADED"
+    assert provider_slice["blocking"] is False
+    assert provider_slice["failure_scope"] == "PROVIDER_OR_MODEL_INSTANCE"
+    assert provider_slice["isolation_status"] == "PASS"
+
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert "blocking_pending_slices" in source
+    assert "non_blocking_pending_slices" in source
+    assert "Where-Object { $_.blocking }" in source
+
+
+def test_installer_is_idempotent_when_provider_config_is_already_installed() -> None:
+    source = SCRIPT.read_text(encoding="utf-8")
+
+    assert "providerSourceFull" in source
+    assert "providerDestinationFull" in source
+    assert "[StringComparison]::OrdinalIgnoreCase" in source
+    assert "Provider configuration already installed" in source
+    assert "pip install --force-reinstall" in source
+    assert '$clientArgs = @("run", "--project", $env:LBE_TARGET_WORKSPACE, "--agent", $Agent)' in source
