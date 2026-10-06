@@ -29,6 +29,8 @@ from ..authority_ownership import (
     OwnerAuthorityAuthorization,
 )
 from ..evidence_service import EvidenceService
+from ..memory.operational_history import ChildAgentStatus, SessionOperationalHistory
+from ..provider_continuation import ProviderToolContinuation, continuation_from_persisted_child_result
 from ..professional_provider_events import ModelEventType, NormalizedModelEvent
 from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
 from ..reasoning_provider import ProviderConfig
@@ -48,8 +50,14 @@ from .tool_orchestration import (
     ToolRiskClass,
     ToolRequest,
     ToolSpec,
+    build_workspace_glob_handler,
+    build_workspace_list_handler,
     build_workspace_read_handler,
+    build_workspace_search_handler,
+    workspace_glob_spec,
+    workspace_list_spec,
     workspace_read_spec,
+    workspace_search_spec,
 )
 
 _MAX_CREATE_BYTES = 1_000_000
@@ -810,9 +818,15 @@ class _GovernedCodingControllerBase:
         )
         self._governed_mutation_paths: set[str] = set()
         self._owner_authority: OwnerAuthorityAuthorization | None = None
+        self._receipt_correlations: dict[str, dict[str, str]] = {}
+        self._history = SessionOperationalHistory(store=runtime.store)
+        self._active_parent_turn_id: str | None = None
 
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
+        registry.register(workspace_list_spec(), build_workspace_list_handler())
+        registry.register(workspace_glob_spec(), build_workspace_glob_handler())
+        registry.register(workspace_search_spec(), build_workspace_search_handler(EvidenceService()))
         registry.register(
             workspace_create_candidate_text_spec(),
             build_workspace_create_candidate_text_handler(),
@@ -872,6 +886,26 @@ class _GovernedCodingControllerBase:
             if path:
                 self._governed_mutation_paths.add(path.replace("\\", "/"))
 
+    def _record_receipt_correlation(
+        self,
+        receipt: ToolReceipt,
+        *,
+        provider_tool_call_id: str | None,
+        lbe_call_id: str | None,
+    ) -> None:
+        correlation: dict[str, str] = {}
+        if provider_tool_call_id:
+            correlation["provider_tool_call_id"] = str(provider_tool_call_id)
+        if lbe_call_id:
+            correlation["lbe_call_id"] = str(lbe_call_id)
+        if correlation:
+            self._receipt_correlations[receipt.receipt_id] = correlation
+
+    def _correlated_receipt_payload(self, receipt: ToolReceipt) -> dict[str, object]:
+        payload = _receipt_payload(receipt)
+        payload.update(self._receipt_correlations.get(receipt.receipt_id, {}))
+        return payload
+
     def _deterministic_result(
         self,
         *,
@@ -917,7 +951,7 @@ class _GovernedCodingControllerBase:
             "provider_id": self._provider_id,
             "provider_model": self._provider_config.model.strip(),
             "reasoning_engine": self._engine_id,
-            "governed_tool_receipts": [_receipt_payload(receipt) for receipt in receipts],
+            "governed_tool_receipts": [self._correlated_receipt_payload(receipt) for receipt in receipts],
             "governed_tool_projection": [
                 # Execution truth: one entry per governed receipt with its own
                 # authorization decision. The authorized capability catalog the model
@@ -947,6 +981,305 @@ class _GovernedCodingControllerBase:
             if package is not None
             else None
         )
+
+    def _activate_parent_turn(self, parent_turn_id: str | None) -> None:
+        if parent_turn_id is None:
+            self._active_parent_turn_id = None
+            return
+        clean_turn = str(parent_turn_id).strip()
+        if not clean_turn:
+            raise ValueError("parent_turn_id must not be empty")
+        turn = self._history.get_turn(turn_id=clean_turn)
+        if turn is None:
+            raise ValueError("parent operational turn was not found")
+        if turn.session_id != self._runtime.session_id:
+            raise ValueError("parent operational turn does not belong to the active session")
+        if turn.status.value != "running":
+            raise ValueError("parent operational turn is not running")
+        self._active_parent_turn_id = clean_turn
+        if self._registry.get("subagent.delegate") is not None:
+            return
+
+        from .external_capabilities import (
+            ExternalCapabilityKind,
+            ExternalCapabilityRegistration,
+            register_external_capabilities,
+        )
+
+        registration = ExternalCapabilityRegistration(
+            adapter_id="lbe.subagent.delegate",
+            kind=ExternalCapabilityKind.SUBAGENT,
+            tool_id="subagent.delegate",
+            description=(
+                "Delegate one bounded child reasoning task under the same LBE "
+                "workspace/policy authority. Recursive child delegation is disabled."
+            ),
+            handler=self._execute_subagent_delegate,
+            required_arguments=("task",),
+            optional_arguments=("role",),
+            access_class=ToolAccessClass.READ,
+            network_behavior=ToolNetworkBehavior.OPTIONAL,
+            risk_class=ToolRiskClass.MEDIUM,
+            timeout_seconds=max(60.0, float(self._provider_config.timeout_seconds) + 5.0),
+            retry_policy="none",
+            expected_evidence=("child-agent lifecycle", "ToolReceipt correlation"),
+            failure_modes=(
+                "authorization failure",
+                "child provider failure",
+                "child runtime failure",
+            ),
+        )
+        registered = register_external_capabilities(self._registry, (registration,))
+        self._external_capabilities = (*self._external_capabilities, *registered)
+        self._rebuild_guidance()
+
+    def _execute_subagent_delegate(self, request: ToolRequest) -> ToolExecutionResult:
+        parent_turn_id = self._active_parent_turn_id
+        if parent_turn_id is None:
+            raise RuntimeError("subagent delegation requires an authoritative parent turn")
+        task = str(request.arguments.get("task") or "").strip()
+        role = str(request.arguments.get("role") or "delegated child").strip()
+        if not task:
+            raise ValueError("subagent.delegate requires task")
+
+        child_tools = tuple(
+            spec.tool_id
+            for spec in self._registry.specs()
+            if not spec.tool_id.startswith("subagent.")
+        )
+        child_run = self._history.create_child_agent_run(
+            session_id=self._runtime.session_id,
+            turn_id=parent_turn_id,
+            correlation_id=request.operation_id,
+            parent_agent=f"{self._engine_id}:{self._provider_id}",
+            child_tools=child_tools,
+            recursive_spawn_authorized=False,
+            authorization_rationale=(
+                "LBE admitted bounded delegated reasoning; child execution remains "
+                "behind the parent ToolRegistry and R6C authorization."
+            ),
+        )
+        child_session_id = f"child-{uuid4().hex}"
+        state = self._runtime.session_state
+        SessionMemoryRuntimeBridge(
+            database_path=self._runtime.store.database_path,
+            project_workspace_id=self._runtime.project_workspace_id,
+            workspace_root=self._runtime.workspace_root,
+            session_id=child_session_id,
+            mode=state.mode,
+            permission=state.permission,
+            runtime_policy=state.runtime_policy,
+            provider_id=state.provider_id,
+            provider_model=state.provider_model,
+            active_profile_id=state.active_profile_id,
+            permission_policy_id=state.permission_policy_id,
+            evidence_policy_id=state.evidence_policy_id,
+            reasoning_engine="cline",
+        )
+        self._history.start_child_agent_run(
+            session_id=self._runtime.session_id,
+            turn_id=parent_turn_id,
+            child_agent_run_id=child_run.child_agent_run_id,
+            child_session_id=child_session_id,
+        )
+
+        from .cline_stdio_bridge import GovernedClineWorker
+        from .cline_stdio_protocol import BridgeFrame, PROTOCOL_VERSION
+
+        worker = GovernedClineWorker()
+        provider: dict[str, object] = {
+            "provider_id": self._provider_id,
+            "model_id": self._provider_config.model.strip(),
+            "base_url": _cline_provider_base_url(self._provider_config.endpoint),
+        }
+        if self._provider_config.api_key:
+            provider["api_key"] = self._provider_config.api_key
+
+        allowed_specs = tuple(
+            spec for spec in self._registry.specs() if not spec.tool_id.startswith("subagent.")
+        )
+        child_status = ChildAgentStatus.FAILED
+        output_text = ""
+        error_message: str | None = None
+
+        def on_child_tool_receipt(frame: object, receipt: ToolReceipt) -> None:
+            self._record_mutation_path(receipt)
+            provider_tool_call_id = getattr(frame, "cline_tool_call_id", None)
+            lbe_call_id = getattr(frame, "lbe_call_id", None)
+            self._record_receipt_correlation(
+                receipt,
+                provider_tool_call_id=provider_tool_call_id,
+                lbe_call_id=lbe_call_id,
+            )
+            self._history.project_tool_receipt(
+                session_id=self._runtime.session_id,
+                turn_id=parent_turn_id,
+                item_id=child_run.child_agent_run_id,
+                receipt=receipt,
+                provider_tool_call_id=provider_tool_call_id,
+                lbe_call_id=lbe_call_id,
+            )
+            return None
+
+        try:
+            ready = worker.start(
+                BridgeFrame(
+                    protocol_version=PROTOCOL_VERSION,
+                    message_id=f"child-start-{uuid4().hex}",
+                    message_type="runtime.start",
+                    session_id=child_session_id,
+                    turn_id=child_run.child_agent_run_id,
+                    payload={
+                        "provider": provider,
+                        "allowed_tools": [
+                            _cline_allowed_tool_definition(spec) for spec in allowed_specs
+                        ],
+                        "system_prompt": (
+                            f"{self._guidance.prompt}\n\n"
+                            "You are an LBE-governed delegated child. "
+                            "Use only the supplied LBE proxy tools. "
+                            "Recursive delegation is unavailable.\n"
+                            f"Assigned role: {role}"
+                        ),
+                        "max_iterations": 8,
+                    },
+                )
+            )
+            if ready.payload.get("provider_configured") is not True:
+                raise RuntimeError("delegated Cline runtime did not configure the provider")
+            result = worker.execute_turn(
+                BridgeFrame(
+                    protocol_version=PROTOCOL_VERSION,
+                    message_id=f"child-turn-{uuid4().hex}",
+                    message_type="turn.execute",
+                    session_id=child_session_id,
+                    turn_id=child_run.child_agent_run_id,
+                    payload={"text": task},
+                ),
+                orchestrator=self._orchestrator,
+                context=self._context,
+                timeout_seconds=max(
+                    60.0, float(self._provider_config.timeout_seconds) + 5.0
+                ),
+                on_tool_receipt=on_child_tool_receipt,
+            )
+            output_text = str(result.payload.get("output_text") or "")
+            if result.message_type == "turn.completed":
+                child_status = ChildAgentStatus.COMPLETED
+            else:
+                child_status = ChildAgentStatus.FAILED
+                error_message = str(
+                    result.payload.get("message")
+                    or result.payload.get("code")
+                    or "delegated child runtime failed"
+                )
+        except Exception as exc:
+            child_status = ChildAgentStatus.FAILED
+            error_message = f"{type(exc).__name__}: {exc}"
+        finally:
+            if worker.is_running:
+                try:
+                    worker.shutdown(
+                        BridgeFrame(
+                            protocol_version=PROTOCOL_VERSION,
+                            message_id=f"child-shutdown-{uuid4().hex}",
+                            message_type="runtime.shutdown",
+                            session_id=child_session_id,
+                            turn_id=child_run.child_agent_run_id,
+                            payload={},
+                        )
+                    )
+                except Exception:
+                    worker.terminate()
+
+        return ToolExecutionResult(
+            output={
+                "child_agent_run_id": child_run.child_agent_run_id,
+                "child_session_id": child_session_id,
+                "child_status": child_status.value,
+                "output_text": output_text,
+                "error_message": error_message,
+            }
+        )
+
+    def _persist_subagent_receipt(
+        self,
+        *,
+        receipt: ToolReceipt,
+        provider_tool_call_id: str | None,
+        lbe_call_id: str | None,
+    ) -> ProviderToolContinuation | None:
+        if receipt.tool_id != "subagent.delegate":
+            return None
+        if receipt.status is not ToolReceiptStatus.EXECUTED:
+            return None
+        parent_turn_id = self._active_parent_turn_id
+        if parent_turn_id is None:
+            raise RuntimeError("subagent receipt has no authoritative parent turn")
+        if not provider_tool_call_id or not lbe_call_id:
+            raise ValueError("subagent receipt is missing provider/LBE correlation identity")
+        output = dict(receipt.output or {})
+        child_agent_run_id = str(output.get("child_agent_run_id") or "").strip()
+        if not child_agent_run_id:
+            raise ValueError("subagent receipt has no child_agent_run_id")
+        raw_status = str(output.get("child_status") or "").strip()
+        try:
+            child_status = ChildAgentStatus(raw_status)
+        except ValueError:
+            child_status = ChildAgentStatus.FAILED
+
+        self._history.project_tool_receipt(
+            session_id=self._runtime.session_id,
+            turn_id=parent_turn_id,
+            item_id=child_agent_run_id,
+            receipt=receipt,
+            provider_tool_call_id=provider_tool_call_id,
+            lbe_call_id=lbe_call_id,
+        )
+        evidence_ref = next(
+            (
+                str(item.get("evidence_ref"))
+                for item in receipt.evidence
+                if isinstance(item, Mapping) and item.get("evidence_ref")
+            ),
+            None,
+        )
+        self._history.finalize_child_agent_run(
+            session_id=self._runtime.session_id,
+            turn_id=parent_turn_id,
+            child_agent_run_id=child_agent_run_id,
+            status=child_status,
+            receipt_id=receipt.receipt_id,
+            evidence_ref=evidence_ref,
+            authorization_rationale=(
+                None
+                if receipt.authorization is None
+                else receipt.authorization.rationale
+            ),
+        )
+        return continuation_from_persisted_child_result(
+            history=self._history,
+            session_id=self._runtime.session_id,
+            turn_id=parent_turn_id,
+            child_agent_run_id=child_agent_run_id,
+        )
+
+    @staticmethod
+    def _continuation_payload(
+        continuation: ProviderToolContinuation,
+        receipt: ToolReceipt,
+    ) -> dict[str, object]:
+        return {
+            "status": receipt.status.value,
+            "output": dict(continuation.output),
+            "evidence": [dict(item) for item in receipt.evidence],
+            "error_code": receipt.error_code,
+            "error_message": receipt.error_message,
+            "receipt_id": continuation.tool_receipt_id,
+            "operation_id": continuation.runtime_operation_id,
+            "tool_id": continuation.tool_name,
+            "is_error": continuation.is_error,
+        }
 
     def _mutated(self) -> bool:
         return any(
@@ -1019,6 +1352,7 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         if not task_id:
             raise ValueError("governed coding requires a task_id")
         self._bind_owner_authority(request)
+        self._activate_parent_turn(request.parent_turn_id)
 
         turn_id = f"turn-{uuid4().hex}"
         messages: list[dict[str, object]] = [
@@ -1082,11 +1416,26 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
                         context=self._context,
                     ))
                     self._record_mutation_path(receipt)
+                    self._record_receipt_correlation(
+                        receipt,
+                        provider_tool_call_id=event.provider_tool_call_id,
+                        lbe_call_id=event.lbe_call_id,
+                    )
+                    child_continuation = self._persist_subagent_receipt(
+                        receipt=receipt,
+                        provider_tool_call_id=event.provider_tool_call_id,
+                        lbe_call_id=event.lbe_call_id,
+                    )
+                    continuation_payload = (
+                        _receipt_payload(receipt)
+                        if child_continuation is None
+                        else self._continuation_payload(child_continuation, receipt)
+                    )
                     messages.append({
                         "role": "tool",
                         "tool_call_id": event.provider_tool_call_id,
                         "content": json.dumps(
-                            _receipt_payload(receipt),
+                            continuation_payload,
                             ensure_ascii=False,
                             sort_keys=True,
                         ),
@@ -1147,6 +1496,7 @@ class GovernedClineCodingController(_GovernedCodingControllerBase):
         if not task_id:
             raise ValueError("governed coding requires a task_id")
         self._bind_owner_authority(request)
+        self._activate_parent_turn(request.parent_turn_id)
 
         # Cline remains feature-scoped: importing the adapter/worker occurs only
         # after an explicitly persisted Cline engine selection.
@@ -1189,8 +1539,26 @@ class GovernedClineCodingController(_GovernedCodingControllerBase):
             payload = dict(getattr(frame, "payload", {}) or {})
             provider_events.append(payload)
 
-        def on_tool_receipt(_frame: object, receipt: ToolReceipt) -> None:
+        def on_tool_receipt(
+            frame: object,
+            receipt: ToolReceipt,
+        ) -> Mapping[str, object] | None:
             self._record_mutation_path(receipt)
+            provider_tool_call_id = getattr(frame, "cline_tool_call_id", None)
+            lbe_call_id = getattr(frame, "lbe_call_id", None)
+            self._record_receipt_correlation(
+                receipt,
+                provider_tool_call_id=provider_tool_call_id,
+                lbe_call_id=lbe_call_id,
+            )
+            child_continuation = self._persist_subagent_receipt(
+                receipt=receipt,
+                provider_tool_call_id=provider_tool_call_id,
+                lbe_call_id=lbe_call_id,
+            )
+            if child_continuation is None:
+                return None
+            return self._continuation_payload(child_continuation, receipt)
 
         try:
             ready = worker.start(start)

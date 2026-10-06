@@ -4,7 +4,7 @@ param(
     [string]$ProviderConfig = (Join-Path $PSScriptRoot 'reasoning-provider.json'),
     [string]$CapabilityRegistry = (Join-Path $PSScriptRoot 'state\capability-registry.json'),
     [string]$SessionId = $env:LBE_SESSION_ID,
-    [ValidateSet('audit','plan','coding')][string]$Agent = 'audit',
+    [ValidateSet('build','plan','audit')][string]$Agent = 'build',
     [string]$Model
 )
 
@@ -66,7 +66,19 @@ if (-not $pythonCommand) {
 if ($pythonCommand.DependencyError) {
     throw "LBE runtime Python $($pythonCommand.Version) at $($pythonCommand.Source) is missing a required dependency: $($pythonCommand.DependencyError). Install it with `"$($pythonCommand.Source)`" -m pip install -r requirements.txt"
 }
-if (-not (Test-Path -LiteralPath $workspace -PathType Container)) { throw "Project workspace missing: $workspace" }
+$ExtraArgs = @()
+if (-not (Test-Path -LiteralPath $workspace -PathType Container)) {
+    if ($Project -and ($Project.StartsWith('-') -or $Project -eq 'run' -or $Project -eq 'exec')) {
+        $ExtraArgs += $Project
+        if ($args) { $ExtraArgs += $args }
+        $Project = (Get-Location).Path
+        $workspace = [IO.Path]::GetFullPath($Project)
+    } else {
+        throw "Project workspace missing: $workspace"
+    }
+} else {
+    if ($args) { $ExtraArgs += $args }
+}
 if (-not (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) {
     throw "Provider setup is required. Create reasoning-provider.json from reasoning-provider.example.json, then rerun this launcher. No provider or credential was fabricated."
 }
@@ -95,14 +107,16 @@ if (-not $SessionId) {
         $workspaceId = 'workspace_' + ([BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
     } finally { $sha.Dispose() }
     $mode = if ($Agent -eq 'plan') { 'investigation' } elseif ($Agent -eq 'audit') { 'audit' } else { 'coding' }
+    $permission = if ($Agent -eq 'plan') { 'read_only' } elseif ($Agent -eq 'audit') { 'audit_only' } else { 'write_allowed' }
+    $runtimePolicy = if ($Agent -eq 'plan') { 'audit' } elseif ($Agent -eq 'audit') { 'strict' } else { 'development' }
     $bootstrapArgs = @(
         '-m','lbe_guard_inspector.product_entry','start',
         '--database',[IO.Path]::GetFullPath($Database),
         '--workspace',$workspace,
         '--project-workspace-id',$workspaceId,
         '--mode',$mode,
-        '--permission','read_only',
-        '--runtime-policy','audit',
+        '--permission',$permission,
+        '--runtime-policy',$runtimePolicy,
         '--provider',$providerId,
         '--model',$Model,
         '--provider-config',[IO.Path]::GetFullPath($ProviderConfig),
@@ -139,12 +153,12 @@ if (Test-Path -LiteralPath $CapabilityRegistry -PathType Leaf) {
 
 $exe = Join-Path $root 'apps\lbe-terminal\target\release\lbe.exe'
 if (Test-Path -LiteralPath $exe -PathType Leaf) {
-    & $exe $workspace '--agent' $Agent '--model' $Model '--session' $SessionId
+    & $exe $workspace '--agent' $Agent '--model' $Model '--session' $SessionId @ExtraArgs
     exit $LASTEXITCODE
 }
 
 Push-Location (Join-Path $root 'apps\lbe-terminal')
 try {
-    & cargo run --release -- $workspace '--agent' $Agent '--model' $Model '--session' $SessionId
+    & cargo run --release -- $workspace '--agent' $Agent '--model' $Model '--session' $SessionId @ExtraArgs
     exit $LASTEXITCODE
 } finally { Pop-Location }

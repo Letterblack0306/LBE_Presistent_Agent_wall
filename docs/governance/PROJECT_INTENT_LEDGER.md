@@ -1,4 +1,4 @@
-﻿# Project Intent Ledger
+# Project Intent Ledger
 
 Status: **CANONICAL PRE-MUTATION INTENT LEDGER**
 
@@ -1242,3 +1242,22 @@ REQUIRED_EVIDENCE: every disputed intent carries a PROVENANCE_CORRECTION_2026_09
 MACHINE_SLICE: GOVERNANCE_INTEGRITY_REPAIR
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_OPERATOR_DECISION_AUTHORIZE_GOVERNANCE_INTEGRITY_REPAIR
+
+
+## INTENT LBE-INTENT-MAIN-SOURCE-TEST-CONSISTENCY-REPAIR-001
+
+STATUS: AUTHORIZED
+REQUEST: Make canonical main source/test-consistent after commit 314f399 landed five test files without the implementation they exercise.
+OWNER: Repository consistency owner; no new runtime authority is created.
+FAILURE_CLASS: COMMITTED_TESTS_REFERENCE_UNCOMMITTED_SOURCE.
+WHY: 314f399 committed five test files whose implementation owners were left uncommitted. A clean clone of main therefore cannot pass them: verified by uv/pytest on a clean clone, 6 failed / 73 passed. Import resolution alone was insufficient; the failures are behavioral. The owning modules supply the receipt-correlation, engine-binding, and launcher-contract behavior those tests assert.
+EXISTING_OWNER: lbe_guard_inspector/provider_continuation.py, lbe_guard_inspector/runtime/governed_coding.py, lbe_guard_inspector/provider_registry.py, and launch-lbe.ps1 owners; verified by tests/test_provider_continuation.py, tests/test_governed_coding.py, tests/test_provider_registry.py, tests/test_provider_turn_runtime.py, and tests/test_product_launcher_contract.py. No new owner is created.
+DESIRED_RESULT: The existing owners supplying the behavior those committed tests assert are committed, so a clean clone of main passes all five committed test files.
+NON_GOALS: No UI change of any kind; app.rs encoding corruption stays untouched. No ui.rs formatting. No uv.lock, packaging, or release change. No build_errors.txt. No deletion of untracked artifacts. No new owner, no re-scoping, no second authorization system.
+REUSE_DECISION: REUSE the existing owners and the existing tests that verify them. Nothing is created or renamed.
+AUTHORITY_IMPACT: None. Source/test consistency only. No runtime, authorization, execution, receipt, evidence, persistence, validation, or completion authority changes.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/provider_continuation.py,lbe_guard_inspector/runtime/governed_coding.py,lbe_guard_inspector/provider_registry.py,launch-lbe.ps1,docs/governance/PROJECT_INTENT_LEDGER.md,.lbe/governance/,PROJECT_INDEX.md
+REQUIRED_EVIDENCE: the five committed test files pass in the working tree under pytest 8.3.5 via uv, and pass again from a clean clone of the candidate commit; governance-check staged and head pass; no unrelated file is staged.
+MACHINE_SLICE: MAIN_SOURCE_TEST_CONSISTENCY_REPAIR
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: EXPLICIT_USER_DIRECTION_REPAIR_314F399_2026_10_06

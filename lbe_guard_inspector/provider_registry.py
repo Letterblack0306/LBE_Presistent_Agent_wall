@@ -407,10 +407,20 @@ def default_provider_registry() -> ProviderRegistry:
         default=True,
     )
 
-    # LM Studio, Ollama, and OpenRouter expose OpenAI-compatible chat
+    # LM Studio, Ollama, OpenRouter, DeepSeek, Groq, Mistral, Together, Fireworks, and xAI expose OpenAI-compatible chat
     # transports. Native LBE bindings are usable without Cline, while the
     # existing Cline routes stay available as explicit alternatives.
-    for provider_id in ("lmstudio", "ollama", "openrouter"):
+    for provider_id in (
+        "lmstudio",
+        "ollama",
+        "openrouter",
+        "deepseek",
+        "groq",
+        "mistral",
+        "together",
+        "fireworks",
+        "xai",
+    ):
         registry.register_binding(
             engine_id=NATIVE_LBE_ENGINE_ID,
             provider_id=provider_id,
