@@ -5644,10 +5644,16 @@ pub(crate) fn parse_provider_list_payload(
                 "vertex" => Ok(ProviderId::Vertex),
                 "bedrock" => Ok(ProviderId::Bedrock),
                 "ollama" => Ok(ProviderId::Ollama),
+                "mistral" => Ok(ProviderId::Mistral),
                 "lmstudio" | "lm-studio" => Ok(ProviderId::LmStudio),
                 "openrouter" => Ok(ProviderId::OpenRouter),
                 "opencode" => Ok(ProviderId::OpenCode),
                 "openai-compatible" => Ok(ProviderId::OpenAiCompatible),
+                "deepseek" => Ok(ProviderId::DeepSeek),
+                "groq" => Ok(ProviderId::Groq),
+                "together" => Ok(ProviderId::Together),
+                "fireworks" => Ok(ProviderId::Fireworks),
+                "xai" => Ok(ProviderId::Xai),
                 _ => Err(LbeError::new(format!(
                     "provider.list returned unsupported provider: {value}"
                 ))),
@@ -5669,8 +5675,12 @@ fn parse_provider_id(value: &str) -> Result<ProviderId, LbeError> {
         "lmstudio" | "lm-studio" => Ok(ProviderId::LmStudio),
         "openrouter" => Ok(ProviderId::OpenRouter),
         "opencode" => Ok(ProviderId::OpenCode),
-        "openai-compatible" | "deepseek" | "groq" | "azure" | "xai" | "together" | "fireworks"
-        | "perplexity" => Ok(ProviderId::OpenAiCompatible),
+        "deepseek" => Ok(ProviderId::DeepSeek),
+        "groq" => Ok(ProviderId::Groq),
+        "together" => Ok(ProviderId::Together),
+        "fireworks" => Ok(ProviderId::Fireworks),
+        "xai" => Ok(ProviderId::Xai),
+        "openai-compatible" | "azure" | "perplexity" => Ok(ProviderId::OpenAiCompatible),
         other => Err(LbeError::new(format!(
             "session_context returned unsupported provider: {other}"
         ))),

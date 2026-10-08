@@ -6235,3 +6235,37 @@ fn conversational_model_error_terminates_running_phase_as_failed() {
     assert_eq!(app.phase, Phase::Failed);
     assert_eq!(app.snapshot.session_state, SessionStatus::Failed);
 }
+
+#[test]
+fn canonical_provider_list_accepts_all_native_registry_ids_without_identity_loss() {
+    // Matches the live 2026-10-08 product_entry provider.list result. The
+    // terminal must not collapse distinct OpenAI-compatible providers into
+    // a single identity or reject the entire catalog.
+    let names = [
+        "anthropic",
+        "bedrock",
+        "deepseek",
+        "fireworks",
+        "gemini",
+        "groq",
+        "lmstudio",
+        "mistral",
+        "ollama",
+        "openai",
+        "openai-compatible",
+        "openai-native",
+        "opencode",
+        "openrouter",
+        "together",
+        "vertex",
+        "xai",
+    ];
+    let providers = parse_provider_list_payload(&serde_json::json!({
+        "ok": true, "action": "provider.list", "providers": names
+    }))
+    .expect("LBE's canonical provider registry must project into the TUI");
+    assert_eq!(providers.len(), names.len());
+    for (actual, expected) in providers.iter().zip(names.iter()) {
+        assert_eq!(actual.cli_name(), *expected);
+    }
+}

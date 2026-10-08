@@ -594,6 +594,11 @@ pub(crate) enum ProviderId {
     Ollama,
     OpenRouter,
     OpenCode,
+    DeepSeek,
+    Groq,
+    Together,
+    Fireworks,
+    Xai,
 }
 
 impl ProviderId {
@@ -611,6 +616,11 @@ impl ProviderId {
             Self::Ollama => "ollama",
             Self::OpenRouter => "openrouter",
             Self::OpenCode => "opencode",
+            Self::DeepSeek => "deepseek",
+            Self::Groq => "groq",
+            Self::Together => "together",
+            Self::Fireworks => "fireworks",
+            Self::Xai => "xai",
         }
     }
 
@@ -628,6 +638,11 @@ impl ProviderId {
             Self::Ollama => "Ollama",
             Self::OpenRouter => "OpenRouter",
             Self::OpenCode => "OpenCode",
+            Self::DeepSeek => "DeepSeek",
+            Self::Groq => "Groq",
+            Self::Together => "Together",
+            Self::Fireworks => "Fireworks",
+            Self::Xai => "xAI",
         }
     }
 }

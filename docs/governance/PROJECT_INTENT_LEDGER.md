@@ -1297,3 +1297,14 @@ AFFECTED_STRUCTURE: apps/lbe-terminal/src/wrapper.rs, apps/lbe-terminal/src/test
 REUSE_DECISION: ADAPT current refresh_provider_catalog; retain unknown health on query failure and runtime-authored error reporting.
 REQUIRED_EVIDENCE: source and focused Rust regression, provider discovery remains non-inferential, no false readiness claim.
 RESULT: PASS (Rust regression 255 passed, 2 ignored; real configured provider acceptance separately required)
+
+## INTENT LBE-INTENT-PROVIDER-REGISTRY-TUI-IDENTITY-20261008
+STATUS: ACTIVE
+REQUEST: Repair proven provider.list contract mismatch: native LBE CLI exposes DeepSeek, Groq, Together, Fireworks, and xAI yet the Rust TUI rejects them, preventing any provider catalog projection. Preserve exact provider identity instead of rewriting to generic OpenAI-compatible.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: apps/lbe-terminal/src/types.rs ProviderId, wrapper.rs provider.list parser, app.rs provider commands, existing provider registry.
+EXPECTED_PATH_PREFIXES: apps/lbe-terminal/,docs/governance/,docs/acceptance/
+AFFECTED_STRUCTURE: apps/lbe-terminal/src/types.rs, apps/lbe-terminal/src/wrapper.rs, apps/lbe-terminal/src/app.rs, apps/lbe-terminal/src/tests.rs
+REUSE_DECISION: EXTEND existing ProviderId and parsing, no new registry, identity owner, runtime or executor.
+REQUIRED_EVIDENCE: full canonical provider.list fixture accepted without identity collapsing, regression, release PTY proof and no source weakening.
+RESULT: PASS (canonical 17-provider registry fixture, Rust regression 256 passed, 2 ignored; live provider connection remains separate)

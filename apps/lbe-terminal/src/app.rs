@@ -824,6 +824,11 @@ impl App {
                             "ollama" => Some(ProviderId::Ollama),
                             "openrouter" => Some(ProviderId::OpenRouter),
                             "opencode" => Some(ProviderId::OpenCode),
+                            "deepseek" => Some(ProviderId::DeepSeek),
+                            "groq" => Some(ProviderId::Groq),
+                            "together" => Some(ProviderId::Together),
+                            "fireworks" => Some(ProviderId::Fireworks),
+                            "xai" => Some(ProviderId::Xai),
                             _ => None,
                         });
                 if args.len() >= 4 {
