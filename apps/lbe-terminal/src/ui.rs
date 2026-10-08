@@ -320,7 +320,6 @@ impl LayoutTier {
     /// through to the same single-column path regardless of how little
     /// room was available. Each step is now explicit.
     pub(crate) fn for_area(width: u16, height: u16) -> Self {
-
         if width >= 136 && height >= 24 {
             LayoutTier::Wide
         } else if width >= 100 && height >= 20 {
@@ -1607,7 +1606,9 @@ pub(crate) fn mock_panel_text(panel: MockPanel, snapshot: &LbeSnapshot) -> Text<
                     if let Some(rule) = &tool.governance_rule {
                         rows.push(format!(
                             "  {} // {}",
-                            tool.ui_label.as_deref().unwrap_or("Wrong Owner / Wrong Scope"),
+                            tool.ui_label
+                                .as_deref()
+                                .unwrap_or("Wrong Owner / Wrong Scope"),
                             rule
                         ));
                         rows.push(format!(

@@ -166,9 +166,13 @@ def _turn(argv: Sequence[str]) -> int:
     parser = _build_turn_parser()
     args = parser.parse_args(list(argv))
     try:
-        from .memory.operational_history import SessionOperationalHistory
+        from .memory.operational_history import OperationalEvent, SessionOperationalHistory, TurnStatus
         from .persistent_turn_control import PersistentTurnControl
-        from .provider_turn_runtime import GovernedCodingTurnRuntime, GovernedProviderTurnRuntime
+        from .provider_turn_runtime import (
+            BackgroundProviderTurnRuntime,
+            GovernedCodingTurnRuntime,
+            GovernedProviderTurnRuntime,
+        )
         from .reasoning_runtime import build_provider_controller
         from .runtime.governed_coding import build_governed_coding_controller
 
@@ -200,7 +204,7 @@ def _turn(argv: Sequence[str]) -> int:
                 engine_id=state.reasoning_engine,
                 external_capabilities=_installed_external_capabilities(),
             )
-            provider_runtime = GovernedCodingTurnRuntime(
+            foreground_runtime = GovernedCodingTurnRuntime(
                 history=history,
                 gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller),
             )
@@ -210,11 +214,15 @@ def _turn(argv: Sequence[str]) -> int:
                 provider_config=config,
                 engine_id=state.reasoning_engine,
             )
-            provider_runtime = GovernedProviderTurnRuntime(
+            foreground_runtime = GovernedProviderTurnRuntime(
                 history=history,
                 gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller),
                 mode=AgentMode(state.mode),
             )
+        provider_runtime = BackgroundProviderTurnRuntime(
+            history=history,
+            foreground=foreground_runtime,
+        )
         control = PersistentTurnControl(history=history, provider_runtime=provider_runtime)
         outcome = control.handle(ControlRequest(
             request_id=f"bridge-{uuid4().hex}",
@@ -228,6 +236,25 @@ def _turn(argv: Sequence[str]) -> int:
                 if running is None:
                     break
                 time.sleep(0.05)
+            running = history.latest_running_turn(session_id=state.session_id)
+            if running is not None:
+                if provider_runtime.supports_cancellation:
+                    provider_runtime.cancel(turn_id=running.turn_id)
+                history.append_event(OperationalEvent(
+                    session_id=state.session_id,
+                    turn_id=running.turn_id,
+                    event_type="model.error",
+                    payload={
+                        "error_code": "PROVIDER_TIMEOUT",
+                        "error_message": (
+                            "provider/model turn exceeded the configured timeout; "
+                            "LBE remains available for another provider/model selection"
+                        ),
+                    },
+                    provider_id=state.provider_id,
+                    model_id=state.provider_model,
+                ))
+                history.finalize_turn(turn_id=running.turn_id, status=TurnStatus.FAILED)
         turn = history.latest_running_turn(session_id=state.session_id)
         if turn is None:
             turns = history.events_for_session(session_id=state.session_id)

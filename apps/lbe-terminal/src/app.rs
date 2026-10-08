@@ -39,7 +39,7 @@ fn input_trace(message: impl AsRef<str>) {
 }
 
 // ---------------------------------------------------------------------------
-// App — the central UI state machine
+// App â€” the central UI state machine
 // ---------------------------------------------------------------------------
 
 pub(crate) struct App {
@@ -157,7 +157,7 @@ impl Default for App {
             transcript: Vec::new(),
             activity_log: Vec::new(),
             phase: Phase::Landing,
-            agent_mode: AgentMode::Audit,
+            agent_mode: AgentMode::Build,
             show_shortcuts: false,
             show_command_palette: false,
             command_palette_index: 0,
@@ -672,16 +672,21 @@ impl App {
                 expected_sha256,
                 replacement_content,
             } => {
+                let path = path.clone();
+                let expected_sha256 = expected_sha256.clone();
+                let content = replacement_content.clone();
                 self.pending_patch = Some(PendingPatch {
                     operation_id: None,
                     approval_id: None,
                     path: path.clone(),
                     expected_sha256: expected_sha256.clone(),
-                    content: replacement_content.clone(),
+                    content: content.clone(),
                 });
                 self.apply_wrapper_result(wrapper.submit(
-                    UserRequest::RequestAuthorization {
-                        capability: "modify".to_owned(),
+                    UserRequest::PatchWorkspace {
+                        path,
+                        content,
+                        expected_sha256,
                     },
                     now,
                 ));
@@ -1973,6 +1978,8 @@ impl App {
                     return;
                 }
                 self.snapshot.turn_id = Some(turn_id.clone());
+                self.snapshot.session_state = SessionStatus::Failed;
+                self.advance_phase(Phase::Failed);
                 self.record_audit_finding("Runtime", message.clone());
                 self.transcript.push(format!(
                     "LBE MODEL ERROR  {message} · turn {turn_id} · {event_id}"
@@ -2039,15 +2046,25 @@ impl App {
                 if verdict != "ALLOW" {
                     self.record_audit_finding("Authorization", format!("{verdict}: {rationale}"));
                 }
-                if let Some(pending_patch) = &self.pending_patch {
-                    if pending_patch.operation_id.as_deref() != Some(operation_id.as_str())
-                        || pending_patch.approval_id.as_deref() != Some(approval_id.as_str())
-                    {
-                        return;
+                if let Some(pending_patch) = self.pending_patch.as_mut() {
+                    if let Some(expected_operation_id) = pending_patch.operation_id.as_deref() {
+                        if expected_operation_id != operation_id {
+                            return;
+                        }
+                    } else {
+                        pending_patch.operation_id = Some(operation_id.clone());
+                    }
+                    if let Some(expected_approval_id) = pending_patch.approval_id.as_deref() {
+                        if expected_approval_id != approval_id {
+                            return;
+                        }
+                    } else if !approval_id.is_empty() {
+                        pending_patch.approval_id = Some(approval_id.clone());
                     }
                 }
                 self.last_authorization_operation_id = Some(operation_id.clone());
-                self.last_authorization_approval_id = Some(approval_id.clone());
+                self.last_authorization_approval_id =
+                    (!approval_id.is_empty()).then_some(approval_id.clone());
                 self.last_authorization_verdict = Some(verdict.clone());
                 self.last_authorization_rationale = Some(rationale.clone());
                 // The runtime resolved the decision; the gate must stop presenting a
@@ -2438,15 +2455,16 @@ impl App {
         if self.last_authorization_verdict.as_deref() != Some("ALLOW")
             || pending_patch.operation_id.as_deref()
                 != self.last_authorization_operation_id.as_deref()
-            || pending_patch.approval_id.as_deref()
-                != self.last_authorization_approval_id.as_deref()
+            || (pending_patch.approval_id.is_some()
+                && pending_patch.approval_id.as_deref()
+                    != self.last_authorization_approval_id.as_deref())
         {
             self.pending_patch = Some(pending_patch);
             return;
         }
         self.phase = Phase::Running;
         self.transcript.push(format!(
-            "PATCH  AUTHORIZED — SUBMITTING · {} through Agent Wall",
+            "PATCH  AUTHORIZED â€” SUBMITTING · {} through Agent Wall",
             pending_patch.path
         ));
         self.apply_wrapper_result(wrapper.submit(

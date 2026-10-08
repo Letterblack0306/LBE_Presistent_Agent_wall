@@ -361,6 +361,11 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
                 wrapper.shutdown();
                 return Ok(2);
             }
+            if submitted && matches!(app.phase, Phase::Failed) {
+                emit_headless_result(&app, "failed", plain)?;
+                wrapper.shutdown();
+                return Ok(1);
+            }
             continue;
         }
         std::thread::sleep(Duration::from_millis(5));

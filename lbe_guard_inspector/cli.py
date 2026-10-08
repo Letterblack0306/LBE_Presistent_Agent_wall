@@ -589,6 +589,10 @@ def _resolve_user_provider_config(
             model=profile.model,
             timeout_seconds=profile.timeout_seconds,
             api_key=api_key,
+            # A selected profile owns its provider identity.  Dropping this
+            # field makes non-generic provider profiles indistinguishable from
+            # an undeclared configuration at the runtime boundary.
+            provider_id=profile.provider_id,
         ),
     )
 

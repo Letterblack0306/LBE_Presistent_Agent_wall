@@ -1,4 +1,4 @@
-﻿| `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Records that `textual_tui.py` fabricates receipt-shaped and session-shaped values at L226/L312 and renders a PREVIEW state, while being a **deliberately retained** module that must NOT be deleted: `verify_clean_install.py:68-73` proves unreachability by presence, a launcher contract test names it, and the gate file and PROVENANCE.md register it. Records the retraction of an earlier dead-code classification | Product-surface owner and clean-install verifier owner | `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Evidence record only. No deletion is authorized. The live risk is that the shipped-but-unreachable invariant has no guard against becoming reachable |
+| `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Records that `textual_tui.py` fabricates receipt-shaped and session-shaped values at L226/L312 and renders a PREVIEW state, while being a **deliberately retained** module that must NOT be deleted: `verify_clean_install.py:68-73` proves unreachability by presence, a launcher contract test names it, and the gate file and PROVENANCE.md register it. Records the retraction of an earlier dead-code classification | Product-surface owner and clean-install verifier owner | `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Evidence record only. No deletion is authorized. The live risk is that the shipped-but-unreachable invariant has no guard against becoming reachable |
 # Project Structural Authority Index
 
 Status: **CANONICAL GOVERNANCE INDEX**
@@ -124,3 +124,10 @@ they are not silently absorbed into this canonical index.
 
 
 
+
+## Installed runtime default assets (2026-10-08)
+
+| Path | Existing owner / purpose | Authority |
+|---|---|---|
+| `lbe_guard_inspector/config.json` | Installed fallback inspector configuration when the host has not supplied an external config path | Data only; current session/workspace identity remains runtime-owned |
+| `lbe_guard_inspector/governance.json` | Packaged read-only baseline inspector policy | Data only; does not replace LBE runtime authorization |

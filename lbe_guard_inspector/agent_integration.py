@@ -46,6 +46,7 @@ class AgentRequestEnvelope:
     mode: AgentMode
     operation_id: str
     arguments: Mapping[str, Any]
+    parent_turn_id: str | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -214,6 +215,7 @@ class GovernedAgentGateway:
                     task_id=request.task_id,
                     reference_context=reference_context,
                     max_results=max_results,
+                    parent_turn_id=request.parent_turn_id,
                 ),
                 policy=self._SINGLE_ATTEMPT_POLICY,
                 idempotent=False,

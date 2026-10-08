@@ -20,6 +20,7 @@ class LBERequest:
     reference_context: tuple[Mapping[str, Any], ...] = ()
     task_id: str | None = None
     max_results: int = 10
+    parent_turn_id: str | None = None
 
     def owner_authority_package(self) -> Mapping[str, Any] | None:
         packages = tuple(

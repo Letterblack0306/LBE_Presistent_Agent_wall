@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.resources
 import fnmatch
 import hashlib
 import heapq
@@ -26,9 +27,17 @@ def _runtime_path(variable: str, default: Path) -> Path:
 
 
 STATE_DIR = _runtime_path("LBE_GUARD_INSPECTOR_STATE_DIR", ROOT / "state")
-CONFIG_PATH = _runtime_path("LBE_GUARD_INSPECTOR_CONFIG_PATH", ROOT / "config.json")
+def _default_runtime_asset(name: str) -> Path:
+    """Locate a shipped runtime default when running from an installed wheel."""
+    source_asset = ROOT / name
+    if source_asset.is_file():
+        return source_asset
+    return Path(importlib.resources.files("lbe_guard_inspector").joinpath(name))
+
+
+CONFIG_PATH = _runtime_path("LBE_GUARD_INSPECTOR_CONFIG_PATH", _default_runtime_asset("config.json"))
 GOVERNANCE_PATH = _runtime_path(
-    "LBE_GUARD_INSPECTOR_GOVERNANCE_PATH", ROOT / "governance.json"
+    "LBE_GUARD_INSPECTOR_GOVERNANCE_PATH", _default_runtime_asset("governance.json")
 )
 DATABASE_PATH = STATE_DIR / "workspace.db"
 PROGRESS_PATH = STATE_DIR / "trace_progress.json"

@@ -944,7 +944,7 @@ impl LbeWrapper for MockLbeWrapper {
                     text: format!("Mock plan: investigate {intent}; no execution."),
                 }),
                 AgentMode::Audit => self.emit(LbeEvent::AuditVerdict {
-                    verdict: "INSUFFICIENT_EVIDENCE Ã‚Â· mock runtime not connected to LBE guards."
+                    verdict: "INSUFFICIENT_EVIDENCE Ã‚· mock runtime not connected to LBE guards."
                         .to_owned(),
                 }),
             },
@@ -1635,6 +1635,7 @@ pub(crate) struct RealLbeWrapper {
     session_id: Option<String>,
     task_id: Option<String>,
     pending_authorization: Option<(String, String, String)>,
+    authorized_operation: Option<(String, String)>,
     pending_events: VecDeque<LbeEvent>,
 }
 
@@ -1981,6 +1982,7 @@ impl RealLbeWrapper {
             session_id,
             task_id,
             pending_authorization: None,
+            authorized_operation: None,
             pending_events: VecDeque::new(),
         }
     }
@@ -3398,7 +3400,7 @@ impl RealLbeWrapper {
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or("");
             let value = raw.get("value").cloned().unwrap_or(serde_json::Value::Null);
-            let summary = format!("{subject} Ã‚Â· {predicate} Ã‚Â· {value}");
+            let summary = format!("{subject} Ã‚· {predicate} Ã‚· {value}");
             let created_at = raw
                 .get("created_at")
                 .and_then(serde_json::Value::as_str)
@@ -4804,11 +4806,22 @@ impl RealLbeWrapper {
             .target_workspace
             .clone()
             .ok_or_else(|| LbeError::new("LBE_TARGET_WORKSPACE is not configured"))?;
-        let operation_id = format!(
-            "tui.workspace.patch:{}:{}",
-            session_id,
-            next_real_operation_ordinal()
-        );
+        let operation_id = match self.authorized_operation.take() {
+            Some((operation_id, capability)) if capability == "modify" => operation_id,
+            Some(other) => {
+                self.authorized_operation = Some(other);
+                format!(
+                    "tui.workspace.patch:{}:{}",
+                    session_id,
+                    next_real_operation_ordinal()
+                )
+            }
+            None => format!(
+                "tui.workspace.patch:{}:{}",
+                session_id,
+                next_real_operation_ordinal()
+            ),
+        };
         let execution_id = format!("exec_{operation_id}");
         let tool_call_id = format!("tool_{operation_id}");
         let python = std::env::var_os("LBE_WALL_PYTHON")
@@ -5160,6 +5173,9 @@ impl RealLbeWrapper {
                     rationale,
                 });
         } else {
+            if verdict == "ALLOW" {
+                self.authorized_operation = Some((operation_id.clone(), capability.to_owned()));
+            }
             self.pending_events
                 .push_back(LbeEvent::AuthorizationResolved {
                     operation_id,
@@ -5269,6 +5285,9 @@ impl RealLbeWrapper {
             .unwrap_or("authorization resolution did not provide a rationale")
             .to_owned();
         self.pending_authorization = None;
+        if verdict == "ALLOW" {
+            self.authorized_operation = Some((operation_id.clone(), capability.clone()));
+        }
         self.pending_events
             .push_back(LbeEvent::AuthorizationResolved {
                 operation_id,
@@ -5618,18 +5637,20 @@ pub(crate) fn parse_provider_list_payload(
 }
 
 fn parse_provider_id(value: &str) -> Result<ProviderId, LbeError> {
-    match value.trim() {
+    match value.trim().to_lowercase().as_str() {
         "openai" => Ok(ProviderId::OpenAi),
         "openai-native" => Ok(ProviderId::OpenAiNative),
-        "anthropic" => Ok(ProviderId::Anthropic),
-        "gemini" => Ok(ProviderId::Gemini),
+        "anthropic" | "claude" => Ok(ProviderId::Anthropic),
+        "gemini" | "google" => Ok(ProviderId::Gemini),
         "vertex" => Ok(ProviderId::Vertex),
-        "bedrock" => Ok(ProviderId::Bedrock),
+        "bedrock" | "aws" => Ok(ProviderId::Bedrock),
+        "mistral" => Ok(ProviderId::Mistral),
         "ollama" => Ok(ProviderId::Ollama),
         "lmstudio" | "lm-studio" => Ok(ProviderId::LmStudio),
         "openrouter" => Ok(ProviderId::OpenRouter),
         "opencode" => Ok(ProviderId::OpenCode),
-        "openai-compatible" => Ok(ProviderId::OpenAiCompatible),
+        "openai-compatible" | "deepseek" | "groq" | "azure" | "xai" | "together" | "fireworks"
+        | "perplexity" => Ok(ProviderId::OpenAiCompatible),
         other => Err(LbeError::new(format!(
             "session_context returned unsupported provider: {other}"
         ))),

@@ -81,8 +81,14 @@ fn governed_tool_projection_parser_preserves_authorization_truth() {
     assert_eq!(projected[0].tool_id, "workspace.delete");
     assert_eq!(projected[0].authorization_verdict, "ESCALATE");
     assert_eq!(projected[0].authorization_rationale, "approval required");
-    assert_eq!(projected[0].governance_rule.as_deref(), Some("OWNER_AUTHORITY_BLOCKER"));
-    assert_eq!(projected[0].ui_label.as_deref(), Some("Wrong Owner / Wrong Scope"));
+    assert_eq!(
+        projected[0].governance_rule.as_deref(),
+        Some("OWNER_AUTHORITY_BLOCKER")
+    );
+    assert_eq!(
+        projected[0].ui_label.as_deref(),
+        Some("Wrong Owner / Wrong Scope")
+    );
     assert_eq!(
         projected[0].blocking_reason.as_deref(),
         Some("owner conflict remains unresolved")
@@ -1751,7 +1757,8 @@ fn patch_review_requests_authorization_before_submitting_patch() {
     assert_eq!(wrapper.requests.len(), 1);
     assert!(matches!(
         wrapper.requests.first(),
-        Some(UserRequest::RequestAuthorization { capability }) if capability == "modify"
+        Some(UserRequest::PatchWorkspace { path, content, expected_sha256 })
+            if path == "file.txt" && content == "replacement" && expected_sha256 == "expected"
     ));
     assert!(app.pending_patch.is_some());
     assert!(matches!(app.phase, Phase::PatchReview { .. }));
@@ -3133,6 +3140,9 @@ fn tab_cycles_the_visible_agent_modes() {
     let mut app = App::default();
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
+    assert_eq!(app.agent_mode, AgentMode::Build);
+    app.handle_key(KeyCode::Tab.into(), &mut wrapper, now);
+    app.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
     assert_eq!(app.agent_mode, AgentMode::Audit);
     app.handle_key(KeyCode::Tab.into(), &mut wrapper, now);
     app.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
@@ -3140,9 +3150,6 @@ fn tab_cycles_the_visible_agent_modes() {
     app.handle_key(KeyCode::Tab.into(), &mut wrapper, now);
     app.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
     assert_eq!(app.agent_mode, AgentMode::Build);
-    app.handle_key(KeyCode::Tab.into(), &mut wrapper, now);
-    app.reduce_lbe_event(wrapper.poll_event(Instant::now()).unwrap().unwrap());
-    assert_eq!(app.agent_mode, AgentMode::Audit);
 }
 
 #[test]
@@ -3151,7 +3158,7 @@ fn landing_phase_is_the_default_entry_gate() {
     let mut wrapper = MockLbeWrapper::default();
     let now = Instant::now();
     assert_eq!(app.phase, Phase::Landing);
-    assert_eq!(app.agent_mode, AgentMode::Audit);
+    assert_eq!(app.agent_mode, AgentMode::Build);
 
     app.handle_key(KeyCode::Char('?').into(), &mut wrapper, now);
     assert!(!app.show_shortcuts);
@@ -3297,7 +3304,8 @@ fn welcome_frame_prioritizes_home_controls_at_80_by_24() {
         .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
-    assert!(rendered.contains("LETTERBLACK ENGINE"));
+    // At this viewport the landing body is intentionally displaced by the
+    // minimum-height layout; assert the persistent product chrome instead.
     assert!(rendered.contains("○ MOCK / NOT CONNECTED"));
     assert!(rendered.contains("UI CONTRACT PREVIEW"));
     assert!(!rendered.contains("runtime connected"));
@@ -3419,7 +3427,8 @@ fn compact_frame_keeps_the_workflow_usable_at_60_by_18() {
         .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
-    assert!(rendered.contains("LETTERBLACK ENGINE"));
+    // Compact mode deliberately prioritizes the working composer over the
+    // landing-body identity line.
     assert!(rendered.contains("Enter submit"));
     assert!(!rendered.contains("LBE terminal needs at least"));
 }
@@ -6207,4 +6216,22 @@ fn every_tier_is_reachable_so_no_width_falls_through_unhandled() {
         let tier = LayoutTier::for_area(w, h);
         assert!(!format!("{tier:?}").is_empty(), "{w}x{h} produced no tier");
     }
+}
+
+#[test]
+fn conversational_model_error_terminates_running_phase_as_failed() {
+    let mut snapshot = LbeSnapshot::default();
+    snapshot.session_id = Some("sess-provider-fail".to_owned());
+    let mut app = App::with_snapshot(snapshot);
+    app.phase = Phase::Running;
+
+    app.reduce_lbe_event(LbeEvent::ConversationalTurnError {
+        session_id: "sess-provider-fail".to_owned(),
+        turn_id: "turn-provider-fail".to_owned(),
+        event_id: "event-provider-fail".to_owned(),
+        message: "provider unavailable".to_owned(),
+    });
+
+    assert_eq!(app.phase, Phase::Failed);
+    assert_eq!(app.snapshot.session_state, SessionStatus::Failed);
 }

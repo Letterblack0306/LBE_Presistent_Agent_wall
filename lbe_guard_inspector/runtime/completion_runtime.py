@@ -140,6 +140,7 @@ class CodingCompletionRuntime:
         task_id: str,
         reference_context: tuple[Mapping[str, object], ...] = (),
         max_results: int = 10,
+        parent_turn_id: str | None = None,
     ) -> CodingReasoningResult:
         response = self._runtime.run_reasoning(
             controller=controller,
@@ -147,6 +148,7 @@ class CodingCompletionRuntime:
             task_id=task_id,
             reference_context=reference_context,
             max_results=max_results,
+            parent_turn_id=parent_turn_id,
         )
         if response.outcome == "COMPLETED":
             state = self._runtime.record_task_status(

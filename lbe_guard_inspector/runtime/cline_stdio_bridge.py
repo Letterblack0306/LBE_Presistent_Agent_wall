@@ -4,7 +4,7 @@ from __future__ import annotations
 import subprocess
 import threading
 from pathlib import Path
-from typing import Callable, TextIO
+from typing import Callable, Mapping, TextIO
 
 from .cline_stdio_protocol import (
     PROTOCOL_VERSION,
@@ -149,7 +149,7 @@ class GovernedClineWorker:
         context: ToolExecutionContext,
         timeout_seconds: float = 60.0,
         on_provider_event: Callable[[BridgeFrame], None] | None = None,
-        on_tool_receipt: Callable[[BridgeFrame, ToolReceipt], None] | None = None,
+        on_tool_receipt: Callable[[BridgeFrame, ToolReceipt], Mapping[str, object] | None] | None = None,
     ) -> BridgeFrame:
         """Run one Cline turn while LBE remains the only executable-tool owner."""
         if frame.message_type != "turn.execute":
@@ -241,7 +241,7 @@ class GovernedClineWorker:
         *,
         orchestrator: GovernedToolOrchestrator,
         context: ToolExecutionContext,
-        on_tool_receipt: Callable[[BridgeFrame, ToolReceipt], None] | None = None,
+        on_tool_receipt: Callable[[BridgeFrame, ToolReceipt], Mapping[str, object] | None] | None = None,
     ) -> None:
         tool_id = proposal.payload.get("tool_id")
         arguments = proposal.payload.get("arguments", {})
@@ -269,21 +269,24 @@ class GovernedClineWorker:
                 context=context,
             )
         )
+        payload: dict[str, object] = {
+            "status": receipt.status.value,
+            "output": dict(receipt.output or {}),
+            "evidence": [dict(item) for item in receipt.evidence],
+            "error_code": receipt.error_code,
+            "error_message": receipt.error_message,
+        }
         if on_tool_receipt is not None:
-            on_tool_receipt(proposal, receipt)
+            override = on_tool_receipt(proposal, receipt)
+            if override is not None:
+                payload = dict(override)
         result = BridgeFrame(
             protocol_version=PROTOCOL_VERSION,
             message_id=self._next_message_id("tool-result"),
             message_type="tool.result",
             session_id=proposal.session_id,
             turn_id=proposal.turn_id,
-            payload={
-                "status": receipt.status.value,
-                "output": dict(receipt.output or {}),
-                "evidence": [dict(item) for item in receipt.evidence],
-                "error_code": receipt.error_code,
-                "error_message": receipt.error_message,
-            },
+            payload=payload,
             cline_tool_call_id=proposal.cline_tool_call_id,
             lbe_call_id=proposal.lbe_call_id,
             operation_id=proposal.operation_id,

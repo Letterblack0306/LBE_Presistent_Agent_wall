@@ -217,6 +217,7 @@ class SessionMemoryRuntimeBridge:
         task_id: str,
         reference_context: tuple[Mapping[str, Any], ...] = (),
         max_results: int = 10,
+        parent_turn_id: str | None = None,
     ) -> LBEResponse:
         """Invoke the existing reasoning boundary and persist task lifecycle state."""
         clean_problem = problem.strip()
@@ -233,6 +234,7 @@ class SessionMemoryRuntimeBridge:
             reference_context=reference_context,
             task_id=clean_task,
             max_results=max_results,
+            parent_turn_id=parent_turn_id,
         )
         try:
             response = controller.run(request)
