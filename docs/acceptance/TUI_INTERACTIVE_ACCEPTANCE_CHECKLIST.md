@@ -1,6 +1,6 @@
 # TUI Interactive Acceptance Checklist and Plan
 
-Status: checklist open; no live row is filled.
+Status: machine PTY input rows verified on 2026-10-08; full provider-connected acceptance remains open.
 Registered under `LBE-INTENT-TUI-INTERACTIVE-ACCEPTANCE-AND-CLEAN-CLONE-001`.
 
 ## Classification rule
@@ -422,3 +422,50 @@ Every prior figure under-reported. The pattern is the same one already
 recorded in this document's correction history: a truncated or
 aggregated search reported as a complete one. It is recorded here so
 the third occurrence is visible rather than hidden.
+
+## Unattended real Windows ConPTY input acceptance — 2026-10-08
+
+This is a machine-observed, bounded acceptance supplement, not a claim
+that every interactive or provider-connected behavior works.
+
+Canonical runner: `tools/lbe_interactive_selftest.py` using existing
+`LBE_INPUT_TRACE_FILE` instrumentation and WinPTY/ConPTY input.
+The runner emulates terminal DA/window-state responses and **waits for
+actual mouse capture** before injecting keyboard or mouse events, then
+requires the expected app action trace, clean exit, and the terminal
+restoration escape sequences. This avoids the observed startup race
+that otherwise drops the first mouse-down event in an unsynchronized
+testing terminal.
+
+| Real PTY scenario | Current release build | Installed executable |
+|---|---|---|
+| Keyboard Enter/help, Ctrl+P, palette Down/Enter, F2 provider, F3 model, Tab mode, quit | PASS | PASS |
+| Keyboard Escape closes command palette | PASS | PASS |
+| Mouse click enters landing screen | PASS | PASS |
+| Mouse click dismisses shortcuts overlay | PASS | PASS |
+| Mouse command-palette click and wheel both directions | PASS | PASS |
+| Terminal mouse-capture initialization and clean restoration | PASS in all 5 cases | PASS in all 5 cases |
+
+Exact binaries tested:
+- built `apps/lbe-terminal/target/release/lbe.exe` SHA256 `A752BE064AC7F05AC4A2535F1A454A51461D023DAD6C6259CF9D90D716FA3D85`;
+- installed `%LOCALAPPDATA%/LetterBlack/LBE/lbe.exe` SHA256 `D8655AC0C196BC05F0A4B163FB835D706EA2999A33498C8EC708209F66A50E6D`.
+
+Machine traces are written under `%TEMP%/lbe-real-pty-<PID>-<case>.jsonl`.
+No success is inferred merely from delivered bytes or the existence of a
+UI handler. The exact live `action=` receipt must be observed.
+
+Run autonomously:
+
+```powershell
+py -3.13 -m pip install --target "$env:TEMP/lbe-pty-test-deps" pywinpty
+py -3.13 tools/lbe_interactive_selftest.py
+py -3.13 tools/lbe_interactive_selftest.py --exe "$env:LOCALAPPDATA/LetterBlack/LBE/lbe.exe"
+```
+
+**Still unverified at installed end-to-end level:** populated provider/model
+row mouse selection and persisted switching, provider-backed prompt continuation,
+workspace/session item click, live Allow/Deny interaction, actual governed effect
+and correlated receipt. F2/F3 panel-opening PASS is not provider selection PASS.
+The local LM Studio `127.0.0.1:1234/v1/models` endpoint was unreachable
+during this acceptance run. Do not fabricate model/credential availability.
+The overall installed LBE product acceptance remains OPEN.

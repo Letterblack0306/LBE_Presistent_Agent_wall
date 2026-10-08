@@ -131,3 +131,9 @@ they are not silently absorbed into this canonical index.
 |---|---|---|
 | `lbe_guard_inspector/config.json` | Installed fallback inspector configuration when the host has not supplied an external config path | Data only; current session/workspace identity remains runtime-owned |
 | `lbe_guard_inspector/governance.json` | Packaged read-only baseline inspector policy | Data only; does not replace LBE runtime authorization |
+
+## Interactive machine testing ownership (2026-10-08)
+
+| Path | Owner / purpose | Boundary |
+|---|---|---|
+| `tools/lbe_interactive_selftest.py` | LBE existing Rust terminal UI real ConPTY keyboard/mouse diagnostic acceptance harness | Tests emitted UI action traces and terminal lifecycle only; never owns provider, session, authorization, execution, or completion |

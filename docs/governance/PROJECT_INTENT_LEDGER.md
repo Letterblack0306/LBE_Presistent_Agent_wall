@@ -1275,3 +1275,14 @@ REQUIRED_EVIDENCE: scope checks, ordinary authorized change allow, protected eff
 RESULT: PASS (bounded policy/gate regression; installed product acceptance separately open)
 MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
 EXPECTED_PATH_PREFIXES: *
+
+## INTENT LBE-INTENT-REAL-PTY-INPUT-SELFTEST-20261008
+STATUS: ACTIVE
+REQUEST: Establish unattended real Windows PTY self-testing of LBE keyboard/mouse input and provider selector affordances against the current release build.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: LBE Rust Ratatui UI event handlers, terminal input trace, canonical product integration, and test/acceptance documentation.
+EXPECTED_PATH_PREFIXES: tools/,PROJECT_INDEX.md,docs/acceptance/,docs/governance/
+AFFECTED_STRUCTURE: tools/lbe_interactive_selftest.py, PROJECT_INDEX.md, docs/acceptance/
+REUSE_DECISION: REUSE existing LBE_INPUT_TRACE_FILE instrumentation and pywinpty ConPTY; no parallel UI/input authority.
+REQUIRED_EVIDENCE: Per-action real PTY trace assertions, clean exit, provider selection separable from provider availability, accurate inconclusive reports.
+RESULT: PASS (5/5 release ConPTY tests and 5/5 installed ConPTY tests; provider-backed flow separately unverified)
