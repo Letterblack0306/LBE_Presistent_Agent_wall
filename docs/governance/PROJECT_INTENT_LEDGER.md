@@ -1308,3 +1308,14 @@ AFFECTED_STRUCTURE: apps/lbe-terminal/src/types.rs, apps/lbe-terminal/src/wrappe
 REUSE_DECISION: EXTEND existing ProviderId and parsing, no new registry, identity owner, runtime or executor.
 REQUIRED_EVIDENCE: full canonical provider.list fixture accepted without identity collapsing, regression, release PTY proof and no source weakening.
 RESULT: PASS (canonical 17-provider registry fixture, Rust regression 256 passed, 2 ignored; live provider connection remains separate)
+
+## INTENT LBE-INTENT-WINDOWS-PACKAGE-ARCHIVE-STABILITY-20261008
+STATUS: ACTIVE
+REQUEST: Fix repeatable Windows Compress-Archive failure on generated node_modules transient paths during candidate packaging; use deterministic .NET archive creation and require archive checksum verification before success.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: tools/lbe_product_integration.ps1 Build-Product/package archive owner and Test-PackageArchive existing verifier.
+EXPECTED_PATH_PREFIXES: tools/,docs/governance/
+AFFECTED_STRUCTURE: tools/lbe_product_integration.ps1
+REUSE_DECISION: ADAPT existing canonical packaging owner; preserve archive manifest and verifier; no new installer or runtime.
+REQUIRED_EVIDENCE: isolated package generation, archive verification receipt, no stale incomplete zip; existing product proof and source checks.
+RESULT: PASS (candidate ZIP generated and 18,659 actual ZIP payload files SHA256/size verified; clean fixture PASS, tampered fixture FAIL)

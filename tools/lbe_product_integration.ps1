@@ -1132,37 +1132,77 @@ function Test-PackageArchive {
         [Parameter(Mandatory)][string]$ZipPath,
         [Parameter(Mandatory)][string]$VerificationRoot
     )
-    if (Test-Path -LiteralPath $VerificationRoot) { Remove-Item -LiteralPath $VerificationRoot -Recurse -Force }
-    New-Item -ItemType Directory -Path $VerificationRoot -Force | Out-Null
-    Expand-Archive -LiteralPath $ZipPath -DestinationPath $VerificationRoot -Force
-
-    $checksumPath = Join-Path $VerificationRoot "checksums.json"
-    if (-not (Test-Path -LiteralPath $checksumPath -PathType Leaf)) {
-        throw "Package verification failed: checksums.json missing from archive."
-    }
-    $expected = @(Get-Content -LiteralPath $checksumPath -Raw | ConvertFrom-Json)
-    $errors = [System.Collections.Generic.List[string]]::new()
-    foreach ($entry in $expected) {
-        $relative = ([string]$entry.path).Replace("/", "\")
-        $file = Join-Path $VerificationRoot $relative
-        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-            $errors.Add("missing: $($entry.path)")
-            continue
+    # Verify the actual archive bytes without first extracting thousands of npm
+    # paths into a second Windows directory. Expand-Archive can fail on valid
+    # long/short-lived node_modules paths; archive-entry hashing is authoritative.
+    # Keep VerificationRoot as a compatibility parameter for existing callers.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::OpenRead($ZipPath)
+    try {
+        $manifest = $archive.GetEntry("checksums.json")
+        if ($null -eq $manifest) {
+            throw "Package verification failed: checksums.json missing from archive."
         }
-        $actualHash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
-        $actualBytes = (Get-Item -LiteralPath $file).Length
-        if ($actualHash -ne [string]$entry.sha256) { $errors.Add("sha256 mismatch: $($entry.path)") }
-        if ($actualBytes -ne [int64]$entry.bytes) { $errors.Add("size mismatch: $($entry.path)") }
+        $reader = [IO.StreamReader]::new($manifest.Open(), [Text.Encoding]::UTF8, $true)
+        try {
+            # Windows PowerShell 5.1 preserves a JSON-array result as one
+            # pipeline object with @(... | ConvertFrom-Json). Assign directly
+            # so all individual checksum records are enumerated.
+            $expected = ConvertFrom-Json -InputObject ($reader.ReadToEnd())
+        }
+        finally {
+            $reader.Dispose()
+        }
+        $errors = [System.Collections.Generic.List[string]]::new()
+        $known = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        [void]$known.Add("checksums.json")
+        foreach ($entry in $expected) {
+            $relative = [string]$entry.path
+            if (-not $known.Add($relative)) {
+                $errors.Add("duplicate checksum entry: $relative")
+                continue
+            }
+            # Windows PowerShell/.NET Framework normalizes ZipArchive entry
+            # names to backslashes on read, even when the ZIP stores '/'.
+            $file = $archive.GetEntry($relative)
+            if ($null -eq $file) {
+                $file = $archive.GetEntry($relative.Replace("/", "\"))
+            }
+            if ($null -eq $file) {
+                $errors.Add("missing: $relative")
+                continue
+            }
+            if ($file.Length -ne [int64]$entry.bytes) {
+                $errors.Add("size mismatch: $relative")
+            }
+            $stream = $file.Open()
+            $hasher = [Security.Cryptography.SHA256]::Create()
+            try {
+                $actualHash = [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace("-", "").ToLowerInvariant()
+            }
+            finally {
+                $hasher.Dispose()
+                $stream.Dispose()
+            }
+            if ($actualHash -ne [string]$entry.sha256) {
+                $errors.Add("sha256 mismatch: $relative")
+            }
+        }
+        foreach ($archived in $archive.Entries) {
+            if (-not $known.Contains($archived.FullName.Replace("\", "/"))) {
+                $errors.Add("unmanifested archive entry: $($archived.FullName)")
+            }
+        }
+        return [pscustomobject]@{
+            status = $(if ($errors.Count -eq 0) { "PASS" } else { "FAIL" })
+            archive = $ZipPath
+            verified_file_count = $expected.Count
+            errors = @($errors)
+        }
     }
-
-    $result = [pscustomobject]@{
-        status = $(if ($errors.Count -eq 0) { "PASS" } else { "FAIL" })
-        archive = $ZipPath
-        verified_file_count = $expected.Count
-        errors = @($errors)
+    finally {
+        $archive.Dispose()
     }
-    Remove-Item -LiteralPath $VerificationRoot -Recurse -Force
-    return $result
 }
 
 $agent = Assert-Workspace -Root $AgentWallRoot -Repository $AgentWallRepository
@@ -1363,11 +1403,39 @@ $manifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $manifestPath -E
 if ($Mode -eq "package") {
     $packageRoot = Join-Path $OutputRoot "LetterBlack-LBE"
     Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $packageRoot "integration-manifest.json") -Force
-    $checksums = Get-Checksums -Root $packageRoot
+    # npm ci can leave the Windows filesystem enumerator briefly inconsistent
+    # after completion. Retry hashing a fresh complete inventory instead of
+    # treating a transient disappeared path as a successful package.
+    $checksums = $null
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        try {
+            $checksums = Get-Checksums -Root $packageRoot
+            break
+        }
+        catch {
+            if ($attempt -eq 5) { throw }
+            Start-Sleep -Seconds 2
+        }
+    }
     $checksums | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $packageRoot "checksums.json") -Encoding UTF8
     $zip = Join-Path $OutputRoot "LetterBlack-LBE-2.0.3-win-x64-candidate.zip"
     if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-    Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zip -CompressionLevel Optimal
+    # Compress-Archive resolves every nested wildcard path using Resolve-Path.
+    # On Windows, generated npm dependency trees can expose entries that are
+    # absent by the time Resolve-Path evaluates them. Build from a stable
+    # directory root instead, and never expose an incomplete candidate ZIP.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $partialZip = "$zip.partial"
+    if (Test-Path -LiteralPath $partialZip) { Remove-Item -LiteralPath $partialZip -Force }
+    try {
+        [IO.Compression.ZipFile]::CreateFromDirectory(
+            $packageRoot, $partialZip, [IO.Compression.CompressionLevel]::Optimal, $false
+        )
+        Move-Item -LiteralPath $partialZip -Destination $zip -Force
+    }
+    finally {
+        if (Test-Path -LiteralPath $partialZip) { Remove-Item -LiteralPath $partialZip -Force }
+    }
     $packagePath = $zip
     $packageVerification = Test-PackageArchive -ZipPath $zip -VerificationRoot (Join-Path $OutputRoot "_package-verify")
     $packageVerification | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $OutputRoot "package-verification.json") -Encoding UTF8

@@ -82,3 +82,26 @@ PASS evidence includes:
 This document records the bounded 2026-09-18 artifact acceptance only. It does not establish current main readiness. The current machine gate is BLOCKED after a 2026-09-22 selected-provider/model continuation failure; see docs/acceptance/CURRENT_IMPLEMENTATION_GATE.md and docs/CURRENT_STATUS.md.
 
 Publication/release authorization remains governed separately and is not implied by this acceptance.
+
+
+## Current candidate archive verification — 2026-10-08
+
+The Windows package pipeline was repaired within its existing
+`tools/lbe_product_integration.ps1` owner. It now uses atomic .NET ZIP
+creation and bounded fail-closed checksum enumeration retry. The verifier
+checks SHA-256 and byte sizes **inside the ZIP itself**, without extracting
+thousands of `node_modules` files with Windows `Expand-Archive`.
+
+Current evidence from the canonical `-Mode package -SourceMode worktree -NoFetch`:
+- source runtime HEAD during build: `6261de6`, canonical `main`;
+- candidate: `%TEMP%\lbe-package-final-34840\LetterBlack-LBE-2.0.3-win-x64-candidate.zip`;
+- candidate size: **35,791,288 bytes**;
+- ZIP SHA-256: `820e93c6fc9340bec10a1e3e22a39a9e3ae08f33feb8def5e5cb6b1d70e57655`;
+- archive package-verification.json: **PASS, 18,659 checksum entries, zero errors**;
+- independent streaming verifier: **PASS on candidate**;
+- negative verification: known-good fixture **PASS**, changed-content fixture **FAIL** (both byte size and SHA-256 mismatches).
+
+This proves the bounded package/archive integrity and rejection semantics.
+It does **not** prove that the candidate is installed, that provider/model
+inference is healthy, or that current installed end-to-end authorization and
+receipts have completed. Those retain their independent machine gate status.
