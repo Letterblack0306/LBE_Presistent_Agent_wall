@@ -1,26 +1,44 @@
 {
-  "version": 1,
-  "scopeId": "GOVERNANCE-NO-EXTERNAL-SIGNING-001",
-  "objective": "Remove external cryptographic scope signing while retaining active locked task scopes, file/action allowlists, fail-closed governance checks, pre-commit validation, and pre-push validation.",
-  "mode": "GOVERNANCE",
-  "active": true,
-  "scopeLocked": true,
-  "allowedFiles": [
-    ".governance/**",
-    "AGENTS.md",
-    "README.md",
-    "docs/BLOCKER_GUIDE.md",
-    "docs/OPERATOR_AUTHORIZATION.md",
-    "docs/governance/AGENT_IMPLEMENTATION_EXECUTION_GUIDE.md",
-    "operator-kit/**",
-    "scripts/governance-lib.mjs"
-  ],
-  "forbiddenFiles": ["state/**","memory/**","build/**","dist/**","vendor/**",".env",".git/**"],
-  "allowedActions": ["read","write","delete","validate","commit","push"],
-  "forbiddenActions": ["tag","publish","release","worktree","branch"],
-  "requiredValidation": [
-    "node --check scripts/governance-lib.mjs",
-    "node scripts/governance-check.mjs staged",
-    "node scripts/governance-check.mjs head"
-  ]
+    "version":  1,
+    "scopeId":  "CONTINUOUS-GOVERNED-MAINTENANCE-20261008",
+    "objective":  "Enable user-requested fixes, enhancements, removals and workspace maintenance without repeated procedural stops; require workspace identity, declared intent, bounded effects, validation and execution receipts.",
+    "mode":  "GOVERNANCE",
+    "active":  true,
+    "scopeLocked":  true,
+    "allowedFiles":  [
+                         "**",
+                         "*"
+                     ],
+    "forbiddenFiles":  [
+                           ".git/**",
+                           ".env",
+                           "**/.env",
+                           "**/secrets/**",
+                           "state/**",
+                           "memory/**",
+                           "build/**",
+                           "dist/**",
+                           "vendor/**"
+                       ],
+    "allowedActions":  [
+                           "read",
+                           "write",
+                           "delete",
+                           "validate",
+                           "commit",
+                           "push"
+                       ],
+    "forbiddenActions":  [
+                             "tag",
+                             "publish",
+                             "release",
+                             "worktree",
+                             "branch",
+                             "force-push"
+                         ],
+    "requiredValidation":  [
+                               "node scripts/governance-check.mjs staged",
+                               "git diff --cached --check"
+                           ],
+    "intent_id":  "LBE-INTENT-GOVERNANCE-FRICTION-REDUCTION-20261008"
 }

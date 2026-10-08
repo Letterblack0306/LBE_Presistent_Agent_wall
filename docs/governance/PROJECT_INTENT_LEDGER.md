@@ -1261,3 +1261,17 @@ REQUIRED_EVIDENCE: the five committed test files pass in the working tree under 
 MACHINE_SLICE: MAIN_SOURCE_TEST_CONSISTENCY_REPAIR
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: EXPLICIT_USER_DIRECTION_REPAIR_314F399_2026_10_06
+
+## INTENT LBE-INTENT-GOVERNANCE-FRICTION-REDUCTION-20261008
+
+INTENT_ID: LBE-INTENT-GOVERNANCE-FRICTION-REDUCTION-20261008
+STATUS: ACTIVE
+REQUEST: User-authorized simplification of workspace governance to permit ordinary fixes, enhancements, and removal of unused features with intent, containment and receipts, without requiring repeated approvals or blocking useful work.
+EXISTING_OWNER: Existing governance-check, task-scope, workspace-policy, implementation-gate and runtime authorization owners.
+AFFECTED_STRUCTURE: .governance/, docs/governance/, scripts/governance-check.mjs, scripts/governance-lib.mjs, .lbe/governance/, PROJECT_INDEX.md.
+REUSE_DECISION: ADAPT existing governance owners; no parallel authority.
+AUTHORITY_IMPACT: Preserve execution authorization, authentication, receipts, repository identity and effect verification. Relax procedural scope friction; protect irreversible/publication actions.
+REQUIRED_EVIDENCE: scope checks, ordinary authorized change allow, protected effect deny, existing regression, final live execution receipt.
+RESULT: PASS (bounded policy/gate regression; installed product acceptance separately open)
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXPECTED_PATH_PREFIXES: *

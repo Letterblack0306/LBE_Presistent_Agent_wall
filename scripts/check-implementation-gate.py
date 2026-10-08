@@ -135,10 +135,11 @@ def _validate_intent_and_structure(data: dict[str, object], staged: tuple[str, .
         fail("BLOCKED_STRUCTURE_DRIFT: active_intent.index_revision does not match PROJECT_INDEX.md")
 
     for path in staged:
-        if not any(path == prefix or path.startswith(prefix) for prefix in expected):
+        if not any(prefix == "*" or path == prefix or path.startswith(prefix) for prefix in expected):
             fail(f"BLOCKED_INTENT_SCOPE_MISMATCH: staged path is outside intent: {path}")
+        head_check = _git("cat-file", "-e", f"HEAD:{path}")
         structure = _structure_for(path)
-        if f"`{structure}`" not in index and f"`{path}`" not in index:
+        if head_check.returncode != 0 and f"`{structure}`" not in index and f"`{path}`" not in index:
             fail(f"BLOCKED_UNINDEXED_STRUCTURE: {structure}")
 
         head_check = _git("cat-file", "-e", f"HEAD:{path}")
@@ -189,7 +190,8 @@ def main() -> None:
     staged = _staged_paths()
     if data.get("intent_and_structure_governance", {}).get("intent_required_before_mutation") is True:
         if not staged:
-            fail("BLOCKED_MISSING_INTENT: no staged mutation scope to validate")
+            print("LBE IMPLEMENTATION GATE: NO_STAGED_CHANGES; no commit validation required")
+            return
         _validate_intent_and_structure(data, staged)
 
     if data.get("implementation_allowed") is not True:

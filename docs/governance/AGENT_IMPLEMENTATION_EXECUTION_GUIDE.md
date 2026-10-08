@@ -527,3 +527,19 @@ If the worktree contains unrelated user changes, stop before pull if the pull wo
 # Final rule
 
 **One main worktree. One main branch. One active slice. One set of authority owners. Reuse before rebuild. Proof before PASS. PASS before the next phase. Push only canonical main HEAD to origin/main.**
+
+## Continuous governed maintenance — user-authorized 2026-10-08
+
+Governance exists to preserve workspace integrity, identify real execution authority, prevent drift, and produce evidence. It is not a prohibition on normal engineering progress.
+
+For user-requested repairs, enhancements, removal of obsolete functionality, or other reversible local maintenance:
+- Continue within the existing workspace and reuse the current source owner. Do not require new user approval for each ordinary code edit, test, or safe local correction.
+- Record the active objective/intent and the observed existing owner; use the established execution authority and preserve unrelated dirty work.
+- Resolve missing tools, stale test fixtures, or procedural check failures by investigating the actual owner; do not present those alone as a reason to abandon the task.
+- Classify evidence accurately. A DENY test or source-only PASS does not prove the legitimate ALLOW -> execution -> effect -> receipt path.
+- Existing tracked-file edits do not require re-indexing the structure. Register and index genuinely new architectural owners.
+- Only escalate genuine conflicts involving user-only approval, destructive irreversible effects, secrets, unauthorized publication, inaccessible runtime, or evidence that cannot be reconciled safely.
+- Keep authorization and authentication separate. Protected effects always pass the LBE authority boundary. No bypass through a provider, adapter, or client.
+- The previous stop-after-every-slice guidance does not require stopping an explicitly authorized ongoing maintenance task. Continue through connected repairs and bounded verification; report real blockers and final evidence.
+
+This instruction does not grant publication/release or destructive action authority. Machine-enforced effect policy and truthful completion gates remain intact.
