@@ -1286,3 +1286,14 @@ AFFECTED_STRUCTURE: tools/lbe_interactive_selftest.py, PROJECT_INDEX.md, docs/ac
 REUSE_DECISION: REUSE existing LBE_INPUT_TRACE_FILE instrumentation and pywinpty ConPTY; no parallel UI/input authority.
 REQUIRED_EVIDENCE: Per-action real PTY trace assertions, clean exit, provider selection separable from provider availability, accurate inconclusive reports.
 RESULT: PASS (5/5 release ConPTY tests and 5/5 installed ConPTY tests; provider-backed flow separately unverified)
+
+## INTENT LBE-INTENT-PROVIDER-MODEL-CATALOG-TRUTH-20261008
+STATUS: ACTIVE
+REQUEST: Preserve provider discovery and make configured provider model-catalog failures visible instead of silently presenting a zero-model result.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: Rust LBE wrapper provider catalog and LbeEvent runtime reporting; existing provider.models CLI.
+EXPECTED_PATH_PREFIXES: apps/lbe-terminal/,docs/governance/,docs/acceptance/
+AFFECTED_STRUCTURE: apps/lbe-terminal/src/wrapper.rs, apps/lbe-terminal/src/tests.rs
+REUSE_DECISION: ADAPT current refresh_provider_catalog; retain unknown health on query failure and runtime-authored error reporting.
+REQUIRED_EVIDENCE: source and focused Rust regression, provider discovery remains non-inferential, no false readiness claim.
+RESULT: PASS (Rust regression 255 passed, 2 ignored; real configured provider acceptance separately required)

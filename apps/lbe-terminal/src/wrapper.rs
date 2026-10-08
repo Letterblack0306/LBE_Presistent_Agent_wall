@@ -2893,20 +2893,40 @@ impl RealLbeWrapper {
                     ])
                     .arg(provider_config)
                     .output();
-                output
-                    .ok()
-                    .filter(|output| output.status.success())
+                let catalog = output
+                    .map_err(|error| format!("model discovery process failed: {error}"))
                     .and_then(|output| {
-                        serde_json::from_slice::<serde_json::Value>(&output.stdout).ok()
+                        if !output.status.success() {
+                            return Err(format!(
+                                "model discovery process exited unsuccessfully: {}",
+                                output.status
+                            ));
+                        }
+                        serde_json::from_slice::<serde_json::Value>(&output.stdout).map_err(
+                            |error| format!("model discovery returned invalid JSON: {error}"),
+                        )
                     })
                     .and_then(|payload| {
-                        parse_provider_models_payload(&payload, configured_provider.unwrap()).ok()
-                    })
-                    .map(|(models, is_local)| {
+                        parse_provider_models_payload(&payload, configured_provider.unwrap())
+                            .map_err(|error| error.message)
+                    });
+                match catalog {
+                    Ok((models, is_local)) => {
                         configured_provider_is_local = is_local;
                         models
-                    })
-                    .unwrap_or_default()
+                    }
+                    Err(reason) => {
+                        // An unavailable model catalog is not an empty catalog.
+                        // Keep provider discovery operational and never promote
+                        // endpoint failure to a model-health or auth verdict.
+                        self.pending_events.push_back(LbeEvent::WrapperError {
+                            message: format!(
+                                "Configured provider model catalog unavailable; model selection cannot be confirmed: {reason}"
+                            ),
+                        });
+                        Vec::new()
+                    }
+                }
             } else {
                 Vec::new()
             }
