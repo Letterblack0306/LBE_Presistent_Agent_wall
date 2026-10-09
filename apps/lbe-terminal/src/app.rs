@@ -755,6 +755,10 @@ impl App {
                     task.len(),
                     self.agent_mode
                 ));
+                // A queued provider turn starts running before its final
+                // authoritative event batch arrives. Keep Ctrl+C mapped to
+                // cancellation rather than quitting the terminal mid-turn.
+                self.advance_phase(Phase::Running);
                 self.apply_wrapper_result(wrapper.submit(
                     UserRequest::SubmitTask {
                         intent: task,
@@ -821,6 +825,10 @@ impl App {
             ));
             self.transcript
                 .push(format!("LBE WRAPPER ERROR  {}", error.message));
+            if matches!(self.phase, Phase::Running) {
+                self.snapshot.session_state = SessionStatus::Failed;
+                self.advance_phase(Phase::Failed);
+            }
         }
     }
     pub(crate) fn handle_command(

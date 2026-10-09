@@ -1,7 +1,8 @@
 use std::{
     collections::{HashMap, VecDeque},
+    io::Read,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Output, Stdio},
     sync::atomic::{AtomicU64, Ordering},
     sync::mpsc::{self, Receiver, RecvTimeoutError, Sender},
     thread,
@@ -1624,6 +1625,81 @@ impl LbeWrapper for MockLbeWrapper {
 /// mutation-bearing requests return errors.
 ///
 /// This is the Milestone A (P1) read-only-attachment skeleton.
+struct PendingTurn {
+    result: Receiver<Result<Output, String>>,
+    cancel: Sender<()>,
+    session_id: String,
+    mode: AgentMode,
+}
+
+impl Drop for PendingTurn {
+    fn drop(&mut self) {
+        let _ = self.cancel.send(());
+    }
+}
+
+fn drain_process_output(mut stream: impl Read, cap: usize) -> Vec<u8> {
+    let mut captured = Vec::new();
+    let mut buffer = [0u8; 8192];
+    while let Ok(count) = stream.read(&mut buffer) {
+        if count == 0 {
+            break;
+        }
+        let retain = cap.saturating_sub(captured.len()).min(count);
+        captured.extend_from_slice(&buffer[..retain]);
+    }
+    captured
+}
+
+pub(crate) fn spawn_turn_process(mut command: Command) -> PendingTurnChannel {
+    let (result_tx, result_rx) = mpsc::channel();
+    let (cancel_tx, cancel_rx) = mpsc::channel();
+    thread::spawn(move || {
+        command.stdout(Stdio::piped()).stderr(Stdio::piped());
+        let mut child = match command.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                let _ = result_tx.send(Err(format!("turn bridge launch failed: {error}")));
+                return;
+            }
+        };
+        let stdout = child.stdout.take().expect("piped stdout");
+        let stderr = child.stderr.take().expect("piped stderr");
+        let stdout_task = thread::spawn(move || drain_process_output(stdout, 16 * 1024 * 1024));
+        let stderr_task = thread::spawn(move || drain_process_output(stderr, 1024 * 1024));
+        let mut cancelled = false;
+        let status = loop {
+            if cancel_rx.try_recv().is_ok() {
+                cancelled = true;
+                let _ = child.kill();
+            }
+            match child.try_wait() {
+                Ok(Some(status)) => break Ok(status),
+                Ok(None) => thread::sleep(Duration::from_millis(25)),
+                Err(error) => break Err(error.to_string()),
+            }
+        };
+        let stdout = stdout_task.join().unwrap_or_default();
+        let stderr = stderr_task.join().unwrap_or_default();
+        let result = if cancelled {
+            Err(
+                "Local turn process interrupted; backend cancellation and rollback are unverified"
+                    .to_owned(),
+            )
+        } else {
+            status.map(|status| Output {
+                status,
+                stdout,
+                stderr,
+            })
+        };
+        let _ = result_tx.send(result);
+    });
+    (result_rx, cancel_tx)
+}
+
+pub(crate) type PendingTurnChannel = (Receiver<Result<Output, String>>, Sender<()>);
+
 pub(crate) struct RealLbeWrapper {
     snapshot: LbeSnapshot,
     connection: RuntimeConnection,
@@ -1637,6 +1713,7 @@ pub(crate) struct RealLbeWrapper {
     pending_authorization: Option<(String, String, String)>,
     authorized_operation: Option<(String, String)>,
     pending_events: VecDeque<LbeEvent>,
+    pending_turn: Option<PendingTurn>,
 }
 
 pub(crate) fn executed_receipt_id(
@@ -1984,6 +2061,7 @@ impl RealLbeWrapper {
             pending_authorization: None,
             authorized_operation: None,
             pending_events: VecDeque::new(),
+            pending_turn: None,
         }
     }
 
@@ -4071,9 +4149,25 @@ impl RealLbeWrapper {
             command.arg("--provider-config").arg(provider_config);
         }
         command.args(["--format", "json"]);
-        let output = command
-            .output()
-            .map_err(|error| LbeError::new(format!("turn bridge launch failed: {error}")))?;
+        if self.pending_turn.is_some() {
+            return Err(LbeError::new("A provider turn is already running"));
+        }
+        let (result, cancel) = spawn_turn_process(command);
+        self.pending_turn = Some(PendingTurn {
+            result,
+            cancel,
+            session_id,
+            mode,
+        });
+        Ok(())
+    }
+
+    fn finish_conversational_turn(
+        &mut self,
+        output: Output,
+        session_id: &str,
+        mode: AgentMode,
+    ) -> Result<(), LbeError> {
         let payload = parse_workspace_payload(&output.stdout, "turn")?;
         let has_turn_response = payload
             .get("turn_id")
@@ -4105,7 +4199,7 @@ impl RealLbeWrapper {
         if payload
             .get("session_id")
             .and_then(serde_json::Value::as_str)
-            != Some(session_id.as_str())
+            != Some(session_id)
         {
             return Err(LbeError::new(
                 "turn bridge response session identity mismatch",
@@ -4146,6 +4240,12 @@ impl RealLbeWrapper {
 
     fn abort_real_turn(&mut self) -> Result<(), LbeError> {
         self.require_connected()?;
+        if let Some(turn) = self.pending_turn.as_ref() {
+            turn.cancel
+                .send(())
+                .map_err(|_| LbeError::new("Turn process already exited"))?;
+            return Ok(());
+        }
         let wall_root = self
             .wall_root
             .clone()
@@ -5909,11 +6009,36 @@ impl LbeWrapper for RealLbeWrapper {
     }
 
     fn poll_event(&mut self, _now: Instant) -> Result<Option<LbeEvent>, LbeError> {
+        if let Some(event) = self.pending_events.pop_front() {
+            return Ok(Some(event));
+        }
+        if let Some(turn) = self.pending_turn.as_ref() {
+            match turn.result.try_recv() {
+                Ok(result) => {
+                    let turn = self.pending_turn.take().expect("pending turn checked");
+                    match result {
+                        Ok(output) => {
+                            self.finish_conversational_turn(output, &turn.session_id, turn.mode)?
+                        }
+                        Err(message) => return Err(LbeError::new(message)),
+                    }
+                }
+                Err(mpsc::TryRecvError::Empty) => {}
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.pending_turn.take();
+                    return Err(LbeError::new(
+                        "Turn worker exited without an output envelope",
+                    ));
+                }
+            }
+        }
         Ok(self.pending_events.pop_front())
     }
 
     fn next_wake(&self, _now: Instant) -> Option<Duration> {
-        None
+        self.pending_turn
+            .as_ref()
+            .map(|_| Duration::from_millis(25))
     }
 }
 

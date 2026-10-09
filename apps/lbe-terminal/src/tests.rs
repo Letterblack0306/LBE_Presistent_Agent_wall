@@ -9,9 +9,9 @@ use crate::{
         executed_receipt_id, governed_response_status, parse_governed_tool_projection,
         parse_provider_check_payload, parse_provider_list_payload, parse_provider_models_payload,
         parse_workspace_payload, project_provider_catalog, provider_validation_uses_session_config,
-        validate_provenance, validate_validation, workspace_glob_matches, workspace_list_entries,
-        workspace_patch_result, workspace_read_content, workspace_search_results, LbeWrapper,
-        MockLbeWrapper, RealLbeWrapper,
+        spawn_turn_process, validate_provenance, validate_validation, workspace_glob_matches,
+        workspace_list_entries, workspace_patch_result, workspace_read_content,
+        workspace_search_results, LbeWrapper, MockLbeWrapper, RealLbeWrapper,
     },
 };
 
@@ -3219,7 +3219,7 @@ fn explicit_initial_prompt_uses_the_normal_submission_path() {
         Instant::now(),
     );
 
-    assert_eq!(app.phase, Phase::Welcome);
+    assert_eq!(app.phase, Phase::Running);
     assert!(app.input.is_empty());
     assert!(app
         .transcript
@@ -6485,4 +6485,68 @@ fn wide_tui_displays_authoritative_agent_activity_without_fake_receipts() {
     assert!(rendered.contains("AGENT ACTIVITY"));
     assert!(rendered.contains("No active execution"));
     assert!(rendered.contains("Receipts: 0"));
+}
+
+#[test]
+fn provider_process_worker_returns_without_blocking_and_can_interrupt() {
+    let mut command = std::process::Command::new("powershell");
+    command.args([
+        "-NoProfile",
+        "-Command",
+        "Start-Sleep -Seconds 8; Write-Output NEVER",
+    ]);
+    let begin = Instant::now();
+    let (result, cancel) = spawn_turn_process(command);
+    assert!(begin.elapsed() < Duration::from_secs(2), "spawn blocked UI");
+    cancel.send(()).expect("cancel signal");
+    let finished = result
+        .recv_timeout(Duration::from_secs(5))
+        .expect("worker not interrupted");
+    let reason = finished.expect_err("cancelled process must not count as completed");
+    assert!(reason.contains("backend cancellation and rollback are unverified"));
+}
+
+#[test]
+fn provider_process_worker_reports_actual_stdout_and_exit_status() {
+    let mut command = std::process::Command::new("powershell");
+    command.args(["-NoProfile", "-Command", "Write-Output '{\"ok\":true}'"]);
+    let (result, _cancel) = spawn_turn_process(command);
+    let output = result
+        .recv_timeout(Duration::from_secs(5))
+        .expect("worker did not finish")
+        .expect("process execution failed");
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("\"ok\":true"));
+}
+
+#[test]
+fn queued_provider_turn_keeps_terminal_in_running_phase_until_events_arrive() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.input = "Inspect this workspace".to_owned();
+    let mut wrapper = RecordingWrapper::new();
+    app.handle_key(
+        KeyEvent::new(KeyCode::Enter, Modifiers::NONE),
+        &mut wrapper,
+        Instant::now(),
+    );
+    assert_eq!(app.phase, Phase::Running);
+    assert!(wrapper
+        .requests
+        .iter()
+        .any(|r| matches!(r, UserRequest::SubmitTask { .. })));
+    app.handle_key(
+        KeyEvent::new(KeyCode::Char('c'), Modifiers::CONTROL),
+        &mut wrapper,
+        Instant::now(),
+    );
+    assert!(!app.should_quit);
+    assert!(wrapper
+        .requests
+        .iter()
+        .any(|r| matches!(r, UserRequest::Abort)));
+    app.apply_wrapper_result(Err(LbeError::new(
+        "backend cancellation and rollback are unverified",
+    )));
+    assert_eq!(app.phase, Phase::Failed);
 }
