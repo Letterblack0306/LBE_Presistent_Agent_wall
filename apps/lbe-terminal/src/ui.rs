@@ -151,45 +151,34 @@ pub(crate) fn draw_at(frame: &mut Frame, app: &App, elapsed: Duration) {
     let compact = safe_area.width < 72 || safe_area.height < 20;
     if compact {
         let sections = Layout::vertical([
-            Constraint::Length(2),
             Constraint::Length(1),
             Constraint::Min(2),
             Constraint::Length(2),
             Constraint::Length(2),
         ])
         .split(safe_area);
-        draw_chrome(frame, sections[0]);
-        draw_header(frame, sections[1], app);
-        draw_body(frame, sections[2], app);
-        draw_composer(frame, sections[3], app, elapsed);
-        draw_footer(frame, sections[4], app);
+        draw_header(frame, sections[0], app);
+        draw_body(frame, sections[1], app);
+        draw_composer(frame, sections[2], app, elapsed);
+        draw_footer(frame, sections[3], app);
     } else {
         let sections = Layout::vertical([
-            Constraint::Length(2),
             Constraint::Length(1),
             Constraint::Min(10),
             Constraint::Length(3),
             Constraint::Length(2),
         ])
         .split(safe_area);
-        draw_chrome(frame, sections[0]);
-        draw_header(frame, sections[1], app);
-        draw_body(frame, sections[2], app);
-        draw_composer(frame, sections[3], app, elapsed);
-        draw_footer(frame, sections[4], app);
+        draw_header(frame, sections[0], app);
+        draw_body(frame, sections[1], app);
+        draw_composer(frame, sections[2], app, elapsed);
+        draw_footer(frame, sections[3], app);
     }
     if no_color_enabled() {
         for cell in frame.buffer_mut().content.iter_mut() {
             cell.set_style(Style::default());
         }
     }
-}
-
-pub(crate) fn draw_chrome(frame: &mut Frame, area: Rect) {
-    frame.render_widget(
-        Block::default().style(Style::default().bg(Color::Rgb(10, 12, 15))),
-        area,
-    );
 }
 
 pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
@@ -992,9 +981,9 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
     let rows = Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).split(area);
 
     let shortcut_label = if app.show_shortcuts {
-        "? close shortcuts"
+        "? close help"
     } else {
-        "? for shortcuts · Ctrl+P commands · F2 provider · F3 model"
+        "? help · Ctrl+P commands"
     };
 
     let line_one = Layout::horizontal([Constraint::Min(1), Constraint::Length(24)]).split(rows[0]);
@@ -1046,9 +1035,9 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
         "branch ({branch}) · {} changed file(s) · {}",
         changed_files,
         if app.snapshot.connection == RuntimeConnection::Connected {
-            "LBE boundary active"
+            "runtime connected"
         } else {
-            "LBE boundary unavailable"
+            "runtime unavailable"
         }
     );
     let branch_style = if app.snapshot.connection == RuntimeConnection::Connected {
