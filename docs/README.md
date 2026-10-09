@@ -12,7 +12,11 @@ Before mutation, read the root [PROJECT_INDEX.md](../PROJECT_INDEX.md), then the
 defines structural ownership; the ledger defines the intent; the machine gate authorizes the
 slice. None of these may be bypassed by a more convenient document.
 
-**Primary visual navigator:** [Open the root LBE Docs Explorer](../LBE_DOCS_EXPLORER.html). This graph is a reader/projection of canonical documents; it does not replace the manifest, product truth, Git state, or acceptance evidence. Serve the repository root over HTTP for Markdown loading (`py -m http.server 8080`). The full per-file inventory remains in [the manifest](DOCUMENT_INTENT_MANIFEST.md), including documents not represented as graph nodes.
+**Primary visual navigator:** [Open the root LBE Docs Explorer](../LBE_DOCS_EXPLORER.html). This graph is a reader/projection of canonical documents; it does not replace the manifest, product truth, Git state, or acceptance evidence. The embedded tracked-file tree and catalog work through file:///; historical Markdown preview may require a local HTTP server. Do not assume port 8080 is available. The document classification inventory remains in [the manifest](DOCUMENT_INTENT_MANIFEST.md).
+
+## Keeping the workspace navigation current
+
+The workspace tree in the HTML explorer lists the tracked snapshot, but is not a substitute for inspecting the current checkout and runtime. Use this document as the reader entry point, the document manifest for classifications, PROJECT_INDEX.md for ownership, and the intent ledger for decisions. A new enhancement or changed plan is not automatically a governance blocker: update the relevant records as the work evolves and distinguish source evidence from live acceptance.
 
 ## What is LBE
 

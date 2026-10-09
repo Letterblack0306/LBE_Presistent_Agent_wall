@@ -25,6 +25,14 @@ Authorization comes from pre-existing machine-readable scope and policy. Facts c
 - Unknown evidence remains unknown.
 - Governance/evidence failures fail closed.
 
+## Workspace documents and evolving plans
+
+Governance is for workspace consistency, discoverability, and evidence traceability. It is not a permanent implementation plan or a reason to veto enhancements, new tools, removals, refactoring, or a user-requested change of direction. Update the applicable plans and ownership records when the product changes; do not hold new work hostage to older prose.
+
+Keep PROJECT_INDEX.md current for code and folder ownership, docs/README.md for navigation, docs/DOCUMENT_INTENT_MANIFEST.md for per-document classification, docs/governance/PROJECT_INTENT_LEDGER.md for decisions and evolving intent, and LBE_DOCS_EXPLORER.html for the full browsable tracked workspace projection. When paths are added, moved, renamed, superseded, or removed, reconcile these maps. Preserve historical material and identify it as history.
+
+Separate file existence, implementation, tests, and installed runtime acceptance. Do not infer readiness from a passing gate or from documentation alone. Continue to respect actual effect authorization, secrets, and protected-resource boundaries while allowing user-requested product evolution.
+
 ## Standing authorization: governance enables delivery (2026-10-09)
 
 Governance protects workspace identity, prevents drift, and records evidence. It is NOT an independent feature veto, a ban on enhancements/removals, or a substitute for the user's product decisions.
