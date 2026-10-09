@@ -3601,8 +3601,19 @@ impl RealLbeWrapper {
             "--provider",
             provider_id.cli_name(),
         ]);
-        if let Some(provider_config) = self.provider_config.as_ref() {
-            command.arg("--provider-config").arg(provider_config);
+        // A session's legacy provider config describes only the provider that
+        // created that session. Passing it to every row in the discovered
+        // provider picker misvalidates all other providers against one endpoint.
+        // Other rows resolve matching per-user profiles in the backend.
+        let session_provider = self
+            .snapshot
+            .session_context
+            .as_ref()
+            .and_then(|context| context.data.session.provider_id.as_deref());
+        if provider_validation_uses_session_config(provider_id, session_provider) {
+            if let Some(provider_config) = self.provider_config.as_ref() {
+                command.arg("--provider-config").arg(provider_config);
+            }
         }
         if let Some(engine_id) = self
             .snapshot
@@ -5496,6 +5507,13 @@ fn parse_mcp_registry_payload(
         })
         .collect::<Result<Vec<_>, LbeError>>()?;
     Ok((schema_version, integrations))
+}
+
+pub(crate) fn provider_validation_uses_session_config(
+    provider_id: ProviderId,
+    session_provider_id: Option<&str>,
+) -> bool {
+    session_provider_id == Some(provider_id.cli_name())
 }
 
 fn parse_provider_check_status(payload: &serde_json::Value) -> Result<&str, LbeError> {

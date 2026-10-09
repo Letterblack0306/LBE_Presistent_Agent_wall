@@ -8,8 +8,8 @@ use crate::{
     wrapper::{
         executed_receipt_id, governed_response_status, parse_governed_tool_projection,
         parse_provider_check_payload, parse_provider_list_payload, parse_provider_models_payload,
-        parse_workspace_payload, project_provider_catalog, validate_provenance,
-        validate_validation, workspace_glob_matches, workspace_list_entries,
+        parse_workspace_payload, project_provider_catalog, provider_validation_uses_session_config,
+        validate_provenance, validate_validation, workspace_glob_matches, workspace_list_entries,
         workspace_patch_result, workspace_read_content, workspace_search_results, LbeWrapper,
         MockLbeWrapper, RealLbeWrapper,
     },
@@ -6390,6 +6390,22 @@ fn header_renders_preview_badge_once() {
         header.contains("ACT OFFLINE"),
         "mode must precede the offline badge: {header}"
     );
+}
+
+#[test]
+fn provider_check_uses_legacy_config_only_for_session_provider() {
+    assert!(provider_validation_uses_session_config(
+        ProviderId::OpenAiCompatible,
+        Some("openai-compatible")
+    ));
+    assert!(!provider_validation_uses_session_config(
+        ProviderId::LmStudio,
+        Some("openai-compatible")
+    ));
+    assert!(!provider_validation_uses_session_config(
+        ProviderId::OpenAiCompatible,
+        None
+    ));
 }
 
 #[test]
