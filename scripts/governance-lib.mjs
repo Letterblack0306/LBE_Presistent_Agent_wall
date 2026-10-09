@@ -58,5 +58,6 @@ export function printBlocked(code, detail='') {
   console.error('\nRequired reading:');
   DOCS.forEach((d,i)=>console.error(`${i+1}. ${d}`));
   console.error('\nUse an active locked task scope whose allowedFiles and allowedActions cover the intended operation.');
-  console.error('Do not weaken file/action scope checks merely to make a blocked operation pass.\n');
+  console.error('Denial is limited to the named effect and path. Continue independent scoped development, including additions, fixes and deletions; do not treat an acceptance gap as a task-wide prohibition.');
+  console.error('Preserve genuine file/action scope and protected-effect checks.\n');
 }
