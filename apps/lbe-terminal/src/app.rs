@@ -1339,7 +1339,9 @@ impl App {
             }
             LbeEvent::SessionRestored { session_id } => {
                 self.transcript_scroll = None;
-                self.panel = None;
+                // Initial runtime attachment may finish while the user is
+                // opening the provider/model picker. Do not steal that
+                // interaction by dismissing an already opened panel.
                 self.advance_phase(Phase::Welcome);
                 self.transcript
                     .push(format!("SESSION  restored · {session_id}"));

@@ -6393,6 +6393,22 @@ fn header_renders_preview_badge_once() {
 }
 
 #[test]
+fn late_session_restore_does_not_close_active_provider_picker() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.panel = Some(MockPanel::Provider);
+    app.reduce_lbe_event(LbeEvent::SessionRestored {
+        session_id: "session-restored".to_owned(),
+    });
+    assert_eq!(app.panel, Some(MockPanel::Provider));
+    assert_eq!(app.phase, Phase::Welcome);
+    assert!(app
+        .transcript
+        .iter()
+        .any(|line| line.contains("session-restored")));
+}
+
+#[test]
 fn provider_check_uses_legacy_config_only_for_session_provider() {
     assert!(provider_validation_uses_session_config(
         ProviderId::OpenAiCompatible,
