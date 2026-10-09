@@ -3646,6 +3646,33 @@ impl RealLbeWrapper {
         self.refresh_provider_catalog()
     }
 
+    pub(crate) fn classify_provider_check_failure(
+        payload: &serde_json::Value,
+    ) -> (AuthState, ProviderHealth) {
+        let message = payload
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        let error = payload
+            .get("error")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        if error == "ValueError" && message.contains("is not configured") {
+            return (AuthState::NotConfigured, ProviderHealth::Unknown);
+        }
+        if message.contains("connection refused")
+            || message.contains("actively refused")
+            || message.contains("winerror 10061")
+            || message.contains("connection timed out")
+            || message.contains("timed out")
+            || message.contains("network is unreachable")
+        {
+            return (AuthState::Configured, ProviderHealth::Offline);
+        }
+        (AuthState::Error, ProviderHealth::Error)
+    }
+
     fn validate_real_provider(&mut self, provider_id: ProviderId) -> Result<(), LbeError> {
         self.require_connected()?;
         if !self
@@ -3755,15 +3782,16 @@ impl RealLbeWrapper {
         let status = match parse_provider_check_status(&payload) {
             Ok(status) => status,
             Err(error) => {
+                let (auth_state, health) = Self::classify_provider_check_failure(&payload);
                 self.pending_events
                     .push_back(LbeEvent::ProviderAuthStateUpdated {
                         provider_id,
-                        auth_state: AuthState::Error,
+                        auth_state,
                     });
                 self.pending_events
                     .push_back(LbeEvent::ProviderHealthUpdated {
                         provider_id,
-                        health: ProviderHealth::Error,
+                        health,
                     });
                 self.pending_events
                     .push_back(LbeEvent::ProviderValidationCompleted { provider_id });

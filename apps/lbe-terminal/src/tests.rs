@@ -6581,3 +6581,25 @@ fn provider_validation_command_resolves_discovered_provider() {
         }
     )));
 }
+
+#[test]
+fn health_check_distinguishes_unconfigured_and_offline_from_authentication_errors() {
+    let offline = serde_json::json!({"ok":false,"error":"ProviderError",
+        "message":"[WinError 10061] No connection could be made because the target machine actively refused it"});
+    assert_eq!(
+        RealLbeWrapper::classify_provider_check_failure(&offline),
+        (AuthState::Configured, ProviderHealth::Offline)
+    );
+    let absent = serde_json::json!({"ok":false,"error":"ValueError",
+        "message":"provider openai is not configured"});
+    assert_eq!(
+        RealLbeWrapper::classify_provider_check_failure(&absent),
+        (AuthState::NotConfigured, ProviderHealth::Unknown)
+    );
+    let rejected = serde_json::json!({"ok":false,"error":"AuthenticationError",
+        "message":"invalid credential"});
+    assert_eq!(
+        RealLbeWrapper::classify_provider_check_failure(&rejected),
+        (AuthState::Error, ProviderHealth::Error)
+    );
+}
