@@ -319,10 +319,7 @@ impl App {
             }
             return;
         }
-        if key.code == KeyCode::Char('p')
-            && key.modifiers.contains(Modifiers::CONTROL)
-            && self.input.is_empty()
-        {
+        if key.code == KeyCode::Char('p') && key.modifiers.contains(Modifiers::CONTROL) {
             self.show_command_palette = !self.show_command_palette;
             self.show_shortcuts = false;
             self.panel = None;
@@ -409,11 +406,11 @@ impl App {
                     now,
                 ));
             }
-            KeyCode::Function(2) if self.input.is_empty() => {
+            KeyCode::Function(2) => {
                 input_trace("action=open_provider_panel");
                 self.handle_command("/provider", wrapper)
             }
-            KeyCode::Function(3) if self.input.is_empty() => {
+            KeyCode::Function(3) => {
                 input_trace("action=open_model_panel");
                 self.handle_command("/model", wrapper)
             }

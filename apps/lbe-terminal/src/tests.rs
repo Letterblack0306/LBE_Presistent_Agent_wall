@@ -6435,3 +6435,33 @@ fn provider_check_rejection_preserves_backend_reason() {
     assert!(error.message.contains("lmstudio != openai-compatible"));
     assert!(!error.message.contains("failed contract"));
 }
+
+#[test]
+fn composer_text_does_not_disable_advertised_picker_shortcuts() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.input = "Keep this draft intact".to_owned();
+    let mut wrapper = RecordingWrapper::new();
+    let now = Instant::now();
+    app.handle_key(
+        KeyEvent::new(KeyCode::Function(2), Modifiers::NONE),
+        &mut wrapper,
+        now,
+    );
+    assert_eq!(app.panel, Some(MockPanel::Provider));
+    assert_eq!(app.input, "Keep this draft intact");
+    app.handle_key(
+        KeyEvent::new(KeyCode::Function(3), Modifiers::NONE),
+        &mut wrapper,
+        now,
+    );
+    assert_eq!(app.panel, Some(MockPanel::Model));
+    assert_eq!(app.input, "Keep this draft intact");
+    app.handle_key(
+        KeyEvent::new(KeyCode::Char('p'), Modifiers::CONTROL),
+        &mut wrapper,
+        now,
+    );
+    assert!(app.show_command_palette);
+    assert_eq!(app.input, "Keep this draft intact");
+}
