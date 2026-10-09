@@ -567,9 +567,19 @@ def _resolve_user_provider_config(
 ) -> tuple[str, ProviderProfile, ProviderConfig]:
     store = UserStateStore(state_root)
     selected = profile_name or store.active_profile_name()
+    profiles = store.profiles()
+    # A provider-specific health check must not silently validate the active
+    # profile of another provider. Select an existing matching profile when
+    # no explicit profile name was supplied; never alter the active profile.
+    if profile_name is None and expected_provider_id is not None:
+        if selected is None or profiles.get(selected) is None or profiles[selected].provider_id != expected_provider_id:
+            matches = sorted(name for name, candidate in profiles.items()
+                             if candidate.provider_id == expected_provider_id)
+            if not matches:
+                raise ValueError(f"provider {expected_provider_id} is not configured")
+            selected = matches[0]
     if selected is None:
         raise ValueError("no active provider profile is configured")
-    profiles = store.profiles()
     profile = profiles.get(selected)
     if profile is None:
         raise ValueError(f"provider profile not found: {selected}")

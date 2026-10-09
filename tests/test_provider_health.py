@@ -55,3 +55,43 @@ def test_provider_health_probes_registered_backend_without_workspace_authority()
     assert request.workspace_identity == {"workspace_id": "provider-check"}
     assert request.approved_guard_ids == ()
     assert request.approved_tools == ()
+
+
+def test_provider_resolution_uses_matching_saved_profile_not_unrelated_active(tmp_path):
+    from lbe_guard_inspector.cli import resolve_provider_config
+    from lbe_guard_inspector.user_state import ProviderProfile, UserStateStore
+
+    state = UserStateStore(tmp_path)
+    state.save_profile("local", ProviderProfile(
+        provider_id="lmstudio", model="local-1",
+        endpoint="http://127.0.0.1:1234/v1/chat/completions",
+        timeout_seconds=10,
+    ), activate=True)
+    state.save_profile("cloud", ProviderProfile(
+        provider_id="openai", model="cloud-1",
+        endpoint="https://api.openai.com/v1/chat/completions",
+        timeout_seconds=20,
+    ))
+    name, config = resolve_provider_config(provider_config=None, state_root=str(tmp_path),
+                                           expected_provider_id="openai")
+    assert name == "cloud"
+    assert config.provider_id == "openai"
+    assert config.model == "cloud-1"
+    assert state.active_profile_name() == "local"
+
+
+def test_provider_resolution_does_not_claim_missing_provider_is_configured(tmp_path):
+    import pytest
+    from lbe_guard_inspector.cli import resolve_provider_config
+    from lbe_guard_inspector.user_state import ProviderProfile, UserStateStore
+
+    state = UserStateStore(tmp_path)
+    state.save_profile("local", ProviderProfile(
+        provider_id="lmstudio", model="local-1",
+        endpoint="http://127.0.0.1:1234/v1/chat/completions",
+        timeout_seconds=10,
+    ), activate=True)
+    with pytest.raises(ValueError, match="provider anthropic is not configured"):
+        resolve_provider_config(provider_config=None, state_root=str(tmp_path),
+                                expected_provider_id="anthropic")
+    assert state.active_profile_name() == "local"
