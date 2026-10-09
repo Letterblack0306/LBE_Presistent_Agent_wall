@@ -685,6 +685,70 @@ instead of clipped columns.</div><p>Reference: TUI design skill state/feedback a
  </div>
  <h3>Workspace browser behavior required before implementation</h3>
  <p>Keyboard-first tree navigation (Up/Down, Left/Right expand, Enter inspect, Esc return), file filtering, active-file focus, dirty/modified markers from Git, long-path truncation, workspace-root enforcement and responsive collapse. Real files and directory contents must come from the current governed workspace, not hand-maintained HTML or historical documentation. Selecting a file should inspect content through the authorized file-read path; no write action is implied by navigation.</p>
+
+ <h3 id="lbe-landing-audit-reference">8 · Landing / provider selection and read-only audit reference (user-supplied HTML)</h3>
+ <p>This preserves the structure of the supplied two-screen terminal reference: provider list + details + mode controls on landing, followed by audit scope, checks, findings and a selected-finding detail. Every provider state, model, audit check, count, elapsed time and receipt below is <strong>sample data only</strong>; none is measured from the LBE runtime.</p>
+ <div class="rw-grid" id="landing-audit-examples">
+  <article class="rw-card">
+   <h3>Screen A · Landing / provider</h3>
+   <div class="rw-sample">LETTER BLACK ENGINE
+Runtime: [query live] · Workspace: [verify]
+──────────────────────────────────────────────
+1 Provider                 2 Details
+──────────────────────────────────────────────
+&gt; Provider A               ID: [registered identity]
+  configured? [unknown]     Endpoint: [from config]
+  reachable?  [unknown]     Key: [present/absent only]
+  Provider B                Models: [live catalog]
+  registered? [unknown]     Health: [last probe]
+
+3 Mode
+( ) ACT   ( ) PLAN   ( ) AUDIT
+──────────────────────────────────────────────
+/provider  /model  /audit  /config  /help
+↑↓ select · Tab mode · Enter continue · r probe</div>
+   <p>Map to <a href="lbe_guard_inspector/provider_registry.py">provider registry</a>, <a href="apps/lbe-terminal/src/types.rs">provider identity types</a>, and <a href="docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md">provider picker plan</a>. Provider registration, credential configuration, endpoint reachability and model availability are separate values, not a single OK flag.</p>
+  </article>
+  <article class="rw-card">
+   <h3>Screen B · AUDIT / findings</h3>
+   <div class="rw-sample">AUDIT  read-only policy (verify at runtime)
+──────────────────────────────────────────────
+Scope
+ workspace   [verified workspace identity]
+ target      [HEAD + branch + scope]
+ checks      [selected inspection contracts]
+──────────────────────────────────────────────
+Checks
+  [OBSERVED] Keyboard / focus behavior
+  [UNKNOWN]  Dynamic provider discovery
+  [UNKNOWN]  Narrow-terminal wrapping
+──────────────────────────────────────────────
+Findings
+&gt; F-01  [UNVERIFIED EXAMPLE] Provider picker
+  F-02  [UNVERIFIED EXAMPLE] Slash discovery
+──────────────────────────────────────────────
+Selected
+ source    [actual path + revision]
+ effect    [observed result, not a guess]
+ receipt   [real receipt or none]
+ verdict   INCONCLUSIVE until evidence exists
+
+↑↓ select · Enter inspect · Esc back</div>
+   <p>Map to <a href="docs/acceptance/VISUAL_MACHINE_ACCEPTANCE_POLICY.md">visual acceptance policy</a>, <a href="docs/reference/TERMINAL_UI_CONTRACT_MAPPING.md">terminal UI contract</a>, <a href="docs/CURRENT_STATUS.md">bounded status</a>, and the <a href="tools/lbe_interactive_selftest.py">ConPTY test harness</a>.</p>
+  </article>
+ </div>
+ <h3>How to interpret the source HTML before implementation</h3>
+ <div class="rw-scroll"><table>
+  <thead><tr><th>Supplied element</th><th>Keep in reference</th><th>Must come from real LBE</th></tr></thead>
+  <tbody>
+   <tr><td>Provider rows, details and available models</td><td>Two-pane selection, focus, keyboard hints</td><td>Registered IDs, model catalog, credentials presence (never secret values), last health observation</td></tr>
+   <tr><td>ACT / PLAN / AUDIT mode choices</td><td>Mode discoverability and clear active state</td><td>Authorized current mode and permitted transitions from policy</td></tr>
+   <tr><td>Audit checks, findings and drill-down</td><td>Summary, severity, selected finding and source details</td><td>Executed check results, exact file/revision, reported effects and receipt correlation</td></tr>
+   <tr><td>Footer with cost, context, Git and boundary</td><td>Compact visible metadata</td><td>Actual usage, Git status, provider/session and governance authority; unknown stays unknown</td></tr>
+   <tr><td>Keyboard shortcuts</td><td>Up/Down, Tab, Enter, Esc, refresh, slash help</td><td>Real event handling and Windows ConPTY verification at multiple sizes</td></tr>
+  </tbody>
+ </table></div>
+ <p><a href="docs/reference/ui/lbe_tui_research_preview.html">Related historical TUI research HTML</a> · <a href="https://github.com/pageton/tui-design-skill">TUI Design Skill</a> · <a href="https://github.com/openai/codex">Codex CLI reference</a>. The supplied placeholder findings refer to example paths such as <code>tui/provider_picker.rs</code>, which must never be represented as inspected current LBE files without checking the workspace.</p>
  </section>
  <section id="rw-validation" class="rw-section">
   <h2>Required evidence for implementation claims</h2>
