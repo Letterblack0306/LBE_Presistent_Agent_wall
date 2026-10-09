@@ -6391,3 +6391,15 @@ fn header_renders_preview_badge_once() {
         "mode must precede the offline badge: {header}"
     );
 }
+
+#[test]
+fn provider_check_rejection_preserves_backend_reason() {
+    let payload = serde_json::json!({
+        "ok": false,
+        "error": "ValueError",
+        "message": "provider profile does not match requested provider: lmstudio != openai-compatible"
+    });
+    let error = parse_provider_check_payload(&payload, ProviderId::OpenAiCompatible).unwrap_err();
+    assert!(error.message.contains("lmstudio != openai-compatible"));
+    assert!(!error.message.contains("failed contract"));
+}

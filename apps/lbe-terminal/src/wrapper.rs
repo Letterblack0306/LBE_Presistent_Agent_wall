@@ -3615,9 +3615,39 @@ impl RealLbeWrapper {
         let output = command
             .output()
             .map_err(|error| LbeError::new(format!("provider validation failed: {error}")))?;
-        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)
-            .map_err(|error| LbeError::new(format!("invalid provider.check JSON: {error}")))?;
-        let status = parse_provider_check_status(&payload)?;
+        let payload: serde_json::Value =
+            serde_json::from_slice(&output.stdout).map_err(|error| {
+                let detail = String::from_utf8_lossy(&output.stderr);
+                LbeError::new(format!(
+                    "provider {} check returned invalid JSON (exit {:?}): {}; stderr: {}",
+                    provider_id.cli_name(),
+                    output.status.code(),
+                    error,
+                    if detail.trim().is_empty() {
+                        "none"
+                    } else {
+                        detail.trim()
+                    }
+                ))
+            })?;
+        let status = match parse_provider_check_status(&payload) {
+            Ok(status) => status,
+            Err(error) => {
+                self.pending_events
+                    .push_back(LbeEvent::ProviderAuthStateUpdated {
+                        provider_id,
+                        auth_state: AuthState::Error,
+                    });
+                self.pending_events
+                    .push_back(LbeEvent::ProviderHealthUpdated {
+                        provider_id,
+                        health: ProviderHealth::Error,
+                    });
+                self.pending_events
+                    .push_back(LbeEvent::ProviderValidationCompleted { provider_id });
+                return Err(error);
+            }
+        };
         let auth_state = if status == "READY" {
             AuthState::Ready
         } else {
@@ -5469,6 +5499,14 @@ fn parse_mcp_registry_payload(
 }
 
 fn parse_provider_check_status(payload: &serde_json::Value) -> Result<&str, LbeError> {
+    if payload.get("ok").and_then(serde_json::Value::as_bool) == Some(false) {
+        let message = payload
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .or_else(|| payload.get("error").and_then(serde_json::Value::as_str))
+            .unwrap_or("provider check rejected without a reason");
+        return Err(LbeError::new(format!("provider.check rejected: {message}")));
+    }
     if payload.get("ok").and_then(serde_json::Value::as_bool) != Some(true)
         || payload.get("action").and_then(serde_json::Value::as_str) != Some("provider.check")
     {
