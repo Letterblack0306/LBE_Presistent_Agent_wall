@@ -27,3 +27,7 @@ Restore the unrelated change or update the task scope to the user-authorized bou
 ## If commit/push is blocked
 
 The active scope must include `commit` and/or `push` in `allowedActions`. Staged/HEAD files must match `allowedFiles`, avoid `forbiddenFiles`, and required validation must pass before publication.
+
+## A blocker is local, not a product veto
+
+A denial applies only to its exact action and path. A blocked acceptance slice means evidence is incomplete, not development prohibited. Preserve unrelated existing files and continue all independent authorized steps. Ordinary scoped modifications, additions, removals, tests, and repair work require no extra approval. Escalate only missing authorization for a genuinely protected effect.

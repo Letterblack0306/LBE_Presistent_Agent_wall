@@ -19,3 +19,7 @@ Before any mutation, read:
 ## Blocked state
 
 If no active locked scope exists, report the exact missing scope/action. Once the authorized scope and required validation pass, normal commit/push may proceed when those actions are allowed.
+
+## Standing development authorization
+
+Follow the standing authorization section of docs/GOVERNANCE_RULES.md: the active scope permits normal enhancements, bug fixes and removal of unwanted code; a blocked acceptance slice or one unavailable provider does not halt unrelated authorized work. Keep genuine workspace/effect boundaries and test real effects.

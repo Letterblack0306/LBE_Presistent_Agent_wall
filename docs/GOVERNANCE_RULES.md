@@ -25,6 +25,22 @@ Authorization comes from pre-existing machine-readable scope and policy. Facts c
 - Unknown evidence remains unknown.
 - Governance/evidence failures fail closed.
 
+## Standing authorization: governance enables delivery (2026-10-09)
+
+Governance protects workspace identity, prevents drift, and records evidence. It is NOT an independent feature veto, a ban on enhancements/removals, or a substitute for the user's product decisions.
+
+The user's continuous-maintenance scope already authorizes ordinary bug fixes, features, refactoring, removal of unwanted/obsolete code, tests, and follow-up changes. Do not ask for repetitive authorization for any of these when covered by the active scope.
+
+Run: inspect current workspace -> identify implementation owner -> register bounded intent -> change and test -> verify actual effects -> reconcile documentation -> commit and push when authorized. Do not replace action with discussion.
+
+A blocked or unverified acceptance slice describes evidence, not permission to change code. Likewise, an optional provider outage (including LM Studio), optional dependency failure, old test result, or unrelated dirty/untracked artifact is a localized condition, never a blanket stop. Isolate it, preserve unrelated changes, continue independent authorized work, and state exactly which acceptance remains open.
+
+Scoped deletion is a legitimate maintenance action. Defective or obsolete features must not be retained merely because deletion is perceived as forbidden. Structural changes require accurate index maintenance, not a new user approval when within scope.
+
+Real effect-level authorization stays in force for secrets, forbidden paths, destructive actions outside the requested scope, other users' resources, and separate release/publication/force-push authority. Classify a denial by its actual action and cause. Never bypass those protections, fabricate permission, or claim a test PASS proves the product works.
+
+If one effect truly requires authorization beyond existing scope, stop ONLY that effect; continue all independent authorized steps. Ask for the specific missing authorization only if indispensable.
+
 ## Governance layers
 
 1. Workspace policy: global invariants for this workspace.
