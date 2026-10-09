@@ -118,3 +118,50 @@ The staged installation in `%TEMP%\lbe-isolated-installed-20261009` was executed
 - five real ConPTY input cases **PASS**, including mouse handshake, keyboard, clean exit and terminal restore.
 
 **Evidence boundary:** This was a staged install, **not** an archive-extracted candidate acceptance. The current isolated package run's ZIP verification failed (missing archive checksums; parallel runner interference was observed). The independently verified archive from 2026-10-08 remains historic evidence, and a fresh `-Mode package` ZIP must pass verification before claiming candidate-archive installation. Live provider-backed inference and tool authorization acceptance remain unproven.
+
+## 2026-10-09 — Historical chat reconciliation and live provider-pipeline position
+
+Historical requirement material was inspected **read-only** at
+`I:\Other computers\My Computer\GPT_Local\chat_Print`:
+31 ChatGPT JSON exports, 27 byte-distinct exports (2026-08-20 through
+2026-09-20). These are **history/requirements**, not proof of currently
+shipping features. Salient repeated requirements: engine-neutral LBE-owned
+runtime; autonomous coding and genuine tool receipts; Cline as an adapter;
+task-matched skill activation; provider/model independence; child-agent
+continuation; restart persistence; and governed development without
+unnecessary stops. Source/runtime evidence outranks the archived discussion.
+
+Verified delivered, current main:
+- `394f6cc`: the backend selects an existing matching provider profile for a
+  provider-specific check without silently switching the active profile.
+  Python provider registry + health regressions: 37 passing.
+- `9cc63cc`: project Cline/Agent Skills-compatible `SKILL.md` metadata is
+  discovered and bounded task-relevant bodies are added to the *reasoning
+  context only*, not LBE execution authority. Only hashes/selection metadata
+  persist. 75 focused provider/agent tests passed.
+- `4cf42ab`: Rust provider validation only supplies a session's legacy
+  provider configuration for that session's provider; other picker rows use
+  their own saved provider profiles. Rust regressions passed.
+- `2415aa3`: delayed session restoration no longer dismisses the active
+  provider picker. Actual Windows ConPTY confirmed F2 panel remained open
+  after delayed session resume; model/provider readiness is not implied.
+
+Observed external conditions during this checkpoint:
+- The LBE terminal was previously observed **CONNECTED** and projecting 17
+  registered providers. Registry discovery is not authorization, credential
+  configuration, inference readiness, or successful provider selection.
+- Python CLI `provider check --provider lmstudio` returned a loopback
+  connection-refused error. `openai` and `anthropic` each returned
+  provider-not-configured. These are **provider-specific**, not product-wide
+  bans and not statements about all 17 providers.
+- Follow-up ConPTY tests exposed a session-restoration/picker race, now patched,
+  but did **not** establish successful real provider selection or a complete
+  provider-backed coding turn. Do not reinterpret Rust/pytest PASS as proof.
+- Previous unrelated untracked workspace files remained untouched.
+
+**Current acceptance classification:** provider-profile matching and task-skill
+prompt injection are test-proven at their owning code paths; exact installed
+provider-backed selection, inference, coding/tool effect, receipt, child-agent
+continuation, and restart resilience across the *current installed product*
+remain unverified. Continue independent authorized work; an unavailable
+provider is not a blanket work blocker.
