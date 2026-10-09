@@ -6300,3 +6300,32 @@ fn typed_slash_command_outranks_stale_provider_panel() {
     assert!(app.input.is_empty());
     assert!(app.panel.is_none());
 }
+
+#[test]
+fn pasted_shortcuts_and_newlines_are_literal_and_never_submit() {
+    let mut app = App::default();
+    assert_eq!(app.phase, Phase::Landing);
+    app.handle_paste("quit?\r\n/help\n");
+    assert_eq!(app.phase, Phase::Welcome);
+    assert_eq!(app.input, "quit?\n/help\n");
+    assert!(!app.should_quit);
+    assert!(!app.show_shortcuts);
+    assert!(!app.show_command_palette);
+}
+
+#[test]
+fn paste_does_not_issue_action_from_provider_panel() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.panel = Some(MockPanel::Provider);
+    app.handle_paste("/tools\rnext");
+    assert_eq!(app.input, "/tools\nnext");
+    assert!(app.panel.is_none());
+}
+
+#[test]
+fn restore_clears_paste_mode_and_mouse_capture() {
+    let restore = terminal_restore_sequence();
+    assert!(restore.contains("\x1b[?2004l"));
+    assert!(restore.contains("?1002l"));
+}

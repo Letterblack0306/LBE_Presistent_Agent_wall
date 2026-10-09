@@ -702,17 +702,18 @@ fn run(
         if events.poll(timeout, |event| {
             matches!(
                 event,
-                Event::Key(_) | Event::Mouse(_) | Event::WindowResized(_)
+                Event::Key(_) | Event::Paste(_) | Event::Mouse(_) | Event::WindowResized(_)
             )
         })? {
             let event = events.read(|event| {
                 matches!(
                     event,
-                    Event::Key(_) | Event::Mouse(_) | Event::WindowResized(_)
+                    Event::Key(_) | Event::Paste(_) | Event::Mouse(_) | Event::WindowResized(_)
                 )
             })?;
             match event {
                 Event::Key(key) => app.handle_key(key, &mut wrapper, Instant::now()),
+                Event::Paste(content) => app.handle_paste(&content),
                 Event::Mouse(mouse) => {
                     app.handle_mouse_with_wrapper(mouse, &mut wrapper, Instant::now());
                 }

@@ -53,18 +53,13 @@ pub(crate) fn display_token(
 pub(crate) fn init_terminal() -> io::Result<(AppTerminal, EventReader)> {
     let mut output = PlatformTerminal::new()?;
     output.set_panic_hook(|output| {
-        let _ = write!(
-            output,
-            "{}{}",
-            alternate_screen(false),
-            terminal_cursor_visible(true)
-        );
+        let _ = write!(output, "{}", terminal_restore_sequence());
         let _ = output.flush();
     });
     output.enter_raw_mode()?;
     write!(
         output,
-        "{}{}{}",
+        "{}{}{}\x1b[?2004h",
         alternate_screen(true),
         terminal_cursor_visible(false),
         mouse_capture(true)
@@ -82,7 +77,7 @@ pub(crate) fn restore_terminal(terminal: &mut AppTerminal) -> io::Result<()> {
 
 pub(crate) fn terminal_restore_sequence() -> String {
     format!(
-        "{}{}{}",
+        "{}{}{}\x1b[?2004l",
         alternate_screen(false),
         terminal_cursor_visible(true),
         mouse_capture(false)

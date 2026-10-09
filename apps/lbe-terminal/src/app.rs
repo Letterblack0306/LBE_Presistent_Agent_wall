@@ -244,6 +244,30 @@ impl App {
         self.phase = phase;
     }
 
+    pub(crate) fn handle_paste(&mut self, content: &str) {
+        // Paste is always literal composer data, never a keyboard shortcut or
+        // submission. Normalize line endings, dropping other terminal control
+        // characters so a paste cannot drive a permission or action key.
+        if matches!(self.phase, Phase::Running) {
+            return;
+        }
+        if self.phase == Phase::Landing {
+            self.phase = Phase::Welcome;
+        }
+        self.panel = None;
+        self.show_command_palette = false;
+        let normalized = content.replace("\r\n", "\n").replace('\r', "\n");
+        self.input.extend(
+            normalized
+                .chars()
+                .filter(|ch| *ch == '\n' || *ch == '\t' || !ch.is_control()),
+        );
+        input_trace(format!(
+            "action=paste_inserted input_len={}",
+            self.input.len()
+        ));
+    }
+
     pub(crate) fn handle_key(
         &mut self,
         key: KeyEvent,
