@@ -545,7 +545,23 @@ function Invoke-Proof {
 function Build-Product {
     param([string]$AgentStage, [string]$TuiStage, [string]$BuildRoot)
 
-    if (Test-Path -LiteralPath $BuildRoot) { Remove-Item -LiteralPath $BuildRoot -Recurse -Force }
+    if (Test-Path -LiteralPath $BuildRoot) {
+        # Fail closed if an external process still owns a staged node_modules
+        # path; bounded retry handles transient Windows/antivirus file handles.
+        $cleared = $false
+        for ($attempt = 1; $attempt -le 5; $attempt++) {
+            try {
+                Remove-Item -LiteralPath $BuildRoot -Recurse -Force -ErrorAction Stop
+                $cleared = -not (Test-Path -LiteralPath $BuildRoot)
+                if ($cleared) { break }
+            }
+            catch {
+                if ($attempt -eq 5) { throw }
+            }
+            Start-Sleep -Seconds 2
+        }
+        if (-not $cleared) { throw "Cannot clear prior isolated package build root: $BuildRoot" }
+    }
     New-Item -ItemType Directory -Path $BuildRoot -Force | Out-Null
     $runtimeOut = Join-Path $BuildRoot "runtime"
     $clientOut = Join-Path $BuildRoot "client"
@@ -923,7 +939,8 @@ param(
     [string]$BirdEyeServer,
     [string]$BirdEyePython,
     [string]$Project,
-    [string]$ProviderConfig
+    [string]$ProviderConfig,
+    [switch]$SkipUserPath
 )
 $ErrorActionPreference = "Stop"
 $venv = Join-Path $InstallRoot "venv"
@@ -1065,7 +1082,10 @@ $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if (-not $userPath) { $userPath = "" }
 $userPathEntries = @($userPath -split ';' | Where-Object { $_ -and $_.Trim() })
 $binFull = [IO.Path]::GetFullPath($binDir)
-if ($userPathEntries -notcontains $binFull) {
+if ($SkipUserPath) {
+    Write-Host "Isolated installation: user PATH deliberately unchanged."
+}
+elseif ($userPathEntries -notcontains $binFull) {
     $userPathEntries = @($binFull) + @($userPathEntries)
     [Environment]::SetEnvironmentVariable("Path", ($userPathEntries -join ";"), "User")
     Write-Host "Prepended user PATH entry: $binFull"

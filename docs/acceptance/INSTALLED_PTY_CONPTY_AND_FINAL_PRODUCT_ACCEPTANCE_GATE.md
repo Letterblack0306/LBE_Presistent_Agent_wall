@@ -105,3 +105,16 @@ This proves the bounded package/archive integrity and rejection semantics.
 It does **not** prove that the candidate is installed, that provider/model
 inference is healthy, or that current installed end-to-end authorization and
 receipts have completed. Those retain their independent machine gate status.
+
+## Isolated staged installer acceptance — 2026-10-09
+
+An opt-in `-SkipUserPath` switch is now supported by the **canonical generated installer**. Without the switch, default PATH installation behavior is unchanged.
+
+The staged installation in `%TEMP%\lbe-isolated-installed-20261009` was executed against `%TEMP%\lbe-accept-run-20261009-single\LetterBlack-LBE\install.ps1`:
+- isolated `venv/Scripts/python.exe`, `lbe.exe`, and `bin/lbe.cmd` exist;
+- installed `lbe.exe` SHA256 `F8752CAA379B0F0F867B9EFEE2CF6C9D216CD4F4710BC868CA25CAA8C9762AFF` matches staged `client/lbe.exe`;
+- existing installed production client remained at SHA256 `D8655AC0C196BC05F0A4B163FB835D706EA2999A33498C8EC708209F66A50E6D`;
+- the user PATH does not contain the isolated installation;
+- five real ConPTY input cases **PASS**, including mouse handshake, keyboard, clean exit and terminal restore.
+
+**Evidence boundary:** This was a staged install, **not** an archive-extracted candidate acceptance. The current isolated package run's ZIP verification failed (missing archive checksums; parallel runner interference was observed). The independently verified archive from 2026-10-08 remains historic evidence, and a fresh `-Mode package` ZIP must pass verification before claiming candidate-archive installation. Live provider-backed inference and tool authorization acceptance remain unproven.

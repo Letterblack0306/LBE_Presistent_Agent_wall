@@ -1319,3 +1319,14 @@ AFFECTED_STRUCTURE: tools/lbe_product_integration.ps1
 REUSE_DECISION: ADAPT existing canonical packaging owner; preserve archive manifest and verifier; no new installer or runtime.
 REQUIRED_EVIDENCE: isolated package generation, archive verification receipt, no stale incomplete zip; existing product proof and source checks.
 RESULT: PASS (candidate ZIP generated and 18,659 actual ZIP payload files SHA256/size verified; clean fixture PASS, tampered fixture FAIL)
+
+## INTENT LBE-INTENT-ISOLATED-INSTALL-PATH-PROOF-20261008
+STATUS: ACTIVE
+REQUEST: Permit safe isolated install verification without changing the user PATH or installed production LBE. The canonical installer must support a path-preserving test installation while preserving existing default install behavior.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: tools/lbe_product_integration.ps1 Write-Installer and generated installed launcher.
+EXPECTED_PATH_PREFIXES: tools/,docs/acceptance/,docs/governance/
+AFFECTED_STRUCTURE: tools/lbe_product_integration.ps1, docs/acceptance/
+REUSE_DECISION: ADAPT existing generated installer with opt-in isolated/no-user-PATH mode; no alternate launcher/runtime authority.
+REQUIRED_EVIDENCE: temporary-root install, PATH unchanged, installed binary hash matches package and real PTY interaction passes.
+RESULT: PROVEN for staged installer: isolated temp installation succeeds, installed client SHA-256 equals staged package client, five real ConPTY input cases pass, and user PATH excludes isolated bin. Final candidate ZIP build still separately requires clean successful package verification.
