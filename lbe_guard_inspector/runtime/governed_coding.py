@@ -856,11 +856,12 @@ class _GovernedCodingControllerBase:
             owner_authority=lambda: self._owner_authority,
         )
 
-    def _rebuild_guidance(self) -> None:
+    def _rebuild_guidance(self, task: str | None = None) -> None:
         self._guidance = build_agent_guidance(
             mode_decision=self._context.mode_decision,
             workspace_root=self._runtime.workspace_root,
             tools=self._registry.specs(),
+            task=task,
         )
 
     @property
@@ -1353,6 +1354,9 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
             raise ValueError("governed coding requires a task_id")
         self._bind_owner_authority(request)
         self._activate_parent_turn(request.parent_turn_id)
+        # Select relevant SKILL.md guidance for this task, not just globally
+        # at controller construction. Skills never grant executable authority.
+        self._rebuild_guidance(task=request.problem)
 
         turn_id = f"turn-{uuid4().hex}"
         messages: list[dict[str, object]] = [
