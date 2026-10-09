@@ -73,6 +73,12 @@ Read these four in order to understand how someone learns and uses LBE:
 | [`contracts/`](contracts/) | Current technical registries used by the implementation. | Maintain as named contracts, not as status reports. |
 | [`history/`](history/) | Closed phase records retained for evidence. | Immutable except for link repair or an explicit correction note. |
 
+## Complete inventory and interpretation (2026-10-10)
+
+The [document intent manifest](DOCUMENT_INTENT_MANIFEST.md#full-document-reconciliation-supplement-2026-10-10) now lists every file found under `docs/` in the audited checkout, including non-Markdown examples, UI fixtures and preserved history. The manifest is **navigation and scope**, not a certification of factual freshness. The operational ownership already exists in this README and [product intent source](LBE_PRODUCT_SOURCE_OF_TRUTH.md); do not create another independent authority hierarchy. Distinguish *inventory reviewed* from *each source claim independently verified*.
+
+The audit found previously missing manifest entries (59 of 172 files). Historical claims in `acceptance/` require the original exact build/fixture/harness context and cannot be re-used as readiness evidence. Before consolidation or removal of an apparently duplicate document, inspect its consumers, governance/manifest entry, content, and historic evidentiary value. Keep nontracked user files untouched.
+
 ## Workspace document visibility and hygiene
 
 Document organization is part of the LBE product boundary. A Markdown file is not made valid by

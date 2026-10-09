@@ -7,9 +7,9 @@ Status: **ACTIVE — FEATURE SELF-CHECKS / TRUTHFUL INSTALLED ACCEPTANCE**
 
 **Scope:** documentation ownership, routing, contradictions, and workspace hygiene only. This section does not change implementation authority, mutate runtime code, or certify product readiness.
 
-**One-reader entry order:** start with `README.md` (repository entry), then `docs/CURRENT_STATUS.md` (dated, bounded status), this plan (goals and remaining work), `PROJECT_INDEX.md` (structural owners), `.lbe/governance/implementation-gates.json` and `docs/governance/PROJECT_INTENT_LEDGER.md` (actual mutation authority). Consult `docs/acceptance/` for individual acceptance evidence; use `docs/reference/` only for design/research history. For implementation claims, read current source and run the real effect path before relying on any document.
+**One-reader entry order:** `docs/README.md` is the existing documentation entry point; `docs/DOCUMENT_INTENT_MANIFEST.md` is the per-file classification registry; `docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md` owns dated human product intent. Then consult `docs/CURRENT_STATUS.md` for the bounded status snapshot, this plan for remaining work, `PROJECT_INDEX.md` for structural ownership, and the active machine gate + intent ledger for mutation authority. Current source, runtime effects and receipts outrank every document.
 
-**Document types, one responsibility each:**
+**Document types, one responsibility each:** The existing `docs/README.md` and `docs/DOCUMENT_INTENT_MANIFEST.md` own routing/classification; the following table is a summary, not a parallel registry.
 
 | Role | Single canonical destination | Allowed claims |
 |---|---|---|
