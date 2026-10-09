@@ -3587,7 +3587,9 @@ impl RealLbeWrapper {
             .ok_or_else(|| LbeError::new("LBE_WALL_ROOT is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("python"));
+            .ok_or_else(|| {
+                LbeError::new("LBE_WALL_PYTHON is not configured; start via launch-lbe.ps1")
+            })?;
         self.pending_events
             .push_back(LbeEvent::ProviderValidationStarted { provider_id });
         let mut command = configured_lbe_command(&python, &wall_root);
@@ -3623,13 +3625,43 @@ impl RealLbeWrapper {
         {
             command.args(["--engine", engine_id]);
         }
-        let output = command
-            .output()
-            .map_err(|error| LbeError::new(format!("provider validation failed: {error}")))?;
-        let payload: serde_json::Value =
-            serde_json::from_slice(&output.stdout).map_err(|error| {
+        let output = match command.output() {
+            Ok(output) => output,
+            Err(error) => {
+                self.pending_events
+                    .push_back(LbeEvent::ProviderAuthStateUpdated {
+                        provider_id,
+                        auth_state: AuthState::Error,
+                    });
+                self.pending_events
+                    .push_back(LbeEvent::ProviderHealthUpdated {
+                        provider_id,
+                        health: ProviderHealth::Error,
+                    });
+                self.pending_events
+                    .push_back(LbeEvent::ProviderValidationCompleted { provider_id });
+                return Err(LbeError::new(format!(
+                    "provider validation failed: {error}"
+                )));
+            }
+        };
+        let payload: serde_json::Value = match serde_json::from_slice(&output.stdout) {
+            Ok(payload) => payload,
+            Err(error) => {
+                self.pending_events
+                    .push_back(LbeEvent::ProviderAuthStateUpdated {
+                        provider_id,
+                        auth_state: AuthState::Error,
+                    });
+                self.pending_events
+                    .push_back(LbeEvent::ProviderHealthUpdated {
+                        provider_id,
+                        health: ProviderHealth::Error,
+                    });
+                self.pending_events
+                    .push_back(LbeEvent::ProviderValidationCompleted { provider_id });
                 let detail = String::from_utf8_lossy(&output.stderr);
-                LbeError::new(format!(
+                return Err(LbeError::new(format!(
                     "provider {} check returned invalid JSON (exit {:?}): {}; stderr: {}",
                     provider_id.cli_name(),
                     output.status.code(),
@@ -3639,8 +3671,9 @@ impl RealLbeWrapper {
                     } else {
                         detail.trim()
                     }
-                ))
-            })?;
+                )));
+            }
+        };
         let status = match parse_provider_check_status(&payload) {
             Ok(status) => status,
             Err(error) => {
@@ -4020,7 +4053,9 @@ impl RealLbeWrapper {
             .ok_or_else(|| LbeError::new("LBE_SESSION_ID is not configured"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("python"));
+            .ok_or_else(|| {
+                LbeError::new("LBE_WALL_PYTHON is not configured; start via launch-lbe.ps1")
+            })?;
         let mut command = configured_lbe_command(&python, &wall_root);
         command
             .current_dir(&wall_root)
@@ -4136,7 +4171,9 @@ impl RealLbeWrapper {
             .ok_or_else(|| LbeError::new("no active LBE execution is available to abort"))?;
         let python = std::env::var_os("LBE_WALL_PYTHON")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("python"));
+            .ok_or_else(|| {
+                LbeError::new("LBE_WALL_PYTHON is not configured; start via launch-lbe.ps1")
+            })?;
         let output = configured_lbe_command(&python, &wall_root)
             .current_dir(&wall_root)
             .args([
