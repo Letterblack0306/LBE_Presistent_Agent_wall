@@ -43,3 +43,11 @@ Do not alter dirty/unrelated files or create duplicate authority. Preserve inten
 
 ## Current next step
 Source-level map + falsifiable acceptance tests for Rust provider ID extensibility; then a narrowly scoped patch. THIS PLAN DOES NOT AUTHORIZE DECLARING THE PRODUCT COMPLETE.
+
+## Implementation checkpoint — 2026-10-09
+
+- **Reference decisions:** `docs/reference/AGENT_REASONING_TRANSPORT_BOUNDARY.md` prohibits semantic authority in transport; `docs/reference/TERMINAL_UI_CONTRACT_MAPPING.md` makes Rust presentation-only; `docs/reference/COMPLETION_CONTRACT_RESEARCH_EVIDENCE.md` keeps completion independent of provider text; `docs/reference/MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` keeps authority independent of model/provider choice.
+- **Current source owner:** `lbe_guard_inspector/provider_registry.py` registers provider/engine bindings via string IDs; `apps/lbe-terminal/src/types.rs` still exposes a fixed legacy `ProviderId` enum.
+- **Implemented bounded initial slice:** Rust `ProviderKey` retains arbitrary discovered registry identities, and `parse_registered_provider_keys` validates and losslessly decodes the backend list. New regression cases cover previously unknown identifiers, duplicates and invalid IDs.
+- **Not claimed:** The legacy TUI provider picker still consumes `ProviderId`. New `ProviderKey` is not yet connected to picker commands, model selection or live inference; these remain OPEN. Test PASS only validates the isolated contract.
+- **Next ordered owner:** migrate the full picker/provider-event/request model to data-driven `ProviderKey` while preserving configured profiles and session identity. Then perform actual Windows ConPTY provider/tool end-to-end acceptance; do not change provider-based workspace authority or completion ownership.

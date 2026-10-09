@@ -5835,6 +5835,38 @@ pub(crate) fn parse_provider_check_payload(
     })
 }
 
+/// Lossless provider discovery contract. The legacy typed picker adapter can
+/// be migrated separately without dropping unrecognized backend providers.
+pub(crate) fn parse_registered_provider_keys(
+    payload: &serde_json::Value,
+) -> Result<Vec<ProviderKey>, LbeError> {
+    if payload.get("ok").and_then(serde_json::Value::as_bool) != Some(true)
+        || payload.get("action").and_then(serde_json::Value::as_str) != Some("provider.list")
+    {
+        return Err(LbeError::new("provider.list response failed contract"));
+    }
+    let items = payload
+        .get("providers")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| LbeError::new("provider.list response omitted providers"))?;
+    let mut keys = Vec::with_capacity(items.len());
+    for (index, item) in items.iter().enumerate() {
+        let name = item.as_str().ok_or_else(|| {
+            LbeError::new(format!("provider.list provider {index} was not a string"))
+        })?;
+        let key = ProviderKey::parse(name)
+            .map_err(|reason| LbeError::new(format!("provider.list provider {index}: {reason}")))?;
+        if keys.contains(&key) {
+            return Err(LbeError::new(format!(
+                "provider.list duplicate provider id {}",
+                key.as_str()
+            )));
+        }
+        keys.push(key);
+    }
+    Ok(keys)
+}
+
 pub(crate) fn parse_provider_list_payload(
     payload: &serde_json::Value,
 ) -> Result<Vec<ProviderId>, LbeError> {

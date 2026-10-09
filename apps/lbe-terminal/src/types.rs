@@ -580,6 +580,34 @@ impl RuntimeMode {
 // Provider types
 // ---------------------------------------------------------------------------
 
+/// Backend-owned identity for a discovered provider.
+///
+/// Unlike the legacy ProviderId TUI enum, this value preserves arbitrary
+/// registered provider identifiers without assigning them Rust variants.
+/// It does not prove that a provider has credentials, a ready model or tools.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct ProviderKey(String);
+
+impl ProviderKey {
+    pub(crate) fn parse(value: &str) -> Result<Self, &'static str> {
+        let trimmed = value.trim();
+        if trimmed.is_empty() || trimmed.len() > 128 {
+            return Err("provider id must contain 1..128 characters");
+        }
+        if !trimmed
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | '/'))
+        {
+            return Err("provider id contains unsupported characters");
+        }
+        Ok(Self(trimmed.to_owned()))
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum ProviderId {
     OpenAi,

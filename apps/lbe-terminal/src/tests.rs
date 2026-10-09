@@ -6603,3 +6603,26 @@ fn health_check_distinguishes_unconfigured_and_offline_from_authentication_error
         (AuthState::Error, ProviderHealth::Error)
     );
 }
+
+#[test]
+fn provider_key_retains_registered_provider_identity_without_a_fixed_enum() {
+    let payload = serde_json::json!({
+        "ok": true, "action": "provider.list",
+        "providers": ["openai", "custom.vendor_v2", "enterprise/internal"]
+    });
+    let keys = crate::wrapper::parse_registered_provider_keys(&payload).unwrap();
+    assert_eq!(
+        keys.iter().map(|key| key.as_str()).collect::<Vec<_>>(),
+        ["openai", "custom.vendor_v2", "enterprise/internal"]
+    );
+}
+
+#[test]
+fn provider_key_refuses_duplicate_or_malformed_registry_identity() {
+    let payload = serde_json::json!({
+        "ok": true, "action": "provider.list", "providers": ["test-provider", "test-provider"]
+    });
+    assert!(crate::wrapper::parse_registered_provider_keys(&payload).is_err());
+    assert!(ProviderKey::parse("bad provider; command").is_err());
+    assert!(ProviderKey::parse("").is_err());
+}
