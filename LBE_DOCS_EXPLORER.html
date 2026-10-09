@@ -100,6 +100,34 @@
   .legend .ret{background:transparent; border-top:2px dotted #ff6b7a;}
   #err{color:var(--red); font-size:12px; padding:10px 18px; display:none;}
 </style>
+
+<style id="reference-workbench-style">
+#rw-open{position:fixed;right:18px;top:8px;z-index:180;background:#15324d;color:#e8f4ff;border:1px solid #5b9dff;border-radius:8px;padding:9px 15px;cursor:pointer;font:600 13px system-ui}
+#reference-workbench{display:none;position:fixed;z-index:200;inset:0;background:#0b1019;color:#e1e8f1;font:14px/1.5 system-ui,sans-serif;overflow:auto}
+#reference-workbench.open{display:block}
+#reference-workbench *{box-sizing:border-box}
+.rw-head{position:sticky;top:0;background:#111a29;z-index:2;border-bottom:1px solid #304054;display:flex;gap:14px;align-items:center;justify-content:space-between;padding:16px 22px}
+.rw-head h1{font-size:21px;margin:0}.rw-head small{color:#a7b5c7}
+.rw-head button,.rw-tabs button{border:1px solid #42546b;background:#1a293a;color:#e1e8f1;border-radius:6px;padding:8px 12px;cursor:pointer}
+.rw-head button:focus-visible,.rw-tabs button:focus-visible,#rw-open:focus-visible{outline:2px solid #9cceff}
+.rw-tabs{display:flex;flex-wrap:wrap;gap:8px;padding:14px 22px;background:#101827}
+.rw-tabs button[aria-selected=true]{background:#274c72;border-color:#9cceff}
+.rw-section{display:none;max-width:1300px;margin:auto;padding:22px 28px 65px}
+.rw-section.active{display:block}.rw-section h2{font-size:23px;margin:16px 0}.rw-section h3{font-size:17px;margin:18px 0 6px}
+.rw-section p{margin:7px 0 14px;color:#b9c9d8}.rw-section a{color:#8bc7ff;text-decoration:underline}
+.rw-section table{border-collapse:collapse;width:100%;margin:12px 0 18px;min-width:650px}
+.rw-scroll{overflow:auto}.rw-section th,.rw-section td{padding:11px 13px;text-align:left;vertical-align:top;border-bottom:1px solid #2d3e51}
+.rw-section th{background:#182537;color:#e1e8f1}.rw-section td{color:#c4d2e0}
+.rw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.rw-card{background:#132030;border:1px solid #314459;border-radius:10px;padding:17px;min-width:0}
+.rw-card h3{margin:0 0 8px}.rw-card ul{padding-left:20px;margin:8px 0}.rw-card li{margin:4px 0}
+.rw-tag{font-size:11px;letter-spacing:.04em;color:#bed4e9}
+.rw-sample{background:#090e16;border:1px solid #2c4055;border-radius:9px;padding:15px;color:#d1e4f5;font:12px/1.55 Consolas,monospace;white-space:pre;overflow:auto;margin:9px 0}
+.rw-warning{border-left:3px solid #d5a54f;padding:12px 15px;background:#292318;color:#f4ddae;margin:15px 0}
+.rw-step{display:inline-block;color:#9aceff;font-weight:700;margin-right:5px}
+.rw-section code{font-family:Consolas,monospace;color:#cfe6ff}
+@media(max-width:700px){.rw-section{padding:14px}.rw-head{padding:12px;flex-wrap:wrap}.rw-section h2{font-size:19px}}
+</style>
 </head>
 <body>
 <div style="position:fixed;top:6px;left:11px;z-index:99;background:#182639;border:1px solid #5b9dff;padding:5px 10px;font:11px Segoe UI,sans-serif;color:#d8dee6;">LBE DOCS EXPLORER · Historical node contracts + current-document links · Not live runtime proof · <a href="docs/README.md" style="color:#7fd6ff">Docs index</a> · <a href="docs/DOCUMENT_INTENT_MANIFEST.md" style="color:#7fd6ff">Full inventory</a> · <a href="docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md" style="color:#7fd6ff">Product intent</a></div>
@@ -459,6 +487,151 @@ SPINE.forEach(d=>{ const el=nodeEl(d,true); canvas.appendChild(el); ELEM[d.id]=e
 BRANCH.forEach(d=>{ const el=nodeEl(d,false); canvas.appendChild(el); ELEM[d.id]=el; });
 DELIVERY.forEach(d=>{ const el=nodeEl(d,false); canvas.appendChild(el); ELEM[d.id]=el; });
 buildSVG(); drawBranch(); drawReturn(); setMode("learning");
+</script>
+
+<button id="rw-open" type="button" aria-controls="reference-workbench" aria-expanded="false">Reference map + TUI plan</button>
+<div id="reference-workbench" role="region" aria-label="LBE reference and implementation plan">
+ <div class="rw-head">
+  <div><h1>LBE Reference &amp; TUI Implementation Workbench</h1><small>Guidance and illustrative examples; verify against the live repository and runtime before action.</small></div>
+  <button id="rw-close" type="button">Return to document graph (Esc)</button>
+ </div>
+ <nav class="rw-tabs" aria-label="Workbench sections">
+  <button type="button" class="rw-tab" data-tab="overview" aria-selected="true">Overview &amp; evidence</button>
+  <button type="button" class="rw-tab" data-tab="areas" aria-selected="false">Area-by-area plan</button>
+  <button type="button" class="rw-tab" data-tab="references" aria-selected="false">Reference library</button>
+  <button type="button" class="rw-tab" data-tab="samples" aria-selected="false">TUI UI samples</button>
+  <button type="button" class="rw-tab" data-tab="validation" aria-selected="false">Runtime &amp; acceptance</button>
+ </nav>
+ <section id="rw-overview" class="rw-section active">
+  <h2>Purpose and reading order</h2>
+  <p>Use this page to choose the right references for a specific LBE area and review interaction samples. It does not supersede existing implementation, machine policy, branch state or evidence records. The adjacent original graph primarily contains a historical Guard Inspector design.</p>
+  <div class="rw-grid">
+   <article class="rw-card"><h3>1 · Product intent</h3><p><a href="docs/README.md">Documentation router</a> → <a href="docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md">Product intent owner</a> → <a href="docs/LBE_AGENT_LIFECYCLE.md">Agent lifecycle</a>.</p></article>
+   <article class="rw-card"><h3>2 · Source &amp; ownership</h3><p><a href="PROJECT_INDEX.md">Structural owner index</a> → <a href="docs/DOCUMENT_INTENT_MANIFEST.md">Complete document inventory</a> → actual code in <a href="apps/lbe-terminal/src/">Rust TUI source</a> and <a href="lbe_guard_inspector/">Python backend</a>.</p></article>
+   <article class="rw-card"><h3>3 · Plan &amp; governance</h3><p><a href="docs/IMPLEMENTATION_PLAN.md">Implementation plan</a> → <a href="docs/governance/PROJECT_INTENT_LEDGER.md">Intent ledger</a> → <a href=".lbe/governance/implementation-gates.json">Machine gate</a>.</p></article>
+   <article class="rw-card"><h3>4 · Evidence, not labels</h3><p><a href="docs/CURRENT_STATUS.md">Dated status</a> → <a href="docs/acceptance/README.md">Acceptance collection</a> → real terminal/provider/receipts. A green test alone is not proof the installed product works.</p></article>
+  </div>
+  <div class="rw-warning">Source hierarchy: live runtime/observed effects → active workspace source + Git HEAD → governance/owners → documentation → external references and chat history. “Documented,” “coded,” “unit-tested,” and “runtime-proven” are different states.</div>
+  <h3>Scope of this workbench</h3>
+  <p>Design planning, source routing and terminal samples only. No sample below represents an actual screenshot of the current LBE installation, and no cross-project feature is assumed to exist merely because a reference implements it. Branch availability/status must be read from Git, not inferred from old branch names.</p>
+ </section>
+ <section id="rw-areas" class="rw-section">
+  <h2>Area-specific reference and implementation direction</h2>
+  <p>For each area: inspect current owning code, compare only verified upstream behavior, record a bounded discrepancy, implement through the existing authority owner, then validate the installed result. These are proposed assessment steps, not completed implementation.</p>
+  <div class="rw-scroll"><table>
+   <thead><tr><th>Area</th><th>Local starting point</th><th>Outside reference and why</th><th>Implementation and acceptance direction</th></tr></thead>
+   <tbody>
+    <tr><td>Terminal shell, navigation, focus</td><td><a href="apps/lbe-terminal/src/app.rs">app.rs</a>, <a href="apps/lbe-terminal/src/ui.rs">ui.rs</a>, <a href="tools/lbe_interactive_selftest.py">ConPTY harness</a></td><td><a href="https://github.com/pageton/tui-design-skill">TUI design skill</a>, Ratatui guide and review checklist; observed Codex shortcuts/dialogs</td><td>Audit keyboard-first navigation, composer focus, prompt overlays, resize, no flicker and clean terminal restore with real ConPTY; do not replace functioning flows for appearance.</td></tr>
+    <tr><td>Provider and model picker</td><td><a href="docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md">Extensibility plan</a>, <a href="apps/lbe-terminal/src/types.rs">types.rs</a>, <a href="lbe_guard_inspector/provider_registry.py">provider_registry.py</a></td><td><a href="https://github.com/openai/codex">Codex</a> model/effort picker and live provider-bound inference</td><td>Compare registered backend identities with actual Rust picker; lossless decoding is not dynamic selection. Prove loading/selection/persistence with an arbitrary registered provider.</td></tr>
+    <tr><td>Agent and reasoning loop</td><td><a href="lbe_guard_inspector/runtime/">runtime</a>, <a href="docs/LBE_AGENT_LIFECYCLE.md">lifecycle</a></td><td><a href="https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/router.rs">Codex tool router</a> and <a href="https://google.github.io/agents-cli/guide/quickstart-tutorial/">ADK/agents-cli lifecycle</a></td><td>Preserve model reasoning authority and LBE execution authority. Verify actual model→tool→result→model continuation, including denied-tool recovery.</td></tr>
+    <tr><td>Tool registry, dispatch and MCP</td><td><a href="lbe_guard_inspector/runtime/tool_orchestration.py">tool_orchestration.py</a></td><td><a href="https://github.com/openai/codex/blob/main/codex-rs/tools/README.md">Codex tools</a>, <a href="https://github.com/openai/codex/blob/main/codex-rs/tui/src/dynamic_tools_mcp.rs">MCP integration</a></td><td>Discover capabilities from actual registry; expose pending/running/denied/completed events with correlated receipt IDs and authoritative tool outputs.</td></tr>
+    <tr><td>Approval, sandbox, modes</td><td><a href="docs/reference/MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md">Mode policy research</a>, <a href=".lbe/governance/implementation-gates.json">gate</a></td><td>Codex permissions dialog and <a href="https://github.com/openai/codex/blob/main/codex-rs/protocol/src/protocol.rs">typed approval events</a></td><td>Approval status is runtime-owned. Render exact DENY reason with recovery path; never let model or UI silently grant authority.</td></tr>
+    <tr><td>Timeline, command output, diffs</td><td><a href="docs/reference/TERMINAL_UI_CONTRACT_MAPPING.md">TUI contract mapping</a>, <a href="apps/lbe-terminal/src/wrapper.rs">wrapper projection</a></td><td><a href="https://github.com/openai/codex/blob/main/codex-rs/tui/src/tool_output.rs">Codex output previews</a> and TUI log-monitor sample</td><td>Present start/progress/outputs/approval/error/completion from recorded events. Expand full output on demand, bound memory, verify scroll/resize.</td></tr>
+    <tr><td>Sessions, recovery and background agents</td><td><a href="lbe_guard_inspector/session_lifecycle.py">session lifecycle</a>, <a href="docs/acceptance/">acceptance records</a></td><td>Codex session resume, background-task indications, ADK agent composition</td><td>Inspect actual session persistence and child-task correlation before proposing new controls; test interruption, resumption and cancellation.</td></tr>
+    <tr><td>Skills and reference discovery</td><td><a href="docs/DOCUMENT_INTENT_MANIFEST.md">document inventory</a>, <a href=".skills/">skills</a></td><td><a href="https://github.com/google/agents-cli">Google agents-cli</a> seven lifecycle skills and <a href="https://github.com/pageton/tui-design-skill">TUI skill</a></td><td>Select skill by task relevance and available implementation; record activation and boundaries; skills supply guidance, never tool authority.</td></tr>
+    <tr><td>Evaluation and completion</td><td><a href="docs/reference/COMPLETION_CONTRACT_RESEARCH_EVIDENCE.md">completion evidence</a>, <a href="docs/acceptance/">machine checkpoints</a></td><td>Google agents-cli evaluation, grade/compare/analyze workflow and trace methodology</td><td>Separate test pass from installed acceptance, trace exact observations to source/effect/receipt; classify unproven states openly.</td></tr>
+    <tr><td>Documentation and Git branches</td><td><a href="docs/README.md">router</a>, <a href="docs/DOCUMENT_INTENT_MANIFEST.md">manifest</a>, <a href="PROJECT_INDEX.md">owner index</a></td><td>Git history and worktree itself; avoid design-copy authority</td><td>Classify documents and branch deltas at exact HEAD; do not infer merged or complete from branch names. Repair links, preserve history and untouched untracked files.</td></tr>
+   </tbody>
+  </table></div>
+ </section>
+ <section id="rw-references" class="rw-section">
+  <h2>Reference library: where and when to use each</h2>
+  <div class="rw-grid">
+   <article class="rw-card"><div class="rw-tag">OFFICIAL · LIVE TUI + RUNTIME</div><h3><a href="https://github.com/openai/codex">OpenAI Codex</a></h3><p>Use for model/effort selection, slash commands, permission modes, tool invocation, approval events, command output, tool failure recovery and session controls. Prior Windows Codex 0.160.0 machine observation showed an MCP approval denial followed by a successful read via exec_command; it is not LBE acceptance.</p><p><a href="https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/router.rs">Tool router</a> · <a href="https://github.com/openai/codex/blob/main/codex-rs/protocol/src/protocol.rs">Event protocol</a> · <a href="https://github.com/openai/codex/blob/main/codex-rs/tui/src/tool_output.rs">Output presentation</a> · <a href="https://github.com/topics/codex-cli">Community ecosystem</a></p></article>
+   <article class="rw-card"><div class="rw-tag">OFFICIAL · AGENT FRAMEWORK</div><h3><a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/agents/quickstart-adk">Google ADK quickstart</a></h3><p>Use for agent construction, tools, composition and runtime/deployment boundaries. An ADK development workflow is not proof that a comparable LBE operation is implemented.</p><p><a href="https://google.github.io/agents-cli/guide/quickstart-tutorial/">Step-by-step tutorial</a></p></article>
+   <article class="rw-card"><div class="rw-tag">OFFICIAL · CAPABILITY PACK</div><h3><a href="https://github.com/google/agents-cli">Google Agents CLI</a></h3><p>A tool and skills suite for coding agents, <strong>not a standalone coding-agent TUI</strong>. Use workflow, ADK code, scaffold, evaluation, deploy, publish and observability skills as capability reference; compare trace grading, evaluation analysis and tool-driven lifecycle.</p></article>
+   <article class="rw-card"><div class="rw-tag">COMMUNITY · TUI DESIGN GUIDE</div><h3><a href="https://github.com/pageton/tui-design-skill">pageton/tui-design-skill</a></h3><p>Use Ratatui guide, interaction/focus rules, color hierarchy, Unicode, resilience, resize, state handling, accessibility and review checklist. Its templates are illustrative and must not override live LBE source.</p><p><a href="https://github.com/pageton/tui-design-skill/blob/main/skills/tui-design/frameworks/ratatui-rust.md">Ratatui guide</a> · <a href="https://github.com/pageton/tui-design-skill/blob/main/skills/tui-design/references/review-checklist.md">Audit checklist</a> · <a href="https://github.com/pageton/tui-design-skill/tree/main/skills/tui-design/projects/log-monitor-rust">Log-monitor example</a></p></article>
+  </div>
+  <h3>Internal reference policy</h3><p><a href="docs/reference/AGENT_REASONING_TRANSPORT_BOUNDARY.md">Reasoning/transport separation</a>, <a href="docs/reference/CLI_AGENT_REFERENCE_REVIEW_2026-08-21.md">CLI agent research</a>, <a href="docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md">LBE owner boundaries</a>, and <a href="docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md">provider extensibility</a> carry intent/reference, not live feature acceptance.</p>
+ </section>
+ <section id="rw-samples" class="rw-section">
+  <h2>TUI sample sections and intended behavior</h2>
+  <p>Illustrative text-mode mockups for discussion. These are not screenshots, not a proposed full layout replacement, and not proof that LBE implements these actions. Preserve existing working navigation; change components only after a machine-observed defect or requested improvement.</p>
+  <div class="rw-grid">
+   <article class="rw-card"><h3>1 · Agent conversation and tool timeline</h3><div class="rw-sample">LBE  /  Workspace: project-x      Agent: active
+Provider: selected   Model: selected  Mode: ACT
+------------------------------------------------
+You: Inspect reference.txt and report token
+
+Agent: Checking the available workspace tools.
+  [DENIED] mcp.read_text
+  Reason: approval required
+  [RUNNING] exec_command  Get-Content reference.txt
+  [DONE]     exec_command  exit 0  receipt #...
+Agent: Observed token ... (from tool result)
+------------------------------------------------
+&gt; Message or /command                /help</div><p>Reference: Codex TUI observations and event protocol. Real tool status must be correlated with runtime receipts, not invented in the view.</p></article>
+   <article class="rw-card"><h3>2 · Dynamic provider and model picker</h3><div class="rw-sample">Choose provider / model
+------------------------------------------------
+Filter: [______________________]
+  Provider A  configured  reachable
+&gt; Provider B  missing credentials
+  Provider C  local / unavailable
+------------------------------------------------
+Model: [Select from live catalog]
+Effort: [Provider-supported options]
+Enter select  Esc back  ? details</div><p>Reference: Codex model selector and LBE provider registry. Provider names are examples only. Show backend identity and real health/configuration separately.</p></article>
+   <article class="rw-card"><h3>3 · Approval and execution boundary</h3><div class="rw-sample">Action requests approval
+------------------------------------------------
+Tool: workspace.run
+Operation: create/update scoped file
+Workspace: project-x
+Policy: explicit approval required
+Scope/intent: [see details]
+------------------------------------------------
+[Approve scoped action] [Deny] [Inspect]
+No approval = no execution</div><p>Reference: Codex permissions modal and LBE governed execution. The visual button cannot itself grant backend authority.</p></article>
+   <article class="rw-card"><h3>4 · Running tasks, sessions, recovery</h3><div class="rw-sample">Sessions / Running tasks
+------------------------------------------------
+Main agent   RUNNING  task #...
+  tool call  PENDING approval
+  child #1   RUNNING  bounded search
+  child #2   COMPLETE result available
+------------------------------------------------
+Inspect   Resume   Cancel   View receipts</div><p>Reference: Codex background-task visibility and ADK composition. Display only actual supported sessions/child agents.</p></article>
+   <article class="rw-card"><h3>5 · Evidence-backed completion</h3><div class="rw-sample">Task result
+------------------------------------------------
+Source revision: [git SHA]
+Test outcome: PASS (bounded test)
+Live runtime: INCONCLUSIVE / PROVEN
+Observed effect: [receipt link]
+Open blockers: [list]
+------------------------------------------------
+Inspect proof   Retry check   Return to chat</div><p>Reference: LBE completion contracts and Google evaluation approach. Unit PASS must never automatically become product-ready.</p></article>
+   <article class="rw-card"><h3>6 · Recovery and small-terminal state</h3><div class="rw-sample">Connection unavailable
+------------------------------------------------
+MCP call denied / timed out
+Reason: [observed failure classification]
+Last verified data: [time/revision]
+[r] Retry  [d] Details  Esc Back
+------------------------------------------------
+Narrow screen? Show one active panel
+instead of clipped columns.</div><p>Reference: TUI design skill state/feedback and stability guide; verify focus, resize, terminal restore and recoverability on Windows ConPTY.</p></article>
+  </div>
+ </section>
+ <section id="rw-validation" class="rw-section">
+  <h2>Required evidence for implementation claims</h2>
+  <div class="rw-scroll"><table><thead><tr><th>Stage</th><th>Required observation</th><th>What it does NOT prove</th></tr></thead><tbody>
+   <tr><td>Source / plan</td><td>Exact file + HEAD, named owner, matching actual control/data path</td><td>That it is executable in the installed product</td></tr>
+   <tr><td>Tests</td><td>Fresh fixture, test command/output and assertion strength</td><td>End-to-end installed readiness</td></tr>
+   <tr><td>Windows ConPTY</td><td>Real key/mouse event traces, actual rendering, terminal restore</td><td>Provider inference and governed tool success</td></tr>
+   <tr><td>Provider-backed turn</td><td>Provider/model loaded; prompt → model tool choice → policy → execution → result → model continuation</td><td>Every other model/provider has equivalent behavior</td></tr>
+   <tr><td>Actual effects</td><td>Correlated intent, authorized operation, workspace effect, receipt and final model report</td><td>Acceptance for untested branches or tasks</td></tr>
+   <tr><td>Restart/recovery</td><td>Actual persisted state observed after fresh process start; cancellation and re-entry</td><td>Recoverability in every failure condition</td></tr>
+  </tbody></table></div>
+  <div class="rw-warning">Classifications: PROVEN, DISPROVEN, INCONCLUSIVE, BLOCKED_CONFIGURATION, STALE_TEST_OR_FIXTURE, TEST_HARNESS_FAILURE. Do not say READY on the basis of an external sample, a passing unit test, a pretty UI, or the presence of a file.</div>
+  <p><strong>Real Windows keyboard/mouse check:</strong> <a href="tools/lbe_interactive_selftest.py">tools/lbe_interactive_selftest.py</a>. <strong>Policy:</strong> <a href="docs/acceptance/VISUAL_MACHINE_ACCEPTANCE_POLICY.md">Visual machine acceptance</a>. <strong>Status:</strong> <a href="docs/CURRENT_STATUS.md">dated current status</a>.</p>
+  <h3>Workspace hygiene</h3><p>Do not delete, reset, or move unknown untracked files. Review all document and branch consumers before consolidation. Preserve old proof with date and revision. HTTP serving of the entire repository can expose internal files; use loopback-only, controlled access, and avoid exposing sensitive paths.</p>
+ </section>
+</div>
+<script id="rw-controller">
+(function(){
+ const work=document.getElementById('reference-workbench'),open=document.getElementById('rw-open'),close=document.getElementById('rw-close'),tabs=Array.from(document.querySelectorAll('.rw-tab'));
+ function toggle(show){work.classList.toggle('open',show);open.setAttribute('aria-expanded',String(show));if(show){document.getElementById('rw-close').focus()}else{open.focus()}}
+ open.addEventListener('click',()=>toggle(true));close.addEventListener('click',()=>toggle(false));
+ tabs.forEach(tab=>tab.addEventListener('click',()=>{tabs.forEach(t=>t.setAttribute('aria-selected',String(t===tab)));document.querySelectorAll('.rw-section').forEach(sec=>sec.classList.toggle('active',sec.id==='rw-'+tab.dataset.tab));tab.focus()}));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&work.classList.contains('open')){e.stopPropagation();toggle(false)}});
+})();
 </script>
 </body>
 </html>
