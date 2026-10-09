@@ -12,6 +12,8 @@ Before mutation, read the root [PROJECT_INDEX.md](../PROJECT_INDEX.md), then the
 defines structural ownership; the ledger defines the intent; the machine gate authorizes the
 slice. None of these may be bypassed by a more convenient document.
 
+**Primary visual navigator:** [Open the root LBE Docs Explorer](../LBE_DOCS_EXPLORER.html). This graph is a reader/projection of canonical documents; it does not replace the manifest, product truth, Git state, or acceptance evidence. Serve the repository root over HTTP for Markdown loading (`py -m http.server 8080`). The full per-file inventory remains in [the manifest](DOCUMENT_INTENT_MANIFEST.md), including documents not represented as graph nodes.
+
 ## What is LBE
 
 LBE is a **persistent, provider-neutral runtime**: the agent/provider reasons, while LBE owns

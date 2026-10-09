@@ -280,7 +280,7 @@ When two docs disagree, resolve their authority by `docs/README.md`, `docs/LBE_P
 | `docs/reference/TERMINAL_UI_CONTRACT_MAPPING.md` | REFERENCE | Historical design/fixture; not runtime truth; 7576 bytes; SHA256 `29d52b5a6200` |
 | `docs/reference/ui/lbe-logo.svg` | REFERENCE | Historical design/fixture; not runtime truth; 913 bytes; SHA256 `afe90729aed5` |
 | `docs/reference/ui/lbe_architecture_registry.html` | REFERENCE | Historical design/fixture; not runtime truth; 23481 bytes; SHA256 `46becd7571fa` |
-| `docs/reference/ui/lbe_docs_node_map.html` | REFERENCE | Historical design/fixture; not runtime truth; 38177 bytes; SHA256 `633bc5be726f` |
+| `docs/reference/ui/lbe_docs_node_map.html` | REFERENCE | Compatibility redirect to root LBE_DOCS_EXPLORER.html; historical references preserved; not runtime truth |
 | `docs/reference/ui/lbe_landing_animated.html` | REFERENCE | Historical design/fixture; not runtime truth; 11398 bytes; SHA256 `070a0536773f` |
 | `docs/reference/ui/lbe_product_surface.html` | REFERENCE | Historical design/fixture; not runtime truth; 9012 bytes; SHA256 `b9b45dd58ede` |
 | `docs/reference/ui/lbe_tui_research_preview.html` | REFERENCE | Historical design/fixture; not runtime truth; 12742 bytes; SHA256 `e688eae84a4f` |
@@ -390,3 +390,9 @@ The following 99 Markdown documents contain a dated/status declaration and at le
 | `docs/reference/COMPLETION_CONTRACT_RESEARCH_EVIDENCE.md` | 2026-08-10 | Require exact-version source or runtime check before any current-readiness claim |
 | `docs/reference/MODE_POLICY_PRODUCTION_WIRING_EVIDENCE.md` | 2026-08-10 | Require exact-version source or runtime check before any current-readiness claim |
 | `docs/research/CLINE_CORE_REUSE_BOUNDARY_MATRIX.md` | **SOURCE AUDIT COMPLETE — LOCAL VALIDATION PENDING** | Require exact-version source or runtime check before any current-readiness claim |
+
+## Root visual documentation entry (2026-10-10)
+
+| Path | Class | Intent / disposition |
+|---|---|---|
+| `LBE_DOCS_EXPLORER.html` | ROUTER | Primary visual doc navigator; graph nodes include historical references, while the manifest owns the full inventory. Generated/runtime facts cannot be asserted from this static HTML. Serve from repository root over HTTP. |

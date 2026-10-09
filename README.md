@@ -4,6 +4,8 @@ Portable governance baseline for Brew, Access Browser Agent, LBE Wall/TUI, BirdE
 
 ## LBE documentation navigation
 
+**Primary visual documentation entry:** [LBE Docs Explorer](LBE_DOCS_EXPLORER.html). This view navigates the existing document owners and historical architecture graph; it is not runtime proof. Open via a repository-root local HTTP server to load documents. The complete inventory remains in [docs/DOCUMENT_INTENT_MANIFEST.md](docs/DOCUMENT_INTENT_MANIFEST.md).
+
 This repository README covers the shared governance baseline, not the current readiness of the LBE Rust TUI. For the LBE product, start at [dated current status](docs/CURRENT_STATUS.md), then [canonical implementation and consolidation plan](docs/IMPLEMENTATION_PLAN.md), and [structural ownership](PROJECT_INDEX.md). Historical blueprints under [docs/reference](docs/reference/README.md) are not active runtime authority. A passing check, historical screenshot, or fixture is insufficient to claim that the installed product works.
 
 ## Authorization model
