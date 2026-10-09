@@ -66,7 +66,7 @@
     "active_intent": {
         "intent_id": "LBE-INTENT-GOVERNANCE-FRICTION-REDUCTION-20261008",
         "owner": "Existing LBE governance and execution authority owners",
-        "index_revision": "C5C5F4C925F1D19F09A54F289422C87E46ECCC6543988EF5E78FF6A68DC231B3"
+        "index_revision": "8ADF8F4DA7A6DF52D836BE1389219594167664E22343458A51ED3205CC98D7E6"
     },
     "closure": {
         "status": "OPEN",

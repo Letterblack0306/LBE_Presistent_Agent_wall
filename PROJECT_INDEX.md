@@ -137,3 +137,5 @@ they are not silently absorbed into this canonical index.
 | Path | Owner / purpose | Boundary |
 |---|---|---|
 | `tools/lbe_interactive_selftest.py` | LBE existing Rust terminal UI real ConPTY keyboard/mouse diagnostic acceptance harness | Tests emitted UI action traces and terminal lifecycle only; never owns provider, session, authorization, execution, or completion |
+
+| `docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md` | Reference-grounded plan for dynamic provider identities, model catalog and real TUI acceptance; planned only | LBE provider registry / Rust TUI maintainers | `docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md` | Planning document; future implementation requires governed bounded intent |

@@ -607,3 +607,7 @@ FINAL_PRODUCT_ACCEPTANCE = BLOCKED
 PUBLICATION = LOCKED
 ```
 
+
+## Current provider-extensibility design (2026-10-09)
+
+See [provider-extensibility reference plan](design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md). This is PLANNED, not accepted or implemented; the installed product gate remains open.
