@@ -6269,3 +6269,34 @@ fn canonical_provider_list_accepts_all_native_registry_ids_without_identity_loss
         assert_eq!(actual.cli_name(), *expected);
     }
 }
+
+#[test]
+fn slash_command_can_start_on_landing_screen() {
+    let mut app = App::default();
+    let mut wrapper = MockLbeWrapper::default();
+    assert_eq!(app.phase, Phase::Landing);
+    app.handle_key(
+        KeyEvent::new(KeyCode::Char('/'), Modifiers::NONE),
+        &mut wrapper,
+        Instant::now(),
+    );
+    assert_eq!(app.phase, Phase::Welcome);
+    assert_eq!(app.input, "/");
+    app.input = "/help".to_owned();
+    app.submit_or_approve(&mut wrapper, Instant::now());
+    assert!(app.show_shortcuts);
+    assert!(app.input.is_empty());
+}
+
+#[test]
+fn typed_slash_command_outranks_stale_provider_panel() {
+    let mut app = App::default();
+    let mut wrapper = MockLbeWrapper::default();
+    app.phase = Phase::Welcome;
+    app.panel = Some(MockPanel::Provider);
+    app.input = "/help".to_owned();
+    app.submit_or_approve(&mut wrapper, Instant::now());
+    assert!(app.show_shortcuts);
+    assert!(app.input.is_empty());
+    assert!(app.panel.is_none());
+}

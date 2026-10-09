@@ -275,6 +275,13 @@ impl App {
         }
         if self.phase == Phase::Landing {
             match key.code {
+                KeyCode::Char('/') => {
+                    // A slash starts a command from the first visible screen;
+                    // it must not be swallowed by the landing splash.
+                    self.phase = Phase::Welcome;
+                    self.input.push('/');
+                    input_trace("action=begin_slash_command_from_landing");
+                }
                 KeyCode::Enter => {
                     input_trace("action=enter_landing");
                     self.phase = Phase::Welcome;
@@ -641,6 +648,16 @@ impl App {
             self.input.len(),
             self.snapshot.session_id.as_deref().unwrap_or("none")
         ));
+        // Explicit slash commands outrank whichever picker was previously
+        // open. Otherwise Enter silently validates/selects the old panel.
+        if self.input.trim_start().starts_with('/') {
+            let command = self.input.trim().to_owned();
+            self.input.clear();
+            self.panel = None;
+            self.handle_command(&command, wrapper);
+            input_trace("action=slash_command_dispatched");
+            return;
+        }
         if self.panel == Some(MockPanel::Model) {
             self.select_model(wrapper, now);
             return;
