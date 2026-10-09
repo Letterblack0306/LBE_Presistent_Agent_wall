@@ -1,11 +1,13 @@
+[CmdletBinding(PositionalBinding=$false)]
 param(
-    [string]$Project = (Get-Location).Path,
+    [Parameter(Position=0)][string]$Project = (Get-Location).Path,
     [string]$Database = (Join-Path $PSScriptRoot 'state\workspace.db'),
     [string]$ProviderConfig = (Join-Path $PSScriptRoot 'reasoning-provider.json'),
     [string]$CapabilityRegistry = (Join-Path $PSScriptRoot 'state\capability-registry.json'),
     [string]$SessionId = $env:LBE_SESSION_ID,
     [ValidateSet('build','plan','audit')][string]$Agent = 'build',
-    [string]$Model
+    [string]$Model,
+    [Parameter(ValueFromRemainingArguments=$true)][string[]]$ExtraArgs
 )
 
 Set-StrictMode -Version Latest
@@ -66,18 +68,14 @@ if (-not $pythonCommand) {
 if ($pythonCommand.DependencyError) {
     throw "LBE runtime Python $($pythonCommand.Version) at $($pythonCommand.Source) is missing a required dependency: $($pythonCommand.DependencyError). Install it with `"$($pythonCommand.Source)`" -m pip install -r requirements.txt"
 }
-$ExtraArgs = @()
 if (-not (Test-Path -LiteralPath $workspace -PathType Container)) {
     if ($Project -and ($Project.StartsWith('-') -or $Project -eq 'run' -or $Project -eq 'exec')) {
-        $ExtraArgs += $Project
-        if ($args) { $ExtraArgs += $args }
+        $ExtraArgs = @($Project) + @($ExtraArgs)
         $Project = (Get-Location).Path
         $workspace = [IO.Path]::GetFullPath($Project)
     } else {
         throw "Project workspace missing: $workspace"
     }
-} else {
-    if ($args) { $ExtraArgs += $args }
 }
 if (-not (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) {
     throw "Provider setup is required. Create reasoning-provider.json from reasoning-provider.example.json, then rerun this launcher. No provider or credential was fabricated."
