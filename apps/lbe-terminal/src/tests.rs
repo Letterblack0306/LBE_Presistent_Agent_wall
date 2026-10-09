@@ -6465,3 +6465,24 @@ fn composer_text_does_not_disable_advertised_picker_shortcuts() {
     assert!(app.show_command_palette);
     assert_eq!(app.input, "Keep this draft intact");
 }
+
+#[test]
+fn wide_tui_displays_authoritative_agent_activity_without_fake_receipts() {
+    let backend = TestBackend::new(156, 38);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    terminal
+        .draw(|frame| draw_at(frame, &app, Duration::from_secs(2)))
+        .expect("frame");
+    let rendered = terminal
+        .backend()
+        .buffer()
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+    assert!(rendered.contains("AGENT ACTIVITY"));
+    assert!(rendered.contains("No active execution"));
+    assert!(rendered.contains("Receipts: 0"));
+}

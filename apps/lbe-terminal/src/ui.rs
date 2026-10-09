@@ -403,6 +403,58 @@ fn draw_navigation_sidebar(frame: &mut Frame, area: Rect, app: &App) {
     )));
     lines.push(Line::default());
     lines.push(Line::from(Span::styled(
+        "AGENT ACTIVITY",
+        Style::default()
+            .fg(PALETTE.amber)
+            .add_modifier(Modifier::BOLD),
+    )));
+    if let Some(execution) = &app.active_execution_id {
+        lines.push(Line::from(Span::styled(
+            truncate_text(&format!("Execution: {execution}"), inner.width as usize),
+            Style::default().fg(PALETTE.agent),
+        )));
+    } else {
+        lines.push(Line::from(Span::styled(
+            "No active execution",
+            Style::default().fg(PALETTE.faint),
+        )));
+    }
+    if let Some(tool) = &app.last_tool_name {
+        lines.push(Line::from(Span::styled(
+            truncate_text(&format!("Tool: {tool}"), inner.width as usize),
+            Style::default().fg(PALETTE.ink),
+        )));
+        let state = app.last_tool_state.as_deref().unwrap_or("state pending");
+        lines.push(Line::from(Span::styled(
+            truncate_text(&format!("Status: {state}"), inner.width as usize),
+            Style::default().fg(PALETTE.muted),
+        )));
+    }
+    if let Some(process) = &app.last_process_activity {
+        lines.push(Line::from(Span::styled(
+            truncate_text(&format!("Process: {process}"), inner.width as usize),
+            Style::default().fg(PALETTE.muted),
+        )));
+    }
+    lines.push(Line::from(Span::styled(
+        format!("Receipts: {}", app.receipt_records.len()),
+        Style::default().fg(PALETTE.faint),
+    )));
+    if let Some(receipt) = app.receipt_records.last() {
+        lines.push(Line::from(Span::styled(
+            truncate_text(
+                &format!(
+                    "Latest: {} / {}",
+                    receipt.status,
+                    receipt.tool_id.as_deref().unwrap_or("unknown tool")
+                ),
+                inner.width as usize,
+            ),
+            Style::default().fg(PALETTE.ink),
+        )));
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
         truncate_text("Tab mode · F2 provider · F3 model", inner.width as usize),
         Style::default().fg(PALETTE.faint),
     )));
