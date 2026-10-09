@@ -186,13 +186,13 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
     let connection_label = if connection == RuntimeConnection::Connected {
         " LIVE "
     } else {
-        " PREVIEW "
+        " OFFLINE "
     };
     let connection_style = Style::default()
         .fg(PALETTE.bg)
         .bg(connection.color())
         .add_modifier(Modifier::BOLD);
-    let inner = area.inner(Margin::new(if area.width < 72 { 1 } else { 2 }, 0));
+    let inner = area;
     let header_columns =
         Layout::horizontal([Constraint::Length(18), Constraint::Min(1)]).split(inner);
     let brand = Line::from(vec![
@@ -220,7 +220,7 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         header_columns[0],
     );
     let status = format!(
-        "{} {} · {} · {}{}",
+        "{} {} · {} · {}",
         connection.marker(),
         connection.label(),
         if connection == RuntimeConnection::Connected {
@@ -229,7 +229,6 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
             "UI CONTRACT PREVIEW"
         },
         app.agent_mode.label(),
-        connection_label,
     );
     frame.render_widget(
         Paragraph::new(Line::from(vec![
@@ -961,65 +960,41 @@ pub(crate) fn draw_composer(frame: &mut Frame, area: Rect, app: &App, elapsed: D
 }
 
 pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
-    if area.width < 72 || area.height < 3 {
-        let hint = if matches!(app.phase, Phase::AwaitingApproval { .. }) {
-            "[Enter] allow once · [Esc] deny · ? details"
-        } else if matches!(app.phase, Phase::Running) {
-            "Ctrl+C abort · ? help"
-        } else if app.show_shortcuts {
-            "? close help · Esc close view"
-        } else {
-            "? for shortcuts · Enter submit · Ctrl+P commands · F2 provider · F3 model"
-        };
+    let hint = if matches!(app.phase, Phase::AwaitingApproval { .. }) {
+        "[Enter] allow once · [Esc] deny · ? details"
+    } else if matches!(app.phase, Phase::Running) {
+        "Ctrl+C abort · ? help"
+    } else if app.show_shortcuts {
+        "? close help · Esc close view"
+    } else {
+        "? for shortcuts · Enter submit · Ctrl+P commands · F2 provider · F3 model"
+    };
+    let hint_style = Style::default().fg(PALETTE.faint).bg(PALETTE.bg);
+    if area.height < 2 {
         frame.render_widget(
-            Paragraph::new(truncate_text(hint, area.width as usize))
-                .style(Style::default().fg(PALETTE.faint).bg(PALETTE.bg)),
+            Paragraph::new(truncate_text(hint, area.width as usize)).style(hint_style),
             area,
         );
         return;
     }
     let rows = Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).split(area);
-
-    let shortcut_label = if app.show_shortcuts {
-        "? close help"
-    } else {
-        "? help · Ctrl+P commands"
-    };
-
-    let line_one = Layout::horizontal([Constraint::Min(1), Constraint::Length(24)]).split(rows[0]);
     let provider_model = app
         .snapshot
         .selected_model
         .as_ref()
         .map(|model| format!("{} / {}", model.provider_id.label(), model.model_id))
-        .unwrap_or_else(|| app.snapshot.model_id.clone());
+        .unwrap_or_else(|| {
+            if app.snapshot.model_id.is_empty() {
+                "no model selected".to_owned()
+            } else {
+                app.snapshot.model_id.clone()
+            }
+        });
     let context_percent = if app.snapshot.context_capacity == 0 {
         0
     } else {
         app.snapshot.context_used.saturating_mul(100) / app.snapshot.context_capacity
     };
-    let line_one_text = format!(
-        "{} · {} · context {}%",
-        match app.agent_mode {
-            AgentMode::Build => "BUILD",
-            AgentMode::Plan => "PLAN",
-            AgentMode::Audit => "AUDIT",
-        },
-        provider_model,
-        context_percent
-    );
-    frame.render_widget(
-        Paragraph::new(truncate_text(&line_one_text, line_one[0].width as usize))
-            .style(Style::default().fg(PALETTE.agent).bg(PALETTE.bg)),
-        line_one[0],
-    );
-    frame.render_widget(
-        Paragraph::new(truncate_text(shortcut_label, line_one[1].width as usize))
-            .style(Style::default().fg(PALETTE.faint).bg(PALETTE.bg))
-            .alignment(Alignment::Right),
-        line_one[1],
-    );
-
     let (branch, changed_files) = app
         .snapshot
         .session_context
@@ -1031,22 +1006,26 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
             )
         })
         .unwrap_or_else(|| ("branch unavailable".to_owned(), 0));
-    let line_two = format!(
-        "branch ({branch}) · {} changed file(s) · {}",
+    let status = format!(
+        "{} · {} · context {}% · branch ({}) · {} changed file(s)",
+        app.agent_mode.label(),
+        provider_model,
+        context_percent,
+        branch,
         changed_files,
-        if app.snapshot.connection == RuntimeConnection::Connected {
-            "runtime connected"
-        } else {
-            "runtime unavailable"
-        }
     );
-    let branch_style = if app.snapshot.connection == RuntimeConnection::Connected {
-        Style::default().fg(PALETTE.info).bg(PALETTE.bg)
+    let status_color = if app.snapshot.connection == RuntimeConnection::Connected {
+        PALETTE.agent
     } else {
-        Style::default().fg(PALETTE.red).bg(PALETTE.bg)
+        PALETTE.red
     };
     frame.render_widget(
-        Paragraph::new(truncate_text(&line_two, rows[1].width as usize)).style(branch_style),
+        Paragraph::new(truncate_text(&status, rows[0].width as usize))
+            .style(Style::default().fg(status_color).bg(PALETTE.bg)),
+        rows[0],
+    );
+    frame.render_widget(
+        Paragraph::new(truncate_text(hint, rows[1].width as usize)).style(hint_style),
         rows[1],
     );
 }

@@ -6329,3 +6329,65 @@ fn restore_clears_paste_mode_and_mouse_capture() {
     assert!(restore.contains("\x1b[?2004l"));
     assert!(restore.contains("?1002l"));
 }
+
+#[test]
+fn footer_renders_runtime_status_and_hint_on_distinct_rows() {
+    let backend = TestBackend::new(100, 25);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    terminal
+        .draw(|frame| draw_at(frame, &app, Duration::from_secs(2)))
+        .expect("frame");
+    let buffer = terminal.backend().buffer();
+    let rows: Vec<String> = (0..buffer.area.height)
+        .map(|y| {
+            (0..buffer.area.width)
+                .map(|x| buffer[(x, y)].symbol())
+                .collect::<String>()
+        })
+        .collect();
+    let status_row = rows
+        .iter()
+        .position(|row| row.contains("context 20%"))
+        .expect("footer must render context status");
+    let hint_row = rows
+        .iter()
+        .position(|row| row.contains("Enter submit"))
+        .expect("footer must render contextual key hints");
+    assert_eq!(hint_row, status_row + 1);
+    assert!(rows[status_row].contains("gemini-2.5-flash-preview"));
+    assert!(rows[status_row].contains("branch ("));
+}
+
+#[test]
+fn header_renders_preview_badge_once() {
+    let backend = TestBackend::new(115, 25);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    terminal
+        .draw(|frame| draw_at(frame, &app, Duration::from_secs(2)))
+        .expect("frame");
+    let rendered = terminal
+        .backend()
+        .buffer()
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+    // Disconnected state can describe the preview once in status and once as
+    // a distinct badge, but must not duplicate the badge after ACT.
+    let buffer = terminal.backend().buffer();
+    let header = (0..buffer.area.width)
+        .map(|x| buffer[(x, 1)].symbol())
+        .collect::<String>();
+    assert!(
+        header.contains("OFFLINE"),
+        "header must show a single offline badge: {header}"
+    );
+    assert!(
+        header.contains("ACT OFFLINE"),
+        "mode must precede the offline badge: {header}"
+    );
+}
