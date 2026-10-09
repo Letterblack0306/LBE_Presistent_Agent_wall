@@ -624,7 +624,13 @@ fn draw_main_body(frame: &mut Frame, area: Rect, app: &App, split_layout: bool) 
         && !app.show_shortcuts
         && !app.show_command_palette
         && app.agent_mode != AgentMode::Audit;
-    let content = if split_layout
+    let content = if app.input.starts_with('/')
+        && !app.input.contains(char::is_whitespace)
+        && app.panel.is_none()
+        && !app.show_command_palette
+    {
+        slash_suggestions_text(app)
+    } else if split_layout
         && app.panel.is_none()
         && app.workspace_patch.is_none()
         && app.workspace_file.is_none()
@@ -1166,6 +1172,51 @@ fn shortcut_text() -> Text<'static> {
         Line::from("q       quit when the task input is empty"),
         Line::from("Ctrl+C  abort a running task / quit when idle"),
     ])
+}
+
+#[cfg(test)]
+pub(crate) fn slash_suggestions_for_test(app: &App) -> String {
+    slash_suggestions_text(app)
+        .lines
+        .iter()
+        .map(|line| {
+            line.spans
+                .iter()
+                .map(|span| span.content.as_ref())
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn slash_suggestions_text(app: &App) -> Text<'static> {
+    let prefix = app.input.to_ascii_lowercase();
+    let mut lines = vec![
+        Line::from(Span::styled(
+            "SLASH COMMANDS",
+            Style::default()
+                .fg(PALETTE.amber)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "Type a command and press Enter; Ctrl+P opens the complete palette.",
+            Style::default().fg(PALETTE.muted),
+        )),
+        Line::default(),
+    ];
+    let mut matches = 0;
+    for (command, description) in command_palette_commands() {
+        if command.starts_with(&prefix) {
+            matches += 1;
+            lines.push(Line::from(format!("{command:<20} {description}")));
+        }
+    }
+    if matches == 0 {
+        lines.push(Line::from(
+            "No matching command. Ctrl+P lists all commands.",
+        ));
+    }
+    Text::from(lines)
 }
 
 fn command_palette_text(app: &App) -> Text<'static> {

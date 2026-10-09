@@ -6550,3 +6550,34 @@ fn queued_provider_turn_keeps_terminal_in_running_phase_until_events_arrive() {
     )));
     assert_eq!(app.phase, Phase::Failed);
 }
+
+#[test]
+fn slash_discovery_shows_runtime_commands_before_submission() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.input = "/provider".to_owned();
+    let rendered = crate::ui::slash_suggestions_for_test(&app);
+    assert!(rendered.contains("/provider-validate"));
+    assert!(rendered.contains("/provider-config"));
+    assert!(!rendered.contains("/sessions"));
+}
+
+#[test]
+fn provider_validation_command_resolves_discovered_provider() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.snapshot.providers.push(ProviderProjection {
+        provider_id: ProviderId::LmStudio,
+        auth_state: AuthState::NotConfigured,
+        health: ProviderHealth::Unknown,
+        is_local: true,
+    });
+    let mut wrapper = RecordingWrapper::new();
+    app.handle_command("/provider-validate lmstudio", &mut wrapper);
+    assert!(wrapper.requests.iter().any(|request| matches!(
+        request,
+        UserRequest::ValidateProvider {
+            provider_id: ProviderId::LmStudio
+        }
+    )));
+}

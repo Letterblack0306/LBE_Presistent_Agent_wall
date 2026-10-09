@@ -113,6 +113,10 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
     &[
         ("/status", "runtime, session, provider, engine and context"),
         ("/provider", "refresh and inspect providers"),
+        (
+            "/provider-validate",
+            "check selected configured provider health",
+        ),
         ("/provider-config", "configure a named provider profile"),
         ("/provider-remove", "remove a named provider profile"),
         ("/models", "choose a model"),
@@ -904,12 +908,24 @@ impl App {
                 Some(MockPanel::Provider)
             }
             "/provider-validate" => {
-                let provider_id = match argument.to_ascii_lowercase().as_str() {
-                    "gemini" | "google" => Some(ProviderId::Gemini),
-                    "openai" => Some(ProviderId::OpenAi),
-                    "anthropic" => Some(ProviderId::Anthropic),
-                    _ => None,
+                let requested = argument.to_ascii_lowercase();
+                let canonical = match requested.as_str() {
+                    "google" => "gemini",
+                    "lm-studio" => "lmstudio",
+                    other => other,
                 };
+                let provider_id = self
+                    .snapshot
+                    .providers
+                    .iter()
+                    .find(|provider| provider.provider_id.cli_name() == canonical)
+                    .map(|provider| provider.provider_id)
+                    .or_else(|| match canonical {
+                        "openai" => Some(ProviderId::OpenAi),
+                        "gemini" => Some(ProviderId::Gemini),
+                        "anthropic" => Some(ProviderId::Anthropic),
+                        _ => None,
+                    });
                 if let Some(provider_id) = provider_id {
                     self.apply_wrapper_result(wrapper.submit(
                         UserRequest::ValidateProvider { provider_id },
@@ -917,7 +933,7 @@ impl App {
                     ));
                 } else {
                     self.transcript.push(
-                        "SYSTEM  usage: /provider-validate <gemini|openai|anthropic>".to_owned(),
+                        "SYSTEM  select an available provider from /provider, then use /provider-validate <provider-id>".to_owned(),
                     );
                 }
                 Some(MockPanel::Provider)
