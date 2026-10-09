@@ -128,6 +128,31 @@
 .rw-section code{font-family:Consolas,monospace;color:#cfe6ff}
 @media(max-width:700px){.rw-section{padding:14px}.rw-head{padding:12px;flex-wrap:wrap}.rw-section h2{font-size:19px}}
 </style>
+
+<style id="lbe-ide-reference-style">
+.lbe-ide{display:grid;grid-template-columns:minmax(210px,26%) minmax(0,1fr);border:1px solid #2a3038;background:#0d0f12;color:#e8ebef;border-radius:9px;overflow:hidden;min-height:610px;font:12px/1.5 "Cascadia Mono",Consolas,monospace}
+.lbe-ide *{box-sizing:border-box}.lbe-ide .ide-tree{background:#101318;border-right:1px solid #2a3038;display:flex;flex-direction:column;min-width:0}
+.lbe-ide .ide-tree-top{padding:13px 12px;border-bottom:1px solid #2a3038;display:flex;justify-content:space-between;gap:8px;color:#d6dce4;font-weight:bold}
+.lbe-ide .ide-tree-meta{padding:8px 12px;color:#8b929c;font-size:10px}
+.lbe-ide .ide-file-list{padding:3px 6px;overflow:auto;flex:1}
+.lbe-ide details{padding-left:8px}.lbe-ide summary{list-style:none;cursor:pointer;color:#b9c6d5;padding:6px 5px;white-space:nowrap}
+.lbe-ide summary::before{content:"▸ ";color:#798696}.lbe-ide details[open]>summary::before{content:"▾ "}
+.lbe-ide .ide-file{display:block;padding:5px 7px 5px 17px;margin:1px 0;color:#a8c8e8;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:4px}
+.lbe-ide .ide-file:hover,.lbe-ide .ide-file:focus-visible{background:#24364c;color:#fff}
+.lbe-ide .ide-note{padding:11px;border-top:1px solid #2a3038;color:#929aa5;font-size:10px}
+.lbe-ide .ide-main{display:flex;flex-direction:column;min-width:0}
+.lbe-ide .ide-title{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:11px 15px;border-bottom:1px solid #252a30;font-size:11px;color:#aeb8c6}
+.lbe-ide .ide-title strong{color:#e6e9ef}.lbe-ide .ide-history{flex:1;padding:20px 22px;min-height:330px;overflow:auto}
+.lbe-ide .ide-brand{color:#e94247;letter-spacing:.08em;font-size:13px;font-weight:bold;margin-bottom:18px}
+.lbe-ide .ide-turn{margin:15px 0;max-width:700px}.lbe-ide .ide-speaker{font-size:10px;color:#7f8996;margin-bottom:4px}.lbe-ide .ide-speaker.agent{color:#ef6e74}.lbe-ide .ide-speaker.you{color:#75b9ef}
+.lbe-ide .ide-action{border-left:2px solid #4b5664;margin:12px 0;padding:7px 12px;color:#bfc9d4;background:#131820}.lbe-ide .ide-action strong{color:#4fd18b}
+.lbe-ide .ide-approval{border:1px solid #674343;background:#25191b;color:#e6c8c8;padding:9px 12px;margin-top:9px}
+.lbe-ide .ide-compose{margin:8px 16px 10px;border:1px solid #5b6674;background:#0a0d11;padding:11px;color:#909ba8;min-height:58px}
+.lbe-ide .ide-compose small{display:block;margin-top:10px;color:#6d7b89}
+.lbe-ide .ide-status{border-top:1px solid #2a3038;padding:8px 16px;color:#a4afb9;font-size:10px;display:flex;gap:11px;flex-wrap:wrap}
+.lbe-ide .ide-status em{font-style:normal;color:#e0a84f}
+@media(max-width:820px){.lbe-ide{grid-template-columns:1fr}.lbe-ide .ide-tree{max-height:235px;border-bottom:1px solid #2a3038;border-right:0}.lbe-ide .ide-history{min-height:240px;padding:12px}.lbe-ide .ide-file-list{max-height:125px}}
+</style>
 </head>
 <body>
 <div style="position:fixed;top:6px;left:11px;z-index:99;background:#182639;border:1px solid #5b9dff;padding:5px 10px;font:11px Segoe UI,sans-serif;color:#d8dee6;">LBE DOCS EXPLORER · Historical node contracts + current-document links · Not live runtime proof · <a href="docs/README.md" style="color:#7fd6ff">Docs index</a> · <a href="docs/DOCUMENT_INTENT_MANIFEST.md" style="color:#7fd6ff">Full inventory</a> · <a href="docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md" style="color:#7fd6ff">Product intent</a></div>
@@ -608,6 +633,58 @@ Last verified data: [time/revision]
 Narrow screen? Show one active panel
 instead of clipped columns.</div><p>Reference: TUI design skill state/feedback and stability guide; verify focus, resize, terminal restore and recoverability on Windows ConPTY.</p></article>
   </div>
+
+ <h3 id="lbe-ide-reference">7 · Your Cline-style conversation TUI with IDE workspace browser</h3>
+ <p>This is the supplied conversation-first composition adapted with a collapsible left workspace tree. Paths link to actual files in this checkout; the transcript, tool events, model footer and receipt are <strong>illustrative placeholders</strong>. The file browser is a navigation reference, not a live filesystem API or working file editor.</p>
+ <div class="lbe-ide" aria-label="Illustrative LBE conversation TUI with IDE-style workspace explorer">
+  <aside class="ide-tree" aria-label="Workspace file explorer">
+   <div class="ide-tree-top"><span>EXPLORER</span><span style="color:#7d8795">FILES</span></div>
+   <div class="ide-tree-meta">C:\Agents-Memory-Tool-v6-integration</div>
+   <div class="ide-file-list">
+    <details open><summary>apps</summary><details open><summary>lbe-terminal</summary><details open><summary>src</summary>
+     <a class="ide-file" href="apps/lbe-terminal/src/app.rs">app.rs</a>
+     <a class="ide-file" href="apps/lbe-terminal/src/ui.rs">ui.rs</a>
+     <a class="ide-file" href="apps/lbe-terminal/src/wrapper.rs">wrapper.rs</a>
+     <a class="ide-file" href="apps/lbe-terminal/src/types.rs">types.rs</a>
+    </details></details></details>
+    <details open><summary>lbe_guard_inspector</summary>
+      <a class="ide-file" href="lbe_guard_inspector/provider_registry.py">provider_registry.py</a>
+      <details><summary>runtime</summary>
+       <a class="ide-file" href="lbe_guard_inspector/runtime/tool_orchestration.py">tool_orchestration.py</a>
+      </details>
+    </details>
+    <details open><summary>docs</summary>
+     <a class="ide-file" href="docs/README.md">README.md</a>
+     <a class="ide-file" href="docs/IMPLEMENTATION_PLAN.md">IMPLEMENTATION_PLAN.md</a>
+     <a class="ide-file" href="docs/CURRENT_STATUS.md">CURRENT_STATUS.md</a>
+     <a class="ide-file" href="docs/DOCUMENT_INTENT_MANIFEST.md">DOCUMENT_INTENT_MANIFEST.md</a>
+     <details><summary>design</summary>
+      <a class="ide-file" href="docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md">PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md</a>
+     </details>
+    </details>
+    <a class="ide-file" href="PROJECT_INDEX.md">PROJECT_INDEX.md</a>
+    <a class="ide-file" href="LBE_DOCS_EXPLORER.html">LBE_DOCS_EXPLORER.html</a>
+   </div>
+   <div class="ide-note">Example file list, checked at the recorded Git revision. Full browser must use governed live workspace discovery, not this static list.</div>
+  </aside>
+  <div class="ide-main">
+   <div class="ide-title"><strong>LETTER <span style="color:#e94247">BLACK</span> ENGINE</strong><span>Workspace · Conversation · Reference view</span></div>
+   <div class="ide-history">
+    <div class="ide-brand">LBE <span style="color:#adb8c2;font-size:11px;letter-spacing:0;font-weight:normal">/ coding agent</span></div>
+    <div class="ide-turn"><div class="ide-speaker you">you</div>Inspect the current workspace and run the focused tests.</div>
+    <div class="ide-turn"><div class="ide-speaker agent">lbe agent · example</div>I'll inspect the repository state first, then run focused validation.
+     <div class="ide-action"><strong>✓</strong> Read <code>apps/lbe-terminal/src/app.rs</code><div style="color:#8b929c">Example tool outcome — not a recorded execution</div></div>
+     <div class="ide-action"><strong>…</strong> Run focused tests <div style="color:#8b929c">Waiting for real tool output and runtime receipt</div></div>
+     <div class="ide-approval">LBE boundary · approval / permission decisions must originate in the runtime; no receipt assumed</div>
+    </div>
+    <div class="ide-turn"><div class="ide-speaker agent">lbe agent · example</div>Final result is available only after the tool execution and evidence are verified.</div>
+   </div>
+   <div class="ide-compose">Type your task here…<small>/ commands · @ files · Enter send · Shift+Enter newline (intended behavior)</small></div>
+   <div class="ide-status"><span>Provider / model: from active session</span><span>Git branch: from live repo</span><em>Mode: runtime-owned</em><span>Boundary: verify live</span></div>
+  </div>
+ </div>
+ <h3>Workspace browser behavior required before implementation</h3>
+ <p>Keyboard-first tree navigation (Up/Down, Left/Right expand, Enter inspect, Esc return), file filtering, active-file focus, dirty/modified markers from Git, long-path truncation, workspace-root enforcement and responsive collapse. Real files and directory contents must come from the current governed workspace, not hand-maintained HTML or historical documentation. Selecting a file should inspect content through the authorized file-read path; no write action is implied by navigation.</p>
  </section>
  <section id="rw-validation" class="rw-section">
   <h2>Required evidence for implementation claims</h2>
