@@ -2,6 +2,10 @@
 
 Portable governance baseline for Brew, Access Browser Agent, LBE Wall/TUI, BirdEye, GPT-K tooling, and other Letterblack workspaces.
 
+## LBE documentation navigation
+
+This repository README covers the shared governance baseline, not the current readiness of the LBE Rust TUI. For the LBE product, start at [dated current status](docs/CURRENT_STATUS.md), then [canonical implementation and consolidation plan](docs/IMPLEMENTATION_PLAN.md), and [structural ownership](PROJECT_INDEX.md). Historical blueprints under [docs/reference](docs/reference/README.md) are not active runtime authority. A passing check, historical screenshot, or fixture is insufficient to claim that the installed product works.
+
 ## Authorization model
 
 Governance uses an active locked task scope plus file/action allowlists. External operator signatures, signing keys, detached signatures, and signing ceremonies are not part of the current workspace authorization path.

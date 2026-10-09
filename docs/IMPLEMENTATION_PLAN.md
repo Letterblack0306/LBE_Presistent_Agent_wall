@@ -3,6 +3,35 @@
 Updated: 2026-09-25
 Status: **ACTIVE — FEATURE SELF-CHECKS / TRUTHFUL INSTALLED ACCEPTANCE**
 
+## Documentation consolidation and workspace hygiene — active plan (2026-10-10)
+
+**Scope:** documentation ownership, routing, contradictions, and workspace hygiene only. This section does not change implementation authority, mutate runtime code, or certify product readiness.
+
+**One-reader entry order:** start with `README.md` (repository entry), then `docs/CURRENT_STATUS.md` (dated, bounded status), this plan (goals and remaining work), `PROJECT_INDEX.md` (structural owners), `.lbe/governance/implementation-gates.json` and `docs/governance/PROJECT_INTENT_LEDGER.md` (actual mutation authority). Consult `docs/acceptance/` for individual acceptance evidence; use `docs/reference/` only for design/research history. For implementation claims, read current source and run the real effect path before relying on any document.
+
+**Document types, one responsibility each:**
+
+| Role | Single canonical destination | Allowed claims |
+|---|---|---|
+| Live implementation/worktree state | Current runtime, Git HEAD, source, generated operational receipts | Exact observed state, bounded by revision/time |
+| Product status | `docs/CURRENT_STATUS.md` | Dated evidence-led snapshot only; not a live assertion |
+| Product direction and pending work | `docs/IMPLEMENTATION_PLAN.md` | Goals, ordered dependencies, explicit OPEN work and acceptance |
+| Source ownership and structural registry | `PROJECT_INDEX.md` | Path → owner → supporting contract → mutation boundary |
+| Active mutation scope | `.lbe/governance/implementation-gates.json` plus existing intent ledger | Gate and intent state; never inferred from plan text |
+| Feature-specific design | Existing `docs/design/` files | Proposed design with references and source reconciliation; no readiness claim |
+| Acceptance proof | `docs/acceptance/` | Named fixture/revision/harness/provider/terminal conditions; cannot promote unrelated acceptance |
+| Earlier blueprints/UI/external studies | `docs/reference/` and `docs/research/` | Historical or illustrative only; no runtime authority |
+| Cross-project reference | GPT-Knowledge | Routing and architectural doctrine; live LBE outranks it |
+
+**Consolidation method:** (1) inventory and detect contradictory current-state language, (2) establish path/type/owner and date, (3) link the original contract rather than copy it, (4) annotate stale/historical claims visibly without rewriting their evidence, (5) only remove or move files after inspecting every caller/import/link and obtaining a distinct approved cleanup scope, (6) verify links, document scope and actual runtime evidence independently. Preserve history and user-created/untracked files.
+
+**Workspace hygiene rules:** No automated delete/move of unknown files, receipts, proofs, caches, personal launchers, or dirty Git state. Inventory and classify as tracked authoritative / tracked historical / generated ignored / untracked user-owned / unknown. A suggestion to relocate a file is not permission to mutate it. Never use an old checkout, simulated UI, green test, fixture, process exit code, or stale screenshot as proof of the installed product. Record HEAD, relevant config, observed effect, receipt and falsifier before classifying a claim as PROVEN. Alternative outcomes: DISPROVEN, INCONCLUSIVE, BLOCKED_CONFIGURATION, STALE_TEST_OR_FIXTURE, TEST_HARNESS_FAILURE.
+
+**Current reconciled position:** At `2e0c3fd`, `ProviderKey` and the lossless provider-list decoder were added in Rust, but the real picker still uses the fixed `ProviderId`; do not call arbitrary-provider selection implemented. Prior Windows ConPTY tests established keyboard/mouse/slash interactions only; a real provider→governed tool→observation→completion acceptance is still open. Check live HEAD before repeating these bounded facts. The July blueprint under `docs/reference/README.md` is historical, not the active product description.
+
+**Next documentation-only hygiene passes:** review all 73 tracked acceptance documents by claim/revision (avoid blanket statuses), annotate any unqualified current/ready/passed language with scope, reconcile duplicated sections without deleting historical receipts, and validate path/link references. This is an ordered maintenance backlog, not a declaration that those reviews have been completed.
+
+---
 ## 0. Read this first
 
 The machine gate is authoritative:
@@ -610,4 +639,4 @@ PUBLICATION = LOCKED
 
 ## Current provider-extensibility design (2026-10-09)
 
-See [provider-extensibility reference plan](design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md). This is PLANNED, not accepted or implemented; the installed product gate remains open.
+See [provider-extensibility reference plan](design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md). This plan is OPEN; a limited identity-decoder slice was implemented at `2e0c3fd`, but dynamic picker and installed provider acceptance remain unproven.

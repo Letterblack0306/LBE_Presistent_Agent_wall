@@ -1,4 +1,3 @@
-| `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Records that `textual_tui.py` fabricates receipt-shaped and session-shaped values at L226/L312 and renders a PREVIEW state, while being a **deliberately retained** module that must NOT be deleted: `verify_clean_install.py:68-73` proves unreachability by presence, a launcher contract test names it, and the gate file and PROVENANCE.md register it. Records the retraction of an earlier dead-code classification | Product-surface owner and clean-install verifier owner | `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Evidence record only. No deletion is authorized. The live risk is that the shipped-but-unreachable invariant has no guard against becoming reachable |
 # Project Structural Authority Index
 
 Status: **CANONICAL GOVERNANCE INDEX**
@@ -9,6 +8,8 @@ must map to one row before it may be changed.
 
 | Path / area | Purpose | Authority owner | Canonical supporting document | Mutation boundary |
 |---|---|---|---|---|
+| `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Records that `textual_tui.py` fabricates receipt-shaped and session-shaped values at L226/L312 and renders a PREVIEW state, while being a **deliberately retained** module that must NOT be deleted: `verify_clean_install.py:68-73` proves unreachability by presence, a launcher contract test names it, and the gate file and PROVENANCE.md register it. Records the retraction of an earlier dead-code classification | Product-surface owner and clean-install verifier owner | `docs/acceptance/TEXTUAL_RETAINED_MODULE_FINDING.md` | Evidence record only. No deletion is authorized. The live risk is that the shipped-but-unreachable invariant has no guard against becoming reachable |
+| `docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md` | Reference-grounded plan for dynamic provider identities, model catalog and real TUI acceptance; planned only | LBE provider registry / Rust TUI maintainers | `docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md` | Planning document; future implementation requires governed bounded intent |
 | `lbe_guard_inspector/` | Product runtime and governed execution source | LBE runtime | `docs/LBE_AGENT_LIFECYCLE.md` | Active intent and machine gate only |
 | `lbe_guard_inspector/session_lifecycle.py` | Shared CLI/Textual session creation, resume, and provider-selection application service | Session application contract owner | `docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md` | Active session-contract intent only |
 | `lbe_guard_inspector/runtime/` | Session, provider-turn, orchestration, and governed runtime owners | LBE runtime | `docs/design/AGENT_AGENCY_LBE_AUTHORITY_SEPARATION.md` | Existing owner required |
@@ -137,5 +138,3 @@ they are not silently absorbed into this canonical index.
 | Path | Owner / purpose | Boundary |
 |---|---|---|
 | `tools/lbe_interactive_selftest.py` | LBE existing Rust terminal UI real ConPTY keyboard/mouse diagnostic acceptance harness | Tests emitted UI action traces and terminal lifecycle only; never owns provider, session, authorization, execution, or completion |
-
-| `docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md` | Reference-grounded plan for dynamic provider identities, model catalog and real TUI acceptance; planned only | LBE provider registry / Rust TUI maintainers | `docs/design/PROVIDER_EXTENSIBILITY_REFERENCE_PLAN.md` | Planning document; future implementation requires governed bounded intent |

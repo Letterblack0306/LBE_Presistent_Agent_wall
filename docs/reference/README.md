@@ -1,3 +1,7 @@
+> **HISTORICAL BLUEPRINT (2026-07-25), NOT THE CURRENT LBE PRODUCT CONTRACT.**
+> This README describes an earlier Guard Inspector concept. The canonical Rust/Ratatui product, current source and product status are routed through `../../README.md`, `../IMPLEMENTATION_PLAN.md`, `../CURRENT_STATUS.md`, and `../../PROJECT_INDEX.md`.
+> Preserve examples/schemas as references only; they do not define current provider identities or prove runtime acceptance.
+
 # LBE Guard Inspector Workspace Blueprint
 
 This package defines the current architecture for a small, evidence-first **LBE Guard Inspector**.

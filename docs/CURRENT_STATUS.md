@@ -1,5 +1,10 @@
 # Current Status
 
+> **Status-document reading rule (2026-10-10):** This file contains historical checkpoints and claims tied to their recorded dates, builds and scopes. It is not a live product readiness declaration. The canonical documentation responsibilities and no-PASS-as-proof rule are in [the implementation plan](IMPLEMENTATION_PLAN.md#documentation-consolidation-and-workspace-hygiene--active-plan-2026-10-10). Current working state must be reverified at the live Git HEAD, running terminal/provider and correlated receipts.
+>
+> **Latest bounded observation:** LBE `2e0c3fd` included a data-driven provider-identity decoder, but the TUI picker still used the fixed enum. Windows ConPTY observations proved basic keyboard, mouse, slash menu and terminal lifecycle; they did not prove complete model→tool→observation→completion readiness. These observations are not evergreen.
+
+
 Updated: 2026-09-25
 
 ## Authority
