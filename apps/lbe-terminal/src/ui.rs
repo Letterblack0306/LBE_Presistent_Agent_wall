@@ -3051,6 +3051,10 @@ fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
             Span::styled("Authority  ", Style::default().fg(PALETTE.faint)),
             Span::styled("LBE Kernel (authorization required before workspace mutations)", Style::default().fg(PALETTE.muted)),
         ]),
+        Line::from(vec![
+            Span::styled("Policy     ", Style::default().fg(PALETTE.faint)),
+            Span::styled("read-only UI contract · authorization required", Style::default().fg(PALETTE.green)),
+        ]),
         Line::default(),
         Line::from(Span::styled(
             "Type a prompt to begin · Tab cycle mode · F2 provider · F3 model · / help",
