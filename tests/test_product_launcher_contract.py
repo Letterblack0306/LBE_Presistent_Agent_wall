@@ -124,13 +124,13 @@ param(
     assert captured["NoFetch"] is True
 
 
-def test_provider_model_failure_is_non_blocking_to_product_acceptance() -> None:
+def test_provider_model_instance_failure_remains_non_blocking_after_live_recovery() -> None:
     gate = json.loads(
         (ROOT / ".lbe" / "governance" / "implementation-gates.json").read_text(encoding="utf-8")
     )
     provider_slice = gate["active_execution_plan"]["ordered_slices"]["PROVIDER_MODEL_BINDING"]
 
-    assert provider_slice["status"] == "DEGRADED"
+    assert provider_slice["status"] == "IMPLEMENTED_TESTED_LIVE_SOURCE"
     assert provider_slice["blocking"] is False
     assert provider_slice["failure_scope"] == "PROVIDER_OR_MODEL_INSTANCE"
     assert provider_slice["isolation_status"] == "PASS"
