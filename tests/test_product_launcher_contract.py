@@ -130,7 +130,7 @@ def test_provider_model_instance_failure_remains_non_blocking_after_live_recover
     )
     provider_slice = gate["active_execution_plan"]["ordered_slices"]["PROVIDER_MODEL_BINDING"]
 
-    assert provider_slice["status"] == "IMPLEMENTED_TESTED_LIVE_SOURCE"
+    assert provider_slice["status"] == "PASS_BOUNDED_INSTALLED"
     assert provider_slice["blocking"] is False
     assert provider_slice["failure_scope"] == "PROVIDER_OR_MODEL_INSTANCE"
     assert provider_slice["isolation_status"] == "PASS"
