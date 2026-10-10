@@ -1330,3 +1330,28 @@ AFFECTED_STRUCTURE: tools/lbe_product_integration.ps1, docs/acceptance/
 REUSE_DECISION: ADAPT existing generated installer with opt-in isolated/no-user-PATH mode; no alternate launcher/runtime authority.
 REQUIRED_EVIDENCE: temporary-root install, PATH unchanged, installed binary hash matches package and real PTY interaction passes.
 RESULT: PROVEN for staged installer: isolated temp installation succeeds, installed client SHA-256 equals staged package client, five real ConPTY input cases pass, and user PATH excludes isolated bin. Final candidate ZIP build still separately requires clean successful package verification.
+
+
+## INTENT LBE-INTENT-LBE-OWNED-TERMINAL-SURFACE-20261010
+
+STATUS: ACTIVE
+
+REQUEST: Implement the explicitly selected LBE-owned coding IDE CLI/TUI as the normal `lbe` product surface and remove Rust/Ratatui from the primary installed launch path while preserving it as reference/integration material. Reuse the existing LBE session/provider/governed execution/receipt/evidence/completion owners and existing governed Cline reasoning/provider/continuation mechanics.
+
+MACHINE_SLICE: LBE_OWNED_TERMINAL_PRODUCT_SURFACE
+
+EXISTING_OWNER: `lbe_guard_inspector.product_entry`, persisted session/runtime owners, governed coding runtime, governed Cline worker/provider continuation, canonical installer/launcher, and terminal presentation owner.
+
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tools/,tests/,docs/governance/,docs/acceptance/,docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md,docs/IMPLEMENTATION_PLAN.md,PROJECT_INDEX.md,.lbe/governance/
+
+AFFECTED_STRUCTURE: Existing product-entry, terminal presentation, packaging, launcher, tests, and current product/governance records only. `apps/lbe-terminal/` is preserved as reference/integration and is not the primary product owner.
+
+REUSE_DECISION: REUSE the existing authoritative LBE runtime and governed Cline mechanics. Do not create a second session store, provider gateway, executor, receipt engine, validation owner, or completion authority.
+
+AUTHORITY_IMPACT: Presentation/input ownership changes only. LBE remains sole authority for identity, policy, authorization, execution, receipts/evidence, persistence/recovery, validation, and completion truth.
+
+REQUIRED_EVIDENCE: Bare `lbe` launches the LBE-owned terminal surface; primary package/install path does not require or launch Rust/Ratatui; provider/model/session identity is authoritative; real governed read and mutation flow persists receipts/evidence; restart/resume survives; real terminal input/exit is observed; final package checksum/install provenance is correlated.
+
+RESULT: IMPLEMENTATION_IN_PROGRESS
+
+AUTHORIZATION: EXPLICIT_USER_PRODUCT_SURFACE_SUPERSESSION_2026_10_10
