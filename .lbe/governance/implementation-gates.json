@@ -2,7 +2,7 @@
     "schema_version": 1,
     "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
     "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-    "active_slice": "CONTINUOUS_GOVERNED_MAINTENANCE",
+    "active_slice": "LBE_OWNED_TERMINAL_PRODUCT_SURFACE",
     "status": "OPEN",
     "implementation_allowed": true,
     "architecture_changes_allowed": true,
@@ -64,21 +64,21 @@
         "fail_closed": true
     },
     "active_intent": {
-        "intent_id": "LBE-INTENT-GOVERNANCE-FRICTION-REDUCTION-20261008",
-        "owner": "Existing LBE governance and execution authority owners",
-        "index_revision": "6B612A6DCC0560202647303E75166B084E637474E6899EB9C514E058D8678A57"
+        "intent_id": "LBE-INTENT-LBE-OWNED-TERMINAL-SURFACE-20261010",
+        "owner": "Existing LBE product-entry, terminal presentation, runtime, packaging, and governed Cline mechanics owners",
+        "index_revision": "PROJECT_INDEX.md@2026-10-10-product-surface-supersession"
     },
     "closure": {
         "status": "OPEN",
         "last_completed_slice": "TERMINAL_UI_CONTRACT_CONVERGENCE",
         "last_completed_intent": "LBE-INTENT-TERMINAL-UI-CONTRACT-CONVERGENCE-001",
         "checkpoint": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
-        "next_slice": "INSTALLED_PTY_CONPTY_FINAL_ACCEPTANCE",
+        "next_slice": "LBE_OWNED_TERMINAL_PRODUCT_SURFACE",
         "publication": "LOCKED"
     },
     "active_execution_plan": {
-        "status": "BLOCKED",
-        "current_evidence": "2026-10-02 FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH is runtime-proven PASS on the installed bare lbe path. Provider/model-specific failures are isolated and non-blocking. Final product acceptance remains open only for the remaining declared blocking product slices and their live evidence.",
+        "status": "OPEN",
+        "current_evidence": "2026-10-10 product-owner supersession: Rust/Ratatui is no longer the primary installed visible surface. Implement the LBE-owned coding IDE CLI/TUI on the canonical Python/LBE product-entry terminal surface, reuse governed Cline reasoning/provider/continuation mechanics, preserve Rust only as reference/integration, then rebuild and re-prove the installed product.",
         "ordered_slices": {
             "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
                 "status": "PASS",
@@ -629,52 +629,48 @@
         "completion_checkpoint": "docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md"
     },
     "lbe_interface_product_surface": {
-        "status": "AUTHORIZED_RUST_TUI_PRODUCT_SURFACE",
-        "authorization": "EXPLICIT_USER_AUTHORIZATION_2026_09_18",
-        "implementation_technology": "Rust/Ratatui",
-        "canonical_client_workspace": "C:/Agents-Memory-Tool-v6-integration/apps/lbe-terminal",
-        "visual_contract": "Existing LBE HTML/React work and canonical GPT-K LBE_TERMINAL_TUI_UI_PLAN.md are reference/specification inputs; browser prototypes are not runtime truth.",
-        "reasoning_mechanics": "Cline is one supported headless reasoning/planning/provider/model/tool-proposal/continuation/response-composition engine adapter behind LBE; engine-neutral reasoning runtime with optional/supported Cline adapter.",
+        "status": "AUTHORIZED_LBE_OWNED_TERMINAL_PRODUCT_SURFACE",
+        "authorization": "EXPLICIT_USER_PRODUCT_SURFACE_SUPERSESSION_2026_10_10",
+        "implementation_technology": "Python stdlib terminal client over canonical LBE product-entry/runtime owners",
+        "canonical_client_workspace": "C:/Agents-Memory-Tool-v6-integration/lbe_guard_inspector/terminal_ui.py",
+        "visual_contract": "Root LBE_DOCS_EXPLORER.html plus canonical GPT-K LBE terminal contract; minimal header, one conversation/work timeline, composer, compact status, PLAN/ACT/AUDIT; no simulated runtime truth or permanent evidence/governance dashboards.",
+        "reasoning_mechanics": "Engine-neutral LBE binding with governed Cline reasoning/provider/model/tool-proposal/continuation mechanics reused where selected.",
         "scope": [
             "lbe_owned_terminal_layout",
             "conversation_work_timeline",
             "provider_model_projection",
             "plan_act_audit_controls",
-            "approval_presentation",
             "runtime_activity_projection",
             "context_usage_projection",
-            "keyboard_interaction"
+            "keyboard_interaction",
+            "installed_single_command_launch"
         ],
         "required_evidence": [
-            "canonical_rust_client_build",
-            "real_lbe_runtime_attachment",
-            "engine_neutral_governed_turn",
-            "authoritative_provider_model_projection",
+            "bare_lbe_launches_lbe_owned_terminal",
+            "rust_not_primary_installed_launch_path",
+            "real_provider_model_turn",
             "governed_tool_and_approval_flow",
-            "tool_receipt_and_evidence_projection",
-            "real_context_usage",
-            "plan_act_audit_policy_mapping",
-            "clean_pty_conpty_exit",
+            "tool_receipt_and_evidence_persistence",
+            "clean_terminal_exit",
             "restart_resume",
-            "installed_single_command_lbe_launch",
+            "package_checksum_and_installer_provenance",
             "cline_regression_proof"
         ],
         "product_identity": "LBE",
         "reference_inputs": [
             "existing LBE HTML/React visual and interaction work",
-            "Cline interaction patterns where useful",
-            "upstream Cline CLI/OpenTUI as reference only"
+            "Cline interaction/provider/continuation mechanics where useful",
+            "apps/lbe-terminal Rust/Ratatui reference/integration client"
         ],
-        "authority_boundary": "Rust/Ratatui owns presentation/input only; reasoning engines own headless cognition/provider continuation mechanics; LBE owns session/workspace identity, provider policy truth, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion.",
+        "authority_boundary": "Terminal client owns presentation/input only; reasoning engines own cognition/provider continuation; LBE owns session/workspace identity, policy, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion.",
         "non_goals": [
-            "copied or rebranded Cline product UI as a requirement",
-            "native Cline session or persistence authority",
-            "native Cline mutation/shell/MCP authority",
+            "Rust/Ratatui as primary installed visible product",
+            "copied or rebranded Cline UI",
+            "native Cline session/persistence/mutation authority",
             "browser/HTML prototype as runtime truth",
-            "Python/Textual final-product UI",
             "independent session identity",
             "new runtime authority",
-            "publication without separate authorization",
+            "publication",
             "branch creation",
             "worktree creation"
         ],
