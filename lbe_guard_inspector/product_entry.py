@@ -1135,6 +1135,13 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
 
+    # Bare `lbe` is the installed product entry. Presentation is delegated to
+    # the LBE-owned terminal client; all authority-bearing actions still route
+    # back through this product-entry/runtime boundary.
+    if not values:
+        from .terminal_ui import main as terminal_main
+        return terminal_main([])
+
     product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization", "child-agent") if command in values]
     if not product_commands:
         return _cli.main(values)
