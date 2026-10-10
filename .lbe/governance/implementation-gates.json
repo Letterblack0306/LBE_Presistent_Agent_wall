@@ -78,7 +78,7 @@
     },
     "active_execution_plan": {
         "status": "OPEN",
-        "current_evidence": "2026-10-10 runtime/package source head 75158f15369cb5cedfe7ebae2a332051ac63de54: focused regression 33/33 PASS, canonical prove PASS, origin-main candidate package verification PASS (18,658 files), isolated install PASS, bare lbe -> LBE | LETTERBLACK PASS, lbe --version 2.0.3 PASS, clean /quit RC=0, cmd-shim nonzero failure propagation PASS, and installed /providers + /models + /model controls PASS against the configured local endpoint. Earlier installed 1e31d208 proof remains current bounded evidence for real Gemma provider continuation and governed workspace.read with correlated receipt/evidence because the intervening runtime changes are terminal UI/provider-control and documentation/test changes only. Final real PTY/ConPTY, current approval/mutation, Python-client restart/resume and deterministic completion remain open.",
+        "current_evidence": "2026-10-10 runtime/package source head 75158f15369cb5cedfe7ebae2a332051ac63de54: focused regression 33/33 PASS, canonical prove PASS, origin-main candidate package verification PASS (18,658 files), isolated install PASS, bare lbe -> LBE | LETTERBLACK PASS, lbe --version 2.0.3 PASS, clean /quit RC=0, cmd-shim nonzero failure propagation PASS, and installed /providers + /models + /model controls PASS against the configured local endpoint. Earlier installed 1e31d208 proof remains current bounded evidence for real Gemma provider continuation and governed workspace.read with correlated receipt/evidence because the intervening runtime changes are terminal UI/provider-control and documentation/test changes only. Final real PTY/ConPTY, current approval/mutation, Python-client restart/resume and deterministic completion remain open. Exact installed Python-client restart/resume is now additionally proven for session tui-29f2116feb31454ba7e154e068a324b3 with provider/model/mode retained.",
         "ordered_slices": {
             "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
                 "status": "PASS",
@@ -109,8 +109,8 @@
                 "evidence": "Exact installed 75158f1 bare lbe accepted /quit and exited RC=0 with empty stderr. This closes process-level clean exit but does not replace final real PTY/ConPTY terminal-restoration proof."
             },
             "INSTALLED_RESTART_RESUME": {
-                "status": "UNVERIFIED_CURRENT_CLIENT",
-                "evidence": "Historical Rust restart/resume is bounded history only. Python terminal restart/resume has not yet been re-proved on the exact current package."
+                "status": "PASS_BOUNDED_INSTALLED",
+                "evidence": "Exact installed runtime/package source 75158f15369cb5cedfe7ebae2a332051ac63de54 resumed persisted session tui-29f2116feb31454ba7e154e068a324b3 from provider-controls-3.sqlite3 using the Python terminal client, preserved openai-compatible/google/gemma-4-e4b and ACT state, projected the same session through /status, then exited RC=0 with empty stderr."
             },
             "STRUCTURAL_LBE_UI": {
                 "status": "PASS_BOUNDED_INSTALLED",
@@ -118,7 +118,7 @@
             },
             "FINAL_PRODUCT_ACCEPTANCE": {
                 "status": "BLOCKED",
-                "evidence": "Current runtime/package source 75158f1 is packaged/installed and proves bare LBE launch plus installed provider/model controls. Remaining final acceptance: real PTY/ConPTY keyboard/terminal restoration, current approval DENY/ALLOW and one safe governed mutation with receipt/evidence, Python terminal restart/resume, and deterministic completion evidence. Publication remains locked."
+                "evidence": "Runtime/package source 75158f1 is packaged/installed and proves bare LBE launch, installed provider/model controls, process-level clean exit, and Python-client restart/resume. Remaining final acceptance: real PTY/ConPTY keyboard/terminal restoration, current approval DENY/ALLOW plus one safe governed mutation with receipt/evidence, and deterministic completion evidence. Publication remains locked."
             },
             "MODE_POLICY_PRODUCT_MAPPING": {
                 "status": "PASS",
