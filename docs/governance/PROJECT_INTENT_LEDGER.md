@@ -1,3 +1,46 @@
+STATUS: ACTIVE
+REQUEST: Permit safe isolated install verification without changing the user PATH or installed production LBE. The canonical installer must support a path-preserving test installation while preserving existing default install behavior.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: tools/lbe_product_integration.ps1 Write-Installer and generated installed launcher.
+EXPECTED_PATH_PREFIXES: tools/,docs/acceptance/,docs/governance/
+AFFECTED_STRUCTURE: tools/lbe_product_integration.ps1, docs/acceptance/
+REUSE_DECISION: ADAPT existing generated installer with opt-in isolated/no-user-PATH mode; no alternate launcher/runtime authority.
+REQUIRED_EVIDENCE: temporary-root install, PATH unchanged, installed binary hash matches package and real PTY interaction passes.
+RESULT: PROVEN for staged installer: isolated temp installation succeeds, installed client SHA-256 equals staged package client, five real ConPTY input cases pass, and user PATH excludes isolated bin. Final candidate ZIP build still separately requires clean successful package verification.
+
+
+## INTENT LBE-INTENT-LBE-OWNED-TERMINAL-SURFACE-20261010
+
+STATUS: ACTIVE
+
+REQUEST: Implement the explicitly selected LBE-owned coding IDE CLI/TUI as the normal `lbe` product surface and remove Rust/Ratatui from the primary installed launch path while preserving it as reference/integration material. Reuse the existing LBE session/provider/governed execution/receipt/evidence/completion owners and existing governed Cline reasoning/provider/continuation mechanics.
+
+MACHINE_SLICE: LBE_OWNED_TERMINAL_PRODUCT_SURFACE
+
+EXISTING_OWNER: `lbe_guard_inspector.product_entry`, persisted session/runtime owners, governed coding runtime, governed Cline worker/provider continuation, canonical installer/launcher, and terminal presentation owner.
+
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tools/,tests/,docs/governance/,docs/acceptance/,docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md,docs/IMPLEMENTATION_PLAN.md,PROJECT_INDEX.md,.lbe/governance/
+
+AFFECTED_STRUCTURE: Existing product-entry, terminal presentation, packaging, launcher, tests, and current product/governance records only. `apps/lbe-terminal/` is preserved as reference/integration and is not the primary product owner.
+
+REUSE_DECISION: REUSE the existing authoritative LBE runtime and governed Cline mechanics. Do not create a second session store, provider gateway, executor, receipt engine, validation owner, or completion authority.
+
+AUTHORITY_IMPACT: Presentation/input ownership changes only. LBE remains sole authority for identity, policy, authorization, execution, receipts/evidence, persistence/recovery, validation, and completion truth.
+
+REQUIRED_EVIDENCE: Bare `lbe` launches the LBE-owned terminal surface; primary package/install path does not require or launch Rust/Ratatui; provider/model/session identity is authoritative; real governed read and mutation flow persists receipts/evidence; restart/resume survives; real terminal input/exit is observed; final package checksum/install provenance is correlated.
+
+RESULT: IMPLEMENTATION_IN_PROGRESS
+
+CURRENT_EVIDENCE_2026_10_10:
+- Installed runtime/package source `75158f1` also resumed session `tui-29f2116feb31454ba7e154e068a324b3` with provider/model/mode retained and exited cleanly.
+- Python/LBE terminal is the normal product surface; Rust/Ratatui is reference/integration only.
+- Focused terminal/product/launcher/Cline regression: 33 passed; canonical integration prove PASS.
+- Exact installed candidate 1e31d208 proved bare lbe startup/clean exit, live Gemma provider continuation, governed workspace.read, correlated receipt/evidence, and cmd-shim failure propagation.
+- Current source provider controls /providers, /models, /model <id> delegate to existing LBE provider owners; live source smoke projected 17 providers, five configured local models, and persisted model selection.
+- Final acceptance remains OPEN because the source head is newer than the installed candidate and real PTY/ConPTY, current approval/mutation, Python-client restart/resume, and final completion evidence remain pending.
+
+AUTHORIZATION: EXPLICIT_USER_PRODUCT_SURFACE_SUPERSESSION_2026_10_10
+
 # Project Intent Ledger
 
 Status: **CANONICAL PRE-MUTATION INTENT LEDGER**
@@ -1331,35 +1374,16 @@ REUSE_DECISION: ADAPT existing generated installer with opt-in isolated/no-user-
 REQUIRED_EVIDENCE: temporary-root install, PATH unchanged, installed binary hash matches package and real PTY interaction passes.
 RESULT: PROVEN for staged installer: isolated temp installation succeeds, installed client SHA-256 equals staged package client, five real ConPTY input cases pass, and user PATH excludes isolated bin. Final candidate ZIP build still separately requires clean successful package verification.
 
-
-## INTENT LBE-INTENT-LBE-OWNED-TERMINAL-SURFACE-20261010
+## INTENT LBE-INTENT-CURRENT-INSTALLED-PRODUCT-20261010
 
 STATUS: ACTIVE
-
-REQUEST: Implement the explicitly selected LBE-owned coding IDE CLI/TUI as the normal `lbe` product surface and remove Rust/Ratatui from the primary installed launch path while preserving it as reference/integration material. Reuse the existing LBE session/provider/governed execution/receipt/evidence/completion owners and existing governed Cline reasoning/provider/continuation mechanics.
-
-MACHINE_SLICE: LBE_OWNED_TERMINAL_PRODUCT_SURFACE
-
-EXISTING_OWNER: `lbe_guard_inspector.product_entry`, persisted session/runtime owners, governed coding runtime, governed Cline worker/provider continuation, canonical installer/launcher, and terminal presentation owner.
-
-EXPECTED_PATH_PREFIXES: lbe_guard_inspector/,tools/,tests/,docs/governance/,docs/acceptance/,docs/LBE_PRODUCT_SOURCE_OF_TRUTH.md,docs/IMPLEMENTATION_PLAN.md,PROJECT_INDEX.md,.lbe/governance/
-
-AFFECTED_STRUCTURE: Existing product-entry, terminal presentation, packaging, launcher, tests, and current product/governance records only. `apps/lbe-terminal/` is preserved as reference/integration and is not the primary product owner.
-
-REUSE_DECISION: REUSE the existing authoritative LBE runtime and governed Cline mechanics. Do not create a second session store, provider gateway, executor, receipt engine, validation owner, or completion authority.
-
-AUTHORITY_IMPACT: Presentation/input ownership changes only. LBE remains sole authority for identity, policy, authorization, execution, receipts/evidence, persistence/recovery, validation, and completion truth.
-
-REQUIRED_EVIDENCE: Bare `lbe` launches the LBE-owned terminal surface; primary package/install path does not require or launch Rust/Ratatui; provider/model/session identity is authoritative; real governed read and mutation flow persists receipts/evidence; restart/resume survives; real terminal input/exit is observed; final package checksum/install provenance is correlated.
-
+REQUEST: Finish the current LBE product implementation and prove it through the canonical package, isolated installation, live provider and governed tool flow, persisted receipts, restart, and visible terminal interaction. Resolve Git synchronization faults through supported Git operations while preserving user changes and repository history.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: Canonical product integration script, LBE Python provider and governed coding runtime, Rust/Ratatui client, and installed acceptance record.
+EXPECTED_PATH_PREFIXES: tools/,lbe_guard_inspector/,apps/lbe-terminal/,docs/governance/,docs/acceptance/,docs/CURRENT_STATUS.md,docs/IMPLEMENTATION_PLAN.md,PROJECT_INDEX.md,LBE_DOCS_EXPLORER.html
+AFFECTED_STRUCTURE: Existing source, integration, and documentation owners only; no new test artifact in the repository.
+REUSE_DECISION: REUSE the canonical build, installer, installed launcher, runtime, governance preflight, Git hooks, and existing ConPTY and provider verification surfaces.
+AUTHORITY_IMPACT: Preserve LBE authorization and owner-evidence checks, truthful completion, active scope, forbidden paths, and publication controls. No direct edit or deletion of Git internals.
+REQUIRED_EVIDENCE: Exact local and remote revision relationship; governed staged and HEAD checks; package archive checksum verification; installer and installed hashes; live provider/tool receipt with observed effect; persisted continuation and restart; real ConPTY interaction and clean exit; acceptance record reconciled to actual results.
 RESULT: IMPLEMENTATION_IN_PROGRESS
-
-CURRENT_EVIDENCE_2026_10_10:
-- Installed runtime/package source `75158f1` also resumed session `tui-29f2116feb31454ba7e154e068a324b3` with provider/model/mode retained and exited cleanly.
-- Python/LBE terminal is the normal product surface; Rust/Ratatui is reference/integration only.
-- Focused terminal/product/launcher/Cline regression: 33 passed; canonical integration prove PASS.
-- Exact installed candidate 1e31d208 proved bare lbe startup/clean exit, live Gemma provider continuation, governed workspace.read, correlated receipt/evidence, and cmd-shim failure propagation.
-- Current source provider controls /providers, /models, /model <id> delegate to existing LBE provider owners; live source smoke projected 17 providers, five configured local models, and persisted model selection.
-- Final acceptance remains OPEN because the source head is newer than the installed candidate and real PTY/ConPTY, current approval/mutation, Python-client restart/resume, and final completion evidence remain pending.
-
-AUTHORIZATION: EXPLICIT_USER_PRODUCT_SURFACE_SUPERSESSION_2026_10_10
+AUTHORIZATION: USER_CONTINUATION_AND_EXPLICIT_DIRECTION_2026_10_10

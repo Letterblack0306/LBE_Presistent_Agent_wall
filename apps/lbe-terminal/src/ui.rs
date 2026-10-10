@@ -2992,33 +2992,7 @@ fn capability_marker(enabled: bool, known: bool) -> &'static str {
     }
 }
 
-fn welcome_text(available_height: u16, app: &App) -> Text<'static> {
-    // The large identity artwork is launch-only. The working surface stays
-    // instrument-panel minimal so task state owns the vertical space.
-    let mut lines = vec![
-        Line::from(Span::styled(
-            "AGENT COCKPIT",
-            Style::default()
-                .fg(PALETTE.agent)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::default(),
-    ];
-    lines.push(Line::from(Span::styled(
-        "What can I do for you?",
-        Style::default()
-            .fg(PALETTE.ink)
-            .add_modifier(Modifier::BOLD),
-    )));
-    lines.push(Line::from(vec![
-        Span::styled("Your agents propose. ", Style::default().fg(PALETTE.muted)),
-        Span::styled(
-            "LBE decides.",
-            Style::default()
-                .fg(PALETTE.red)
-                .add_modifier(Modifier::BOLD),
-        ),
-    ]));
+fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
     let provider = app
         .snapshot
         .selected_model
@@ -3031,73 +3005,58 @@ fn welcome_text(available_height: u16, app: &App) -> Text<'static> {
         .selected_model
         .as_ref()
         .map_or("not selected".to_owned(), |model| model.model_id.clone());
-    lines.push(Line::from(vec![
-        Span::styled("Provider  ", Style::default().fg(PALETTE.faint)),
-        Span::styled(provider, Style::default().fg(PALETTE.amber)),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled("Model     ", Style::default().fg(PALETTE.faint)),
-        Span::styled(model, Style::default().fg(PALETTE.amber)),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled("Workspace ", Style::default().fg(PALETTE.faint)),
-        Span::styled(
-            if app.snapshot.workspace_label.is_empty() {
-                "not attached".to_owned()
-            } else {
-                app.snapshot.workspace_label.clone()
-            },
-            Style::default().fg(PALETTE.ink),
-        ),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled("Session   ", Style::default().fg(PALETTE.faint)),
-        Span::styled(
-            app.snapshot
-                .session_id
-                .as_deref()
-                .unwrap_or("not attached")
-                .to_owned(),
-            Style::default().fg(PALETTE.ink),
-        ),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled("Policy    ", Style::default().fg(PALETTE.faint)),
-        Span::styled(
-            format!(
-                "{} · {}",
-                app.snapshot.connection.label(),
-                if app.snapshot.connection == RuntimeConnection::Connected {
-                    "authorization required for mutation"
-                } else {
-                    "read-only UI contract"
-                }
-            ),
-            Style::default().fg(app.snapshot.connection.color()),
-        ),
-    ]));
-    if let Some(activity) = app.activity_log.last() {
-        lines.push(Line::from(vec![
-            Span::styled("Activity  ", Style::default().fg(PALETTE.faint)),
-            Span::styled(
-                truncate_text(activity, available_height.saturating_sub(12) as usize),
-                Style::default().fg(PALETTE.green),
-            ),
-        ]));
+    let workspace = if app.snapshot.workspace_label.is_empty() {
+        "active workspace".to_owned()
     } else {
-        lines.push(Line::from(vec![
-            Span::styled("Activity  ", Style::default().fg(PALETTE.faint)),
-            Span::styled(
-                "idle · waiting for your request",
-                Style::default().fg(PALETTE.faint),
-            ),
-        ]));
-    }
-    lines.push(Line::from(Span::styled(
-        "/provider select provider   /model select model   /help shortcuts",
-        Style::default().fg(PALETTE.muted),
-    )));
-    Text::from(lines)
+        app.snapshot.workspace_label.clone()
+    };
+    let session = app
+        .snapshot
+        .session_id
+        .as_deref()
+        .unwrap_or("not attached");
+    let mode_str = match app.agent_mode {
+        AgentMode::Build => "BUILD (governed coding)",
+        AgentMode::Plan => "PLAN (investigation)",
+        AgentMode::Audit => "AUDIT (read-only verification)",
+    };
+
+    Text::from(vec![
+        Line::from(vec![
+            Span::styled("LETTERBLACK LBE AGENT COCKPIT ", Style::default().fg(PALETTE.ink).add_modifier(Modifier::BOLD)),
+            Span::styled("· ", Style::default().fg(PALETTE.red)),
+            Span::styled("GOVERNED AGENT WALL", Style::default().fg(PALETTE.red).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::default(),
+        Line::from(vec![
+            Span::styled("Workspace  ", Style::default().fg(PALETTE.faint)),
+            Span::styled(workspace, Style::default().fg(PALETTE.ink).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
+            Span::styled("Session    ", Style::default().fg(PALETTE.faint)),
+            Span::styled(session.to_owned(), Style::default().fg(PALETTE.ink)),
+        ]),
+        Line::from(vec![
+            Span::styled("Mode       ", Style::default().fg(PALETTE.faint)),
+            Span::styled(mode_str, Style::default().fg(PALETTE.agent).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
+            Span::styled("Provider   ", Style::default().fg(PALETTE.faint)),
+            Span::styled(provider, Style::default().fg(PALETTE.amber)),
+            Span::styled(" · ", Style::default().fg(PALETTE.faint)),
+            Span::styled("Model ", Style::default().fg(PALETTE.faint)),
+            Span::styled(model, Style::default().fg(PALETTE.amber)),
+        ]),
+        Line::from(vec![
+            Span::styled("Authority  ", Style::default().fg(PALETTE.faint)),
+            Span::styled("LBE Kernel (authorization required before workspace mutations)", Style::default().fg(PALETTE.muted)),
+        ]),
+        Line::default(),
+        Line::from(Span::styled(
+            "Type a prompt to begin · Tab cycle mode · F2 provider · F3 model · / help",
+            Style::default().fg(PALETTE.muted),
+        )),
+    ])
 }
 
 fn transcript_text(app: &App) -> Text<'static> {

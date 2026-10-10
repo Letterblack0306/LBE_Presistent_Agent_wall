@@ -1,9 +1,9 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
     [Parameter(Position=0)][string]$Project = (Get-Location).Path,
-    [string]$Database = (Join-Path $PSScriptRoot 'state\workspace.db'),
-    [string]$ProviderConfig = (Join-Path $PSScriptRoot 'reasoning-provider.json'),
-    [string]$CapabilityRegistry = (Join-Path $PSScriptRoot 'state\capability-registry.json'),
+    [string]$Database,
+    [string]$ProviderConfig,
+    [string]$CapabilityRegistry,
     [string]$SessionId = $env:LBE_SESSION_ID,
     [ValidateSet('build','plan','audit')][string]$Agent = 'build',
     [string]$Model,
@@ -14,6 +14,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = [IO.Path]::GetFullPath($PSScriptRoot)
+if (-not $Database) { $Database = Join-Path $root 'state\workspace.db' }
+if (-not $ProviderConfig) { $ProviderConfig = Join-Path $root 'reasoning-provider.json' }
+if (-not $CapabilityRegistry) { $CapabilityRegistry = Join-Path $root 'state\capability-registry.json' }
 $workspace = [IO.Path]::GetFullPath($Project)
 function Resolve-LbePython {
     # The governed session bootstrap needs a real Python 3.11+ interpreter with the
@@ -86,6 +89,11 @@ if (-not $Model) { $Model = [string]$provider.model }
 if (-not $Model -or $Model -eq 'replace-with-provider-model-id') {
     throw 'Provider setup is incomplete: reasoning-provider.json must contain a real model id.'
 }
+# Provider/model reachability, discovery, authentication and inference readiness
+# belong to the LBE provider integration layer. The launcher only carries the
+# requested binding into the persisted session. Runtime catalog/health events
+# must project whether that configured binding is actually available; provider
+# failure is intentionally non-blocking to the LBE product itself.
 $providerIdProperty = $provider.PSObject.Properties['provider_id']
 $providerId = if ($providerIdProperty -and -not [string]::IsNullOrWhiteSpace([string]$providerIdProperty.Value)) {
     [string]$providerIdProperty.Value
@@ -148,6 +156,13 @@ $env:LBE_SESSION_ID = $SessionId
 if (Test-Path -LiteralPath $CapabilityRegistry -PathType Leaf) {
     $env:LBE_CAPABILITY_REGISTRY = [IO.Path]::GetFullPath($CapabilityRegistry)
 }
+
+# Machine checks execute before the interactive TUI. Diagnostic/visual checks
+# remain evidence-only; blocking structural failures prevent a misleading startup.
+$preflight = Join-Path $root 'tools\lbe_tui_preflight.py'
+if (-not (Test-Path -LiteralPath $preflight -PathType Leaf)) { throw "LBE TUI preflight missing: $preflight" }
+& $pythonCommand.Source $preflight
+if ($LASTEXITCODE -ne 0) { throw "LBE TUI startup blocked by machine preflight. Inspect the receipt path printed above." }
 
 $exe = Join-Path $root 'apps\lbe-terminal\target\release\lbe.exe'
 if (Test-Path -LiteralPath $exe -PathType Leaf) {

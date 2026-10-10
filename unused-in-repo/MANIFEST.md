@@ -44,4 +44,16 @@ not automatic permission to delete.
 
 ## Entries
 
-No items are currently registered. No material has been moved by this change.
+```text
+ORIGINAL_PATH: lbe_guard_inspector/textual_tui.py
+CURRENT_PATH: unused-in-repo/textual_tui.py
+CLASSIFICATION: UNUSED_BUT_PRESERVED
+WHY_UNUSED: Superseded by canonical Rust Ratatui TUI implementation in apps/lbe-terminal
+REFERENCE_SCAN: Verified no active import or runtime dependency in product UI execution
+IMPORT/CONSUMER_SCAN: Clear
+GIT_STATUS: Moved out of live python package surface
+OWNER_BEFORE_MOVE: lbe_guard_inspector
+MOVE_COMMIT: WORKSPACE_MAINTENANCE_20261011
+DATE: 2026-10-11
+RESTORE_NOTES: Reference Python Textual prototype; active TUI owner is apps/lbe-terminal
+```

@@ -3,6 +3,12 @@
 Updated: 2026-10-10
 Status: **ACTIVE — LBE-OWNED TERMINAL PRODUCT / CURRENT INSTALLED ACCEPTANCE**
 
+## Current implementation and acceptance work — 2026-10-10
+
+The canonical integration script will accept an explicit `main-head` source mode for local product proof and packaging. It must export committed `HEAD` on the primary `main` checkout, record the exact SHA in the manifest, and exclude uncommitted work. The default published-source mode remains `origin-main`; no source-mode choice may silently substitute a stale tracking ref for current committed work.
+
+Run the existing proof suite against that export, verify the generated archive checksum inventory, install the exact archive candidate into an isolated root, then exercise its installed launcher and real ConPTY interaction. Correlate provider/model, LBE tool authorization, changed bytes, persisted receipt, continuation, restart, validation, and completion before closing acceptance. Remote synchronization is a separate Git history step and cannot be inferred from a local package result.
+
 ## Documentation consolidation and workspace hygiene — active plan (2026-10-10)
 
 **Scope:** documentation ownership, routing, contradictions, and workspace hygiene only. This section does not change implementation authority, mutate runtime code, or certify product readiness.
