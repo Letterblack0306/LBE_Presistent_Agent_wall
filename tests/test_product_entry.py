@@ -570,3 +570,145 @@ def test_workspace_tool_still_requires_path_after_generic_extension_support(
     payload = _last_json(capsys)
     assert payload["ok"] is False
     assert "requires --path" in str(payload["message"])
+
+
+def test_operation_resume_replays_only_exact_persisted_request(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    from lbe_guard_inspector.memory.models import SessionState
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    database = tmp_path / "lbe.sqlite"
+    store = WorkspaceMemoryStore(database)
+    store.save_session_state(
+        SessionState(
+            session_id="session-resume",
+            project_workspace_id="workspace-resume",
+            canonical_workspace_root=str(workspace.resolve()),
+            mode="coding",
+            permission="write_allowed",
+            runtime_policy="development",
+        )
+    )
+    request = {
+        "session_id": "session-resume",
+        "workspace_id": "workspace-resume",
+        "workspace_root": str(workspace.resolve()),
+        "tool_id": "workspace.patch",
+        "arguments": {
+            "path": "target.txt",
+            "content": "after",
+            "expected_sha256": "a" * 64,
+        },
+    }
+    store.save_governed_operation(
+        operation_id="op-resume",
+        session_id="session-resume",
+        project_workspace_id="workspace-resume",
+        canonical_workspace_root=str(workspace.resolve()),
+        tool_id="workspace.patch",
+        capability="modify",
+        request_fingerprint="fingerprint-1",
+        request=request,
+        approval_id="approval-resume",
+    )
+    store.resolve_governed_operation(
+        operation_id="op-resume",
+        approval_id="approval-resume",
+        decision="approve",
+    )
+
+    seen: list[list[str]] = []
+
+    def fake_tool(argv):
+        seen.append(list(argv))
+        return 19
+
+    monkeypatch.setattr(product_entry, "_tool", fake_tool)
+
+    inspect_code = product_entry.main([
+        "operation", "inspect",
+        "--database", str(database),
+        "--session-id", "session-resume",
+        "--operation-id", "op-resume",
+        "--format", "json",
+    ])
+    assert inspect_code == 0
+    inspected = _last_json(capsys)
+    assert inspected["operation_id"] == "op-resume"
+    assert inspected["approval_id"] == "approval-resume"
+    assert inspected["decision"] == "approved"
+    assert "request" not in inspected
+
+    assert product_entry.main([
+        "operation", "resume",
+        "--database", str(database),
+        "--session-id", "session-resume",
+        "--operation-id", "op-resume",
+        "--format", "json",
+    ]) == 19
+    assert len(seen) == 1
+    replay = seen[0]
+    assert replay[0] == "workspace.patch"
+    assert replay[replay.index("--path") + 1] == "target.txt"
+    assert replay[replay.index("--content") + 1] == "after"
+    assert replay[replay.index("--expected-sha256") + 1] == "a" * 64
+    assert replay[replay.index("--operation-id") + 1] == "op-resume"
+
+
+def test_operation_resume_rejects_cross_session_access(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    from lbe_guard_inspector.memory.models import SessionState
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    database = tmp_path / "lbe.sqlite"
+    store = WorkspaceMemoryStore(database)
+    for session_id in ("session-owner", "session-other"):
+        store.save_session_state(
+            SessionState(
+                session_id=session_id,
+                project_workspace_id="workspace-resume",
+                canonical_workspace_root=str(workspace.resolve()),
+                mode="coding",
+                permission="write_allowed",
+                runtime_policy="development",
+            )
+        )
+    store.save_governed_operation(
+        operation_id="op-owner",
+        session_id="session-owner",
+        project_workspace_id="workspace-resume",
+        canonical_workspace_root=str(workspace.resolve()),
+        tool_id="workspace.patch",
+        capability="modify",
+        request_fingerprint="fingerprint-owner",
+        request={
+            "session_id": "session-owner",
+            "workspace_id": "workspace-resume",
+            "workspace_root": str(workspace.resolve()),
+            "tool_id": "workspace.patch",
+            "arguments": {
+                "path": "target.txt",
+                "content": "after",
+                "expected_sha256": "a" * 64,
+            },
+        },
+        approval_id="approval-owner",
+    )
+
+    assert product_entry.main([
+        "operation", "inspect",
+        "--database", str(database),
+        "--session-id", "session-other",
+        "--operation-id", "op-owner",
+        "--format", "json",
+    ]) == 2
+    payload = _last_json(capsys)
+    assert payload["ok"] is False
+    assert "session identity mismatch" in str(payload["message"])
