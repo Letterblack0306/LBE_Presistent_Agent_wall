@@ -78,23 +78,23 @@
     },
     "active_execution_plan": {
         "status": "OPEN",
-        "current_evidence": "2026-10-10: current main 48004199b45367871afe68c9bee53e25da9f88cf has the LBE-owned Python terminal plus governed provider/model controls. Focused regression 33/33 PASS and canonical prove PASS. The preceding exact installed candidate 1e31d208604406fbeabd1e4093cef7a895ce93a1 proved bare lbe launch, live Gemma provider continuation, governed workspace.read with correlated receipt/evidence, and clean process exit. Because current main is newer, exact-current package/install and PTY/ConPTY acceptance remain required.",
+        "current_evidence": "2026-10-10 runtime/package source head 75158f15369cb5cedfe7ebae2a332051ac63de54: focused regression 33/33 PASS, canonical prove PASS, origin-main candidate package verification PASS (18,658 files), isolated install PASS, bare lbe -> LBE | LETTERBLACK PASS, lbe --version 2.0.3 PASS, clean /quit RC=0, cmd-shim nonzero failure propagation PASS, and installed /providers + /models + /model controls PASS against the configured local endpoint. Earlier installed 1e31d208 proof remains current bounded evidence for real Gemma provider continuation and governed workspace.read with correlated receipt/evidence because the intervening runtime changes are terminal UI/provider-control and documentation/test changes only. Final real PTY/ConPTY, current approval/mutation, Python-client restart/resume and deterministic completion remain open.",
         "ordered_slices": {
             "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
-                "status": "UNVERIFIED_CURRENT_HEAD",
-                "evidence": "Installed head 1e31d208 proved bin\\lbe.cmd -> lbe-launch.ps1 -> Python terminal_ui, lbe 2.0.3, clean /quit, and correct nonzero failure propagation. Repackage/reinstall current head 48004199 before current PASS."
+                "status": "PASS",
+                "evidence": "Runtime/package source 75158f15369cb5cedfe7ebae2a332051ac63de54: candidate package verification PASS; isolated install PASS; bin\\lbe.cmd -> lbe-launch.ps1 -> Python terminal_ui; lbe --version returned 2.0.3; bare lbe rendered the LBE terminal and /quit exited RC=0; missing workspace propagated RC=1."
             },
             "REAL_RUNTIME_ATTACHMENT": {
                 "status": "PASS",
                 "evidence": "Real WinPTY capture projected CONNECTED / AGENT WALL / ACT LIVE with authoritative workspace, session sess_lbe_accept_001, coding/write_allowed/permissive policy, and live runtime state."
             },
             "PROVIDER_MODEL_BINDING": {
-                "status": "IMPLEMENTED_TESTED_LIVE_SOURCE",
+                "status": "PASS_BOUNDED_INSTALLED",
                 "blocking": false,
                 "failure_scope": "PROVIDER_OR_MODEL_INSTANCE",
                 "isolation_status": "PASS",
                 "product_invariant": "A provider endpoint, credential, quota, network path, or individual model may fail without failing LBE. LBE must preserve governance/session state, expose the provider/model failure accurately, and allow another available binding to be selected.",
-                "evidence": "Installed 1e31d208 completed a real openai-compatible/google/gemma-4-e4b turn. Current head 48004199 live-projected the provider catalog, discovered configured local models, and persisted /model selection through existing LBE provider.select. Exact-current installed selection proof remains open."
+                "evidence": "Exact installed 75158f1 candidate projected 17 registered providers, discovered five configured local models, and persisted /model google/gemma-4-e4b through the existing LBE provider.select owner. Real provider continuation on installed 1e31d208 used the same openai-compatible/google/gemma-4-e4b runtime path; no provider runtime code changed between these bounded proofs."
             },
             "GOVERNED_CODING_FLOW": {
                 "status": "PASS_BOUNDED_CURRENT_RUNTIME",
@@ -106,19 +106,19 @@
             },
             "CLEAN_TERMINAL_EXIT": {
                 "status": "PASS_BOUNDED_NON_PTY",
-                "evidence": "Installed 1e31d208 accepted /quit through bare lbe and exited RC=0 with empty stderr after Windows-console-safe rendering. Final real PTY/ConPTY terminal restoration remains open."
+                "evidence": "Exact installed 75158f1 bare lbe accepted /quit and exited RC=0 with empty stderr. This closes process-level clean exit but does not replace final real PTY/ConPTY terminal-restoration proof."
             },
             "INSTALLED_RESTART_RESUME": {
                 "status": "UNVERIFIED_CURRENT_CLIENT",
                 "evidence": "Historical Rust restart/resume is bounded history only. Python terminal restart/resume has not yet been re-proved on the exact current package."
             },
             "STRUCTURAL_LBE_UI": {
-                "status": "IMPLEMENTED_TESTED_LIVE_SOURCE",
-                "evidence": "Current head 48004199 renders LBE | LETTERBLACK, authoritative workspace/provider/model/mode/session, bounded ACTIVE PROCESS, [I] composer, PLAN/ACT/AUDIT, /providers, /models and /model. Rust/Ratatui is reference/integration only."
+                "status": "PASS_BOUNDED_INSTALLED",
+                "evidence": "Exact installed 75158f1 rendered LBE | LETTERBLACK with authoritative workspace/provider/model/mode/session, [I] composer, and installed provider/model controls. Rust/Ratatui is not in the primary installed launch path."
             },
             "FINAL_PRODUCT_ACCEPTANCE": {
                 "status": "BLOCKED",
-                "evidence": "Still open: package/install exact current head, real PTY/ConPTY interaction and terminal restoration, current approval allow/deny mutation proof in a safe validation workspace, Python-client restart/resume, and final correlated completion evidence."
+                "evidence": "Current runtime/package source 75158f1 is packaged/installed and proves bare LBE launch plus installed provider/model controls. Remaining final acceptance: real PTY/ConPTY keyboard/terminal restoration, current approval DENY/ALLOW and one safe governed mutation with receipt/evidence, Python terminal restart/resume, and deterministic completion evidence. Publication remains locked."
             },
             "MODE_POLICY_PRODUCT_MAPPING": {
                 "status": "PASS",
@@ -136,7 +136,7 @@
                 "required_fix": "NONE. Closed."
             },
             "INTERACTIVE_PROVIDER_CATALOG_PROJECTION": {
-                "status": "IMPLEMENTED_TESTED_LIVE_SOURCE",
+                "status": "PASS_BOUNDED_INSTALLED",
                 "authorization": "EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22",
                 "scope": [
                     "Python terminal /providers via provider.list",
@@ -158,7 +158,7 @@
                     "changing runtime/session ownership"
                 ],
                 "implementation_allowed": true,
-                "current_evidence": "48004199 live source smoke projected 17 providers, five local endpoint models, and persisted google/gemma-4-e4b selection. Focused regression 33/33 PASS; canonical prove PASS."
+                "current_evidence": "Exact installed 75158f1: /providers projected 17 providers and engine bindings; /models projected google/gemma-4-e4b, prism-ml/bonsai-27b, llama-3.2-3b-instruct, smollm3-3b, and text-embedding-nomic-embed-text-v1.5 from the local endpoint; /model google/gemma-4-e4b persisted selection and refreshed the authoritative header. Clean exit RC=0. Real PTY/ConPTY interaction remains part of final product acceptance."
             },
             "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION": {
                 "status": "AUTHORIZED",
@@ -631,7 +631,7 @@
         "completion_checkpoint": "docs/acceptance/SESSION_APPLICATION_CONTRACT_UNIFICATION_CHECKPOINT.md"
     },
     "lbe_interface_product_surface": {
-        "status": "AUTHORIZED_LBE_OWNED_TERMINAL_PRODUCT_SURFACE",
+        "status": "IMPLEMENTED_TESTED_INSTALLED_BOUNDED",
         "authorization": "EXPLICIT_USER_PRODUCT_SURFACE_SUPERSESSION_2026_10_10",
         "implementation_technology": "Python stdlib terminal client over canonical LBE product-entry/runtime owners",
         "canonical_client_workspace": "C:/Agents-Memory-Tool-v6-integration/lbe_guard_inspector/terminal_ui.py",
