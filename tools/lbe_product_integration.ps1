@@ -1084,7 +1084,8 @@ $binCmd = Join-Path $binDir "lbe.cmd"
 SETLOCAL
 SET "LBE_INSTALL_ROOT=$InstallRoot"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%LBE_INSTALL_ROOT%\lbe-launch.ps1" %*
-ENDLOCAL
+SET "LBE_EXIT=%ERRORLEVEL%"
+ENDLOCAL & EXIT /B %LBE_EXIT%
 "@ | Set-Content -LiteralPath $binCmd -Encoding ASCII
 $binCmdFull = [IO.Path]::GetFullPath($binCmd)
 if (-not (Test-Path -LiteralPath $binCmdFull -PathType Leaf)) { throw "Unable to create authoritative entrypoint: $binCmdFull" }
@@ -1139,7 +1140,8 @@ $clineBinCmd = Join-Path $binDir "lbe-cline.cmd"
 SETLOCAL
 SET "LBE_INSTALL_ROOT=$InstallRoot"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%LBE_INSTALL_ROOT%\lbe-cline.ps1" %*
-ENDLOCAL
+SET "LBE_EXIT=%ERRORLEVEL%"
+ENDLOCAL & EXIT /B %LBE_EXIT%
 "@ | Set-Content -LiteralPath $clineBinCmd -Encoding ASCII
 Write-Host "Cline product launcher: $(Join-Path $InstallRoot 'lbe-cline.ps1')"
 Write-Host "Cline entrypoint: $clineBinCmd"
