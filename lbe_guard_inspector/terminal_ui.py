@@ -163,12 +163,12 @@ def _render_turn(result: dict[str, Any]) -> None:
         receipt = event.get("tool_receipt_id")
         operation = event.get("runtime_operation_id")
         if receipt:
-            activity.append(f"{event_type} · receipt {receipt}")
+            activity.append(f"{event_type} | receipt {receipt}")
         elif operation and ("tool" in event_type or "operation" in event_type):
-            activity.append(f"{event_type} · {operation}")
+            activity.append(f"{event_type} | {operation}")
         elif "error" in event_type:
             detail = text or str(payload.get("error_message") or payload.get("error_code") or "error")
-            activity.append(f"{event_type} · {detail}")
+            activity.append(f"{event_type} | {detail}")
         elif "tool" in event_type or event_type.startswith("governed."):
             activity.append(event_type)
 
@@ -206,10 +206,10 @@ def _print_header(status: dict[str, Any], workspace: Path) -> None:
     provider = status.get("provider_id") or "provider?"
     model = status.get("provider_model") or "model?"
     session = status.get("session_id") or "session?"
-    print("LBE · LETTERBLACK")
-    print(f"{workspace} · {provider}/{model} · {mode}")
+    print("LBE | LETTERBLACK")
+    print(f"{workspace} | {provider}/{model} | {mode}")
     print(f"session {session}")
-    print("────────────────────────────────────────────────────────────")
+    print("-" * 60)
 
 
 def _help() -> None:
@@ -276,7 +276,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             _render_turn(result)
             return 0
         except RuntimeError as exc:
-            print(f"FAILED · {exc}", file=sys.stderr)
+            print(f"FAILED | {exc}", file=sys.stderr)
             return 1
 
     print("Type /help for commands.")
@@ -298,7 +298,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 current = _status(args.database, session_id)
                 _print_header(current, args.workspace)
             except RuntimeError as exc:
-                print(f"FAILED · {exc}")
+                print(f"FAILED | {exc}")
             continue
         if line in {"/plan", "/act", "/audit"}:
             requested = _MODES[line[1:]]
@@ -306,11 +306,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result = _set_mode(args.database, session_id, requested)
                 accepted = result.get("accepted", True)
                 if not accepted:
-                    print(f"DENIED · {result.get('status') or result.get('rationale') or 'mode transition rejected'}")
+                    print(f"DENIED | {result.get('status') or result.get('rationale') or 'mode transition rejected'}")
                 else:
-                    print(f"MODE · {_mode_label(result.get('mode') or requested)}")
+                    print(f"MODE | {_mode_label(result.get('mode') or requested)}")
             except RuntimeError as exc:
-                print(f"FAILED · {exc}")
+                print(f"FAILED | {exc}")
             continue
 
         print(f"> {line}")
@@ -325,7 +325,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ])
             _render_turn(result)
         except RuntimeError as exc:
-            print(f"FAILED · {exc}")
+            print(f"FAILED | {exc}")
 
 
 if __name__ == "__main__":
