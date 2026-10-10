@@ -14,15 +14,17 @@ INSTALLER = ROOT / "install.ps1"
 def test_product_launcher_contract_ships_installed_single_command_entrypoint() -> None:
     """Accepted product contract (docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md,
     lines 21-35): a fresh terminal resolves `lbe` through the LetterBlack-installed single command
-        bin\\lbe.cmd -> lbe-launch.ps1 -> installed Rust/Ratatui lbe.exe.
+        bin\\lbe.cmd -> lbe-launch.ps1 -> installed Python runtime -> lbe_guard_inspector.terminal_ui.
     The launcher must declare that chain as its own authoritative entrypoint under its own install
-    root (never an npm-published shim, never a global console script)."""
+    root (never an npm-published shim, never a global console script, never the retained Rust reference client)."""
     source = SCRIPT.read_text(encoding="utf-8")
 
     assert '$binDir = Join-Path $InstallRoot "bin"' in source
     assert '$binCmd = Join-Path $binDir "lbe.cmd"' in source
     assert 'Copy-Item -LiteralPath (Join-Path $PSScriptRoot "lbe-launch.ps1")' in source
-    assert 'Join-Path $InstallRoot "lbe.exe"' in source
+    assert 'Join-Path $InstallRoot "venv\\Scripts\\python.exe"' in source
+    assert '"-m", "lbe_guard_inspector.terminal_ui"' in source
+    assert 'Join-Path $InstallRoot "lbe.exe"' not in source
 
 
 def test_product_launcher_contract_prepends_installed_bin_idempotently_without_touching_npm() -> None:
@@ -145,4 +147,5 @@ def test_installer_is_idempotent_when_provider_config_is_already_installed() -> 
     assert "[StringComparison]::OrdinalIgnoreCase" in source
     assert "Provider configuration already installed" in source
     assert "pip install --force-reinstall" in source
-    assert '$clientArgs = @("run", "--project", $env:LBE_TARGET_WORKSPACE, "--agent", $Agent)' in source
+    assert '"-m", "lbe_guard_inspector.product_entry", "turn"' in source
+    assert '"-m", "lbe_guard_inspector.terminal_ui"' in source
