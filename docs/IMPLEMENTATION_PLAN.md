@@ -130,7 +130,7 @@ The September 20, September 4, and August 26 Google Drive exports were reconcile
 | Approval/governed execution | LBE authorization/tool owners | historical PASS; current read execution PROVEN | current DENY/ALLOW + one safe mutation |
 | Receipt/evidence projection | LBE receipt/evidence owners | PROVEN bounded installed read | current mutation receipt/evidence correlation |
 | Mode/policy | existing LBE policy/runtime owners | historical PASS / owner reused | exact-current interactive mode probe |
-| Restart/resume | LBE persistence/session owners | UNVERIFIED on Python terminal | current packaged resume proof |
+| Restart/resume | LBE persistence/session owners | PROVEN bounded on installed runtime/package source `75158f1` | real PTY/ConPTY restart remains part of final interaction proof |
 | Final completion | LBE validation/completion owners | OPEN | exact-current correlated completion evidence |
 ### Required user journeys and executable checks
 
@@ -180,8 +180,8 @@ Required implementation sequence:
 2. Prove `/providers`, `/models`, and `/model <id>` from that installed artifact using the existing provider/session owners.
 3. Prove real PTY/ConPTY keyboard interaction, clean exit, and terminal restoration.
 4. In a disposable governed validation workspace, prove approval DENY executes zero and ALLOW executes exactly one bounded mutation with correlated receipt/evidence.
-5. Prove restart/resume on the Python terminal client using the same persisted session.
-6. Prove provider continuation and deterministic completion from the observed governed result.
+5. Preserve the already proven installed Python-client restart/resume evidence for runtime/package source `75158f1`; repeat only if a later runtime/package change invalidates it.
+6. Prove deterministic completion from the observed governed result.
 7. Only then close `FINAL_PRODUCT_ACCEPTANCE`.
 
 ## 7. Final real-terminal acceptance
