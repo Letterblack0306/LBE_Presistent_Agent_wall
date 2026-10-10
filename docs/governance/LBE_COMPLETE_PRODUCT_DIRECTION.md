@@ -139,10 +139,7 @@ Historical plans may describe Cline CLI/SDK, Python/Textual, HTML/JavaScript,
 or Rust/Ratatui. Each must be classified as current canonical surface,
 supported adapter/mechanic, audit/reference material, or superseded history.
 
-Only one visible client may be canonical at a time. The current repository
-index declares `apps/lbe-terminal` as the Rust/Ratatui visible client. If the
-product owner chooses another client, the index, ledger, machine gate,
-acceptance plan, and implementation scope must be updated before code changes.
+Only one visible client may be canonical at a time. **The product owner superseded the Rust/Ratatui final-surface decision on 2026-10-10.** The canonical visible product is now the LBE-owned coding IDE CLI/TUI entered through `lbe`, implemented on the Python/LBE product-entry and terminal-client surface while reusing the governed Cline reasoning/provider/continuation mechanics already behind LBE. `apps/lbe-terminal` is retained as reference/integration material and must not be launched as the normal installed product. The index, ledger, machine gate, acceptance plan, packaging, and launcher must follow this decision.
 
 The interaction contract here is client-agnostic: whichever client is
 canonical, it must feel like a normal coding agent with audit as an additional
@@ -178,7 +175,8 @@ passes.
 - provider/model/workspace mouse hit mapping;
 - unified implemented/live/mock/unavailable/completed status reporting;
 - installed-runtime acceptance after latest worktree changes;
-- reconciliation of historical direction documents with the canonical client.
+- implementation and installed acceptance of the superseding LBE-owned non-Rust terminal client;
+- package/launcher removal of Rust/Ratatui from the normal installed `lbe` path while preserving it as reference/integration material.
 
 These gaps do not require discarding the existing authorization, execution,
 evidence, receipt, persistence, or validation foundations.
