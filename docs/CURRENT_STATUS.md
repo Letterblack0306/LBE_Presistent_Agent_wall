@@ -5,7 +5,7 @@
 > **Latest bounded observation:** LBE `2e0c3fd` included a data-driven provider-identity decoder, but the TUI picker still used the fixed enum. Windows ConPTY observations proved basic keyboard, mouse, slash menu and terminal lifecycle; they did not prove complete model→tool→observation→completion readiness. These observations are not evergreen.
 
 
-Updated: 2026-09-25
+Updated: 2026-10-10
 
 ## Authority
 
@@ -21,64 +21,57 @@ Product entrypoint: `lbe`
 
 Canonical visible terminal implementation workspace: `C:\Agents-Memory-Tool-v6-integration\apps\lbe-terminal`
 
-## Current verified state — 2026-09-24
+## Current verified state — 2026-10-10
 
-This section is the current human-readable status. Older dated sections below are historical evidence; the machine gate is authoritative for acceptance.
+This section supersedes the older September product-surface status below. Historical sections remain evidence only.
 
 ```text
-HEAD                         = a30a7130a37fc280871653ded9cccbc8f6f49497
-branch                       = main
-cached origin/main relation  = local main ahead by 7 commits (not fetched)
-registered worktrees         = 1 (this main checkout)
-working tree                 = DIRTY (staged, unstaged, and untracked content)
-local branch refs            = 257; legacy and checkpoint history is still present
-active slice                 = MAIN_HEAD_CONSOLIDATION_AND_TRUTHFUL_ACCEPTANCE
-active execution plan         = ACTIVE / IMPLEMENTATION IN PROGRESS
-final product acceptance     = BLOCKED
+canonical main                 = 48004199b45367871afe68c9bee53e25da9f88cf before gate refresh
+active slice                   = LBE_OWNED_TERMINAL_PRODUCT_SURFACE
+visible product                = LBE-owned Python terminal client
+Rust/Ratatui                   = reference/integration only
+final product acceptance       = OPEN / BLOCKED
+publication                    = LOCKED
 ```
 
-Source-level implementation evidence on 2026-09-24:
+Current bounded evidence:
 
-- Python and PowerShell syntax validation passed for the modified provider, installer, verifier, and focused test files.
-- Provider binding smoke validation passed: the persisted session model is applied at the provider composition boundary, and provider identity mismatches remain fail-closed.
-- `install.ps1` now delegates to the existing canonical `tools\lbe_product_integration.ps1 -Mode package` flow; no second runtime or launcher authority was introduced.
-- The legacy verifier now probes the actual `lbe_guard_inspector.textual_tui` module path without importing or executing Textual.
-- Focused pytest execution remains unavailable because the active Python environment does not contain `pytest`.
-- Fresh-shell installed command resolution, installed artifact/hash provenance, live provider continuation, receipt/evidence correlation, restart/resume, and end-to-end completion remain unproven.
+- `lbe_guard_inspector/terminal_ui.py` is the visible product surface and delegates session, mode, provider/model and turn operations to existing LBE owners.
+- Bare `lbe` on exact installed candidate `1e31d208604406fbeabd1e4093cef7a895ce93a1` rendered `LBE | LETTERBLACK`, authoritative workspace/provider/model/mode/session state and `[I]` composer, then exited cleanly through `/quit`.
+- The installed command shim now propagates launcher failures instead of returning a false zero exit code.
+- A real installed provider turn completed through `openai-compatible / google/gemma-4-e4b`.
+- A real governed `workspace.read` completed in the registered canonical workspace with receipt `receipt-dda22b70674e4f01bef6d7d1e65802d5`, verified current-workspace evidence, and provider continuation.
+- Current main adds `/providers`, `/models`, and `/model <id>` by delegating to existing `provider.list`, `provider.models`, and `provider.select`. A live source smoke projected 17 registered providers, five configured local models, and persisted `google/gemma-4-e4b`.
+- Focused terminal/product/launcher/Cline regression: **33 passed**. Canonical product verifier: structural integration **True**, proof pass **True**.
+- The newest source head is later than the last installed candidate because provider/model controls were added. Exact-current packaging/install and real PTY/ConPTY acceptance are therefore still required.
 
-Therefore this workspace is not production-ready. Source-level repairs do not substitute for current installed workflow evidence, and final product acceptance remains blocked.
-
-## Current product-owner decision — 2026-09-18, reconciled 2026-09-25
-
-The product owner explicitly selected the existing LBE-owned Rust/Ratatui terminal work as the canonical visible CLI/TUI implementation instead of copying or rebranding the upstream Cline product UI.
+## Current product-owner decision — 2026-10-10
 
 ```text
 PRODUCT / BRAND               = LBE / LetterBlack
-VISIBLE TERMINAL UI           = LBE-owned Rust/Ratatui
-VISUAL / INTERACTION CONTRACT = existing LBE HTML/React work (reference/specification, not runtime truth)
-REASONING / PROVIDER ENGINE   = engine-neutral LBE binding; Cline is a supported adapter
+VISIBLE TERMINAL UI           = LBE-owned Python terminal client
+NORMAL COMMAND                = lbe
+RUST/RATATUI                  = reference/integration only
+REASONING / PROVIDER ENGINE   = engine-neutral LBE binding; Cline supported adapter
 RUNTIME / GOVERNANCE          = LBE Agent Wall
 ```
 
-The reasoning-engine/provider binding is engine-neutral. The selected reasoning engine owns cognition, planning, provider/model interaction, tool proposals, continuation, and response composition. Cline remains a supported adapter, not the required reasoning owner or visible client. LBE remains the owner of session, policy, authorization, execution, evidence, persistence, validation, and completion truth.
+The terminal client owns presentation/input only. The selected reasoning engine owns cognition, planning, provider/model interaction, tool proposals, continuation, and response composition. LBE remains the sole owner of identity, policy, authorization, governed execution, receipts/evidence, persistence/recovery, validation, and completion truth.
 
-## Feature-level truth status — 2026-09-25
-
-The product must report feature readiness independently of final acceptance. `IMPLEMENTED`, `TESTED`, `LIVE`, `WORKING`, and `PROVEN` are separate claims; `MOCK`, `UNVERIFIED`, `FAILED`, `BLOCKED`, and `INCOMPLETE` must remain visible when applicable. Historical PASS records, source presence, rendered panels, and mock responses do not establish current `WORKING` or `PROVEN` status.
+## Feature-level truth status — 2026-10-10
 
 | Feature | Current status | Required next evidence |
 |---|---|---|
-| Launch/clean exit | UNVERIFIED on current installed path | Fresh-shell `lbe` plus PTY/ConPTY teardown and terminal restoration |
-| Session create/resume | IMPLEMENTED / TESTED / LIVE bounded | Reconfirm on the exact current packaged artifact |
-| Provider/model binding | IMPLEMENTED / SMOKE-TESTED / FAILED current continuation | Focused regression and endpoint/model reconciliation |
-| Reasoning/continuation | IMPLEMENTED / UNVERIFIED current head | Real current-head turn with continuation after governed result |
-| Mode/policy | PROVEN bounded / revalidation pending | Exact-head backend/Rust checks and runtime probe |
-| Approval/governed execution | PROVEN bounded / installed proof open | Current installed DENY/ALLOW round trip |
-| Receipt/evidence projection | PROVEN bounded / installed proof open | Current installed correlated receipt/evidence projection |
-| Validation/completion | IMPLEMENTED / TESTED / LIVE bounded | Current installed completion evidence |
-| Feature-health/status surface | IMPLEMENTED / acceptance open | Visible statuses, limitations, evidence, and next actions in Rust/Ratatui |
-
-The feature-level matrix and required executable user journeys are maintained in `docs/IMPLEMENTATION_PLAN.md`. Final product acceptance remains `OPEN` in the machine gate and `BLOCKED` for release until the required current evidence exists.
+| Bare launch / process exit | PROVEN on installed `1e31d208`; current-head repackage required | exact-current package/install + real PTY/ConPTY restoration |
+| Session create | IMPLEMENTED / TESTED / LIVE | current packaged restart/resume |
+| Provider/model binding | IMPLEMENTED / TESTED / LIVE source; installed provider turn proven on `1e31d208` | exact-current packaged provider/model selection |
+| Provider/model controls | IMPLEMENTED / TESTED / LIVE source | exact-current installed PTY interaction |
+| Reasoning/continuation | PROVEN bounded installed turn | current-head package parity |
+| Governed read execution | PROVEN bounded installed turn | current approval/mutation round trip in a safe validation workspace |
+| Receipt/evidence projection | PROVEN bounded installed turn | current mutation receipt/evidence correlation |
+| Mode/policy | historical PASS + current owner reuse | exact-current interactive probe |
+| Restart/resume | UNVERIFIED on Python terminal client | installed current-head resume proof |
+| Final product acceptance | BLOCKED | remaining exact-current PTY, approval/mutation, resume, completion evidence |
 
 ## Historical R3–R7 baseline versus current acceptance — 2026-09-25
 
@@ -120,67 +113,20 @@ The previous client-source contradiction is resolved at the product-decision lay
 
 ```text
 USER
-  -> `lbe`
-  -> LBE-owned Rust/Ratatui terminal shell
-  -> RealLbeWrapper / canonical LBE product-entry boundary
-  -> selected engine/provider binding for reasoning, model interaction, and continuation
-  -> LBE session/workspace identity
-  -> mode/policy
-  -> authorization
-  -> governed tool execution
+  -> lbe
+  -> LBE-owned Python terminal client
+  -> canonical LBE product-entry/session boundary
+  -> selected engine/provider binding
+  -> LBE mode/policy and authorization
+  -> governed execution
   -> ToolReceipt / evidence
   -> provider continuation
   -> persistence / recovery
   -> deterministic validation / completion
-  -> truthful LBE terminal projection
+  -> truthful terminal projection
 ```
 
-Ownership is fixed:
-
-```text
-LBE Rust/Ratatui client owns:
-- visible LetterBlack/LBE presentation
-- keyboard/input interaction
-- terminal layout and timeline projection
-- approval presentation
-- projection of authoritative runtime state
-
-The selected reasoning engine owns cognition mechanics only:
-- reasoning/planning
-- provider/model interaction
-- tool proposals
-- continuation
-- response composition
-
-LBE runtime owns:
-- workspace/session/turn identity
-- provider/model policy truth
-- authorization
-- governed execution
-- operation/receipt identity
-- evidence provenance
-- persistence/recovery
-- validation
-- completion truth
-```
-
-No second provider gateway, session store, authorization engine, tool executor, receipt/evidence authority, persistence owner, or completion authority may be introduced.
-
-## Current user-facing product surface
-
-Accepted visible implementation path:
-
-```text
-source/client  = C:\Agents-Memory-Tool-v6-integration\apps\lbe-terminal\
-launcher       = C:\Agents-Memory-Tool-v6-integration\launch-lbe.ps1 / installed `lbe` composition (installed parity unverified)
-runtime        = LBE Agent Wall
-reasoning      = engine-neutral LBE provider binding; Cline is a supported adapter
-visual contract= LBE HTML/React reference artifacts and canonical UI contract
-```
-
-The former copied/local Cline CLI/OpenTUI tree and `run-cline-lbe.ps1` are reference/historical integration material, not the required visible product surface.
-
-Python/Textual remains legacy/reference material and is not the final product UI.
+`lbe_guard_inspector/terminal_ui.py` owns presentation/input only. It does not own provider authority, execution, receipts, persistence or completion. `apps/lbe-terminal/` remains reference/integration material and is not the normal installed product.
 
 ## Proven current runtime evidence
 
@@ -260,18 +206,10 @@ The runtime-proven repair semantics are now committed to canonical GitHub main: 
 ## Current single job
 
 ```text
-LBE_OWNED_RUST_TUI_PRODUCT_SURFACE
+LBE_OWNED_TERMINAL_PRODUCT_SURFACE
 ```
 
-Do the following in order:
-
-1. Treat the Rust/Ratatui client in `C:\Agents-Memory-Tool-v6-integration\apps\lbe-terminal\` as the canonical visible LBE terminal implementation.
-2. Preserve and adapt the existing HTML/React LBE layout/interaction work as the visual contract; do not copy its simulated state.
-3. Keep Cline headless behind LBE for reasoning/provider/model/tool-proposal/continuation mechanics; do not restore a copied Cline UI merely for product presentation.
-4. Validate the source-level `tools/lbe_product_integration.ps1` reconciliation committed at `cebd8cf7751b2cdeb8a76fb0dcc2e0bc0c8f58e5`; repair only claim-matched failures. Cline UI checks are now reference-only/non-blocking and the product build/package path remains Rust + headless Cline worker.
-5. Repair the runtime-proven PLAN/ACT/AUDIT defect: add one LBE-owned product-mode transition seam so ACT/PLAN/AUDIT resolve to coding/investigation/audit without presentation code granting permission. Preserve fail-closed behavior when ACT lacks existing write authority.
-6. Prove one installed real-terminal path: `lbe` -> Rust LBE shell -> real provider turn -> governed tool/approval -> ToolReceipt/evidence -> continuation -> persistence/resume -> deterministic completion -> clean terminal restoration.
-7. Only then close final product acceptance.
+Continue in this order: package/install the exact current head; prove the Python terminal provider/model controls from that installed package; exercise the product in a real PTY/ConPTY; prove approval DENY/ALLOW and one governed mutation in a disposable governed validation workspace; prove restart/resume; correlate final completion evidence; only then close final product acceptance.
 
 ## Stop conditions
 
