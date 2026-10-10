@@ -141,3 +141,97 @@ def test_provider_rendering_projects_registry_without_inventing_state(capsys) ->
     assert "  model-a" in out
     assert "* model-b" in out
     assert "SOURCE | local endpoint" in out
+
+
+def test_render_turn_projects_runtime_approval_gate(capsys) -> None:
+    pending = terminal_ui._render_turn(
+        {
+            "events": [
+                {
+                    "event_type": "tool.escalated",
+                    "runtime_operation_id": "op-approval-1",
+                    "payload": {
+                        "tool_id": "workspace.patch",
+                        "approval_id": "approval-1",
+                        "error_code": "AUTHORIZATION_REQUIRED",
+                        "error_message": "Needs approval",
+                        "authorization": {
+                            "verdict": "ESCALATE",
+                            "capability": "modify",
+                            "rationale": "Needs approval",
+                        },
+                    },
+                }
+            ]
+        }
+    )
+    assert pending == {
+        "approval_id": "approval-1",
+        "capability": "modify",
+        "operation_id": "op-approval-1",
+        "tool_id": "workspace.patch",
+        "rationale": "Needs approval",
+    }
+    out = capsys.readouterr().out
+    assert "ACTION GATE" in out
+    assert "approval-1" in out
+    assert "/approve or /deny" in out
+
+
+def test_resolve_pending_authorization_reuses_runtime_identities(monkeypatch, tmp_path) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(arguments):
+        calls.append(list(arguments))
+        if arguments[:2] == ["operation", "inspect"]:
+            return {
+                "ok": True,
+                "operation_id": "op-1",
+                "tool_id": "workspace.patch",
+                "capability": "modify",
+                "approval_id": "approval-1",
+                "decision": "pending",
+                "workspace_id": "workspace-1",
+                "workspace": str(tmp_path),
+            }
+        if arguments[:2] == ["authorization", "resolve"]:
+            return {
+                "ok": True,
+                "operation_id": "op-1",
+                "capability": "modify",
+                "approval_id": "approval-1",
+                "verdict": "ALLOW",
+            }
+        if arguments[:2] == ["operation", "resume"]:
+            return {
+                "ok": True,
+                "operation_id": "op-1",
+                "tool_id": "workspace.patch",
+                "status": "EXECUTED",
+                "receipt_id": "receipt-1",
+                "evidence": [{"ref": "workspace:workspace-1:target.txt"}],
+            }
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr(terminal_ui, "_run_product_json", fake_run)
+    receipt = terminal_ui._resolve_pending_authorization(
+        database=tmp_path / "lbe.sqlite",
+        session_id="session-1",
+        pending={
+            "approval_id": "approval-1",
+            "capability": "modify",
+            "operation_id": "op-1",
+            "tool_id": "workspace.patch",
+            "rationale": "Needs approval",
+        },
+        decision="approve",
+    )
+    assert receipt["status"] == "EXECUTED"
+    assert [call[:2] for call in calls] == [
+        ["operation", "inspect"],
+        ["authorization", "resolve"],
+        ["operation", "resume"],
+    ]
+    resolve_call = calls[1]
+    assert resolve_call[resolve_call.index("--workspace-id") + 1] == "workspace-1"
+    assert resolve_call[resolve_call.index("--approval-id") + 1] == "approval-1"
