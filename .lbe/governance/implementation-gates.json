@@ -78,47 +78,47 @@
     },
     "active_execution_plan": {
         "status": "OPEN",
-        "current_evidence": "2026-10-10 product-owner supersession: Rust/Ratatui is no longer the primary installed visible surface. Implement the LBE-owned coding IDE CLI/TUI on the canonical Python/LBE product-entry terminal surface, reuse governed Cline reasoning/provider/continuation mechanics, preserve Rust only as reference/integration, then rebuild and re-prove the installed product.",
+        "current_evidence": "2026-10-10: current main 48004199b45367871afe68c9bee53e25da9f88cf has the LBE-owned Python terminal plus governed provider/model controls. Focused regression 33/33 PASS and canonical prove PASS. The preceding exact installed candidate 1e31d208604406fbeabd1e4093cef7a895ce93a1 proved bare lbe launch, live Gemma provider continuation, governed workspace.read with correlated receipt/evidence, and clean process exit. Because current main is newer, exact-current package/install and PTY/ConPTY acceptance remain required.",
         "ordered_slices": {
             "FINAL_PRODUCT_SINGLE_COMMAND_LAUNCH": {
-                "status": "PASS",
-                "evidence": "2026-10-02 fresh installed acceptance: persisted Windows user PATH resolves bare lbe first to C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd; lbe --version returns lbe 0.1.0. Public lbe run is translated by the installed launcher to lbe.exe run --project C:\\Agents-Memory-Tool-v6-integration, creates/restores an authoritative audit/read_only LBE session, projects a live provider-scoped HTTP 400 as ConversationalTurnError, emits RESULT failed / phase Failed, exits RC=1, and leaves no LBE process running. Provider failure is intentionally non-blocking to this launcher verdict."
+                "status": "UNVERIFIED_CURRENT_HEAD",
+                "evidence": "Installed head 1e31d208 proved bin\\lbe.cmd -> lbe-launch.ps1 -> Python terminal_ui, lbe 2.0.3, clean /quit, and correct nonzero failure propagation. Repackage/reinstall current head 48004199 before current PASS."
             },
             "REAL_RUNTIME_ATTACHMENT": {
                 "status": "PASS",
                 "evidence": "Real WinPTY capture projected CONNECTED / AGENT WALL / ACT LIVE with authoritative workspace, session sess_lbe_accept_001, coding/write_allowed/permissive policy, and live runtime state."
             },
             "PROVIDER_MODEL_BINDING": {
-                "status": "DEGRADED",
+                "status": "IMPLEMENTED_TESTED_LIVE_SOURCE",
                 "blocking": false,
                 "failure_scope": "PROVIDER_OR_MODEL_INSTANCE",
                 "isolation_status": "PASS",
                 "product_invariant": "A provider endpoint, credential, quota, network path, or individual model may fail without failing LBE. LBE must preserve governance/session state, expose the provider/model failure accurately, and allow another available binding to be selected.",
-                "evidence": "2026-10-02 live fault-isolation proof: openai-compatible / google/gemma-4-e4b was run through the persisted LBE turn path against LM Studio. With a bounded 2-second provider timeout, the control plane remained responsive, persisted runtime.provider.queued + runtime.provider.running + model.turn.started, then persisted model.error with error_code PROVIDER_TIMEOUT and finalized the turn instead of failing or hanging the LBE product. Focused regressions: product-entry/background-provider 14/14 PASS; launcher/gate 5/5 PASS; Rust model-error terminal-state test 1/1 PASS."
+                "evidence": "Installed 1e31d208 completed a real openai-compatible/google/gemma-4-e4b turn. Current head 48004199 live-projected the provider catalog, discovered configured local models, and persisted /model selection through existing LBE provider.select. Exact-current installed selection proof remains open."
             },
             "GOVERNED_CODING_FLOW": {
-                "status": "PASS",
-                "evidence": "Real conversational turn requested workspace.read on sample.txt through the governed tool path and returned a real completed operation/receipt/evidence projection. Completion validation then correctly failed because the bounded read-only prompt produced no source change; that does not negate governed-turn execution."
+                "status": "PASS_BOUNDED_CURRENT_RUNTIME",
+                "evidence": "Installed 1e31d208 completed a governed workspace.read of pyproject.toml in the registered canonical workspace under LBE authorization, then continued the provider turn. No workspace mutation was requested."
             },
             "RECEIPT_EVIDENCE_PROJECTION": {
-                "status": "PASS",
-                "evidence": "Real PTY projected tool.completed for workspace.read with receipt receipt-fecb13df09154dabaa4643997a107790 and evidence workspace:workspace_fac63b08febbb29c:sample.txt; persisted DB rows also contained the governed turn and completion evidence."
+                "status": "PASS_BOUNDED_CURRENT_RUNTIME",
+                "evidence": "Installed governed read emitted tool.completed with receipt receipt-dda22b70674e4f01bef6d7d1e65802d5 and verified current_workspace evidence for pyproject.toml, followed by provider continuation reporting version 2.0.3."
             },
             "CLEAN_TERMINAL_EXIT": {
-                "status": "PASS",
-                "evidence": "Ctrl+D with empty composer exited the real WinPTY process cleanly (isalive False) with no crash; restart also exited cleanly."
+                "status": "PASS_BOUNDED_NON_PTY",
+                "evidence": "Installed 1e31d208 accepted /quit through bare lbe and exited RC=0 with empty stderr after Windows-console-safe rendering. Final real PTY/ConPTY terminal restoration remains open."
             },
             "INSTALLED_RESTART_RESUME": {
-                "status": "PASS",
-                "evidence": "The same canonical release binary relaunched against sess_lbe_accept_001, projected SESSION restored, retained workspace/provider/model state, and exited cleanly again. This proves runtime restart/resume for the tested binary/session; installed command-name launch remains separately unverified."
+                "status": "UNVERIFIED_CURRENT_CLIENT",
+                "evidence": "Historical Rust restart/resume is bounded history only. Python terminal restart/resume has not yet been re-proved on the exact current package."
             },
             "STRUCTURAL_LBE_UI": {
-                "status": "PASS",
-                "evidence": "Real PTY rendered the LBE-owned Rust/Ratatui surface with LETTERBLACK ENGINE, authoritative runtime/session/workspace/provider/model/mode/policy footer, governed turn timeline, approval UI, and no synthetic preview state."
+                "status": "IMPLEMENTED_TESTED_LIVE_SOURCE",
+                "evidence": "Current head 48004199 renders LBE | LETTERBLACK, authoritative workspace/provider/model/mode/session, bounded ACTIVE PROCESS, [I] composer, PLAN/ACT/AUDIT, /providers, /models and /model. Rust/Ratatui is reference/integration only."
             },
             "FINAL_PRODUCT_ACCEPTANCE": {
                 "status": "BLOCKED",
-                "evidence": "All defined final-product verdicts pass: canonical Rust/Ratatui surface, authoritative real runtime attachment, live provider/model, governed tool round trip, persisted ToolReceipt/evidence, interactive approve/reject, mode-policy mapping, clean PTY lifecycle, restart/resume, fresh-shell bare `lbe`, and canonical installer/source provenance. Installed lbe.exe SHA256 6E794AF5E2F2E869D0F02F7CCB25EAD105956E9C05EC67ECE43F76F58B4BAB8F matches the canonical built client reported in the acceptance run."
+                "evidence": "Still open: package/install exact current head, real PTY/ConPTY interaction and terminal restoration, current approval allow/deny mutation proof in a safe validation workspace, Python-client restart/resume, and final correlated completion evidence."
             },
             "MODE_POLICY_PRODUCT_MAPPING": {
                 "status": "PASS",
@@ -136,19 +136,20 @@
                 "required_fix": "NONE. Closed."
             },
             "INTERACTIVE_PROVIDER_CATALOG_PROJECTION": {
-                "status": "AUTHORIZED",
+                "status": "IMPLEMENTED_TESTED_LIVE_SOURCE",
                 "authorization": "EXPLICIT_USER_REQUEST_TO_CONTINUE_PRODUCTION_READINESS_AND_FIX_LIVE_DEFECTS_2026_09_22",
                 "scope": [
-                    "preserve runtime-discovered provider/model catalogs across session snapshot updates",
-                    "interactive provider/model picker row projection and selection",
-                    "exact-build PTY validation against the configured live provider",
-                    "retain authoritative LBE runtime/catalog ownership"
+                    "Python terminal /providers via provider.list",
+                    "Python terminal /models via provider.models",
+                    "Python terminal /model <id> via provider.select",
+                    "retain LBE runtime/provider catalog authority"
                 ],
                 "required_evidence": [
-                    "regression for provider catalog then snapshot event ordering",
-                    "Rust tests and formatting",
-                    "exact release PTY provider row rendering and mouse selection",
-                    "live provider catalog refresh"
+                    "focused regression",
+                    "live catalog/model discovery",
+                    "live persisted model selection",
+                    "exact-current packaged terminal proof",
+                    "real PTY/ConPTY interaction proof"
                 ],
                 "non_goals": [
                     "new provider authority or parallel catalog",
@@ -156,7 +157,8 @@
                     "provider configuration/removal workflows",
                     "changing runtime/session ownership"
                 ],
-                "implementation_allowed": true
+                "implementation_allowed": true,
+                "current_evidence": "48004199 live source smoke projected 17 providers, five local endpoint models, and persisted google/gemma-4-e4b selection. Focused regression 33/33 PASS; canonical prove PASS."
             },
             "REASONING_ENGINE_PROVIDER_BINDING_SEPARATION": {
                 "status": "AUTHORIZED",
