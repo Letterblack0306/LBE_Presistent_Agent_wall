@@ -1437,25 +1437,68 @@ if ($Mode -eq "package") {
             Start-Sleep -Seconds 2
         }
     }
-    $checksums | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $packageRoot "checksums.json") -Encoding UTF8
+    $checksums = @($checksums)
+    if ($checksums.Count -eq 0) {
+        throw "Package inventory failed: no files were returned for checksum generation."
+    }
+    $checksumsPath = Join-Path $packageRoot "checksums.json"
+    $checksums | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $checksumsPath -Encoding UTF8
+    if (-not (Test-Path -LiteralPath $checksumsPath -PathType Leaf)) {
+        throw "Package inventory failed: checksums.json was not written."
+    }
+
     $zip = Join-Path $OutputRoot "LetterBlack-LBE-2.0.3-win-x64-candidate.zip"
     if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-    # Compress-Archive resolves every nested wildcard path using Resolve-Path.
-    # On Windows, generated npm dependency trees can expose entries that are
-    # absent by the time Resolve-Path evaluates them. Build from a stable
-    # directory root instead, and never expose an incomplete candidate ZIP.
+
+    # Create the archive from the checksum inventory itself instead of asking
+    # CreateFromDirectory to perform a second recursive filesystem enumeration.
+    # npm dependency trees can be momentarily inconsistent on Windows; a second
+    # enumeration previously produced a tiny ZIP containing only directory
+    # entries even though the package root still contained thousands of files.
+    # Inventory-driven creation fails closed if any inventoried file disappears.
+    Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $partialZip = "$zip.partial"
     if (Test-Path -LiteralPath $partialZip) { Remove-Item -LiteralPath $partialZip -Force }
+    $archiveStream = $null
+    $archive = $null
     try {
-        [IO.Compression.ZipFile]::CreateFromDirectory(
-            $packageRoot, $partialZip, [IO.Compression.CompressionLevel]::Optimal, $false
-        )
-        Move-Item -LiteralPath $partialZip -Destination $zip -Force
+        $archiveStream = [IO.File]::Open($partialZip, [IO.FileMode]::CreateNew, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        $archive = [IO.Compression.ZipArchive]::new($archiveStream, [IO.Compression.ZipArchiveMode]::Create, $false)
+        foreach ($checksum in $checksums) {
+            $relative = [string]$checksum.path
+            $source = Join-Path $packageRoot ($relative.Replace("/", "\"))
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+                throw "Package archive failed: inventoried file disappeared: $relative"
+            }
+            $entry = $archive.CreateEntry($relative, [IO.Compression.CompressionLevel]::Optimal)
+            $input = [IO.File]::OpenRead($source)
+            $output = $entry.Open()
+            try {
+                $input.CopyTo($output)
+            }
+            finally {
+                $output.Dispose()
+                $input.Dispose()
+            }
+        }
+
+        $manifestEntry = $archive.CreateEntry("checksums.json", [IO.Compression.CompressionLevel]::Optimal)
+        $manifestInput = [IO.File]::OpenRead($checksumsPath)
+        $manifestOutput = $manifestEntry.Open()
+        try {
+            $manifestInput.CopyTo($manifestOutput)
+        }
+        finally {
+            $manifestOutput.Dispose()
+            $manifestInput.Dispose()
+        }
     }
     finally {
-        if (Test-Path -LiteralPath $partialZip) { Remove-Item -LiteralPath $partialZip -Force }
+        if ($archive) { $archive.Dispose() }
+        if ($archiveStream) { $archiveStream.Dispose() }
     }
+    Move-Item -LiteralPath $partialZip -Destination $zip -Force
     $packagePath = $zip
     $packageVerification = Test-PackageArchive -ZipPath $zip -VerificationRoot (Join-Path $OutputRoot "_package-verify")
     $packageVerification | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $OutputRoot "package-verification.json") -Encoding UTF8
