@@ -215,8 +215,12 @@ function Test-IntegrationContracts {
     $missingCommands = @($productCommands | Where-Object { $productEntry -notmatch ('"' + [regex]::Escape($_) + '"') })
     $checks.Add((New-ContractCheck -Id "lbe.product_commands" -Passed ($missingCommands.Count -eq 0) -Classification $(if ($missingCommands.Count -eq 0) { "CONNECTED" } else { "MISSING" }) -Detail $(if ($missingCommands.Count -eq 0) { "Published Agent Wall product-entry command surface is present." } else { "Missing commands: $($missingCommands -join ', ')" })))
 
+    # Keep structural source markers ASCII-stable.  SourceMode=origin-main
+    # reads through git/PowerShell, whose console decoding can mojibake
+    # non-ASCII UI glyphs without changing the actual UTF-8 source.
     $terminalMarkers = @(
-        "LBE · LETTERBLACK",
+        "LBE",
+        "LETTERBLACK",
         "ACTIVE PROCESS",
         "[I] > ",
         '"/plan"',
