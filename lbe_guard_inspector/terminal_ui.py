@@ -31,13 +31,17 @@ def _default_install_root() -> Path:
 
 
 def _run_product_json(arguments: Sequence[str]) -> dict[str, Any]:
+    # product_entry accepts a leading --format for both its direct product
+    # commands and the legacy CLI command families it delegates to.  Keeping
+    # the format flag before the subcommand is therefore valid for start/turn
+    # and required for delegated commands such as session status/mode.
     command = [
         sys.executable,
         "-m",
         "lbe_guard_inspector.product_entry",
-        *arguments,
         "--format",
         "json",
+        *arguments,
     ]
     completed = subprocess.run(
         command,
