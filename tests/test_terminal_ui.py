@@ -38,6 +38,15 @@ def test_render_turn_limits_activity_to_latest_three_real_events(capsys) -> None
     assert "receipt receipt-1" in out
     assert "governed.reasoning.completed" in out
     assert "authoritative reply" in out
+    assert " · " not in out
+
+
+def test_header_is_ascii_safe(capsys) -> None:
+    terminal_ui._print_header({"mode": "coding", "provider_id": "p", "provider_model": "m", "session_id": "s"}, terminal_ui.Path("C:/work"))
+    out = capsys.readouterr().out
+    out.encode("ascii")
+    assert "LBE | LETTERBLACK" in out
+    assert "-" * 60 in out
 
 
 def test_product_entry_bare_command_delegates_to_terminal_client(monkeypatch) -> None:
