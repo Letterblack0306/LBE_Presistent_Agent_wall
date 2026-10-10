@@ -82,3 +82,62 @@ def test_run_product_json_uses_existing_product_entry(monkeypatch) -> None:
         "--format",
         "json",
     ]
+
+
+def test_provider_helpers_delegate_to_existing_product_entry(monkeypatch, tmp_path) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(arguments):
+        calls.append(list(arguments))
+        if arguments[:2] == ["provider", "list"]:
+            return {"providers": ["openai-compatible"], "engines": ["native"], "bindings": []}
+        if arguments[:2] == ["provider", "models"]:
+            return {"models": ["model-a"], "is_local": True}
+        if arguments[:2] == ["provider", "select"]:
+            return {"provider_id": "openai-compatible", "provider_model": "model-a"}
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr(terminal_ui, "_run_product_json", fake_run)
+    provider_config = tmp_path / "provider.json"
+    provider_config.write_text("{}", encoding="utf-8")
+
+    assert terminal_ui._providers()["providers"] == ["openai-compatible"]
+    assert terminal_ui._models(provider_config)["models"] == ["model-a"]
+    selected = terminal_ui._select_model(
+        database=tmp_path / "lbe.sqlite3",
+        session_id="sess-1",
+        provider_id="openai-compatible",
+        model_id="model-a",
+    )
+    assert selected["provider_model"] == "model-a"
+    assert calls[0] == ["provider", "list"]
+    assert calls[1] == ["provider", "models", "--provider-config", str(provider_config)]
+    assert calls[2][:2] == ["provider", "select"]
+    assert "--database" in calls[2]
+    assert "--session-id" in calls[2]
+    assert "--provider" in calls[2]
+    assert "--model" in calls[2]
+
+
+def test_provider_rendering_projects_registry_without_inventing_state(capsys) -> None:
+    terminal_ui._render_providers(
+        {
+            "providers": ["openai-compatible", "anthropic"],
+            "engines": ["native", "cline"],
+            "bindings": [
+                {"provider_id": "openai-compatible", "engine_id": "native"},
+                {"provider_id": "anthropic", "engine_id": "cline"},
+            ],
+        }
+    )
+    terminal_ui._render_models(
+        {"models": ["model-a", "model-b"], "is_local": True},
+        selected="model-b",
+    )
+    out = capsys.readouterr().out
+    assert "openai-compatible | engines: native" in out
+    assert "anthropic | engines: cline" in out
+    assert "ENGINES | native, cline" in out
+    assert "  model-a" in out
+    assert "* model-b" in out
+    assert "SOURCE | local endpoint" in out
