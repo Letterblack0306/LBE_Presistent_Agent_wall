@@ -52,7 +52,7 @@ installed bare lbe / provider / read flow   PROVEN on 1e31d208
 exact-current package parity                OPEN
 real PTY/ConPTY interaction                 OPEN
 approval DENY/ALLOW + safe mutation         OPEN
-Python terminal restart/resume              OPEN
+Python terminal restart/resume              PASS_BOUNDED_INSTALLED
 deterministic current completion            OPEN
 FINAL_PRODUCT_ACCEPTANCE                    BLOCKED
 ```
@@ -69,8 +69,8 @@ Required sequence:
 2. Prove provider/model controls from that installed artifact.
 3. Run real PTY/ConPTY interaction and terminal restoration.
 4. In a disposable governed validation workspace, prove DENY zero execution and ALLOW one bounded mutation with correlated receipt/evidence.
-5. Prove restart/resume on the Python terminal client.
-6. Prove provider continuation and deterministic completion from the governed result.
+5. Preserve the installed restart/resume proof for runtime/package source `75158f1`; repeat only after a runtime/package-affecting change.
+6. Prove deterministic completion from the governed result.
 7. Close final acceptance only if every required observable is current.
 
 ## Locked UI behavior
