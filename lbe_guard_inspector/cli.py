@@ -995,6 +995,15 @@ def _run_mode_command(
 
     gateway = GovernedAgentGateway(runtime=runtime, reasoning_controller=controller)
     request_id = args.request_id.strip() if args.request_id else f"request-{uuid4()}"
+    reference_context: tuple[dict[str, Any], ...] = ()
+    if mode is AgentMode.CODING and args.owner_authority_file:
+        from .authority_ownership import OwnerAuthorityAuthorization
+
+        package = json.loads(Path(args.owner_authority_file).read_text(encoding="utf-8-sig"))
+        if not isinstance(package, dict):
+            raise ValueError("owner authority file must contain a JSON object")
+        OwnerAuthorityAuthorization.from_mapping(package)
+        reference_context = ({"owner_authority": package},)
     envelope = AgentRequestEnvelope(
         request_id=request_id,
         session_id=state.session_id,
@@ -1006,6 +1015,7 @@ def _run_mode_command(
         arguments={
             "problem": args.problem,
             "max_results": args.max_results,
+            "reference_context": reference_context,
         },
     )
     # A governed turn must leave an operational receipt behind, not only answer on the
@@ -1299,6 +1309,8 @@ def _add_mode_command(
     command.add_argument("--problem", required=True)
     command.add_argument("--request-id")
     command.add_argument("--max-results", type=int, default=10)
+    if mode is AgentMode.CODING:
+        command.add_argument("--owner-authority-file", help="Validated owner evidence package for governed writes")
     command.set_defaults(
         handler={
             AgentMode.CODING: _code,
