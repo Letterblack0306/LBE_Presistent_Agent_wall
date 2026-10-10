@@ -70,7 +70,7 @@ The terminal client owns presentation/input only. The selected reasoning engine 
 | Governed read execution | PROVEN bounded installed turn | current approval/mutation round trip in a safe validation workspace |
 | Receipt/evidence projection | PROVEN bounded installed turn | current mutation receipt/evidence correlation |
 | Mode/policy | historical PASS + current owner reuse | exact-current interactive probe |
-| Restart/resume | UNVERIFIED on Python terminal client | installed current-head resume proof |
+| Restart/resume | PROVEN bounded on installed runtime/package source `75158f1` | real PTY/ConPTY restart remains part of final interaction proof |
 | Final product acceptance | BLOCKED | remaining exact-current PTY, approval/mutation, resume, completion evidence |
 
 ## Historical R3–R7 baseline versus current acceptance — 2026-09-25
@@ -209,7 +209,7 @@ The runtime-proven repair semantics are now committed to canonical GitHub main: 
 LBE_OWNED_TERMINAL_PRODUCT_SURFACE
 ```
 
-Continue in this order: package/install the exact current head; prove the Python terminal provider/model controls from that installed package; exercise the product in a real PTY/ConPTY; prove approval DENY/ALLOW and one governed mutation in a disposable governed validation workspace; prove restart/resume; correlate final completion evidence; only then close final product acceptance.
+Continue in this order: exercise the installed Python terminal product in a real PTY/ConPTY; prove approval DENY/ALLOW and one governed mutation in a disposable governed validation workspace; correlate deterministic completion evidence; only then close final product acceptance. Runtime/package source `75158f1` already has bounded installed restart/resume proof.
 
 ## Stop conditions
 
