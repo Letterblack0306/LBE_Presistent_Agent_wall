@@ -1,7 +1,7 @@
 # LBE Product Source of Truth
 
 Status: **CANONICAL PRODUCT TRUTH**
-Last consolidated: 2026-09-19
+Last consolidated: 2026-10-10
 
 This document is the single human-readable source of current LBE product truth.
 
@@ -28,7 +28,7 @@ not allowed to silently override current source/runtime truth.
 ```text
 PRODUCT                = LBE / LetterBlack
 ENTRYPOINT             = lbe
-VISIBLE CLIENT         = LBE-owned Rust/Ratatui terminal client
+VISIBLE CLIENT         = LBE-owned coding IDE CLI/TUI on the Python/LBE product-entry terminal surface
 BACKEND / RUNTIME      = LBE runtime
 AUTHORITY OWNER        = LBE
 BRANDING               = LBE / LetterBlack only
@@ -55,8 +55,7 @@ The reasoning/provider layer may reason, plan, select capabilities, interpret re
 from results. It does not gain independent filesystem, process, Git, MCP, browser, persistence,
 receipt, validation, or completion authority.
 
-The Rust/Ratatui client owns presentation and input only. It must project authoritative runtime
-state; it must not invent runtime truth.
+The canonical LBE terminal client owns presentation and input only. It must project authoritative runtime state and must not invent runtime truth. The prior Rust/Ratatui client is retained as reference/integration material and is not the normal installed product surface after the explicit 2026-10-10 product-owner supersession.
 
 ## 4. Current runtime composition
 
@@ -88,8 +87,8 @@ features or by rewriting product architecture to match whichever path they happe
 ```text
 USER
   -> lbe
-  -> Rust/Ratatui client
-  -> RealLbeWrapper / canonical LBE product entry
+  -> LBE-owned coding IDE CLI/TUI
+  -> canonical LBE product entry / persisted session boundary
   -> authoritative session/workspace/provider/mode/policy state
   -> reasoning/provider turn
   -> LBE-generated capability request
@@ -206,9 +205,7 @@ decision. Omission from a future plan does not remove a row.
 
 ## 9. Production request surfaces currently known to be incomplete
 
-The Rust request contract contains capabilities whose production `RealLbeWrapper` path has been
-reported as unsupported or incomplete in current source. These are integration gaps, not deletion
-candidates:
+The retained Rust reference/integration request contract contains capabilities whose `RealLbeWrapper` path has been reported as unsupported or incomplete. These remain reusable integration/reference gaps, not final-product blockers or deletion candidates:
 
 - CloseSession;
 - ConfigureProvider;
