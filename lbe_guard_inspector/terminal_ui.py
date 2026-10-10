@@ -144,11 +144,12 @@ def _payload_text(payload: dict[str, Any]) -> str | None:
     return None
 
 
-def _render_turn(result: dict[str, Any]) -> None:
+def _render_turn(result: dict[str, Any]) -> dict[str, str] | None:
     events = list(result.get("events") or [])
     activity: list[str] = []
     final_text: str | None = None
     usage: dict[str, Any] | None = None
+    pending: dict[str, str] | None = None
 
     for event in events:
         if not isinstance(event, dict):
@@ -162,6 +163,24 @@ def _render_turn(result: dict[str, Any]) -> None:
             usage = payload["usage"]
         receipt = event.get("tool_receipt_id")
         operation = event.get("runtime_operation_id")
+        if event_type == "tool.escalated":
+            authorization = payload.get("authorization") if isinstance(payload.get("authorization"), dict) else {}
+            approval_id = str(payload.get("approval_id") or "").strip()
+            capability = str(authorization.get("capability") or "").strip()
+            operation_id = str(operation or payload.get("operation_id") or "").strip()
+            tool_id = str(payload.get("tool_id") or "").strip()
+            if approval_id and capability and operation_id:
+                pending = {
+                    "approval_id": approval_id,
+                    "capability": capability,
+                    "operation_id": operation_id,
+                    "tool_id": tool_id,
+                    "rationale": str(
+                        payload.get("error_message")
+                        or authorization.get("rationale")
+                        or "Writable operation requires explicit Agent Wall approval."
+                    ),
+                }
         if receipt:
             activity.append(f"{event_type} | receipt {receipt}")
         elif operation and ("tool" in event_type or "operation" in event_type):
@@ -200,6 +219,17 @@ def _render_turn(result: dict[str, Any]) -> None:
             else:
                 print(f"CONTEXT {used}")
 
+    if pending is not None:
+        print("")
+        print("ACTION GATE")
+        print(f"  tool       | {pending.get('tool_id') or 'unknown'}")
+        print(f"  operation  | {pending['operation_id']}")
+        print(f"  capability | {pending['capability']}")
+        print(f"  approval   | {pending['approval_id']}")
+        print(f"  reason     | {pending['rationale']}")
+        print("  decision   | /approve or /deny")
+    return pending
+
 
 def _print_header(status: dict[str, Any], workspace: Path) -> None:
     mode = _mode_label(status.get("mode"))
@@ -213,8 +243,8 @@ def _print_header(status: dict[str, Any], workspace: Path) -> None:
 
 
 def _help() -> None:
-    print("/plan  /act  /audit  /status  /providers  /models  /model <id>  /help  /quit")
-    print("Provider/model commands delegate to the existing LBE provider registry and session owner.")
+    print("/plan  /act  /audit  /status  /providers  /models  /model <id>  /approve  /deny  /help  /quit")
+    print("Provider/model and approval commands delegate to existing LBE runtime owners.")
     print("Enter any other text to start a governed LBE turn.")
 
 
@@ -272,6 +302,63 @@ def _render_models(payload: dict[str, Any], selected: str | None = None) -> None
         print("SOURCE | local endpoint")
 
 
+def _resolve_pending_authorization(
+    *,
+    database: Path,
+    session_id: str,
+    pending: dict[str, str],
+    decision: str,
+) -> dict[str, Any]:
+    inspected = _run_product_json([
+        "operation", "inspect",
+        "--database", str(database),
+        "--session-id", session_id,
+        "--operation-id", pending["operation_id"],
+    ])
+    if str(inspected.get("approval_id") or "") != pending["approval_id"]:
+        raise RuntimeError("pending approval identity changed in the LBE runtime")
+    if str(inspected.get("capability") or "") != pending["capability"]:
+        raise RuntimeError("pending capability identity changed in the LBE runtime")
+    resolved = _run_product_json([
+        "authorization", "resolve",
+        "--database", str(database),
+        "--session-id", session_id,
+        "--workspace-id", str(inspected["workspace_id"]),
+        "--workspace", str(inspected["workspace"]),
+        "--capability", pending["capability"],
+        "--operation-id", pending["operation_id"],
+        "--approval-id", pending["approval_id"],
+        "--decision", decision,
+    ])
+    expected = "ALLOW" if decision == "approve" else "DENY"
+    if str(resolved.get("verdict") or "") != expected:
+        raise RuntimeError(
+            f"LBE authorization resolution returned {resolved.get('verdict')!r}, expected {expected}"
+        )
+    return _run_product_json([
+        "operation", "resume",
+        "--database", str(database),
+        "--session-id", session_id,
+        "--operation-id", pending["operation_id"],
+    ])
+
+
+def _render_governed_receipt(payload: dict[str, Any]) -> None:
+    status = str(payload.get("status") or "UNKNOWN")
+    print(f"AUTHORIZATION | {status}")
+    receipt_id = payload.get("receipt_id")
+    if receipt_id:
+        print(f"RECEIPT | {receipt_id}")
+    authorization = payload.get("authorization")
+    if isinstance(authorization, dict) and authorization.get("verdict"):
+        print(f"VERDICT | {authorization['verdict']}")
+    evidence = payload.get("evidence")
+    if isinstance(evidence, list):
+        for item in evidence[:3]:
+            if isinstance(item, dict) and item.get("ref"):
+                print(f"EVIDENCE | {item['ref']}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     root = _default_install_root()
     parser = argparse.ArgumentParser(prog="lbe", description="LBE coding IDE CLI/TUI")
@@ -317,6 +404,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     os.environ["LBE_PROVIDER_CONFIG"] = str(args.provider_config)
 
     _print_header(current, args.workspace)
+    pending_authorization: dict[str, str] | None = None
 
     if args.prompt:
         print(f"> {args.prompt}")
@@ -352,6 +440,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 current = _status(args.database, session_id)
                 _print_header(current, args.workspace)
+            except RuntimeError as exc:
+                print(f"FAILED | {exc}")
+            continue
+        if line in {"/approve", "/deny"}:
+            if pending_authorization is None:
+                print("DENIED | no Agent Wall authorization is pending")
+                continue
+            try:
+                decision = "approve" if line == "/approve" else "reject"
+                receipt = _resolve_pending_authorization(
+                    database=args.database,
+                    session_id=session_id,
+                    pending=pending_authorization,
+                    decision=decision,
+                )
+                _render_governed_receipt(receipt)
+                if str(receipt.get("status") or "") in {"EXECUTED", "DENIED", "FAILED"}:
+                    pending_authorization = None
             except RuntimeError as exc:
                 print(f"FAILED | {exc}")
             continue
@@ -418,7 +524,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "--text", line,
                 "--provider-config", str(args.provider_config),
             ])
-            _render_turn(result)
+            new_pending = _render_turn(result)
+            if new_pending is not None:
+                pending_authorization = new_pending
         except RuntimeError as exc:
             print(f"FAILED | {exc}")
 
