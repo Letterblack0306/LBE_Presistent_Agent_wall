@@ -213,8 +213,63 @@ def _print_header(status: dict[str, Any], workspace: Path) -> None:
 
 
 def _help() -> None:
-    print("/plan  /act  /audit  /status  /help  /quit")
+    print("/plan  /act  /audit  /status  /providers  /models  /model <id>  /help  /quit")
+    print("Provider/model commands delegate to the existing LBE provider registry and session owner.")
     print("Enter any other text to start a governed LBE turn.")
+
+
+def _providers() -> dict[str, Any]:
+    return _run_product_json(["provider", "list"])
+
+
+def _models(provider_config: Path) -> dict[str, Any]:
+    return _run_product_json([
+        "provider", "models",
+        "--provider-config", str(provider_config),
+    ])
+
+
+def _select_model(
+    *,
+    database: Path,
+    session_id: str,
+    provider_id: str,
+    model_id: str,
+) -> dict[str, Any]:
+    return _run_product_json([
+        "provider", "select",
+        "--database", str(database),
+        "--session-id", session_id,
+        "--provider", provider_id,
+        "--model", model_id,
+    ])
+
+
+def _render_providers(payload: dict[str, Any]) -> None:
+    providers = [str(item) for item in payload.get("providers") or []]
+    engines = [str(item) for item in payload.get("engines") or []]
+    bindings = [item for item in payload.get("bindings") or [] if isinstance(item, dict)]
+    print("PROVIDERS")
+    for provider in providers:
+        related = [
+            str(item.get("engine_id"))
+            for item in bindings
+            if item.get("provider_id") == provider and item.get("engine_id")
+        ]
+        suffix = f" | engines: {', '.join(related)}" if related else ""
+        print(f"  {provider}{suffix}")
+    if engines:
+        print(f"ENGINES | {', '.join(engines)}")
+
+
+def _render_models(payload: dict[str, Any], selected: str | None = None) -> None:
+    models = [str(item) for item in payload.get("models") or []]
+    print("MODELS")
+    for model in models:
+        marker = "*" if selected and model == selected else " "
+        print(f"{marker} {model}")
+    if payload.get("is_local") is True:
+        print("SOURCE | local endpoint")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -295,6 +350,46 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
         if line == "/status":
             try:
+                current = _status(args.database, session_id)
+                _print_header(current, args.workspace)
+            except RuntimeError as exc:
+                print(f"FAILED | {exc}")
+            continue
+        if line == "/providers":
+            try:
+                _render_providers(_providers())
+            except RuntimeError as exc:
+                print(f"FAILED | {exc}")
+            continue
+        if line == "/models":
+            try:
+                current = _status(args.database, session_id)
+                _render_models(_models(args.provider_config), str(current.get("provider_model") or ""))
+            except RuntimeError as exc:
+                print(f"FAILED | {exc}")
+            continue
+        if line.startswith("/model "):
+            model_id = line[len("/model "):].strip()
+            if not model_id:
+                print("FAILED | usage: /model <model-id>")
+                continue
+            try:
+                current = _status(args.database, session_id)
+                provider_id = str(current.get("provider_id") or "").strip()
+                if not provider_id:
+                    raise RuntimeError("active session has no provider id")
+                available = _models(args.provider_config)
+                model_ids = [str(item) for item in available.get("models") or []]
+                if model_id not in model_ids:
+                    print(f"DENIED | model is not present in the configured endpoint catalog: {model_id}")
+                    continue
+                selected = _select_model(
+                    database=args.database,
+                    session_id=session_id,
+                    provider_id=provider_id,
+                    model_id=model_id,
+                )
+                print(f"MODEL | {selected.get('provider_id')}/{selected.get('provider_model')}")
                 current = _status(args.database, session_id)
                 _print_header(current, args.workspace)
             except RuntimeError as exc:
