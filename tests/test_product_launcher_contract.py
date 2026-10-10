@@ -24,6 +24,8 @@ def test_product_launcher_contract_ships_installed_single_command_entrypoint() -
     assert 'Copy-Item -LiteralPath (Join-Path $PSScriptRoot "lbe-launch.ps1")' in source
     assert 'Join-Path $InstallRoot "venv\\Scripts\\python.exe"' in source
     assert '"-m", "lbe_guard_inspector.terminal_ui"' in source
+    assert 'SET "LBE_EXIT=%ERRORLEVEL%"' in source
+    assert 'ENDLOCAL & EXIT /B %LBE_EXIT%' in source
     assert 'Join-Path $InstallRoot "lbe.exe"' not in source
 
 
