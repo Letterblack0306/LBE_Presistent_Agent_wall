@@ -400,6 +400,19 @@ def _build_authorization_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _build_operation_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="lbe operation",
+        description="Inspect or resume one exact persisted governed operation",
+    )
+    parser.add_argument("action", choices=("inspect", "resume"))
+    parser.add_argument("--database", required=True)
+    parser.add_argument("--session-id", required=True)
+    parser.add_argument("--operation-id", required=True)
+    parser.add_argument("--format", choices=("json", "text"), default="json")
+    return parser
+
+
 def _start(argv: Sequence[str]) -> int:
     parser = _build_start_parser()
     args = parser.parse_args(list(argv))
@@ -979,6 +992,88 @@ def _authorization(argv: Sequence[str]) -> int:
     _cli._emit(payload, args.format)
     return 0
 
+def _operation(argv: Sequence[str]) -> int:
+    parser = _build_operation_parser()
+    args = parser.parse_args(list(argv))
+    try:
+        store = _cli.WorkspaceMemoryStore(args.database)
+        state = _cli._require_session(store, args.session_id)
+        persisted = store.load_governed_operation(operation_id=args.operation_id)
+        if persisted is None:
+            raise ValueError("governed operation is not persisted")
+        if str(persisted["session_id"]) != state.session_id:
+            raise ValueError("governed operation session identity mismatch")
+        if str(persisted["project_workspace_id"]) != state.project_workspace_id:
+            raise ValueError("governed operation workspace identity mismatch")
+        if (
+            Path(str(persisted["canonical_workspace_root"])).expanduser().resolve()
+            != Path(state.canonical_workspace_root).expanduser().resolve()
+        ):
+            raise ValueError("governed operation workspace root mismatch")
+
+        if args.action == "inspect":
+            _cli._emit(
+                {
+                    "ok": True,
+                    "operation_id": str(persisted["operation_id"]),
+                    "tool_id": str(persisted["tool_id"]),
+                    "capability": str(persisted["capability"]),
+                    "approval_id": str(persisted["approval_id"]),
+                    "decision": str(persisted["decision"]),
+                    "session_id": state.session_id,
+                    "workspace_id": state.project_workspace_id,
+                    "workspace": state.canonical_workspace_root,
+                    "receipt": persisted.get("receipt"),
+                },
+                args.format,
+            )
+            return 0
+
+        request = persisted.get("request")
+        if not isinstance(request, dict):
+            raise ValueError("persisted governed operation request is malformed")
+        tool_id = str(request.get("tool_id") or persisted["tool_id"])
+        arguments = request.get("arguments")
+        if not isinstance(arguments, dict):
+            raise ValueError("persisted governed operation arguments are malformed")
+
+        tool_argv = [
+            tool_id,
+            "--database", str(args.database),
+            "--session-id", state.session_id,
+            "--workspace-id", state.project_workspace_id,
+            "--workspace", state.canonical_workspace_root,
+            "--operation-id", str(persisted["operation_id"]),
+            "--format", args.format,
+        ]
+        if tool_id in {"workspace.read", "workspace.list"}:
+            tool_argv += ["--path", str(arguments.get("path") or "")]
+        elif tool_id == "workspace.glob":
+            tool_argv += ["--path", str(arguments.get("pattern") or "")]
+        elif tool_id == "workspace.search":
+            tool_argv += ["--path", str(arguments.get("query") or "")]
+        elif tool_id == "workspace.patch":
+            tool_argv += [
+                "--path", str(arguments.get("path") or ""),
+                "--content", str(arguments.get("content") or ""),
+                "--expected-sha256", str(arguments.get("expected_sha256") or ""),
+            ]
+        elif tool_id == "process.run_registered":
+            tool_argv += ["--command-id", str(arguments.get("command_id") or "")]
+        else:
+            tool_argv += [
+                "--arguments",
+                json.dumps(arguments, sort_keys=True, separators=(",", ":")),
+            ]
+        return _tool(tool_argv)
+    except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
+        _cli._emit(
+            {"ok": False, "error": type(exc).__name__, "message": str(exc)},
+            args.format,
+        )
+        return 2
+
+
 def _build_child_agent_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="lbe child-agent",
@@ -1127,6 +1222,8 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
         return _tool(suffix)
     if command == "authorization":
         return _authorization(suffix)
+    if command == "operation":
+        return _operation(suffix)
     if command == "child-agent":
         return _child_agent(suffix)
     raise AssertionError(f"unsupported product command: {command}")
@@ -1142,7 +1239,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .terminal_ui import main as terminal_main
         return terminal_main([])
 
-    product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization", "child-agent") if command in values]
+    product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization", "operation", "child-agent") if command in values]
     if not product_commands:
         return _cli.main(values)
     if len(product_commands) > 1:
