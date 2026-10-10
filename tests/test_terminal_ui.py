@@ -66,8 +66,10 @@ def test_run_product_json_uses_existing_product_entry(monkeypatch) -> None:
     monkeypatch.setattr(terminal_ui.subprocess, "run", fake_run)
     payload = terminal_ui._run_product_json(["session", "status", "--database", "x", "--session-id", "sess-1"])
     assert payload["session_id"] == "sess-1"
-    assert observed["command"][:3] == [
+    assert observed["command"][:5] == [
         terminal_ui.sys.executable,
         "-m",
         "lbe_guard_inspector.product_entry",
+        "--format",
+        "json",
     ]
