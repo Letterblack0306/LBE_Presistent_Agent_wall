@@ -1354,4 +1354,11 @@ REQUIRED_EVIDENCE: Bare `lbe` launches the LBE-owned terminal surface; primary p
 
 RESULT: IMPLEMENTATION_IN_PROGRESS
 
+CURRENT_EVIDENCE_2026_10_10:
+- Python/LBE terminal is the normal product surface; Rust/Ratatui is reference/integration only.
+- Focused terminal/product/launcher/Cline regression: 33 passed; canonical integration prove PASS.
+- Exact installed candidate 1e31d208 proved bare lbe startup/clean exit, live Gemma provider continuation, governed workspace.read, correlated receipt/evidence, and cmd-shim failure propagation.
+- Current source provider controls /providers, /models, /model <id> delegate to existing LBE provider owners; live source smoke projected 17 providers, five configured local models, and persisted model selection.
+- Final acceptance remains OPEN because the source head is newer than the installed candidate and real PTY/ConPTY, current approval/mutation, Python-client restart/resume, and final completion evidence remain pending.
+
 AUTHORIZATION: EXPLICIT_USER_PRODUCT_SURFACE_SUPERSESSION_2026_10_10
