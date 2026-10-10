@@ -26,10 +26,10 @@ $ClineReferenceFiles = @(
 )
 
 if ($SourceMode -eq "auto") {
-    $SourceMode = "worktree"
+    $SourceMode = if ($Mode -eq "check") { "worktree" } else { "origin-main" }
 }
-if ($Mode -in @("build", "package") -and $SourceMode -notin @("worktree", "origin-main")) {
-    throw "Build/package source must be worktree or origin-main."
+if ($Mode -in @("prove", "build", "package") -and $SourceMode -ne "origin-main") {
+    throw "Proof/build/package require clean origin/main. Worktree sources are only supported for check."
 }
 $SourceRef = if ($SourceMode -eq "origin-main") { "origin/main" } else { "WORKTREE" }
 
@@ -1400,7 +1400,7 @@ $manifest = [ordered]@{
     verification_source = [ordered]@{
         mode = $SourceMode
         ref = $SourceRef
-        rule = "check/prove may validate the assembled worktree; build/package are forced to origin/main and cannot package uncommitted state."
+        rule = "Only check may inspect worktree state; prove/build/package require clean origin/main exports and cannot use uncommitted source."
     }
     authority = [ordered]@{
         rule = "Agent Wall is the runtime/governance authority. The LBE-owned Rust/Ratatui client is the canonical visible product surface, colocated in the Agent Wall repository at apps\lbe-terminal. Headless Cline mechanics provide cognition/provider/model/continuation behind LBE. This script owns no runtime decision."

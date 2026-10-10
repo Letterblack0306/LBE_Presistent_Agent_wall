@@ -3294,6 +3294,8 @@ fn welcome_frame_prioritizes_home_controls_at_80_by_24() {
     let mut app = App::default();
     app.phase = Phase::Welcome;
     app.agent_mode = AgentMode::Build;
+    app.snapshot.workspace_label.clear();
+    app.snapshot.model_id.clear();
     terminal
         .draw(|frame| draw(frame, &app))
         .expect("frame should render");
@@ -3307,7 +3309,9 @@ fn welcome_frame_prioritizes_home_controls_at_80_by_24() {
     // At this viewport the landing body is intentionally displaced by the
     // minimum-height layout; assert the persistent product chrome instead.
     assert!(rendered.contains("○ MOCK / NOT CONNECTED"));
-    assert!(rendered.contains("UI CONTRACT PREVIEW"));
+    assert!(rendered.contains("LBE"));
+    assert!(rendered.contains("workspace")); // Header truncates the fallback to fit the 12-cell workspace budget.
+    assert!(rendered.contains("model unavailable"));
     assert!(!rendered.contains("runtime connected"));
     assert!(rendered.contains("? for shortcuts"));
     assert!(rendered.contains("Provider"));
@@ -6482,9 +6486,11 @@ fn wide_tui_displays_authoritative_agent_activity_without_fake_receipts() {
         .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
-    assert!(rendered.contains("AGENT ACTIVITY"));
-    assert!(rendered.contains("No active execution"));
-    assert!(rendered.contains("Receipts: 0"));
+    // The accepted shell is a single conversation, not a permanent diagnostics rail.
+    // Real receipt details remain inspectable on demand, not pinned to the home UI.
+    assert!(rendered.contains("LBE"));
+    assert!(!rendered.contains("AGENT ACTIVITY"));
+    assert!(!rendered.contains("Receipts: 0"));
 }
 
 #[test]

@@ -195,24 +195,24 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
     let inner = area;
     let header_columns =
         Layout::horizontal([Constraint::Length(18), Constraint::Min(1)]).split(inner);
+    // The canonical GPT-K shell leads with LBE identity and the attached workspace.
+    // Avoid the old large product slogan and do not fabricate a workspace label.
+    let workspace = if app.snapshot.workspace_label.is_empty() {
+        "workspace unavailable"
+    } else {
+        app.snapshot.workspace_label.as_str()
+    };
     let brand = Line::from(vec![
         Span::styled(
-            "LETTER",
+            "LBE",
             Style::default()
                 .fg(PALETTE.ink)
                 .add_modifier(Modifier::BOLD),
         ),
+        Span::styled(" · ", Style::default().fg(PALETTE.faint)),
         Span::styled(
-            "BLACK",
-            Style::default()
-                .fg(PALETTE.red)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            " ENGINE",
-            Style::default()
-                .fg(PALETTE.ink)
-                .add_modifier(Modifier::BOLD),
+            truncate_text(workspace, 12),
+            Style::default().fg(PALETTE.ink),
         ),
     ]);
     frame.render_widget(
@@ -223,10 +223,10 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         "{} {} · {} · {}",
         connection.marker(),
         connection.label(),
-        if connection == RuntimeConnection::Connected {
-            "AGENT WALL"
+        if app.snapshot.model_id.is_empty() {
+            "model unavailable"
         } else {
-            "UI CONTRACT PREVIEW"
+            app.snapshot.model_id.as_str()
         },
         app.agent_mode.label(),
     );
@@ -256,10 +256,9 @@ pub(crate) fn draw_body(frame: &mut Frame, area: Rect, app: &App) {
     // rail on genuinely wide displays.
     match LayoutTier::for_area(area.width, area.height) {
         LayoutTier::Wide => {
-            let columns =
-                Layout::horizontal([Constraint::Length(24), Constraint::Min(1)]).split(area);
-            draw_navigation_sidebar(frame, columns[0], app);
-            draw_main_body(frame, columns[1], app, true);
+            // The normal product is a single conversation timeline, not a
+            // permanently split navigation/dashboard surface.
+            draw_main_body(frame, area, app, false);
         }
         LayoutTier::Standard => {
             // No sidebar, but the split body is still meaningful.
@@ -542,77 +541,9 @@ fn draw_workspace_sidebar(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_landing(frame: &mut Frame, app: &App) {
-    let area = frame.area();
-    let safe_area = area.inner(Margin::new(2, 1));
-    let mode = match app.agent_mode {
-        AgentMode::Build => "Build",
-        AgentMode::Plan => "Plan",
-        AgentMode::Audit => "Audit",
-    };
-
-    // Vertical centering for the landing content
-    let sections = Layout::vertical([
-        Constraint::Percentage(20),
-        Constraint::Min(16),
-        Constraint::Percentage(20),
-    ])
-    .split(safe_area);
-
-    // The landing view is intentionally quiet: one small mark, one status
-    // line, and the controls needed to enter the workspace. Detailed runtime
-    // and policy information belongs in the status panels after entry.
-    let inner = sections[1];
-    let landing_sections =
-        Layout::vertical([Constraint::Length(7), Constraint::Min(1)]).split(inner);
-    frame.render_widget(
-        Paragraph::new(Text::from(minimal_logo_lines())).alignment(Alignment::Center),
-        landing_sections[0],
-    );
-
-    // Landing content
-    let provider = if app.snapshot.providers.is_empty() {
-        "provider not selected".to_owned()
-    } else {
-        format!("{} provider(s)", app.snapshot.providers.len())
-    };
-    let model = if app.snapshot.model_id.is_empty() {
-        "model not selected".to_owned()
-    } else {
-        app.snapshot.model_id.clone()
-    };
-    let lines = vec![
-        Line::from(Span::styled(
-            "LOCKSTEP BOUNDARY ENGINE",
-            Style::default()
-                .fg(PALETTE.amber)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::from(Span::styled(
-            if app.snapshot.connection == RuntimeConnection::Connected {
-                "Connected to LBE runtime"
-            } else {
-                "Runtime preview · configure provider to get started"
-            },
-            Style::default().fg(PALETTE.ink),
-        )),
-        Line::from(Span::styled(
-            format!("{provider} · {model}"),
-            Style::default().fg(PALETTE.muted),
-        )),
-        Line::from(Span::styled(
-            format!("Mode: {mode}"),
-            Style::default().fg(PALETTE.faint),
-        )),
-        Line::from(Span::styled(
-            "Enter continue · F2 provider · F3 model · Tab mode",
-            Style::default().fg(PALETTE.green),
-        )),
-    ];
-
-    frame.render_widget(
-        Paragraph::new(Text::from(lines)).alignment(Alignment::Center),
-        landing_sections[1],
-    );
+    // Landing is an interaction phase, not a separate product visual identity.
+    // Keep the finalized four-region shell visible before the first submission.
+    draw_at(frame, app, Duration::from_secs(2));
 }
 
 fn draw_main_body(frame: &mut Frame, area: Rect, app: &App, split_layout: bool) {
@@ -973,15 +904,15 @@ pub(crate) fn draw_composer(frame: &mut Frame, area: Rect, app: &App, elapsed: D
             Style::default().fg(PALETTE.muted),
         )),
         _ if app.input.is_empty() => Line::from(vec![
-            Span::styled("> ", Style::default().fg(PALETTE.ink)),
+            Span::styled("[I] ", Style::default().fg(PALETTE.agent)),
             Span::styled(cursor, Style::default().fg(PALETTE.agent)),
             Span::styled(
-                format!(" {}", mode_placeholder(app.agent_mode)),
+                format!(" Message LBE... · {}", mode_placeholder(app.agent_mode)),
                 Style::default().fg(PALETTE.muted),
             ),
         ]),
         _ => Line::from(vec![
-            Span::styled("> ", Style::default().fg(PALETTE.ink)),
+            Span::styled("[I] ", Style::default().fg(PALETTE.agent)),
             Span::styled(
                 format!("{}{}", app.input, cursor),
                 Style::default().fg(PALETTE.ink),

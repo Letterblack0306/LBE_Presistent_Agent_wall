@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import copy
 import http.client
 import socket
 import threading
@@ -12,6 +13,8 @@ from dataclasses import asdict, dataclass
 from pathlib import PurePosixPath, PureWindowsPath
 from collections.abc import Iterator
 from typing import Any, Mapping, Protocol
+
+import jsonschema
 
 from .reasoning_contracts import (
     ExplanationRequest,
@@ -286,9 +289,11 @@ class OpenAICompatibleReasoningBackend:
         try:
             plan = ReasoningPlan.from_mapping(result)
             _require_relative_evidence_paths(plan)
+            jsonschema.validate(result, _PLANNING_JSON_SCHEMA)
             return plan
-        except (TypeError, ValueError) as exc:
-            raise ProviderError("PROVIDER_SCHEMA_ERROR", f"invalid planning response: {exc}") from exc
+        except (TypeError, ValueError, jsonschema.ValidationError) as exc:
+            detail = exc.message if isinstance(exc, jsonschema.ValidationError) else str(exc)
+            raise ProviderError("PROVIDER_SCHEMA_ERROR", f"invalid planning response: {detail}") from exc
 
     def explain(self, request: ExplanationRequest) -> ExplanationResult:
         result = self._complete(
@@ -338,7 +343,7 @@ class OpenAICompatibleReasoningBackend:
                 "json_schema": {
                     "name": f"lbe_{stage}_response",
                     "strict": True,
-                    "schema": output_schema,
+                    "schema": _provider_wire_schema(output_schema, self._config.provider_id),
                 },
             },
         }
@@ -361,6 +366,26 @@ class OpenAICompatibleReasoningBackend:
         if not isinstance(decoded, Mapping):
             raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider message content must decode to an object")
         return decoded
+
+
+def _provider_wire_schema(schema: Mapping[str, Any], provider_id: str | None) -> Mapping[str, Any]:
+    if (provider_id or "").lower() not in {"lmstudio", "lm-studio"}:
+        return schema
+    # LM Studio's local grammar compiler rejects maxItems. Keep the complete
+    # canonical schema for LBE-side validation after the provider responds.
+    wire_schema = copy.deepcopy(schema)
+
+    def remove_max_items(value: Any) -> None:
+        if isinstance(value, dict):
+            value.pop("maxItems", None)
+            for child in value.values():
+                remove_max_items(child)
+        elif isinstance(value, list):
+            for child in value:
+                remove_max_items(child)
+
+    remove_max_items(wire_schema)
+    return wire_schema
 
 
 def _planning_input_payload(request: ReasoningRequest) -> Mapping[str, Any]:
