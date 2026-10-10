@@ -172,6 +172,7 @@ function Test-IntegrationContracts {
     )
 
     $productEntry = Get-SourceText -Root $AgentRoot -Path "lbe_guard_inspector/product_entry.py" -SourceMode $SourceMode
+    $terminalUi = Get-SourceText -Root $AgentRoot -Path "lbe_guard_inspector/terminal_ui.py" -SourceMode $SourceMode
     $toolRuntime = Get-SourceText -Root $AgentRoot -Path "lbe_guard_inspector/runtime/tool_orchestration.py" -SourceMode $SourceMode
     $productTests = Get-SourceText -Root $AgentRoot -Path "tests/test_product_entry.py" -SourceMode $SourceMode
     $history = Get-SourceText -Root $AgentRoot -Path "lbe_guard_inspector/memory/operational_history.py" -SourceMode $SourceMode -AllowMissing
@@ -213,6 +214,19 @@ function Test-IntegrationContracts {
     $productCommands = @("start", "turn", "control", "tool", "authorization", "capabilities", "export")
     $missingCommands = @($productCommands | Where-Object { $productEntry -notmatch ('"' + [regex]::Escape($_) + '"') })
     $checks.Add((New-ContractCheck -Id "lbe.product_commands" -Passed ($missingCommands.Count -eq 0) -Classification $(if ($missingCommands.Count -eq 0) { "CONNECTED" } else { "MISSING" }) -Detail $(if ($missingCommands.Count -eq 0) { "Published Agent Wall product-entry command surface is present." } else { "Missing commands: $($missingCommands -join ', ')" })))
+
+    $terminalMarkers = @(
+        "LBE · LETTERBLACK",
+        "ACTIVE PROCESS",
+        "[I] > ",
+        '"/plan"',
+        '"/act"',
+        '"/audit"',
+        "lbe_guard_inspector.product_entry"
+    )
+    $missingTerminalMarkers = @($terminalMarkers | Where-Object { -not $terminalUi.Contains($_) })
+    $terminalConnected = $productEntry.Contains("from .terminal_ui import main as terminal_main") -and ($missingTerminalMarkers.Count -eq 0)
+    $checks.Add((New-ContractCheck -Id "lbe.terminal_product_surface" -Passed $terminalConnected -Classification $(if ($terminalConnected) { "CONNECTED" } else { "MISSING" }) -Detail $(if ($terminalConnected) { "Bare lbe delegates to the LBE-owned terminal client, which delegates governed work back through product_entry." } else { "Missing terminal markers: $($missingTerminalMarkers -join ', ')" })))
 
     $wrapperUsesProductEntry = $wrapper.Contains("lbe_guard_inspector.product_entry")
     $checks.Add((New-ContractCheck -Id "tui.real_wrapper_boundary" -Passed $wrapperUsesProductEntry -Classification $(if ($wrapperUsesProductEntry) { "CONNECTED" } else { "MISSING" }) -Detail "Rust RealLbeWrapper must route through the canonical Agent Wall product entry."))
@@ -486,7 +500,8 @@ function Invoke-Proof {
             "tests/test_authorization_resolver.py",
             "tests/test_tool_orchestration.py",
             "tests/test_product_entry.py",
-            "tests/test_provider_continuation.py"
+            "tests/test_provider_continuation.py",
+            "tests/test_terminal_ui.py"
         ) | ForEach-Object { $agentTests.Add($_) }
         foreach ($candidate in @("tests/test_child_agent_product_seam.py", "tests/test_operational_history.py")) {
             if (Test-Path -LiteralPath (Join-Path $AgentStage $candidate) -PathType Leaf) {
@@ -507,13 +522,13 @@ function Invoke-Proof {
 
     $cargo = Get-Command cargo -ErrorAction SilentlyContinue
     if (-not $cargo) {
-        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = "BLOCKED"; blocking = $true; exit_code = $null; command = "cargo"; output = @("cargo not found") })
+        $proofs.Add([pscustomobject]@{ id = "rust_reference.cargo_test"; status = "SKIP"; blocking = $false; exit_code = $null; command = "cargo"; output = @("cargo not found") })
     }
     else {
         $tuiTest = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("test", "--locked")
-        $proofs.Add([pscustomobject]@{ id = "tui.cargo_test"; status = $(if ($tuiTest.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $true; exit_code = $tuiTest.exit_code; command = $tuiTest.command; output = $tuiTest.output })
+        $proofs.Add([pscustomobject]@{ id = "rust_reference.cargo_test"; status = $(if ($tuiTest.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $false; exit_code = $tuiTest.exit_code; command = $tuiTest.command; output = $tuiTest.output })
         $fmt = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("fmt", "--", "--check")
-        $proofs.Add([pscustomobject]@{ id = "tui.cargo_fmt"; status = $(if ($fmt.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $true; exit_code = $fmt.exit_code; command = $fmt.command; output = $fmt.output })
+        $proofs.Add([pscustomobject]@{ id = "rust_reference.cargo_fmt"; status = $(if ($fmt.exit_code -eq 0) { "PASS" } else { "FAIL" }); blocking = $false; exit_code = $fmt.exit_code; command = $fmt.command; output = $fmt.output })
     }
     $clineRoot = Join-Path $TuiStage "cline\apps\cli"
     if (-not (Test-Path -LiteralPath $clineRoot -PathType Container)) {
@@ -564,9 +579,8 @@ function Build-Product {
     }
     New-Item -ItemType Directory -Path $BuildRoot -Force | Out-Null
     $runtimeOut = Join-Path $BuildRoot "runtime"
-    $clientOut = Join-Path $BuildRoot "client"
     $workerOut = Join-Path $BuildRoot "cline-worker"
-    New-Item -ItemType Directory -Path $runtimeOut, $clientOut, $workerOut -Force | Out-Null
+    New-Item -ItemType Directory -Path $runtimeOut, $workerOut -Force | Out-Null
 
     $pythonPath = Get-ProofPython
     if (-not $pythonPath) { throw "No Python 3.11+ interpreter is available to build the Agent Wall wheel." }
@@ -582,18 +596,12 @@ function Build-Product {
     $npmCi = Invoke-Native -FilePath $npm.Source -WorkingDirectory $workerOut -Arguments @("ci", "--omit=dev")
     if ($npmCi.exit_code -ne 0) { throw "Cline worker dependency provisioning failed." }
 
-    $cargo = Get-Command cargo -ErrorAction Stop
-    $cargoBuild = Invoke-Native -FilePath $cargo.Source -WorkingDirectory $TuiStage -Arguments @("build", "--release", "--locked")
-    if ($cargoBuild.exit_code -ne 0) { throw "Rust client release build failed." }
-    $exe = Join-Path $TuiStage "target\release\lbe.exe"
-    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Rust release binary missing: $exe" }
-    Copy-Item -LiteralPath $exe -Destination (Join-Path $clientOut "lbe.exe")
-
     [pscustomobject]@{
         runtime_wheels = @((Get-ChildItem -LiteralPath $runtimeOut -Filter "*.whl" | Select-Object -ExpandProperty Name))
-        client = "client/lbe.exe"
+        client = "lbe_guard_inspector.terminal_ui"
+        rust_reference_client = "apps/lbe-terminal (source/reference only; not packaged as primary client)"
         cline_worker = "cline-worker/"
-        build_commands = @($pipWheel.command, $npmCi.command, $cargoBuild.command)
+        build_commands = @($pipWheel.command, $npmCi.command)
     }
 }
 
@@ -619,7 +627,6 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$client = Join-Path $InstallRoot "lbe.exe"
 $python = Join-Path $InstallRoot "venv\Scripts\python.exe"
 
 # Preserve the public command aliases before PowerShell resolves positional
@@ -650,8 +657,12 @@ foreach ($candidate in @($args) + @($Project) + @($Model)) {
     if ($informational -contains $candidate) { $infoArg = $candidate; break }
 }
 if ($infoArg) {
-    if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
-    & $client $infoArg
+    if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Installed LBE Python runtime missing: $python" }
+    if ($infoArg -in @('--version','-V')) {
+        & $python -m lbe_guard_inspector.terminal_ui --version
+    } else {
+        & $python -m lbe_guard_inspector.terminal_ui --help
+    }
     exit $LASTEXITCODE
 }
 
@@ -687,11 +698,10 @@ if (-not $ProviderConfig) {
 if (-not $CapabilityRegistry -and $runtimeConfig -and $runtimeConfig.capability_registry) { $CapabilityRegistry = [string]$runtimeConfig.capability_registry }
 if (-not $SessionId -and $env:LBE_SESSION_ID) { $SessionId = $env:LBE_SESSION_ID }
 
-if (-not (Test-Path -LiteralPath $client -PathType Leaf)) { throw "Installed Rust client missing: $client" }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Installed LBE Python runtime missing: $python" }
 if (-not (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)) { throw "Provider config missing: $ProviderConfig" }
 
-# A fresh Rust client cannot attach until a persisted session exists. Create
+# The visible LBE terminal client cannot attach until a persisted session exists. Create
 # that session through the authoritative Python entrypoint instead of making
 # the TUI invent identity or bypassing the session policy gate. An explicit
 # -SessionId (or LBE_SESSION_ID) still resumes an existing session exactly as
@@ -775,28 +785,30 @@ if ($CapabilityRegistry) {
 if ($SessionId) { $env:LBE_SESSION_ID = $SessionId } else { Remove-Item Env:LBE_SESSION_ID -ErrorAction SilentlyContinue }
 
 if ($headlessRun -or $Prompt) {
-    $clientArgs = @("run", "--project", $env:LBE_TARGET_WORKSPACE, "--agent", $Agent)
+    if (-not $Prompt) { throw "lbe run requires a prompt." }
+    $turnArgs = @(
+        "-m", "lbe_guard_inspector.product_entry", "turn",
+        "--database", ([IO.Path]::GetFullPath($Database)),
+        "--session-id", $SessionId,
+        "--text", $Prompt,
+        "--provider-config", ([IO.Path]::GetFullPath($ProviderConfig))
+    )
+    if ($Json) { $turnArgs += @("--format", "json") }
+    else { $turnArgs += @("--format", "text") }
+    & $python @turnArgs
+    exit $LASTEXITCODE
 }
-else {
-    $clientArgs = @($env:LBE_TARGET_WORKSPACE, "--agent", $Agent)
-}
-if ($Model) { $clientArgs += @("--model", $Model) }
-if ($SessionId) { $clientArgs += @("--session", $SessionId) }
-if ($Continue) { $clientArgs += "--continue" }
-if ($headlessRun -or $Prompt) {
-    if ($Prompt) { $clientArgs += @("--prompt", $Prompt) }
-    if ($Json) { $clientArgs += "--json" }
-    elseif ($Plain) { $clientArgs += "--plain" }
-    else { $clientArgs += "--plain" }
-}
-else {
-    if ($Json) { $clientArgs += "--json" }
-    if ($Plain) { $clientArgs += "--plain" }
-}
-if ($NoAnimation) { $clientArgs += "--no-animation" }
-if ($Ascii) { $clientArgs += "--ascii" }
 
-& $client @clientArgs
+$terminalArgs = @(
+    "-m", "lbe_guard_inspector.terminal_ui",
+    $workspaceFull,
+    "--database", ([IO.Path]::GetFullPath($Database)),
+    "--provider-config", ([IO.Path]::GetFullPath($ProviderConfig)),
+    "--session", $SessionId,
+    "--agent", $(if ($Agent -eq "build") { "act" } else { $Agent })
+)
+if ($Model) { $terminalArgs += @("--model", $Model) }
+& $python @terminalArgs
 exit $LASTEXITCODE
 '@
     Set-Content -LiteralPath (Join-Path $PackageRoot "lbe-launch.ps1") -Value $launcher -Encoding UTF8
@@ -1052,15 +1064,14 @@ $site = & $python -c "import pathlib,lbe_guard_inspector; print(pathlib.Path(lbe
 if ($LASTEXITCODE -ne 0) { throw "Unable to resolve installed LBE package" }
 $workerTarget = Join-Path $site "runtime\cline_worker"
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "cline-worker\node_modules") -Destination $workerTarget -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot "client\lbe.exe") -Destination (Join-Path $InstallRoot "lbe.exe") -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "lbe-launch.ps1") -Destination (Join-Path $InstallRoot "lbe-launch.ps1") -Force
 Write-Host "Installed LetterBlack LBE to $InstallRoot"
 Write-Host "Runtime CLI: $(Join-Path $venv 'Scripts\lbe.exe')"
-Write-Host "Rust client: $(Join-Path $InstallRoot 'lbe.exe')"
+Write-Host "LBE terminal client: $python -m lbe_guard_inspector.terminal_ui"
 Write-Host "Real-runtime launcher: $(Join-Path $InstallRoot 'lbe-launch.ps1')"
 Write-Host "MCP configuration: $(Join-Path $config 'mcp.json') [$mcpStatus]"
 
-# --- Installed single-command contract: bin\lbe.cmd -> lbe-launch.ps1 -> lbe.exe ---
+# --- Installed single-command contract: bin\lbe.cmd -> lbe-launch.ps1 -> LBE terminal client ---
 $binDir = Join-Path $InstallRoot "bin"
 New-Item -ItemType Directory -Path $binDir -Force | Out-Null
 $binCmd = Join-Path $binDir "lbe.cmd"
@@ -1239,7 +1250,7 @@ else {
     (Invoke-Git -Root $AgentWallRoot -Arguments @("show", "origin/main:apps/lbe-terminal/Cargo.toml") -AllowFailure).exit_code -eq 0
 }
 if (-not $clientCrateProbe) {
-    throw "Rust client crate missing in Agent Wall repository: apps\lbe-terminal ($SourceMode)"
+    Write-Host "Rust/Ratatui reference client is absent from this source snapshot; primary LBE package does not depend on it."
 }
 
 $contracts = Test-IntegrationContracts -AgentRoot $AgentWallRoot -ClientRoot $AgentWallRoot -SourceMode $SourceMode
