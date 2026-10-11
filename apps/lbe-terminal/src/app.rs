@@ -1488,19 +1488,47 @@ impl App {
                 // events. A later session snapshot may not carry those
                 // projections, so do not erase live picker data with an
                 // unrelated snapshot refresh.
+                let previous_session_id = self.snapshot.session_id.clone();
+                let previous_model = self.snapshot.selected_model.clone();
+                let previous_connection = self.snapshot.connection;
                 let providers = std::mem::take(&mut self.snapshot.providers);
                 let models = std::mem::take(&mut self.snapshot.models);
                 let selected_model = self.snapshot.selected_model.take();
                 self.agent_mode = snapshot.active_mode;
                 self.snapshot = snapshot;
                 if self.snapshot.providers.is_empty() {
-                    self.snapshot.providers = providers;
+                    self.snapshot.providers = providers.clone();
                 }
                 if self.snapshot.models.is_empty() {
                     self.snapshot.models = models;
                 }
                 if self.snapshot.selected_model.is_none() {
                     self.snapshot.selected_model = selected_model;
+                }
+                // Explicit READY verdicts are earned by provider validation.
+                // A session snapshot carrying only CONFIGURED/UNKNOWN must not
+                // silently undo that observed result for the same attachment.
+                // Session/model changes, disconnects and explicit error updates
+                // still invalidate or supersede the prior verdict.
+                if previous_connection == RuntimeConnection::Connected
+                    && self.snapshot.connection == RuntimeConnection::Connected
+                    && self.snapshot.session_id == previous_session_id
+                    && self.snapshot.selected_model == previous_model
+                {
+                    for provider in &mut self.snapshot.providers {
+                        if provider.auth_state == AuthState::Configured
+                            && provider.health == ProviderHealth::Unknown
+                        {
+                            if let Some(previous) = providers.iter().find(|previous| {
+                                previous.provider_id == provider.provider_id
+                                    && previous.auth_state == AuthState::Ready
+                                    && previous.health == ProviderHealth::Ready
+                            }) {
+                                provider.auth_state = previous.auth_state;
+                                provider.health = previous.health;
+                            }
+                        }
+                    }
                 }
                 self.provider_picker_index = self
                     .provider_picker_index
@@ -1682,6 +1710,17 @@ impl App {
                 }
             }
             LbeEvent::ProviderCatalogDiscovered { providers } => {
+                let mut providers = providers;
+                // Inventory refresh is not a new health test. Preserve an
+                // already observed verdict for the unchanged configured provider.
+                crate::wrapper::retain_last_checked_provider_status(
+                    &mut providers,
+                    &self.snapshot.providers,
+                    self.snapshot
+                        .selected_model
+                        .as_ref()
+                        .map(|model| model.provider_id),
+                );
                 self.snapshot.providers = providers;
                 self.align_provider_picker_to_selection();
                 self.reconcile_provider_setup_phase();
@@ -1724,7 +1763,8 @@ impl App {
                 ));
             }
             LbeEvent::ProviderValidationStarted { provider_id } => {
-                if self.selected_provider_id() == Some(provider_id) {
+                if self.phase != Phase::Landing && self.selected_provider_id() == Some(provider_id)
+                {
                     self.phase = Phase::ProviderSetup {
                         step: ProviderSetupStep::Validating,
                     };
@@ -2887,8 +2927,11 @@ impl App {
         }
         if self.provider_setup_complete() {
             self.phase = Phase::Welcome;
-            self.panel = None;
-            self.model_picker_provider = None;
+            // A manually opened provider/model picker stays visible after a
+            // successful validation. Readiness is not a request to dismiss it.
+            if self.panel.is_none() {
+                self.model_picker_provider = None;
+            }
             return;
         }
         let step = match self.selected_provider_id().and_then(|provider_id| {

@@ -6981,3 +6981,154 @@ fn headless_initial_prompt_refuses_unconfigured_provider() {
     assert!(matches!(app.phase, Phase::ProviderSetup { .. }));
     assert_eq!(app.input, "inspect workspace");
 }
+
+#[test]
+fn runtime_provider_validation_does_not_bypass_landing_dashboard() {
+    let mut app = App::default();
+    let provider_id = app.snapshot.providers[0].provider_id;
+    app.reduce_lbe_event(LbeEvent::ProviderValidationStarted { provider_id });
+    assert_eq!(app.phase, Phase::Landing);
+}
+#[test]
+fn audit_mode_remains_visible_during_provider_setup() {
+    let mut app = App::default();
+    app.phase = Phase::ProviderSetup {
+        step: ProviderSetupStep::SelectProvider,
+    };
+    app.agent_mode = AgentMode::Audit;
+    app.panel = None;
+    let mut terminal = Terminal::new(TestBackend::new(120, 42)).expect("test terminal");
+    terminal
+        .draw(|frame| draw(frame, &app))
+        .expect("render audit");
+    let content = terminal
+        .backend()
+        .buffer()
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+    assert!(content.contains("AUDIT MODE // READ-ONLY"));
+    assert!(!content.contains("Configure the selected provider in the runtime"));
+}
+
+#[test]
+fn provider_verdict_survives_subsequent_snapshot_projection() {
+    let provider_id = ProviderId::OpenAiCompatible;
+    let mut snapshot = LbeSnapshot::default();
+    snapshot.providers = project_provider_catalog(&[provider_id], Some(provider_id), true);
+    crate::wrapper::update_provider_health_snapshot(
+        &mut snapshot,
+        provider_id,
+        AuthState::Ready,
+        ProviderHealth::Ready,
+    );
+    let provider = snapshot
+        .providers
+        .iter()
+        .find(|provider| provider.provider_id == provider_id)
+        .expect("discovered provider");
+    assert_eq!(provider.auth_state, AuthState::Ready);
+    assert_eq!(provider.health, ProviderHealth::Ready);
+}
+
+#[test]
+fn provider_ready_verdict_survives_stale_session_snapshot() {
+    let provider_id = ProviderId::OpenAiCompatible;
+    let mut app = App::default();
+    app.snapshot.session_id = Some("sess_verified_provider".to_owned());
+    app.snapshot.connection = RuntimeConnection::Connected;
+    app.snapshot.selected_model = Some(ModelRef {
+        provider_id,
+        model_id: "locally-discovered-model".to_owned(),
+    });
+    app.snapshot.providers = project_provider_catalog(&[provider_id], Some(provider_id), true);
+    app.reduce_lbe_event(LbeEvent::ProviderAuthStateUpdated {
+        provider_id,
+        auth_state: AuthState::Ready,
+    });
+    app.reduce_lbe_event(LbeEvent::ProviderHealthUpdated {
+        provider_id,
+        health: ProviderHealth::Ready,
+    });
+    let mut older_snapshot = app.snapshot.clone();
+    older_snapshot.providers = project_provider_catalog(&[provider_id], Some(provider_id), true);
+    app.reduce_lbe_event(LbeEvent::SnapshotUpdated {
+        snapshot: older_snapshot,
+    });
+    let provider = app
+        .snapshot
+        .providers
+        .iter()
+        .find(|provider| provider.provider_id == provider_id)
+        .expect("provider remains present");
+    assert_eq!(provider.auth_state, AuthState::Ready);
+    assert_eq!(provider.health, ProviderHealth::Ready);
+}
+
+#[test]
+fn provider_catalog_refresh_preserves_last_verified_health() {
+    let id = ProviderId::OpenAiCompatible;
+    let mut previous = project_provider_catalog(&[id], Some(id), true);
+    previous[0].auth_state = AuthState::Ready;
+    previous[0].health = ProviderHealth::Ready;
+    let mut refreshed = project_provider_catalog(&[id], Some(id), true);
+    crate::wrapper::retain_last_checked_provider_status(&mut refreshed, &previous, Some(id));
+    assert_eq!(refreshed[0].auth_state, AuthState::Ready);
+    assert_eq!(refreshed[0].health, ProviderHealth::Ready);
+
+    let mut different = project_provider_catalog(&[id], None, false);
+    crate::wrapper::retain_last_checked_provider_status(&mut different, &previous, None);
+    assert_eq!(different[0].auth_state, AuthState::NotConfigured);
+    assert_eq!(different[0].health, ProviderHealth::Unknown);
+}
+
+#[test]
+fn provider_validation_keeps_user_opened_picker_visible() {
+    let mut app = App::default();
+    let id = ProviderId::OpenAiCompatible;
+    app.phase = Phase::ProviderSetup {
+        step: ProviderSetupStep::Validating,
+    };
+    app.panel = Some(MockPanel::Provider);
+    app.snapshot.providers = project_provider_catalog(&[id], Some(id), true);
+    app.snapshot.selected_model = Some(ModelRef {
+        provider_id: id,
+        model_id: "verified-model".to_owned(),
+    });
+    app.reduce_lbe_event(LbeEvent::ProviderAuthStateUpdated {
+        provider_id: id,
+        auth_state: AuthState::Ready,
+    });
+    app.reduce_lbe_event(LbeEvent::ProviderHealthUpdated {
+        provider_id: id,
+        health: ProviderHealth::Ready,
+    });
+    assert_eq!(app.phase, Phase::Welcome);
+    assert_eq!(app.panel, Some(MockPanel::Provider));
+    assert!(app.provider_setup_complete());
+}
+
+#[test]
+fn discovered_provider_list_does_not_erase_verified_health() {
+    let id = ProviderId::OpenAiCompatible;
+    let mut app = App::default();
+    app.snapshot.selected_model = Some(ModelRef {
+        provider_id: id,
+        model_id: "verified-model".to_owned(),
+    });
+    app.snapshot.providers = project_provider_catalog(&[id], Some(id), true);
+    app.reduce_lbe_event(LbeEvent::ProviderAuthStateUpdated {
+        provider_id: id,
+        auth_state: AuthState::Ready,
+    });
+    app.reduce_lbe_event(LbeEvent::ProviderHealthUpdated {
+        provider_id: id,
+        health: ProviderHealth::Ready,
+    });
+    app.reduce_lbe_event(LbeEvent::ProviderCatalogDiscovered {
+        providers: project_provider_catalog(&[id], Some(id), true),
+    });
+    assert_eq!(app.snapshot.providers[0].auth_state, AuthState::Ready);
+    assert_eq!(app.snapshot.providers[0].health, ProviderHealth::Ready);
+}

@@ -52,6 +52,23 @@ fn configured_lbe_command(python: &Path, wall_root: &Path) -> Command {
     command
 }
 
+/// Preserve an observed provider verdict in the worker snapshot as well as
+/// emitting UI events. A later SnapshotUpdated must not revert it to UNKNOWN.
+pub(crate) fn update_provider_health_snapshot(
+    snapshot: &mut LbeSnapshot,
+    provider_id: ProviderId,
+    auth_state: AuthState,
+    health: ProviderHealth,
+) {
+    if let Some(provider) = snapshot
+        .providers
+        .iter_mut()
+        .find(|provider| provider.provider_id == provider_id)
+    {
+        provider.auth_state = auth_state;
+        provider.health = health;
+    }
+}
 pub(crate) trait LbeWrapper {
     fn snapshot(&self) -> LbeSnapshot;
     fn submit(&mut self, request: UserRequest, now: Instant) -> Result<(), LbeError>;
@@ -3011,10 +3028,15 @@ impl RealLbeWrapper {
         } else {
             Vec::new()
         };
-        let providers = project_provider_catalog(
+        let mut providers = project_provider_catalog(
             &provider_ids,
             configured_provider,
             configured_provider_is_local,
+        );
+        retain_last_checked_provider_status(
+            &mut providers,
+            &self.snapshot.providers,
+            configured_provider,
         );
 
         // Discovery must not execute model inference. A provider health check
@@ -3808,6 +3830,7 @@ impl RealLbeWrapper {
         } else {
             ProviderHealth::Error
         };
+        update_provider_health_snapshot(&mut self.snapshot, provider_id, auth_state, health);
         self.pending_events
             .push_back(LbeEvent::ProviderAuthStateUpdated {
                 provider_id,
@@ -5525,6 +5548,26 @@ impl RealLbeWrapper {
     }
 }
 
+/// Discovery reports inventory, not a new health verdict. Retain the last
+/// explicit check for the same configured provider until a new validation
+/// result or binding change replaces it.
+pub(crate) fn retain_last_checked_provider_status(
+    discovered: &mut [ProviderProjection],
+    previous: &[ProviderProjection],
+    configured_provider: Option<ProviderId>,
+) {
+    for provider in discovered {
+        if Some(provider.provider_id) != configured_provider {
+            continue;
+        }
+        if let Some(prior) = previous.iter().find(|item| {
+            item.provider_id == provider.provider_id && item.health != ProviderHealth::Unknown
+        }) {
+            provider.auth_state = prior.auth_state;
+            provider.health = prior.health;
+        }
+    }
+}
 pub(crate) fn project_provider_catalog(
     provider_ids: &[ProviderId],
     configured_provider: Option<ProviderId>,

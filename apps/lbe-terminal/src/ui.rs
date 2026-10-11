@@ -789,7 +789,10 @@ fn draw_main_body(frame: &mut Frame, area: Rect, app: &App, split_layout: bool) 
         && !app.show_shortcuts
         && !app.show_command_palette
         && app.agent_mode != AgentMode::Audit;
-    let content = if matches!(app.phase, Phase::ProviderSetup { .. }) && app.panel.is_none() {
+    let content = if matches!(app.phase, Phase::ProviderSetup { .. })
+        && app.panel.is_none()
+        && app.agent_mode != AgentMode::Audit
+    {
         provider_setup_text(app)
     } else if app.input.starts_with('/')
         && !app.input.contains(char::is_whitespace)

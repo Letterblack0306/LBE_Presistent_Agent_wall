@@ -340,11 +340,17 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
                     }
                 }
             }
-            if !submitted && model_catalog_ready && startup_model_applied
+            if !submitted
+                && model_catalog_ready
+                && startup_model_applied
                 && !provider_validation_started
             {
                 if let Some(selected) = app.snapshot.selected_model.as_ref() {
-                    if options.model.as_ref().map_or(true, |requested| requested == selected) {
+                    if options
+                        .model
+                        .as_ref()
+                        .map_or(true, |requested| requested == selected)
+                    {
                         wrapper
                             .submit(
                                 requests::UserRequest::ValidateProvider {
@@ -363,11 +369,14 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
             }
             let session_ready =
                 app.snapshot.session_id.is_some() && app.snapshot.workspace_id.is_some();
-            let model_ready = model_catalog_ready && startup_model_applied
+            let model_ready = model_catalog_ready
+                && startup_model_applied
                 && options.model.as_ref().map_or(true, |requested| {
                     app.snapshot.selected_model.as_ref() == Some(requested)
                 });
-            if !submitted && session_ready && model_ready
+            if !submitted
+                && session_ready
+                && model_ready
                 && (!use_real_runtime || app.provider_setup_complete())
             {
                 // Headless execution follows the same entry path as the
@@ -683,11 +692,9 @@ fn run(
             app.reduce_lbe_event(event);
             if use_real_runtime && !startup_options_applied && has_authoritative_workspace {
                 startup_options_applied = true;
-                // Auto-refresh provider catalog so the landing page shows
-                // real provider status from Cline providers.json.
-                app.apply_wrapper_result(
-                    wrapper.submit(requests::UserRequest::RefreshProviderCatalog, now),
-                );
+                // Resuming a session reattaches the wrapper and replaces its snapshot.
+                // Restore first, then discover provider/models against the restored
+                // identity so the worker never loses the catalog before SelectModel.
                 if let Some(session_id) = options.session_id.clone().or_else(|| {
                     options
                         .continue_session
@@ -699,6 +706,9 @@ fn run(
                         Instant::now(),
                     ));
                 }
+                app.apply_wrapper_result(
+                    wrapper.submit(requests::UserRequest::RefreshProviderCatalog, now),
+                );
             }
             if use_real_runtime && !startup_model_applied && has_model_catalog {
                 if let Some(model) = options.model.clone() {
