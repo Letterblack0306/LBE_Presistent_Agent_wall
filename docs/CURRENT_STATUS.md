@@ -5,7 +5,7 @@
 > **Latest bounded observation:** LBE `2e0c3fd` included a data-driven provider-identity decoder, but the TUI picker still used the fixed enum. Windows ConPTY observations proved basic keyboard, mouse, slash menu and terminal lifecycle; they did not prove complete model→tool→observation→completion readiness. These observations are not evergreen.
 
 
-Updated: 2026-10-10
+Updated: 2026-10-11
 
 ## Authority
 
@@ -20,6 +20,32 @@ Canonical backend workspace: `C:\Agents-Memory-Tool-v6-integration`
 Product entrypoint: `lbe`
 
 Canonical visible terminal implementation workspace: `C:\Agents-Memory-Tool-v6-integration\apps\lbe-terminal`
+
+## BirdEye resolved advisory skills � 2026-10-11
+
+Status: **IMPLEMENTED / FOCUSED-TESTED / LIVE UNPROVEN**
+
+Current source changes establish this bounded ownership split:
+
+- BirdEye owns skill discovery, ranking, selected-skill precedence, task locks and drift metadata.
+- LBE no longer scans or ranks duplicate local skill trees under `.agents`, `.cline` or `.lbe`.
+- `lbe_guard_inspector/runtime/agent_guidance.py` accepts and validates the versioned `lbe.resolved-advisory-skills.v1` snapshot produced from BirdEye `skills.resolve` output.
+- Validation fails closed for malformed resolution results, task mismatch, duplicate paths, excessive skill count or size, incomplete/truncated content, byte mismatch and SHA-256 drift.
+- Native LBE and Cline controller paths accept an injected per-task resolver and rebuild guidance for each task rather than retaining stale skill context across turns.
+- Skill bodies are provider-only advisory context. Persisted guidance/audit payloads retain bounded provenance but exclude skill content.
+- Skill text cannot add a governed tool or bypass policy. A focused regression supplies advisory text requesting `workspace.delete` while the actual tool projection remains only `workspace.read`.
+
+Validation recorded for this change set:
+
+```text
+focused Python tests = 59 passed
+Python compilation   = PASS
+governance check     = PASS
+git diff --check     = PASS
+full Python suite    = NO VERDICT (both execution routes timed out)
+```
+
+The canonical BirdEye MCP transport is not yet composed into the resolver dependency. Live skill resolution, explicit slash invocation, enable/disable state, progressive resource loading, cross-turn task-lock drift handling and installed provider continuation evidence remain **OPEN**. No source-level or focused-test result promotes those items to live or final-product acceptance.
 
 ## Current verified state — 2026-10-10
 

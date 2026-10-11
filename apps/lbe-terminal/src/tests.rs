@@ -1589,6 +1589,7 @@ fn real_wrapper_rejects_start_session_while_disconnected() {
 #[test]
 fn commands_open_mock_panels_without_claiming_runtime_integration() {
     let mut app = App::default();
+    app.phase = Phase::Welcome;
     let mut wrapper = MockLbeWrapper::default();
     app.handle_command("/tools", &mut wrapper);
     assert_eq!(app.panel, Some(MockPanel::Tools));
@@ -2069,6 +2070,185 @@ fn model_picker_escape_closes_without_selecting() {
     assert_eq!(app.panel, None);
     assert_eq!(app.snapshot.selected_model, original);
     assert!(wrapper.poll_event(Instant::now()).unwrap().is_none());
+}
+
+#[test]
+fn provider_picker_lists_every_projected_provider_and_starts_on_user_selection() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.snapshot.providers = vec![
+        ProviderProjection {
+            provider_id: ProviderId::LmStudio,
+            auth_state: AuthState::Ready,
+            health: ProviderHealth::Ready,
+            is_local: true,
+            setup_method: ProviderSetupMethod::Endpoint,
+        },
+        ProviderProjection {
+            provider_id: ProviderId::Anthropic,
+            auth_state: AuthState::Configured,
+            health: ProviderHealth::Unknown,
+            is_local: false,
+            setup_method: ProviderSetupMethod::ApiKey,
+        },
+        ProviderProjection {
+            provider_id: ProviderId::OpenRouter,
+            auth_state: AuthState::Configured,
+            health: ProviderHealth::Unknown,
+            is_local: false,
+            setup_method: ProviderSetupMethod::ApiKey,
+        },
+    ];
+    app.snapshot.selected_model = Some(ModelRef {
+        provider_id: ProviderId::Anthropic,
+        model_id: "claude-user-choice".to_owned(),
+    });
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_key(KeyCode::Function(2).into(), &mut wrapper, Instant::now());
+
+    assert_eq!(app.provider_picker_index, 1);
+    let panel = mock_panel_text_for_app(MockPanel::Provider, &app).to_string();
+    assert!(panel.contains("LM Studio"));
+    assert!(panel.contains("Anthropic"));
+    assert!(panel.contains("OpenRouter"));
+}
+
+#[test]
+fn provider_selection_opens_only_that_providers_models_without_hardcoded_priority() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.snapshot.providers = vec![
+        ProviderProjection {
+            provider_id: ProviderId::LmStudio,
+            auth_state: AuthState::Ready,
+            health: ProviderHealth::Ready,
+            is_local: true,
+            setup_method: ProviderSetupMethod::Endpoint,
+        },
+        ProviderProjection {
+            provider_id: ProviderId::Anthropic,
+            auth_state: AuthState::Configured,
+            health: ProviderHealth::Unknown,
+            is_local: false,
+            setup_method: ProviderSetupMethod::ApiKey,
+        },
+    ];
+    app.snapshot.models = vec![
+        ModelDescriptor {
+            provider_id: ProviderId::LmStudio,
+            model_id: "local-model".to_owned(),
+            display_name: "Local model".to_owned(),
+            context_window: None,
+            max_output_tokens: None,
+            capabilities: ProviderCapabilities {
+                streaming: false,
+                tools: false,
+                reasoning: false,
+                images: false,
+                prompt_caching: false,
+                max_context: None,
+                max_output: None,
+            },
+            capabilities_known: false,
+        },
+        ModelDescriptor {
+            provider_id: ProviderId::Anthropic,
+            model_id: "preferred-cloud-model".to_owned(),
+            display_name: "Preferred cloud model".to_owned(),
+            context_window: None,
+            max_output_tokens: None,
+            capabilities: ProviderCapabilities {
+                streaming: false,
+                tools: false,
+                reasoning: false,
+                images: false,
+                prompt_caching: false,
+                max_context: None,
+                max_output: None,
+            },
+            capabilities_known: false,
+        },
+    ];
+    app.provider_picker_index = 1;
+    app.panel = Some(MockPanel::Provider);
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_key(KeyCode::Enter.into(), &mut wrapper, Instant::now());
+
+    assert_eq!(app.panel, Some(MockPanel::Model));
+    assert_eq!(app.model_picker_provider, Some(ProviderId::Anthropic));
+    assert_eq!(app.model_picker_index, 1);
+    let panel = mock_panel_text_for_app(MockPanel::Model, &app).to_string();
+    assert!(panel.contains("preferred-cloud-model"));
+    assert!(!panel.contains("local-model"));
+    assert!(wrapper.requests.is_empty());
+}
+
+#[test]
+fn provider_scoped_model_picker_mouse_selects_the_visible_row() {
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.panel = Some(MockPanel::Model);
+    app.model_picker_provider = Some(ProviderId::Anthropic);
+    app.snapshot.models = vec![
+        ModelDescriptor {
+            provider_id: ProviderId::LmStudio,
+            model_id: "hidden-local-model".to_owned(),
+            display_name: "Hidden local model".to_owned(),
+            context_window: None,
+            max_output_tokens: None,
+            capabilities: ProviderCapabilities {
+                streaming: false,
+                tools: false,
+                reasoning: false,
+                images: false,
+                prompt_caching: false,
+                max_context: None,
+                max_output: None,
+            },
+            capabilities_known: false,
+        },
+        ModelDescriptor {
+            provider_id: ProviderId::Anthropic,
+            model_id: "visible-cloud-model".to_owned(),
+            display_name: "Visible cloud model".to_owned(),
+            context_window: None,
+            max_output_tokens: None,
+            capabilities: ProviderCapabilities {
+                streaming: false,
+                tools: false,
+                reasoning: false,
+                images: false,
+                prompt_caching: false,
+                max_context: None,
+                max_output: None,
+            },
+            capabilities_known: false,
+        },
+    ];
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_mouse_with_wrapper(
+        MouseEvent {
+            kind: MouseEventKind::Down(ratatui::termina::event::MouseButton::Left),
+            column: 30,
+            row: 9,
+            modifiers: Modifiers::NONE,
+        },
+        &mut wrapper,
+        Instant::now(),
+    );
+
+    assert_eq!(
+        wrapper.requests,
+        vec![UserRequest::SelectModel {
+            model: ModelRef {
+                provider_id: ProviderId::Anthropic,
+                model_id: "visible-cloud-model".to_owned(),
+            },
+        }]
+    );
 }
 
 #[test]
@@ -2782,6 +2962,7 @@ fn provider_panel_projects_authoritative_provider_catalog_when_connected() {
             auth_state: AuthState::Ready,
             health: ProviderHealth::Ready,
             is_local: true,
+            setup_method: ProviderSetupMethod::ApiKeyAndEndpoint,
         }],
     });
 
@@ -2835,6 +3016,23 @@ fn real_provider_row_mouse_click_targets_the_row_under_the_pointer() {
     app.snapshot.connection = RuntimeConnection::Connected;
     app.snapshot.providers =
         project_provider_catalog(&provider_ids, Some(ProviderId::OpenAiCompatible), true);
+    app.snapshot.models = vec![ModelDescriptor {
+        provider_id: ProviderId::OpenAiCompatible,
+        model_id: "local-compatible-model".to_owned(),
+        display_name: "Local compatible model".to_owned(),
+        context_window: None,
+        max_output_tokens: None,
+        capabilities: ProviderCapabilities {
+            streaming: false,
+            tools: false,
+            reasoning: false,
+            images: false,
+            prompt_caching: false,
+            max_context: None,
+            max_output: None,
+        },
+        capabilities_known: false,
+    }];
     let mut wrapper = RecordingWrapper::new();
 
     // At the 80x24 layout, OpenAI-compatible is rendered on terminal row 17.
@@ -2852,12 +3050,12 @@ fn real_provider_row_mouse_click_targets_the_row_under_the_pointer() {
     );
 
     assert_eq!(app.provider_picker_index, 6);
+    assert_eq!(app.panel, Some(MockPanel::Model));
     assert_eq!(
-        wrapper.requests,
-        vec![UserRequest::ValidateProvider {
-            provider_id: ProviderId::OpenAiCompatible
-        }]
+        app.model_picker_provider,
+        Some(ProviderId::OpenAiCompatible)
     );
+    assert!(wrapper.requests.is_empty());
 }
 
 #[test]
@@ -2940,6 +3138,7 @@ fn provider_and_model_catalogs_survive_later_session_snapshot_updates() {
             auth_state: AuthState::Ready,
             health: ProviderHealth::Ready,
             is_local: true,
+            setup_method: ProviderSetupMethod::ApiKeyAndEndpoint,
         }],
     });
     app.reduce_lbe_event(LbeEvent::ModelCatalogDiscovered {
@@ -3160,21 +3359,131 @@ fn landing_phase_is_the_default_entry_gate() {
     assert_eq!(app.phase, Phase::Landing);
     assert_eq!(app.agent_mode, AgentMode::Build);
 
-    app.handle_key(KeyCode::Char('?').into(), &mut wrapper, now);
-    assert!(!app.show_shortcuts);
-    app.handle_key(KeyCode::Char('q').into(), &mut wrapper, now);
-    assert!(!app.should_quit());
-    app.handle_key(
-        KeyEvent::new(KeyCode::Char('d'), Modifiers::CONTROL),
-        &mut wrapper,
-        now,
-    );
-    assert!(!app.should_quit());
     app.handle_key(KeyCode::Function(2).into(), &mut wrapper, now);
-    assert_eq!(app.panel, None);
-
-    app.handle_key(KeyCode::Enter.into(), &mut wrapper, now);
+    assert_eq!(app.panel, Some(MockPanel::Provider));
     assert_eq!(app.phase, Phase::Welcome);
+}
+
+#[test]
+fn landing_enters_provider_setup_when_selected_provider_is_not_ready() {
+    let mut app = App::default();
+    app.snapshot.selected_model = Some(ModelRef {
+        provider_id: ProviderId::OpenAi,
+        model_id: "gpt-test".to_owned(),
+    });
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_key(KeyCode::Enter.into(), &mut wrapper, Instant::now());
+
+    assert_eq!(
+        app.phase,
+        Phase::ProviderSetup {
+            step: ProviderSetupStep::SelectProvider
+        }
+    );
+    assert_eq!(app.panel, Some(MockPanel::Provider));
+}
+
+#[test]
+fn provider_setup_validation_is_explicit_and_model_selection_completes_from_snapshot() {
+    let mut app = App::default();
+    app.phase = Phase::ProviderSetup {
+        step: ProviderSetupStep::SelectProvider,
+    };
+    app.snapshot.selected_model = None;
+    app.provider_picker_index = 3;
+    app.panel = Some(MockPanel::Provider);
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_key(KeyCode::Char('v').into(), &mut wrapper, Instant::now());
+    assert!(matches!(
+        wrapper.requests.last(),
+        Some(UserRequest::ValidateProvider {
+            provider_id: ProviderId::LmStudio
+        })
+    ));
+    assert_eq!(
+        app.phase,
+        Phase::ProviderSetup {
+            step: ProviderSetupStep::Validating
+        }
+    );
+
+    let mut snapshot = app.snapshot.clone();
+    snapshot.selected_model = Some(ModelRef {
+        provider_id: ProviderId::LmStudio,
+        model_id: "local-model".to_owned(),
+    });
+    app.reduce_lbe_event(LbeEvent::SnapshotUpdated { snapshot });
+    assert_eq!(app.phase, Phase::Welcome);
+    assert!(app.provider_setup_complete());
+}
+
+#[test]
+fn startup_prompt_stays_queued_until_provider_setup_is_complete() {
+    let mut app = App::default();
+    app.snapshot.selected_model = Some(ModelRef {
+        provider_id: ProviderId::OpenAi,
+        model_id: "gpt-test".to_owned(),
+    });
+    let mut wrapper = RecordingWrapper::new();
+
+    app.submit_initial_prompt("inspect workspace".to_owned(), &mut wrapper, Instant::now());
+
+    assert!(wrapper.requests.is_empty());
+    assert_eq!(app.input, "inspect workspace");
+    assert!(matches!(app.phase, Phase::ProviderSetup { .. }));
+}
+
+#[test]
+fn landing_advertised_model_and_help_keys_open_real_surfaces() {
+    let now = Instant::now();
+    let mut wrapper = MockLbeWrapper::default();
+    let mut model = App::default();
+    model.handle_key(KeyCode::Function(3).into(), &mut wrapper, now);
+    assert_eq!(model.phase, Phase::Welcome);
+    assert_eq!(model.panel, Some(MockPanel::Model));
+
+    let mut help = App::default();
+    help.handle_key(KeyCode::Char('?').into(), &mut wrapper, now);
+    assert_eq!(help.phase, Phase::Welcome);
+    assert!(help.show_shortcuts);
+}
+
+#[test]
+fn landing_renders_runtime_provider_catalog_and_persistent_command_strip() {
+    let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("test backend");
+    let app = App::default();
+    terminal
+        .draw(|frame| draw(frame, &app))
+        .expect("render landing");
+    let displayed = terminal
+        .backend()
+        .buffer()
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+    assert!(displayed.contains("PROVIDERS"));
+    assert!(displayed.contains("CONNECTION DETAILS"));
+    assert!(displayed.contains("Gemini"));
+    assert!(displayed.contains("/provider"));
+    assert!(displayed.contains("/models"));
+    assert!(displayed.contains("/audit"));
+    assert!(displayed.contains("/help"));
+    assert!(displayed.contains("MODE"));
+    assert!(!displayed.contains("What do you want to work on?"));
+}
+
+#[test]
+fn landing_provider_selection_is_keyboard_accessible_before_entering_product() {
+    let mut app = App::default();
+    let mut wrapper = RecordingWrapper::new();
+
+    app.handle_key(KeyCode::Down.into(), &mut wrapper, Instant::now());
+
+    assert_eq!(app.phase, Phase::Landing);
+    assert_eq!(app.provider_picker_index, 1);
 }
 
 #[test]
@@ -3413,6 +3722,27 @@ fn audit_mode_renders_a_real_read_only_projection_screen() {
         Instant::now(),
     );
     assert_eq!(app.audit_scroll, 0);
+}
+
+#[test]
+fn compact_audit_footer_explains_reaching_offscreen_evidence() {
+    let mut terminal = Terminal::new(TestBackend::new(60, 18)).expect("test terminal");
+    let mut app = App::default();
+    app.phase = Phase::Welcome;
+    app.agent_mode = AgentMode::Audit;
+    terminal
+        .draw(|frame| draw(frame, &app))
+        .expect("audit frame");
+    let displayed = terminal
+        .backend()
+        .buffer()
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+    assert!(displayed.contains("PgDn findings"));
+    assert!(displayed.contains("Home top"));
+    assert!(!displayed.contains("context …"));
 }
 
 #[test]
@@ -6577,6 +6907,7 @@ fn provider_validation_command_resolves_discovered_provider() {
         auth_state: AuthState::NotConfigured,
         health: ProviderHealth::Unknown,
         is_local: true,
+        setup_method: ProviderSetupMethod::Endpoint,
     });
     let mut wrapper = RecordingWrapper::new();
     app.handle_command("/provider-validate lmstudio", &mut wrapper);
@@ -6631,4 +6962,22 @@ fn provider_key_refuses_duplicate_or_malformed_registry_identity() {
     assert!(crate::wrapper::parse_registered_provider_keys(&payload).is_err());
     assert!(ProviderKey::parse("bad provider; command").is_err());
     assert!(ProviderKey::parse("").is_err());
+}
+
+#[test]
+fn headless_initial_prompt_refuses_unconfigured_provider() {
+    let mut app = App::default();
+    app.snapshot.session_id = Some("sess_headless_unconfigured".to_owned());
+    app.snapshot.workspace_id = Some("workspace_headless_unconfigured".to_owned());
+    app.snapshot.providers.clear();
+    app.snapshot.selected_model = None;
+    let mut wrapper = MockLbeWrapper::default();
+    let accepted =
+        app.submit_initial_prompt("inspect workspace".to_owned(), &mut wrapper, Instant::now());
+    assert!(
+        !accepted,
+        "unconfigured provider cannot submit a headless task"
+    );
+    assert!(matches!(app.phase, Phase::ProviderSetup { .. }));
+    assert_eq!(app.input, "inspect workspace");
 }

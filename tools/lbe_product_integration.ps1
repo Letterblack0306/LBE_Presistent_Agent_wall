@@ -654,10 +654,11 @@ elseif ($Project -eq "run") {
 
 # Informational flags must pass through to the installed client without
 # requiring a full runtime/session/provider bootstrap. They can arrive either
-# as unbound $args or positionally bound to $Project / $Model.
+# as unbound $args or positionally bound to a declared string parameter. In
+# particular, `-Project <path> --version` binds `--version` to $Database.
 $informational = @('--version', '-V', '--help', '-h')
 $infoArg = $null
-foreach ($candidate in @($args) + @($Project) + @($Model)) {
+foreach ($candidate in @($args) + @($Project) + @($Database) + @($Model)) {
     if ($informational -contains $candidate) { $infoArg = $candidate; break }
 }
 if ($infoArg) {
@@ -1038,10 +1039,10 @@ if ($ProviderConfig -and (Test-Path -LiteralPath $ProviderConfig -PathType Leaf)
 elseif (-not (Test-Path -LiteralPath $installedProviderConfig -PathType Leaf)) {
     @{
         endpoint = "http://127.0.0.1:1234/v1/chat/completions"
-        model = "google/gemma-4-e4b"
+        model = "" # No model is operational until provider selection and verification
         timeout_seconds = 120
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $installedProviderConfig -Encoding UTF8
-    Write-Host "Generated default provider configuration (127.0.0.1:1234): $installedProviderConfig"
+    Write-Host "Generated unconfigured provider template (model selection required): $installedProviderConfig"
 }
 else {
     Write-Host "Provider configuration already present: $installedProviderConfig"

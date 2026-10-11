@@ -369,10 +369,10 @@ class OpenAICompatibleReasoningBackend:
 
 
 def _provider_wire_schema(schema: Mapping[str, Any], provider_id: str | None) -> Mapping[str, Any]:
-    if (provider_id or "").lower() not in {"lmstudio", "lm-studio"}:
-        return schema
-    # LM Studio's local grammar compiler rejects maxItems. Keep the complete
-    # canonical schema for LBE-side validation after the provider responds.
+    # OpenAI-compatible endpoints can expose a local grammar engine under a
+    # generic provider identity. Schema wire compatibility must not depend on
+    # a provider label: retain LBE's complete canonical schema for validation
+    # after the model responds, while omitting known unsupported grammar bounds.
     wire_schema = copy.deepcopy(schema)
 
     def remove_max_items(value: Any) -> None:

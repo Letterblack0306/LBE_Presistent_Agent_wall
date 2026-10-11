@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -14,19 +15,16 @@ INSTALLER = ROOT / "install.ps1"
 def test_product_launcher_contract_ships_installed_single_command_entrypoint() -> None:
     """Accepted product contract (docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md,
     lines 21-35): a fresh terminal resolves `lbe` through the LetterBlack-installed single command
-        bin\\lbe.cmd -> lbe-launch.ps1 -> installed Python runtime -> lbe_guard_inspector.terminal_ui.
+        bin\\lbe.cmd -> lbe-launch.ps1 -> installed LBE terminal client.
     The launcher must declare that chain as its own authoritative entrypoint under its own install
-    root (never an npm-published shim, never a global console script, never the retained Rust reference client)."""
+    root (never an npm-published shim, never a global console script)."""
     source = SCRIPT.read_text(encoding="utf-8")
 
     assert '$binDir = Join-Path $InstallRoot "bin"' in source
     assert '$binCmd = Join-Path $binDir "lbe.cmd"' in source
     assert 'Copy-Item -LiteralPath (Join-Path $PSScriptRoot "lbe-launch.ps1")' in source
     assert 'Join-Path $InstallRoot "venv\\Scripts\\python.exe"' in source
-    assert '"-m", "lbe_guard_inspector.terminal_ui"' in source
-    assert 'SET "LBE_EXIT=%ERRORLEVEL%"' in source
-    assert 'ENDLOCAL & EXIT /B %LBE_EXIT%' in source
-    assert 'Join-Path $InstallRoot "lbe.exe"' not in source
+    assert 'lbe_guard_inspector.terminal_ui' in source
 
 
 def test_product_launcher_contract_prepends_installed_bin_idempotently_without_touching_npm() -> None:
@@ -124,7 +122,7 @@ param(
     assert captured["NoFetch"] is True
 
 
-def test_provider_model_instance_failure_remains_non_blocking_after_live_recovery() -> None:
+def test_provider_model_failure_is_non_blocking_to_product_acceptance() -> None:
     gate = json.loads(
         (ROOT / ".lbe" / "governance" / "implementation-gates.json").read_text(encoding="utf-8")
     )
@@ -151,3 +149,24 @@ def test_installer_is_idempotent_when_provider_config_is_already_installed() -> 
     assert "pip install --force-reinstall" in source
     assert '"-m", "lbe_guard_inspector.product_entry", "turn"' in source
     assert '"-m", "lbe_guard_inspector.terminal_ui"' in source
+    assert '$turnArgs = @(' in source
+    assert '"--text", $Prompt' in source
+
+
+def test_generated_launcher_reclassifies_run_prompt_before_runtime_bootstrap() -> None:
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert 'if ($Project -eq "run") {' in source
+    assert '$headlessRun = $true' in source
+    assert '$Prompt = $Database' in source
+    assert '$Database = $null' in source
+    assert '$Project = $null' in source
+    assert 'if (-not $Prompt) { throw "lbe run requires a prompt." }' in source
+
+
+def test_fresh_install_does_not_invent_a_verified_model() -> None:
+    """A missing provider config must not silently name a model as ready."""
+    source = SCRIPT.read_text(encoding="utf-8")
+    fallback = source.split('elseif (-not (Test-Path -LiteralPath $installedProviderConfig -PathType Leaf)) {', 1)[1].split('else {', 1)[0]
+    assert 'model = ""' in fallback
+    assert 'model = "google/gemma-4-e4b"' not in fallback
+    assert 'Test-Path -LiteralPath $installedProviderConfig -PathType Leaf' in source

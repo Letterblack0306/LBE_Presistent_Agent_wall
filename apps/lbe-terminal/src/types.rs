@@ -123,6 +123,9 @@ pub(crate) const PALETTE: Palette = Palette {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Phase {
     Landing,
+    ProviderSetup {
+        step: ProviderSetupStep,
+    },
     Welcome,
     PatchReview {
         path: String,
@@ -140,6 +143,15 @@ pub(crate) enum Phase {
     TimedOut,
     Aborted,
     Rejected,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProviderSetupStep {
+    SelectProvider,
+    Configure,
+    Validating,
+    SelectModel,
+    Error,
 }
 
 impl Phase {
@@ -695,6 +707,36 @@ pub(crate) enum AuthState {
     Error,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProviderSetupMethod {
+    Preconfigured,
+    ApiKey,
+    Endpoint,
+    ApiKeyAndEndpoint,
+    OAuth,
+    ExternalCredentialChain,
+}
+
+impl ProviderSetupMethod {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Preconfigured => "PRECONFIGURED",
+            Self::ApiKey => "API KEY",
+            Self::Endpoint => "ENDPOINT",
+            Self::ApiKeyAndEndpoint => "API KEY + ENDPOINT",
+            Self::OAuth => "OAUTH",
+            Self::ExternalCredentialChain => "EXTERNAL CREDENTIAL CHAIN",
+        }
+    }
+
+    pub(crate) fn supported_by_current_contract(self) -> bool {
+        matches!(
+            self,
+            Self::Preconfigured | Self::Endpoint | Self::ExternalCredentialChain
+        )
+    }
+}
+
 impl AuthState {
     pub(crate) fn label(self) -> &'static str {
         match self {
@@ -760,6 +802,7 @@ pub(crate) struct ProviderProjection {
     pub(crate) auth_state: AuthState,
     pub(crate) health: ProviderHealth,
     pub(crate) is_local: bool,
+    pub(crate) setup_method: ProviderSetupMethod,
 }
 
 // ---------------------------------------------------------------------------
@@ -1057,30 +1100,35 @@ pub(crate) fn mock_provider_catalog() -> Vec<ProviderProjection> {
             auth_state: AuthState::Ready,
             health: ProviderHealth::Ready,
             is_local: false,
+            setup_method: ProviderSetupMethod::Preconfigured,
         },
         ProviderProjection {
             provider_id: ProviderId::OpenAi,
             auth_state: AuthState::NotConfigured,
             health: ProviderHealth::Unknown,
             is_local: false,
+            setup_method: ProviderSetupMethod::ApiKey,
         },
         ProviderProjection {
             provider_id: ProviderId::Anthropic,
             auth_state: AuthState::NotConfigured,
             health: ProviderHealth::Unknown,
             is_local: false,
+            setup_method: ProviderSetupMethod::ApiKey,
         },
         ProviderProjection {
             provider_id: ProviderId::LmStudio,
             auth_state: AuthState::Ready,
             health: ProviderHealth::Ready,
             is_local: true,
+            setup_method: ProviderSetupMethod::Endpoint,
         },
         ProviderProjection {
             provider_id: ProviderId::Ollama,
             auth_state: AuthState::NotConfigured,
             health: ProviderHealth::Offline,
             is_local: true,
+            setup_method: ProviderSetupMethod::Endpoint,
         },
     ]
 }

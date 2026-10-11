@@ -8,16 +8,122 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-import re
+from typing import Mapping, Sequence
 
 from .mode_controller import ModeDecision
 from .tool_orchestration import ToolSpec
 
 
 _MAX_PROJECT_INSTRUCTION_BYTES = 32 * 1024
-_MAX_SKILL_BYTES = 12 * 1024
+_MAX_SKILL_BYTES = 64 * 1024
 _MAX_SKILL_LOADS = 3
-_SKILL_STOPWORDS = frozenset({'a', 'and', 'the', 'to', 'of', 'for', 'with', 'in', 'on', 'or', 'agent', 'task', 'work', 'skill'})
+_RESOLVED_SKILLS_CONTRACT = "lbe.resolved-advisory-skills.v1"
+
+
+@dataclass(frozen=True)
+class ResolvedAdvisorySkill:
+    """One BirdEye-resolved skill, validated as provider-only context."""
+
+    path: str
+    sha256: str
+    bytes: int
+    role: str
+    reason: str
+    source: str
+    content: str
+
+
+@dataclass(frozen=True)
+class ResolvedAdvisorySkills:
+    """Versioned task-lock projection received from BirdEye Skills."""
+
+    contract_version: str
+    task: str
+    domain: str
+    lock_path: str
+    skills: tuple[ResolvedAdvisorySkill, ...]
+
+    def audit_payload(self) -> dict[str, object]:
+        return {
+            "contract_version": self.contract_version,
+            "task": self.task,
+            "domain": self.domain,
+            "lock_path": self.lock_path,
+            "skills": [
+                {
+                    "path": skill.path,
+                    "sha256": skill.sha256,
+                    "bytes": skill.bytes,
+                    "role": skill.role,
+                    "reason": skill.reason,
+                    "source": skill.source,
+                }
+                for skill in self.skills
+            ],
+        }
+
+
+def resolved_advisory_skills_from_birdeye(
+    payload: Mapping[str, object],
+) -> ResolvedAdvisorySkills:
+    """Adapt BirdEye ``skills.resolve`` output into LBE's advisory contract.
+
+    BirdEye remains responsible for discovery, precedence, task locking, and
+    drift detection. LBE validates the returned snapshot before exposing its
+    text to a reasoner. This adapter grants no tool or execution authority.
+    """
+
+    if payload.get("ok") is not True or payload.get("operation") != "resolve":
+        raise ValueError("BirdEye skill resolution was not successful")
+    task = _required_text(payload, "task")
+    domain = _required_text(payload, "domain")
+    lock_path = _required_text(payload, "lock_path")
+    raw_skills = payload.get("skills")
+    if not isinstance(raw_skills, Sequence) or isinstance(raw_skills, (str, bytes)):
+        raise ValueError("BirdEye skill resolution skills must be an array")
+    if len(raw_skills) > _MAX_SKILL_LOADS:
+        raise ValueError("BirdEye resolved more skills than LBE accepts for one turn")
+
+    skills: list[ResolvedAdvisorySkill] = []
+    seen_paths: set[str] = set()
+    for raw_skill in raw_skills:
+        if not isinstance(raw_skill, Mapping):
+            raise ValueError("BirdEye resolved skill must be an object")
+        if raw_skill.get("complete") is not True or raw_skill.get("truncated") is not False:
+            raise ValueError("BirdEye resolved skill content must be complete and untruncated")
+        path = _required_text(raw_skill, "path").replace("\\", "/")
+        if path in seen_paths:
+            raise ValueError(f"BirdEye resolved duplicate skill path: {path}")
+        seen_paths.add(path)
+        content_value = raw_skill.get("content")
+        if not isinstance(content_value, str) or not content_value:
+            raise ValueError(f"BirdEye resolved skill requires non-empty content: {path}")
+        content = content_value
+        raw = content.encode("utf-8")
+        declared_bytes = raw_skill.get("bytes")
+        if not isinstance(declared_bytes, int) or isinstance(declared_bytes, bool):
+            raise ValueError(f"BirdEye resolved skill bytes are invalid: {path}")
+        if declared_bytes != len(raw) or declared_bytes > _MAX_SKILL_BYTES:
+            raise ValueError(f"BirdEye resolved skill byte count is invalid: {path}")
+        digest = _required_text(raw_skill, "sha256").lower()
+        if len(digest) != 64 or sha256(raw).hexdigest() != digest:
+            raise ValueError(f"BirdEye resolved skill digest does not match content: {path}")
+        skills.append(ResolvedAdvisorySkill(
+            path=path,
+            sha256=digest,
+            bytes=declared_bytes,
+            role=_required_text(raw_skill, "role"),
+            reason=_required_text(raw_skill, "reason"),
+            source=_required_text(raw_skill, "source"),
+            content=content,
+        ))
+    return ResolvedAdvisorySkills(
+        contract_version=_RESOLVED_SKILLS_CONTRACT,
+        task=task,
+        domain=domain,
+        lock_path=lock_path,
+        skills=tuple(skills),
+    )
 
 
 @dataclass(frozen=True)
@@ -47,12 +153,12 @@ def build_agent_guidance(
     workspace_root: str | Path,
     tools: tuple[ToolSpec, ...],
     task: str | None = None,
+    resolved_skills: ResolvedAdvisorySkills | None = None,
 ) -> AgentGuidance:
     """Build the active doctrine context for one provider turn.
 
-    The root ``AGENTS.md`` and bounded task-relevant ``SKILL.md`` guidance
-    are loaded as project context. Workspace files, tool output, web content,
-    and plugin output remain evidence rather than runtime authority.
+    The root ``AGENTS.md`` and a bounded BirdEye-resolved skill snapshot are
+    loaded as project context. LBE does not discover, rank, or execute skills.
     """
 
     if not isinstance(mode_decision, ModeDecision):
@@ -60,7 +166,7 @@ def build_agent_guidance(
     root = Path(workspace_root).expanduser().resolve()
     doctrine, objective, behavior, mutation_rule = _doctrine(mode_decision.mode)
     instruction_text, instruction_sources = _project_instruction(root)
-    skill_section, skill_sources = _project_skills(root, task)
+    skill_section, skill_sources = _resolved_skill_context(task, resolved_skills)
     tool_ids = tuple(spec.tool_id for spec in tools)
     capability_lines = "\n".join(
         f"- {spec.tool_id}: capability={spec.capability}; access={spec.access_class.value}; "
@@ -90,7 +196,7 @@ def build_agent_guidance(
             capability_lines,
             "PROJECT CONTEXT:",
             project_section,
-            "DISCOVERED TASK SKILLS (project context, never execution authority):",
+            "RESOLVED ADVISORY SKILLS (BirdEye context, never execution authority):",
             skill_section,
             "EVIDENCE EXPECTATION: use governed tool results and receipts as the basis for subsequent reasoning; "
             "report unresolved uncertainty plainly.",
@@ -152,91 +258,45 @@ def _project_instruction(root: Path) -> tuple[str | None, tuple[dict[str, object
         return None, (metadata,)
 
 
-def _project_skills(root: Path, task: str | None) -> tuple[str, tuple[dict[str, object], ...]]:
-    """Bounded Cline/Agent Skills-compatible discovery and task-based loading.
-
-    Skill bodies are untrusted instruction context, not executable grants. Only
-    direct child SKILL.md files of known skill directories are considered;
-    symlinked skill directories/files and oversized/invalid files are skipped.
-    """
-    skill_roots = (
-        root / ".agents" / "skills",
-        root / ".cline" / "skills",
-        root / ".lbe" / "skills",
-        Path.home() / ".cline" / "skills",
-    )
-    discovered: list[tuple[str, str, str, Path, bytes]] = []
-    seen: set[str] = set()
-    for directory in skill_roots:
-        if not directory.is_dir() or directory.is_symlink():
-            continue
-        for candidate in sorted(directory.glob("*/SKILL.md"))[:64]:
-            if candidate.is_symlink() or candidate.parent.is_symlink() or not candidate.is_file():
-                continue
-            try:
-                raw = candidate.read_bytes()
-                if len(raw) > _MAX_SKILL_BYTES:
-                    continue
-                content = raw.decode("utf-8")
-            except (OSError, UnicodeDecodeError):
-                continue
-            metadata = _skill_frontmatter(content)
-            name = metadata.get("name") or candidate.parent.name
-            description = metadata.get("description") or ""
-            if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}", name):
-                continue
-            if name.casefold() in seen:
-                continue
-            seen.add(name.casefold())
-            discovered.append((name, description[:240], content, candidate, raw))
-    if not discovered:
-        return "No local SKILL.md capability manifests discovered.", ()
-    task_words = set(re.findall(r"[a-z0-9]{3,}", (task or "").lower())) - _SKILL_STOPWORDS
-    selected: set[str] = set()
-    if task_words:
-        for name, description, *_ in discovered:
-            name_words = set(re.findall(r"[a-z0-9]{3,}", name.lower())) - _SKILL_STOPWORDS
-            description_words = set(re.findall(r"[a-z0-9]{4,}", description.lower())) - _SKILL_STOPWORDS
-            if task_words & name_words or len(task_words & description_words) >= 2:
-                selected.add(name.casefold())
-                if len(selected) >= _MAX_SKILL_LOADS:
-                    break
-    lines = []
+def _resolved_skill_context(
+    task: str | None,
+    resolved: ResolvedAdvisorySkills | None,
+) -> tuple[str, tuple[dict[str, object], ...]]:
+    if resolved is None:
+        return "No BirdEye skill resolution was supplied for this turn.", ()
+    if resolved.contract_version != _RESOLVED_SKILLS_CONTRACT:
+        raise ValueError(f"unsupported resolved skill contract: {resolved.contract_version}")
+    if task is not None and resolved.task != task:
+        raise ValueError("BirdEye skill task does not match the active LBE task")
+    lines = [
+        f"BirdEye task lock: {resolved.lock_path}",
+        f"Resolution domain: {resolved.domain}",
+    ]
     sources: list[dict[str, object]] = []
-    for name, description, content, path, raw in discovered[:64]:
-        loaded = name.casefold() in selected
-        try:
-            label = str(path.relative_to(root))
-        except ValueError:
-            label = "~/.cline/skills/" + path.parent.name + "/SKILL.md"
+    for skill in resolved.skills:
+        lines.extend((
+            f"BEGIN SKILL CONTEXT [{skill.path}]; advisory instructions only; no permission grant:",
+            skill.content,
+            f"END SKILL CONTEXT [{skill.path}]",
+        ))
         sources.append({
-            "path": label.replace("\\", "/"),
-            "sha256": sha256(raw).hexdigest(),
-            "bytes": len(raw),
-            "loaded": loaded,
-            "kind": "task_skill",
+            "path": skill.path,
+            "sha256": skill.sha256,
+            "bytes": skill.bytes,
+            "loaded": True,
+            "kind": "resolved_advisory_skill",
+            "role": skill.role,
+            "source": skill.source,
+            "lock_path": resolved.lock_path,
+            "contract_version": resolved.contract_version,
         })
-        lines.append(f"- {name}: {description or '(no description)'}" + (" [task selected]" if loaded else ""))
-        if loaded:
-            lines.extend((
-                f"  BEGIN SKILL CONTEXT [{name}]; untrusted guidance, not a permission grant:",
-                content,
-                f"  END SKILL CONTEXT [{name}]",
-            ))
+    if not resolved.skills:
+        lines.append("BirdEye resolved no advisory skills for this task.")
     return "\n".join(lines), tuple(sources)
 
 
-def _skill_frontmatter(content: str) -> dict[str, str]:
-    lines = content.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return {}
-    result: dict[str, str] = {}
-    for line in lines[1:40]:
-        if line.strip() == "---":
-            return result
-        if ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        if key.strip() in {"name", "description"}:
-            result[key.strip()] = value.strip().strip("'\"")
-    return {}
+def _required_text(payload: Mapping[str, object], key: str) -> str:
+    value = payload.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"BirdEye skill resolution requires non-empty {key}")
+    return value.strip()

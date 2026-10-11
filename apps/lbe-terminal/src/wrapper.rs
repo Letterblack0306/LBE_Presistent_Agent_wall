@@ -5547,9 +5547,30 @@ pub(crate) fn project_provider_catalog(
                 } else {
                     matches!(provider_id, ProviderId::LmStudio | ProviderId::Ollama)
                 },
+                setup_method: provider_setup_method(*provider_id),
             }
         })
         .collect()
+}
+
+fn provider_setup_method(provider_id: ProviderId) -> ProviderSetupMethod {
+    match provider_id {
+        ProviderId::LmStudio | ProviderId::Ollama => ProviderSetupMethod::Endpoint,
+        ProviderId::Bedrock | ProviderId::Vertex => ProviderSetupMethod::ExternalCredentialChain,
+        ProviderId::OpenCode => ProviderSetupMethod::OAuth,
+        ProviderId::OpenAiCompatible => ProviderSetupMethod::ApiKeyAndEndpoint,
+        ProviderId::OpenAi
+        | ProviderId::OpenAiNative
+        | ProviderId::Anthropic
+        | ProviderId::Gemini
+        | ProviderId::Mistral
+        | ProviderId::OpenRouter
+        | ProviderId::DeepSeek
+        | ProviderId::Groq
+        | ProviderId::Together
+        | ProviderId::Fireworks
+        | ProviderId::Xai => ProviderSetupMethod::ApiKey,
+    }
 }
 
 pub(crate) fn parse_provider_models_payload(

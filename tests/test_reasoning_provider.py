@@ -162,8 +162,13 @@ def test_planning_call_uses_explicit_config_and_typed_contract():
     schema = response_format["json_schema"]["schema"]
     assert schema["type"] == "object"
     assert schema["additionalProperties"] is False
-    assert schema["properties"]["candidate_guard_ids"]["maxItems"] == 1
-    assert schema["properties"]["validation_requests"]["maxItems"] == 0
+    # The provider wire schema is grammar-compatible without changing the
+    # authoritative post-response schema constraints.
+    assert "maxItems" not in schema["properties"]["candidate_guard_ids"]
+    assert "maxItems" not in schema["properties"]["validation_requests"]
+    from lbe_guard_inspector.reasoning_provider import _PLANNING_JSON_SCHEMA
+    assert _PLANNING_JSON_SCHEMA["properties"]["candidate_guard_ids"]["maxItems"] == 1
+    assert _PLANNING_JSON_SCHEMA["properties"]["validation_requests"]["maxItems"] == 0
     assert set(schema["required"]) == {
         "interpreted_problem",
         "ambiguities",
@@ -260,6 +265,23 @@ def test_schema_invalid_planning_response_is_rejected():
     with pytest.raises(ProviderError) as exc:
         backend.plan(planning_request())
 
+    assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+
+
+def test_wire_grammar_compatibility_does_not_relax_canonical_array_bounds():
+    plan_data = valid_plan()
+    plan_data["candidate_guard_ids"] = ["npm.package_metadata", "npm.package_metadata"]
+    backend = OpenAICompatibleReasoningBackend(
+        config=ProviderConfig(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="local-model",
+            timeout_seconds=5,
+            provider_id=None,
+        ),
+        transport=FakeTransport(choice(plan_data)),
+    )
+    with pytest.raises(ProviderError) as exc:
+        backend.plan(planning_request())
     assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
 
 

@@ -98,6 +98,7 @@ pub(crate) struct App {
     pub(crate) transcript_scroll: Option<usize>,
     pub(crate) provider_picker_index: usize,
     pub(crate) model_picker_index: usize,
+    pub(crate) model_picker_provider: Option<ProviderId>,
     pub(crate) session_picker_index: usize,
     pub(crate) checkpoint_changed_files: Vec<String>,
     pub(crate) checkpoint_restore_status: Option<String>,
@@ -135,6 +136,7 @@ pub(crate) fn command_palette_commands() -> &'static [(&'static str, &'static st
         ("/evidence", "show evidence references"),
         ("/receipts", "show governed ToolReceipts"),
         ("/changes", "show workspace changes and diff state"),
+        ("/audit", "inspect the current read-only audit projection"),
         ("/checkpoints", "inspect the latest persisted checkpoint"),
         ("/memory", "recall validated session memory"),
         ("/tree", "browse the authoritative workspace"),
@@ -209,6 +211,7 @@ impl Default for App {
             transcript_scroll: None,
             provider_picker_index: 0,
             model_picker_index: 0,
+            model_picker_provider: None,
             session_picker_index: 0,
             checkpoint_changed_files: Vec::new(),
             checkpoint_restore_status: None,
@@ -248,6 +251,30 @@ impl App {
         self.phase = phase;
     }
 
+    pub(crate) fn provider_setup_complete(&self) -> bool {
+        self.snapshot
+            .selected_model
+            .as_ref()
+            .is_some_and(|selected| {
+                self.snapshot.providers.iter().any(|provider| {
+                    provider.provider_id == selected.provider_id
+                        && provider.auth_state == AuthState::Ready
+                })
+            })
+    }
+
+    fn enter_product_or_setup(&mut self) {
+        if self.provider_setup_complete() {
+            self.phase = Phase::Welcome;
+        } else {
+            self.phase = Phase::ProviderSetup {
+                step: ProviderSetupStep::SelectProvider,
+            };
+            self.align_provider_picker_to_selection();
+            self.panel = Some(MockPanel::Provider);
+        }
+    }
+
     pub(crate) fn handle_paste(&mut self, content: &str) {
         // Paste is always literal composer data, never a keyboard shortcut or
         // submission. Normalize line endings, dropping other terminal control
@@ -256,7 +283,7 @@ impl App {
             return;
         }
         if self.phase == Phase::Landing {
-            self.phase = Phase::Welcome;
+            self.enter_product_or_setup();
         }
         self.panel = None;
         self.show_command_palette = false;
@@ -303,21 +330,45 @@ impl App {
         }
         if self.phase == Phase::Landing {
             match key.code {
+                KeyCode::Up => {
+                    self.move_provider_picker(-1);
+                    input_trace("action=landing_provider_up");
+                }
+                KeyCode::Down => {
+                    self.move_provider_picker(1);
+                    input_trace("action=landing_provider_down");
+                }
                 KeyCode::Char('/') => {
                     // A slash starts a command from the first visible screen;
                     // it must not be swallowed by the landing splash.
-                    self.phase = Phase::Welcome;
+                    self.enter_product_or_setup();
                     self.input.push('/');
                     input_trace("action=begin_slash_command_from_landing");
                 }
                 KeyCode::Enter => {
                     input_trace("action=enter_landing");
-                    self.phase = Phase::Welcome;
+                    self.enter_product_or_setup();
                 }
                 KeyCode::Tab => {
                     let mode = self.agent_mode.next();
                     input_trace(format!("action=set_mode requested={mode:?}"));
                     self.set_mode(wrapper, mode);
+                }
+                KeyCode::Function(2)
+                | KeyCode::Function(3)
+                | KeyCode::Char('@')
+                | KeyCode::Char('?') => {
+                    self.enter_product_or_setup();
+                    self.handle_key(key, wrapper, now);
+                }
+                KeyCode::Char(character)
+                    if !key
+                        .modifiers
+                        .intersects(Modifiers::CONTROL | Modifiers::ALT)
+                        && character != 'q' =>
+                {
+                    self.enter_product_or_setup();
+                    self.input.push(character);
                 }
                 _ => {}
             }
@@ -438,6 +489,9 @@ impl App {
             KeyCode::Up if self.panel == Some(MockPanel::Provider) => self.move_provider_picker(-1),
             KeyCode::Down if self.panel == Some(MockPanel::Provider) => {
                 self.move_provider_picker(1)
+            }
+            KeyCode::Char('v') if self.panel == Some(MockPanel::Provider) => {
+                self.validate_selected_provider(wrapper, now)
             }
             KeyCode::Up if self.panel == Some(MockPanel::Session) => self.move_session_picker(-1),
             KeyCode::Down if self.panel == Some(MockPanel::Session) => self.move_session_picker(1),
@@ -572,9 +626,14 @@ impl App {
                     }
                 }
                 MockPanel::Model => {
-                    let index = line.saturating_sub(3);
-                    if index < self.snapshot.models.len() {
-                        self.model_picker_index = index;
+                    let header_lines = if self.model_picker_provider.is_some() {
+                        5
+                    } else {
+                        3
+                    };
+                    let index = line.saturating_sub(header_lines);
+                    if let Some(model_index) = self.visible_model_indices().get(index).copied() {
+                        self.model_picker_index = model_index;
                         self.submit_or_approve(wrapper, now);
                     }
                 }
@@ -620,7 +679,7 @@ impl App {
             MouseEventKind::ScrollUp => self.scroll_from_mouse(-3),
             MouseEventKind::ScrollDown => self.scroll_from_mouse(3),
             MouseEventKind::Down(MouseButton::Left) if self.phase == Phase::Landing => {
-                self.phase = Phase::Welcome;
+                self.enter_product_or_setup();
                 input_trace("action=mouse_enter_landing");
             }
             MouseEventKind::Down(MouseButton::Left) if self.show_shortcuts => {
@@ -651,15 +710,19 @@ impl App {
         prompt: String,
         wrapper: &mut (impl LbeWrapper + ?Sized),
         now: Instant,
-    ) {
+    ) -> bool {
         if prompt.trim().is_empty() || self.should_quit || matches!(self.phase, Phase::Running) {
-            return;
+            return false;
         }
         if self.phase == Phase::Landing {
-            self.phase = Phase::Welcome;
+            self.enter_product_or_setup();
         }
         self.input = prompt;
+        if !self.provider_setup_complete() {
+            return false;
+        }
         self.submit_or_approve(wrapper, now);
+        true
     }
 
     pub(crate) fn submit_or_approve(
@@ -688,11 +751,28 @@ impl App {
             return;
         }
         if self.panel == Some(MockPanel::Provider) {
-            self.validate_selected_provider(wrapper, now);
+            self.select_provider();
             return;
         }
         if self.panel == Some(MockPanel::Session) && !self.snapshot.sessions.is_empty() {
             self.resume_selected_session(wrapper, now);
+            return;
+        }
+        if !self.provider_setup_complete()
+            && !self.input.trim_start().starts_with('/')
+            && !matches!(
+                self.phase,
+                Phase::PatchReview { .. } | Phase::AwaitingApproval { .. }
+            )
+        {
+            self.phase = Phase::ProviderSetup {
+                step: ProviderSetupStep::SelectProvider,
+            };
+            self.panel = Some(MockPanel::Provider);
+            self.transcript.push(
+                "PROVIDER SETUP  select and validate a provider, then select a model before submitting"
+                    .to_owned(),
+            );
             return;
         }
         if self.input.trim().is_empty()
@@ -852,6 +932,7 @@ impl App {
             }
             "/account" => Some(MockPanel::Account),
             "/provider" => {
+                self.align_provider_picker_to_selection();
                 self.apply_wrapper_result(
                     wrapper.submit(UserRequest::RefreshProviderCatalog, Instant::now()),
                 );
@@ -953,23 +1034,11 @@ impl App {
                 Some(MockPanel::Provider)
             }
             "/model" | "/models" => {
+                self.model_picker_provider = None;
                 self.apply_wrapper_result(
                     wrapper.submit(UserRequest::RefreshProviderCatalog, Instant::now()),
                 );
-                self.model_picker_index = self
-                    .snapshot
-                    .models
-                    .iter()
-                    .position(|model| {
-                        self.snapshot
-                            .selected_model
-                            .as_ref()
-                            .is_some_and(|selected| {
-                                selected.provider_id == model.provider_id
-                                    && selected.model_id == model.model_id
-                            })
-                    })
-                    .unwrap_or(0);
+                self.align_model_picker_to_selection();
                 Some(MockPanel::Model)
             }
             "/mcp" | "/extensions" | "/skills" | "/plugins" | "/hooks" | "/connectors" => {
@@ -978,7 +1047,6 @@ impl App {
                 );
                 Some(MockPanel::Mcp)
             }
-            "/tools" => Some(MockPanel::Tools),
             "/processes" => Some(MockPanel::Processes),
             "/agents" | "/tasks" => {
                 if let Some(turn_id) = self.snapshot.turn_id.clone() {
@@ -1056,6 +1124,7 @@ impl App {
             "/receipts" => Some(MockPanel::Receipts),
             "/inspector" | "/inspect" => Some(MockPanel::Inspector),
             "/activity" | "/timeline" => Some(MockPanel::Activity),
+            "/tools" => Some(MockPanel::Tools),
             "/status" => Some(MockPanel::Status),
             "/memory" => {
                 self.apply_wrapper_result(wrapper.submit(
@@ -1439,6 +1508,7 @@ impl App {
                 self.model_picker_index = self
                     .model_picker_index
                     .min(self.snapshot.models.len().saturating_sub(1));
+                self.reconcile_provider_setup_phase();
             }
             LbeEvent::WorkspaceListingReady {
                 path,
@@ -1613,9 +1683,8 @@ impl App {
             }
             LbeEvent::ProviderCatalogDiscovered { providers } => {
                 self.snapshot.providers = providers;
-                self.provider_picker_index = self
-                    .provider_picker_index
-                    .min(self.snapshot.providers.len().saturating_sub(1));
+                self.align_provider_picker_to_selection();
+                self.reconcile_provider_setup_phase();
             }
             LbeEvent::ProviderHealthUpdated {
                 provider_id,
@@ -1642,6 +1711,7 @@ impl App {
                 {
                     provider.auth_state = auth_state;
                 }
+                self.reconcile_provider_setup_phase();
             }
             LbeEvent::ProviderDiscoveryStarted => {
                 self.transcript
@@ -1654,6 +1724,11 @@ impl App {
                 ));
             }
             LbeEvent::ProviderValidationStarted { provider_id } => {
+                if self.selected_provider_id() == Some(provider_id) {
+                    self.phase = Phase::ProviderSetup {
+                        step: ProviderSetupStep::Validating,
+                    };
+                }
                 self.transcript.push(format!(
                     "PROVIDER  validation started · {}",
                     provider_id.label()
@@ -1664,12 +1739,12 @@ impl App {
                     "PROVIDER  validation completed · {}",
                     provider_id.label()
                 ));
+                self.reconcile_provider_setup_phase();
             }
             LbeEvent::ModelCatalogDiscovered { models } => {
                 self.snapshot.models = models;
-                self.model_picker_index = self
-                    .model_picker_index
-                    .min(self.snapshot.models.len().saturating_sub(1));
+                self.align_model_picker_to_selection();
+                self.reconcile_provider_setup_phase();
             }
             LbeEvent::CheckpointCreated { checkpoint } => {
                 self.snapshot.latest_checkpoint = Some(checkpoint.clone());
@@ -2600,19 +2675,23 @@ impl App {
     }
 
     fn move_model_picker(&mut self, delta: i32) {
-        let len = self.snapshot.models.len();
-        if len == 0 {
+        let visible = self.visible_model_indices();
+        if visible.is_empty() {
             self.model_picker_index = 0;
             return;
         }
-        self.model_picker_index = if delta.is_negative() {
-            self.model_picker_index
-                .saturating_sub(delta.unsigned_abs() as usize)
+        let current = visible
+            .iter()
+            .position(|index| *index == self.model_picker_index)
+            .unwrap_or(0);
+        let next = if delta.is_negative() {
+            current.saturating_sub(delta.unsigned_abs() as usize)
         } else {
-            self.model_picker_index
+            current
                 .saturating_add(delta as usize)
-                .min(len - 1)
+                .min(visible.len() - 1)
         };
+        self.model_picker_index = visible[next];
     }
 
     fn move_provider_picker(&mut self, delta: i32) {
@@ -2645,24 +2724,6 @@ impl App {
                 .saturating_add(delta as usize)
                 .min(len - 1)
         };
-    }
-
-    fn validate_selected_provider(
-        &mut self,
-        wrapper: &mut (impl LbeWrapper + ?Sized),
-        now: Instant,
-    ) {
-        let Some(provider) = self.snapshot.providers.get(self.provider_picker_index) else {
-            self.transcript
-                .push("PROVIDER  no discovered providers available".to_owned());
-            return;
-        };
-        self.apply_wrapper_result(wrapper.submit(
-            UserRequest::ValidateProvider {
-                provider_id: provider.provider_id,
-            },
-            now,
-        ));
     }
 
     fn resume_selected_session(&mut self, wrapper: &mut (impl LbeWrapper + ?Sized), now: Instant) {
@@ -2734,6 +2795,172 @@ impl App {
             wrapper.submit(UserRequest::SelectModel { model: model_ref }, now),
         );
         self.panel = None;
+    }
+
+    fn select_provider(&mut self) {
+        let Some(provider) = self.snapshot.providers.get(self.provider_picker_index) else {
+            self.transcript
+                .push("PROVIDER  no configured providers available".to_owned());
+            return;
+        };
+        let provider_id = provider.provider_id;
+        let selected_for_provider = self
+            .snapshot
+            .selected_model
+            .as_ref()
+            .filter(|selected| selected.provider_id == provider_id)
+            .and_then(|selected| {
+                self.snapshot.models.iter().position(|model| {
+                    model.provider_id == selected.provider_id && model.model_id == selected.model_id
+                })
+            });
+        let first_for_provider = self
+            .snapshot
+            .models
+            .iter()
+            .position(|model| model.provider_id == provider_id);
+        if let Some(index) = selected_for_provider.or(first_for_provider) {
+            self.model_picker_index = index;
+            self.model_picker_provider = Some(provider_id);
+            self.panel = Some(MockPanel::Model);
+            if !self.provider_setup_complete() {
+                self.phase = Phase::ProviderSetup {
+                    step: ProviderSetupStep::SelectModel,
+                };
+            }
+        } else {
+            self.transcript.push(format!(
+                "PROVIDER  {} has no projected models; configure or refresh this provider before selection",
+                provider_id.label()
+            ));
+        }
+    }
+
+    fn selected_provider_id(&self) -> Option<ProviderId> {
+        self.snapshot
+            .providers
+            .get(self.provider_picker_index)
+            .map(|provider| provider.provider_id)
+            .or_else(|| {
+                self.snapshot
+                    .selected_model
+                    .as_ref()
+                    .map(|model| model.provider_id)
+            })
+    }
+
+    fn validate_selected_provider(
+        &mut self,
+        wrapper: &mut (impl LbeWrapper + ?Sized),
+        now: Instant,
+    ) {
+        let Some(provider) = self.snapshot.providers.get(self.provider_picker_index) else {
+            self.transcript
+                .push("PROVIDER  no discovered provider available to validate".to_owned());
+            return;
+        };
+        if provider.auth_state == AuthState::NotConfigured
+            && !provider.setup_method.supported_by_current_contract()
+        {
+            self.phase = Phase::ProviderSetup {
+                step: ProviderSetupStep::Configure,
+            };
+            self.transcript.push(format!(
+                "PROVIDER SETUP  {} requires {}; secure runtime setup is not exposed by the current contract",
+                provider.provider_id.label(),
+                provider.setup_method.label()
+            ));
+            return;
+        }
+        let provider_id = provider.provider_id;
+        self.phase = Phase::ProviderSetup {
+            step: ProviderSetupStep::Validating,
+        };
+        self.apply_wrapper_result(
+            wrapper.submit(UserRequest::ValidateProvider { provider_id }, now),
+        );
+    }
+
+    fn reconcile_provider_setup_phase(&mut self) {
+        if !matches!(self.phase, Phase::ProviderSetup { .. }) {
+            return;
+        }
+        if self.provider_setup_complete() {
+            self.phase = Phase::Welcome;
+            self.panel = None;
+            self.model_picker_provider = None;
+            return;
+        }
+        let step = match self.selected_provider_id().and_then(|provider_id| {
+            self.snapshot
+                .providers
+                .iter()
+                .find(|provider| provider.provider_id == provider_id)
+        }) {
+            Some(provider) if provider.auth_state == AuthState::Validating => {
+                ProviderSetupStep::Validating
+            }
+            Some(provider) if provider.auth_state == AuthState::Ready => {
+                ProviderSetupStep::SelectModel
+            }
+            Some(provider) if provider.auth_state == AuthState::Error => ProviderSetupStep::Error,
+            Some(provider) if provider.auth_state == AuthState::Configured => {
+                ProviderSetupStep::Configure
+            }
+            _ => ProviderSetupStep::SelectProvider,
+        };
+        self.phase = Phase::ProviderSetup { step };
+    }
+
+    fn align_provider_picker_to_selection(&mut self) {
+        self.provider_picker_index = self
+            .snapshot
+            .selected_model
+            .as_ref()
+            .and_then(|selected| {
+                self.snapshot
+                    .providers
+                    .iter()
+                    .position(|provider| provider.provider_id == selected.provider_id)
+            })
+            .unwrap_or_else(|| {
+                self.provider_picker_index
+                    .min(self.snapshot.providers.len().saturating_sub(1))
+            });
+    }
+
+    fn align_model_picker_to_selection(&mut self) {
+        let selected = self
+            .snapshot
+            .selected_model
+            .as_ref()
+            .filter(|selected| {
+                self.model_picker_provider
+                    .is_none_or(|provider_id| provider_id == selected.provider_id)
+            })
+            .and_then(|selected| {
+                self.snapshot.models.iter().position(|model| {
+                    model.provider_id == selected.provider_id && model.model_id == selected.model_id
+                })
+            });
+        let visible = self.visible_model_indices();
+        self.model_picker_index = selected
+            .filter(|index| visible.contains(index))
+            .or_else(|| visible.first().copied())
+            .unwrap_or(0);
+    }
+
+    pub(crate) fn visible_model_indices(&self) -> Vec<usize> {
+        self.snapshot
+            .models
+            .iter()
+            .enumerate()
+            .filter_map(|(index, model)| {
+                self.model_picker_provider
+                    .is_none_or(|provider_id| provider_id == model.provider_id)
+                    .then_some(index)
+            })
+            .collect()
     }
 
     fn compare_checkpoint(&mut self, wrapper: &mut (impl LbeWrapper + ?Sized)) {

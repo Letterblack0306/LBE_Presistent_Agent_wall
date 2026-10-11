@@ -49,6 +49,29 @@ Every meaningful repository mutation must resolve to exactly one intent record b
 The machine gate binds the active slice to the `INTENT_ID`, and the affected structure must exist
 in `PROJECT_INDEX.md`.
 
+## INTENT LBE-INTENT-BIRDEYE-ADVISORY-SKILLS-001
+
+```text
+INTENT_ID: LBE-INTENT-BIRDEYE-ADVISORY-SKILLS-001
+STATUS: ACTIVE — FOUNDATION IMPLEMENTED / LIVE TRANSPORT UNPROVEN
+REQUEST: Integrate BirdEye-resolved skills into LBE as bounded advisory reasoning context while preserving LBE ownership of authorization, execution, receipts, evidence, persistence, validation and completion.
+WHY: LBE previously duplicated local skill discovery and task ranking across `.agents`, `.cline` and `.lbe`. BirdEye is the canonical skills owner and already provides discovery, ranking, task locks, digest metadata and locked resource access.
+AFFECTED_STRUCTURE: lbe_guard_inspector/runtime/agent_guidance.py,lbe_guard_inspector/runtime/governed_coding.py,lbe_guard_inspector/runtime/external_capabilities.py,lbe_guard_inspector/product_entry.py,tests/test_agent_guidance.py,PROJECT_INDEX.md,docs/CURRENT_STATUS.md,docs/IMPLEMENTATION_PLAN.md,docs/governance/PROJECT_INTENT_LEDGER.md
+EXISTING_OWNER: BirdEye Skills owns discovery, ranking, task locks, drift metadata and progressive resources. Existing LBE mode, ToolRegistry, GovernedToolOrchestrator, policy, execution, ToolReceipt, evidence, persistence, validation and completion owners remain authoritative.
+DESIRED_RESULT: The canonical BirdEye MCP transport resolves a task-locked skill snapshot; LBE validates the versioned bounded response and supplies complete verified skill text only to the active provider as advisory context for that task.
+IMPLEMENTED_FOUNDATION: Removed parallel LBE skill discovery/ranking; added `lbe.resolved-advisory-skills.v1`; added the BirdEye `skills.resolve` response adapter; added fail-closed task/count/size/completeness/byte/digest validation; injected per-task resolver seams into native LBE and Cline controllers; excluded skill bodies from persisted audit payloads; proved skill text cannot expand the governed tool projection.
+NON_GOALS: No second BirdEye MCP client or subprocess transport; no LBE-owned skill discovery/ranking/store; no capability or permission derived from skill text; no direct effect execution; no skill-owned receipt/evidence/completion truth; no persistence of raw skill bodies; no publication or release.
+REUSE_DECISION: REUSE the canonical BirdEye MCP transport and Skills task-lock/resource contracts. ADAPT only the bounded resolved snapshot into LBE provider guidance. REJECT duplicate local skill engines and any transport that bypasses the existing BirdEye owner.
+AUTHORITY_IMPACT: None. Skills are procedural advice only. LBE remains sole owner of governed capability projection, authorization, execution, receipts, evidence and completion.
+EXPECTED_PATH_PREFIXES: lbe_guard_inspector/runtime/,lbe_guard_inspector/product_entry.py,tests/,PROJECT_INDEX.md,docs/CURRENT_STATUS.md,docs/IMPLEMENTATION_PLAN.md,docs/governance/,BREW_ISSUES.md
+REQUIRED_EVIDENCE: focused validation of malformed response, task mismatch, duplicate path, count/size bounds, truncation, byte mismatch and SHA-256 drift; regression proving skill-requested tools do not enter the governed projection; live canonical MCP resolution; explicit slash selection; enable/disable state; progressive resource loading; cross-turn lock drift rejection; installed provider continuation with correlated LBE receipts and completion.
+CURRENT_EVIDENCE: Focused suite 59 passed; Python compilation PASS; governance check PASS; git diff --check PASS. Full Python suite has NO VERDICT because both attempted routes timed out.
+OPEN_WORK: Compose the existing BirdEye MCP transport into the injected resolver; add live integration tests; implement explicit selection/state and progressive resource loading; prove cross-turn drift handling and installed continuation; run the full Python suite with a timeout above 60 seconds.
+MACHINE_SLICE: BIRDEYE_ADVISORY_SKILLS_COMPOSITION
+RESULT: IMPLEMENTED_UNPROVEN
+AUTHORIZATION: USER_REQUESTED_BIRDEYE_SKILLS_INTEGRATION_AND_DOCUMENT_RECONCILIATION_2026_10_11
+```
+
 ## Current reconciliation ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â 2026-09-05
 
 The current implementation uses the originating project-planning concepts as a

@@ -267,8 +267,9 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
     let mut app = App::with_snapshot(wrapper.snapshot());
     let mut submitted = false;
     let mut startup_initialized = false;
-    let mut startup_model_applied = options.model.is_some();
-    let mut model_catalog_ready = false;
+    let mut startup_model_applied = options.model.is_none();
+    let mut model_catalog_ready = !use_real_runtime && !app.snapshot.models.is_empty();
+    let mut provider_validation_started = !use_real_runtime;
     let mode = options.mode.unwrap_or(AgentMode::Build);
     let deadline = Instant::now() + Duration::from_secs(180);
 
@@ -310,7 +311,7 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
                         )
                         .map_err(|error| io::Error::other(error.message))?;
                 }
-                if use_real_runtime && options.model.is_none() {
+                if use_real_runtime {
                     wrapper
                         .submit(
                             requests::UserRequest::RefreshProviderCatalog,
@@ -326,6 +327,11 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
                             candidate.provider_id == model.provider_id
                                 && candidate.model_id == model.model_id
                         });
+                    if model_catalog_ready && !model_discovered {
+                        emit_headless_result(&app, "model_unavailable", plain)?;
+                        wrapper.shutdown();
+                        return Ok(2);
+                    }
                     if model_discovered {
                         wrapper
                             .submit(requests::UserRequest::SelectModel { model }, Instant::now())
@@ -334,21 +340,47 @@ fn run_headless(options: CliOptions) -> io::Result<i32> {
                     }
                 }
             }
+            if !submitted && model_catalog_ready && startup_model_applied
+                && !provider_validation_started
+            {
+                if let Some(selected) = app.snapshot.selected_model.as_ref() {
+                    if options.model.as_ref().map_or(true, |requested| requested == selected) {
+                        wrapper
+                            .submit(
+                                requests::UserRequest::ValidateProvider {
+                                    provider_id: selected.provider_id,
+                                },
+                                Instant::now(),
+                            )
+                            .map_err(|error| io::Error::other(error.message))?;
+                        provider_validation_started = true;
+                    }
+                } else if options.model.is_none() {
+                    emit_headless_result(&app, "provider_setup_required", plain)?;
+                    wrapper.shutdown();
+                    return Ok(2);
+                }
+            }
             let session_ready =
                 app.snapshot.session_id.is_some() && app.snapshot.workspace_id.is_some();
-            let model_ready = if options.model.is_some() {
-                startup_model_applied
-            } else {
-                model_catalog_ready
-            };
-            if !submitted && session_ready && model_ready {
+            let model_ready = model_catalog_ready && startup_model_applied
+                && options.model.as_ref().map_or(true, |requested| {
+                    app.snapshot.selected_model.as_ref() == Some(requested)
+                });
+            if !submitted && session_ready && model_ready
+                && (!use_real_runtime || app.provider_setup_complete())
+            {
                 // Headless execution follows the same entry path as the
                 // interactive client, including passing the landing gate.
                 // Submitting directly to the wrapper can complete in the
                 // runtime while the App remains on Landing, misreporting a
                 // successful turn as a timeout.
                 app.agent_mode = mode;
-                app.submit_initial_prompt(prompt.clone(), &mut wrapper, Instant::now());
+                if !app.submit_initial_prompt(prompt.clone(), &mut wrapper, Instant::now()) {
+                    emit_headless_result(&app, "provider_setup_required", plain)?;
+                    wrapper.shutdown();
+                    return Ok(2);
+                }
                 submitted = true;
             }
             if submitted && matches!(app.phase, Phase::Completed) {
@@ -624,11 +656,17 @@ fn run(
     let initial_prompt = options.prompt.clone();
     let mut initial_prompt_pending = initial_prompt.is_some();
     let mut startup_options_applied = false;
-    let mut startup_model_applied = options.model.is_some();
+    let mut startup_model_applied = options.model.is_none();
     let animation_started = Instant::now();
 
     while !app.should_quit() {
-        terminal.draw(|frame| ui::draw_at(frame, &app, animation_started.elapsed()))?;
+        terminal.draw(|frame| {
+            if app.phase == Phase::Landing {
+                ui::draw(frame, &app);
+            } else {
+                ui::draw_at(frame, &app, animation_started.elapsed());
+            }
+        })?;
 
         let now = Instant::now();
 
@@ -675,6 +713,7 @@ fn run(
                 && app.snapshot.session_id.is_some()
                 && app.snapshot.workspace_id.is_some()
                 && (options.model.is_none() || startup_model_applied)
+                && app.provider_setup_complete()
             {
                 if let Some(prompt) = initial_prompt.clone() {
                     app.submit_initial_prompt(prompt, &mut wrapper, Instant::now());

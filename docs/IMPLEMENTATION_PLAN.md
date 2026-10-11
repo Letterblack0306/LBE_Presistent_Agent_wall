@@ -1,7 +1,35 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
-Updated: 2026-10-10
+Updated: 2026-10-11
 Status: **ACTIVE — LBE-OWNED TERMINAL PRODUCT / CURRENT INSTALLED ACCEPTANCE**
+
+## BirdEye advisory-skills composition � active plan (2026-10-11)
+
+**Intent:** Use BirdEye-resolved skills as bounded procedural context for LBE reasoning without creating another discovery, transport, execution, authorization, receipt, evidence or completion owner.
+
+### Implemented foundation
+
+1. Remove LBE-local discovery/ranking of `.agents`, `.cline` and `.lbe` skill trees.
+2. Accept the versioned `lbe.resolved-advisory-skills.v1` snapshot adapted from BirdEye `skills.resolve`.
+3. Fail closed on malformed results, task mismatch, duplicate paths, count/size limits, incomplete or truncated content, byte mismatch and SHA-256 drift.
+4. Inject a per-task resolver into native LBE and Cline controllers and rebuild guidance for every active task.
+5. Keep skill bodies out of persisted audit payloads and prove advisory text cannot expand the governed tool projection.
+
+This foundation is **IMPLEMENTED / FOCUSED-TESTED**. The recorded focused suite passed 59 tests; Python compilation, governance validation and `git diff --check` passed. The full Python suite has no verdict because both attempted execution routes timed out.
+
+### Ordered remaining work
+
+1. **Compose the existing BirdEye MCP transport owner.** Connect the canonical BirdEye MCP client/transport already used by the product to the injected resolver seam. Do not add another MCP client, subprocess bridge, skill store or execution owner.
+2. **Prove live resolution and task locks.** Add integration coverage using real `skills.resolve` responses for task/domain locks, task mismatch, digest drift and turn-to-turn task changes.
+3. **Add explicit selection state.** Route slash-selected skills and enable/disable state through BirdEye's canonical skill lock/state contract; LBE consumes the resolved result only.
+4. **Add progressive resources.** Fetch skill resources through BirdEye's locked resource operation on demand, preserve size/digest bounds and keep resource content advisory-only.
+5. **Prove continuation.** Demonstrate that a resolved skill affects provider reasoning across the intended turn while governed capabilities, policy decisions, execution, receipts, evidence and completion remain exclusively LBE-owned.
+6. **Re-run broad validation.** Run the full Python suite with a timeout above 60 seconds, then execute installed-product/provider continuation acceptance and record exact correlated evidence.
+7. **Reconcile repository state.** Review the complete dirty diff and untracked artifacts before any commit; do not include unrelated work or infer release readiness.
+
+### Acceptance boundary
+
+The integration is complete only when the installed product resolves and locks a skill through the canonical BirdEye transport, rejects drift/task mismatch, supports explicit selection and progressive resources, continues the provider turn, and demonstrates that no skill content can create or authorize a tool. Until then the live transport and installed continuation portions remain **UNPROVEN** and final-product acceptance remains unchanged.
 
 ## Current implementation and acceptance work — 2026-10-10
 

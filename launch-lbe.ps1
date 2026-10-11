@@ -164,14 +164,21 @@ if (-not (Test-Path -LiteralPath $preflight -PathType Leaf)) { throw "LBE TUI pr
 & $pythonCommand.Source $preflight
 if ($LASTEXITCODE -ne 0) { throw "LBE TUI startup blocked by machine preflight. Inspect the receipt path printed above." }
 
-$exe = Join-Path $root 'apps\lbe-terminal\target\release\lbe.exe'
+# Model identifiers may contain slashes (for example publisher/model). The Rust
+# client requires an explicit adapter/provider prefix, while the persisted LBE
+# session and provider backend use the original complete model ID.
+$clientModel = if ($Model.StartsWith("$providerId/", [StringComparison]::OrdinalIgnoreCase)) {
+    $Model
+} else {
+    "$providerId/$Model"
+}$exe = Join-Path $root 'apps\lbe-terminal\target\release\lbe.exe'
 if (Test-Path -LiteralPath $exe -PathType Leaf) {
-    & $exe $workspace '--agent' $Agent '--model' $Model '--session' $SessionId @ExtraArgs
+    & $exe $workspace '--agent' $Agent '--model' $clientModel '--session' $SessionId @ExtraArgs
     exit $LASTEXITCODE
 }
 
 Push-Location (Join-Path $root 'apps\lbe-terminal')
 try {
-    & cargo run --release -- $workspace '--agent' $Agent '--model' $Model '--session' $SessionId @ExtraArgs
+    & cargo run --release -- $workspace '--agent' $Agent '--model' $clientModel '--session' $SessionId @ExtraArgs
     exit $LASTEXITCODE
 } finally { Pop-Location }

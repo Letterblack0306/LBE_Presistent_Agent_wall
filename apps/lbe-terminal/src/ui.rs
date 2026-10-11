@@ -193,8 +193,12 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         .bg(connection.color())
         .add_modifier(Modifier::BOLD);
     let inner = area;
-    let header_columns =
-        Layout::horizontal([Constraint::Length(18), Constraint::Min(1)]).split(inner);
+    let header_columns = Layout::horizontal([
+        Constraint::Length(if area.width < 72 { 5 } else { 18 }),
+        Constraint::Length(1),
+        Constraint::Min(1),
+    ])
+    .split(inner);
     // The canonical GPT-K shell leads with LBE identity and the attached workspace.
     // Avoid the old large product slogan and do not fabricate a workspace label.
     let workspace = if app.snapshot.workspace_label.is_empty() {
@@ -211,7 +215,7 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         ),
         Span::styled(" · ", Style::default().fg(PALETTE.faint)),
         Span::styled(
-            truncate_text(workspace, 12),
+            truncate_text(workspace, if area.width < 72 { 0 } else { 12 }),
             Style::default().fg(PALETTE.ink),
         ),
     ]);
@@ -219,23 +223,27 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         Paragraph::new(brand).style(Style::default().bg(PALETTE.bg)),
         header_columns[0],
     );
-    let status = format!(
-        "{} {} · {} · {}",
-        connection.marker(),
-        connection.label(),
-        if app.snapshot.model_id.is_empty() {
-            "model unavailable"
-        } else {
-            app.snapshot.model_id.as_str()
-        },
-        app.agent_mode.label(),
-    );
+    let status = if area.width < 72 {
+        format!("{} · {}", app.agent_mode.label(), connection.label())
+    } else {
+        format!(
+            "{} {} · {} · {}",
+            connection.marker(),
+            connection.label(),
+            if app.snapshot.model_id.is_empty() {
+                "model unavailable"
+            } else {
+                app.snapshot.model_id.as_str()
+            },
+            app.agent_mode.label(),
+        )
+    };
     frame.render_widget(
         Paragraph::new(Line::from(vec![
             Span::styled(
                 truncate_text(
                     &status,
-                    header_columns[1]
+                    header_columns[2]
                         .width
                         .saturating_sub(connection_label.len() as u16) as usize,
                 ),
@@ -245,7 +253,7 @@ pub(crate) fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         ]))
         .style(Style::default().bg(PALETTE.bg))
         .alignment(Alignment::Right),
-        header_columns[1],
+        header_columns[2],
     );
 }
 
@@ -541,9 +549,235 @@ fn draw_workspace_sidebar(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_landing(frame: &mut Frame, app: &App) {
-    // Landing is an interaction phase, not a separate product visual identity.
-    // Keep the finalized four-region shell visible before the first submission.
-    draw_at(frame, app, Duration::from_secs(2));
+    let area = frame.area();
+    frame.render_widget(
+        Block::default().style(Style::default().bg(PALETTE.bg)),
+        area,
+    );
+    if area.width < MIN_WIDTH || area.height < MIN_HEIGHT {
+        draw_at(frame, app, Duration::from_secs(2));
+        return;
+    }
+    let outer = area.inner(Margin::new(if area.width < 76 { 1 } else { 2 }, 1));
+    let rows = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(8),
+        Constraint::Length(2),
+        Constraint::Length(2),
+    ])
+    .split(outer);
+    frame.render_widget(
+        Paragraph::new(vec![
+            Line::from(Span::styled(
+                "LBE  /  PROVIDER CONTROL",
+                Style::default()
+                    .fg(PALETTE.red)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::styled(
+                "Live runtime projection · select a provider before starting a governed task",
+                Style::default().fg(PALETTE.faint),
+            )),
+        ]),
+        rows[0],
+    );
+
+    let compact = rows[1].width < 82 || rows[1].height < 12;
+    let selected = app.snapshot.providers.get(app.provider_picker_index);
+    let model_summary = selected.map_or_else(
+        || "no provider selected".to_owned(),
+        |provider| {
+            let models = app
+                .snapshot
+                .models
+                .iter()
+                .filter(|model| model.provider_id == provider.provider_id)
+                .map(|model| model.model_id.as_str())
+                .collect::<Vec<_>>();
+            if models.is_empty() {
+                "no projected models".to_owned()
+            } else {
+                models.join(" · ")
+            }
+        },
+    );
+
+    if compact {
+        let mut lines = vec![Line::from(Span::styled(
+            "PROVIDERS",
+            Style::default()
+                .fg(PALETTE.ink)
+                .add_modifier(Modifier::BOLD),
+        ))];
+        if app.snapshot.providers.is_empty() {
+            lines.push(Line::from(Span::styled(
+                "  no provider catalog projected by the runtime",
+                Style::default().fg(PALETTE.muted),
+            )));
+        } else {
+            lines.extend(
+                app.snapshot
+                    .providers
+                    .iter()
+                    .enumerate()
+                    .map(|(index, provider)| {
+                        let selected = index == app.provider_picker_index;
+                        let marker = if selected { "❯" } else { " " };
+                        let status = format!(
+                            "{} / {}",
+                            provider.auth_state.label(),
+                            provider.health.label()
+                        );
+                        let style = if selected {
+                            Style::default()
+                                .fg(PALETTE.ink)
+                                .bg(PALETTE.line)
+                                .add_modifier(Modifier::BOLD)
+                        } else {
+                            Style::default().fg(PALETTE.muted)
+                        };
+                        Line::from(Span::styled(
+                            truncate_text(
+                                &format!("{marker} {:<12} {status}", provider.provider_id.label()),
+                                rows[1].width as usize,
+                            ),
+                            style,
+                        ))
+                    }),
+            );
+        }
+        lines.push(Line::default());
+        lines.push(Line::from(vec![
+            Span::styled("SELECTED  ", Style::default().fg(PALETTE.faint)),
+            Span::styled(
+                truncate_text(&model_summary, rows[1].width.saturating_sub(10) as usize),
+                Style::default().fg(PALETTE.amber),
+            ),
+        ]));
+        frame.render_widget(Paragraph::new(lines), rows[1]);
+    } else {
+        let panes = Layout::horizontal([Constraint::Percentage(52), Constraint::Percentage(48)])
+            .split(rows[1]);
+        let mut provider_lines = vec![Line::from(Span::styled(
+            "PROVIDERS",
+            Style::default()
+                .fg(PALETTE.ink)
+                .add_modifier(Modifier::BOLD),
+        ))];
+        if app.snapshot.providers.is_empty() {
+            provider_lines.push(Line::from(Span::styled(
+                "  no provider catalog projected by the runtime",
+                Style::default().fg(PALETTE.muted),
+            )));
+        } else {
+            provider_lines.extend(app.snapshot.providers.iter().enumerate().map(
+                |(index, provider)| {
+                    let selected = index == app.provider_picker_index;
+                    let marker = if selected { "❯" } else { " " };
+                    let locality = if provider.is_local { "local" } else { "remote" };
+                    let style = if selected {
+                        Style::default()
+                            .fg(PALETTE.ink)
+                            .bg(PALETTE.line)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(PALETTE.muted)
+                    };
+                    Line::from(Span::styled(
+                        truncate_text(
+                            &format!(
+                                "{marker} {:<12} {:<15} {:<8} {locality}",
+                                provider.provider_id.label(),
+                                provider.auth_state.label(),
+                                provider.health.label(),
+                            ),
+                            panes[0].width as usize,
+                        ),
+                        style,
+                    ))
+                },
+            ));
+        }
+        provider_lines.push(Line::default());
+        provider_lines.push(Line::from(Span::styled(
+            "↑↓ select · Enter begin · F2 full provider view",
+            Style::default().fg(PALETTE.faint),
+        )));
+        frame.render_widget(Paragraph::new(provider_lines), panes[0]);
+
+        let mut detail_lines = vec![Line::from(Span::styled(
+            "CONNECTION DETAILS",
+            Style::default()
+                .fg(PALETTE.ink)
+                .add_modifier(Modifier::BOLD),
+        ))];
+        if let Some(provider) = selected {
+            detail_lines.extend([
+                Line::from(format!("Provider  {}", provider.provider_id.label())),
+                Line::from(format!("Auth      {}", provider.auth_state.label())),
+                Line::from(format!("Health    {}", provider.health.label())),
+                Line::from(format!("Setup     {}", provider.setup_method.label())),
+                Line::from(format!(
+                    "Location  {}",
+                    if provider.is_local { "local" } else { "remote" }
+                )),
+                Line::default(),
+                Line::from(Span::styled("Models", Style::default().fg(PALETTE.faint))),
+                Line::from(Span::styled(
+                    truncate_text(&model_summary, panes[1].width as usize),
+                    Style::default().fg(PALETTE.amber),
+                )),
+            ]);
+        } else {
+            detail_lines.push(Line::from(Span::styled(
+                "No selected provider details are available.",
+                Style::default().fg(PALETTE.muted),
+            )));
+        }
+        frame.render_widget(
+            Paragraph::new(detail_lines).wrap(Wrap { trim: true }),
+            panes[1],
+        );
+    }
+
+    let mode_label = |mode: AgentMode, description: &str| {
+        let marker = if app.agent_mode == mode { "●" } else { "○" };
+        let style = if app.agent_mode == mode {
+            Style::default()
+                .fg(PALETTE.amber)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(PALETTE.faint)
+        };
+        Span::styled(format!("{marker} {} {description}", mode.label()), style)
+    };
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled("MODE  ", Style::default().fg(PALETTE.faint)),
+            mode_label(AgentMode::Build, "execute"),
+            Span::raw("   "),
+            mode_label(AgentMode::Plan, "investigate"),
+            Span::raw("   "),
+            mode_label(AgentMode::Audit, "read-only"),
+            Span::styled("   Tab cycle", Style::default().fg(PALETTE.faint)),
+        ])),
+        rows[2],
+    );
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled("/provider", Style::default().fg(PALETTE.info)),
+            Span::raw(" inspect   "),
+            Span::styled("/models", Style::default().fg(PALETTE.info)),
+            Span::raw(" select   "),
+            Span::styled("/audit", Style::default().fg(PALETTE.info)),
+            Span::raw(" evidence   "),
+            Span::styled("/help", Style::default().fg(PALETTE.info)),
+            Span::raw(" commands   ·   Enter continue"),
+        ]))
+        .style(Style::default().fg(PALETTE.muted))
+        .wrap(Wrap { trim: true }),
+        rows[3],
+    );
 }
 
 fn draw_main_body(frame: &mut Frame, area: Rect, app: &App, split_layout: bool) {
@@ -555,7 +789,9 @@ fn draw_main_body(frame: &mut Frame, area: Rect, app: &App, split_layout: bool) 
         && !app.show_shortcuts
         && !app.show_command_palette
         && app.agent_mode != AgentMode::Audit;
-    let content = if app.input.starts_with('/')
+    let content = if matches!(app.phase, Phase::ProviderSetup { .. }) && app.panel.is_none() {
+        provider_setup_text(app)
+    } else if app.input.starts_with('/')
         && !app.input.contains(char::is_whitespace)
         && app.panel.is_none()
         && !app.show_command_palette
@@ -907,7 +1143,11 @@ pub(crate) fn draw_composer(frame: &mut Frame, area: Rect, app: &App, elapsed: D
             Span::styled("[I] ", Style::default().fg(PALETTE.agent)),
             Span::styled(cursor, Style::default().fg(PALETTE.agent)),
             Span::styled(
-                format!(" Message LBE... · {}", mode_placeholder(app.agent_mode)),
+                if area.width < 86 {
+                    " Type a request".to_owned()
+                } else {
+                    format!(" Message LBE... · {}", mode_placeholder(app.agent_mode))
+                },
                 Style::default().fg(PALETTE.muted),
             ),
         ]),
@@ -955,8 +1195,19 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
         "Ctrl+C abort · ? help"
     } else if app.show_shortcuts {
         "? close help · Esc close view"
+    } else if app.agent_mode == AgentMode::Audit {
+        "PgDn findings · Home top · Enter audit request · ? help"
     } else {
         "? for shortcuts · Enter submit · Ctrl+P commands · F2 provider · F3 model"
+    };
+    let hint = if area.width < 72
+        && !matches!(app.phase, Phase::AwaitingApproval { .. } | Phase::Running)
+        && !app.show_shortcuts
+        && app.agent_mode != AgentMode::Audit
+    {
+        "Enter submit · F2 provider · F3 model · ? help"
+    } else {
+        hint
     };
     let hint_style = Style::default().fg(PALETTE.faint).bg(PALETTE.bg);
     if area.height < 2 {
@@ -995,14 +1246,28 @@ pub(crate) fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
             )
         })
         .unwrap_or_else(|| ("branch unavailable".to_owned(), 0));
-    let status = format!(
-        "{} · {} · context {}% · branch ({}) · {} changed file(s)",
-        app.agent_mode.label(),
-        provider_model,
-        context_percent,
-        branch,
-        changed_files,
-    );
+    let status = if area.width < 72 {
+        let model_id = app
+            .snapshot
+            .selected_model
+            .as_ref()
+            .map_or("not selected", |model| model.model_id.as_str());
+        format!(
+            "{} · {} · context {}%",
+            app.agent_mode.label(),
+            model_id,
+            context_percent
+        )
+    } else {
+        format!(
+            "{} · {} · context {}% · branch ({}) · {} changed file(s)",
+            app.agent_mode.label(),
+            provider_model,
+            context_percent,
+            branch,
+            changed_files,
+        )
+    };
     let status_color = if app.snapshot.connection == RuntimeConnection::Connected {
         PALETTE.agent
     } else {
@@ -1215,14 +1480,11 @@ fn audit_text(app: &App) -> Text<'static> {
     lines.push(Line::from(vec![
         Span::styled("Workspace  ", Style::default().fg(PALETTE.faint)),
         Span::styled(
-            format!(
-                "{} · {}",
-                app.snapshot.workspace_label,
-                app.snapshot
-                    .workspace_id
-                    .as_deref()
-                    .unwrap_or("not attached")
-            ),
+            if app.snapshot.workspace_label.is_empty() {
+                "not attached".to_owned()
+            } else {
+                app.snapshot.workspace_label.clone()
+            },
             Style::default().fg(PALETTE.ink),
         ),
     ]));
@@ -1286,7 +1548,9 @@ fn audit_text(app: &App) -> Text<'static> {
         .count();
     lines.push(Line::from(Span::styled(
         format!("CHECKS    pass {pass_count} · warning {warning_count} · fail {fail_count}",),
-        Style::default().fg(if fail_count > 0 {
+        Style::default().fg(if app.snapshot.diagnostics.is_empty() {
+            PALETTE.muted
+        } else if fail_count > 0 {
             PALETTE.red
         } else if warning_count > 0 {
             PALETTE.amber
@@ -2809,7 +3073,7 @@ fn provider_panel_text(app: &App) -> Text<'static> {
         Style::default().fg(PALETTE.faint),
     )));
     lines.push(Line::from(Span::styled(
-        "↑↓ choose provider · Enter validate · Esc close",
+        "↑↓ choose provider · Enter choose model · v validate/connect · Esc close",
         Style::default().fg(PALETTE.amber),
     )));
     lines.push(Line::default());
@@ -2851,8 +3115,54 @@ fn provider_panel_text(app: &App) -> Text<'static> {
                     ))
                 }),
         );
+        lines.push(Line::default());
+        if let Some(provider) = app.snapshot.providers.get(app.provider_picker_index) {
+            lines.push(Line::from(format!(
+                "Setup: {}{}",
+                provider.setup_method.label(),
+                if provider.setup_method.supported_by_current_contract() {
+                    ""
+                } else {
+                    " · secure runtime setup contract required"
+                }
+            )));
+        }
     }
     Text::from(lines)
+}
+
+fn provider_setup_text(app: &App) -> Text<'static> {
+    let step = match app.phase {
+        Phase::ProviderSetup { step } => step,
+        _ => ProviderSetupStep::SelectProvider,
+    };
+    let status = match step {
+        ProviderSetupStep::SelectProvider => "Select a provider",
+        ProviderSetupStep::Configure => "Configure the selected provider in the runtime",
+        ProviderSetupStep::Validating => "Runtime validation in progress",
+        ProviderSetupStep::SelectModel => "Select a projected model",
+        ProviderSetupStep::Error => "Provider setup needs attention",
+    };
+    Text::from(vec![
+        Line::from(Span::styled(
+            "PROVIDER SETUP",
+            Style::default()
+                .fg(PALETTE.ink)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::default(),
+        Line::from(status),
+        Line::from("F2 provider picker · v explicit validate/connect · F3 model picker"),
+        Line::default(),
+        Line::from(Span::styled(
+            "Prompts stay queued until the runtime projects AuthState::Ready and confirms a selected model.",
+            Style::default().fg(PALETTE.faint),
+        )),
+        Line::from(Span::styled(
+            "Raw API-key and OAuth entry are not simulated; those require secure runtime-owned contracts.",
+            Style::default().fg(PALETTE.amber),
+        )),
+    ])
 }
 
 fn mcp_panel_text(app: &App) -> Text<'static> {
@@ -2944,7 +3254,18 @@ fn model_picker_text(app: &App) -> Text<'static> {
             )));
         }
     } else {
-        for (index, model) in app.snapshot.models.iter().enumerate() {
+        if let Some(provider_id) = app.model_picker_provider {
+            lines.push(Line::from(Span::styled(
+                format!(
+                    "Provider: {} · showing projected models only",
+                    provider_id.label()
+                ),
+                Style::default().fg(PALETTE.amber),
+            )));
+            lines.push(Line::default());
+        }
+        for index in app.visible_model_indices() {
+            let model = &app.snapshot.models[index];
             let is_cursor = index == app.model_picker_index;
             let is_selected = app
                 .snapshot
@@ -2972,6 +3293,12 @@ fn model_picker_text(app: &App) -> Text<'static> {
             lines.push(Line::from(Span::styled(
                 format!("{icon} {}  {}", model.provider_id.label(), model.model_id),
                 style,
+            )));
+        }
+        if app.visible_model_indices().is_empty() {
+            lines.push(Line::from(Span::styled(
+                "No projected models are available for this provider.",
+                Style::default().fg(PALETTE.red),
             )));
         }
         lines.push(Line::from(Span::styled(
@@ -3010,11 +3337,7 @@ fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
     } else {
         app.snapshot.workspace_label.clone()
     };
-    let session = app
-        .snapshot
-        .session_id
-        .as_deref()
-        .unwrap_or("not attached");
+    let session = app.snapshot.session_id.as_deref().unwrap_or("not attached");
     let mode_str = match app.agent_mode {
         AgentMode::Build => "BUILD (governed coding)",
         AgentMode::Plan => "PLAN (investigation)",
@@ -3023,14 +3346,29 @@ fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
 
     Text::from(vec![
         Line::from(vec![
-            Span::styled("LETTERBLACK LBE AGENT COCKPIT ", Style::default().fg(PALETTE.ink).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "LETTERBLACK LBE AGENT COCKPIT ",
+                Style::default()
+                    .fg(PALETTE.ink)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("· ", Style::default().fg(PALETTE.red)),
-            Span::styled("GOVERNED AGENT WALL", Style::default().fg(PALETTE.red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "GOVERNED AGENT WALL",
+                Style::default()
+                    .fg(PALETTE.red)
+                    .add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::default(),
         Line::from(vec![
             Span::styled("Workspace  ", Style::default().fg(PALETTE.faint)),
-            Span::styled(workspace, Style::default().fg(PALETTE.ink).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                workspace,
+                Style::default()
+                    .fg(PALETTE.ink)
+                    .add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Session    ", Style::default().fg(PALETTE.faint)),
@@ -3038,7 +3376,12 @@ fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
         ]),
         Line::from(vec![
             Span::styled("Mode       ", Style::default().fg(PALETTE.faint)),
-            Span::styled(mode_str, Style::default().fg(PALETTE.agent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                mode_str,
+                Style::default()
+                    .fg(PALETTE.agent)
+                    .add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Provider   ", Style::default().fg(PALETTE.faint)),
@@ -3049,11 +3392,17 @@ fn welcome_text(_available_height: u16, app: &App) -> Text<'static> {
         ]),
         Line::from(vec![
             Span::styled("Authority  ", Style::default().fg(PALETTE.faint)),
-            Span::styled("LBE Kernel (authorization required before workspace mutations)", Style::default().fg(PALETTE.muted)),
+            Span::styled(
+                "LBE Kernel (authorization required before workspace mutations)",
+                Style::default().fg(PALETTE.muted),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Policy     ", Style::default().fg(PALETTE.faint)),
-            Span::styled("read-only UI contract · authorization required", Style::default().fg(PALETTE.green)),
+            Span::styled(
+                "read-only UI contract · authorization required",
+                Style::default().fg(PALETTE.green),
+            ),
         ]),
         Line::default(),
         Line::from(Span::styled(

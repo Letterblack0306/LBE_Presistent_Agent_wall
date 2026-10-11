@@ -37,7 +37,7 @@ from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
 from .mode_controller import ModeRequest, resolve_mode
 from .provider_event_adapters import build_native_provider_event_adapter
-from .agent_guidance import AgentGuidance, build_agent_guidance
+from .agent_guidance import AgentGuidance, ResolvedAdvisorySkills, build_agent_guidance
 from .tool_orchestration import (
     GovernedToolOrchestrator,
     ToolAccessClass,
@@ -757,6 +757,7 @@ class _GovernedCodingControllerBase:
         provider_config: ProviderConfig,
         engine_id: str,
         external_capabilities: Iterable[object] = (),
+        skill_resolver: Callable[[str], ResolvedAdvisorySkills | None] | None = None,
     ) -> None:
         if not isinstance(runtime, SessionMemoryRuntimeBridge):
             raise TypeError("runtime must be SessionMemoryRuntimeBridge")
@@ -821,6 +822,7 @@ class _GovernedCodingControllerBase:
         self._receipt_correlations: dict[str, dict[str, str]] = {}
         self._history = SessionOperationalHistory(store=runtime.store)
         self._active_parent_turn_id: str | None = None
+        self._skill_resolver = skill_resolver
 
         registry = ToolRegistry()
         registry.register(workspace_read_spec(), build_workspace_read_handler(EvidenceService()))
@@ -857,11 +859,13 @@ class _GovernedCodingControllerBase:
         )
 
     def _rebuild_guidance(self, task: str | None = None) -> None:
+        resolved_skills = self._skill_resolver(task) if task is not None and self._skill_resolver else None
         self._guidance = build_agent_guidance(
             mode_decision=self._context.mode_decision,
             workspace_root=self._runtime.workspace_root,
             tools=self._registry.specs(),
             task=task,
+            resolved_skills=resolved_skills,
         )
 
     @property
@@ -1335,6 +1339,7 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         provider_id: str,
         provider_config: ProviderConfig,
         external_capabilities: Iterable[object] = (),
+        skill_resolver: Callable[[str], ResolvedAdvisorySkills | None] | None = None,
     ) -> None:
         self._adapter = build_native_provider_event_adapter(
             provider_id=provider_id,
@@ -1346,6 +1351,7 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
             provider_config=provider_config,
             engine_id="native-lbe",
             external_capabilities=external_capabilities,
+            skill_resolver=skill_resolver,
         )
 
     def run(self, request: LBERequest) -> LBEResponse:
@@ -1485,6 +1491,7 @@ class GovernedClineCodingController(_GovernedCodingControllerBase):
         provider_config: ProviderConfig,
         external_capabilities: Iterable[object] = (),
         node_executable: str = "node",
+        skill_resolver: Callable[[str], ResolvedAdvisorySkills | None] | None = None,
     ) -> None:
         super().__init__(
             runtime=runtime,
@@ -1492,6 +1499,7 @@ class GovernedClineCodingController(_GovernedCodingControllerBase):
             provider_config=provider_config,
             engine_id="cline",
             external_capabilities=external_capabilities,
+            skill_resolver=skill_resolver,
         )
         self._node_executable = node_executable
 
@@ -1501,6 +1509,7 @@ class GovernedClineCodingController(_GovernedCodingControllerBase):
             raise ValueError("governed coding requires a task_id")
         self._bind_owner_authority(request)
         self._activate_parent_turn(request.parent_turn_id)
+        self._rebuild_guidance(task=request.problem)
 
         # Cline remains feature-scoped: importing the adapter/worker occurs only
         # after an explicitly persisted Cline engine selection.
