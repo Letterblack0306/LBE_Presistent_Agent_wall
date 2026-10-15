@@ -51,6 +51,65 @@ def _owner_authority_summary(path: str) -> dict[str, Any]:
     }
 
 
+def _shipped_runtime_config() -> dict[str, Any]:
+    """Read the default runtime config without importing the agent module (its
+    CONFIG_PATH/STATE_DIR are fixed at import time, so env must be set first)."""
+    for candidate in (Path(__file__).resolve().parent.parent / "config.json",
+                      Path(__file__).resolve().parent / "config.json"):
+        try:
+            value = json.loads(candidate.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def _ensure_workspace_runtime_config(workspace: Path, database: Path) -> None:
+    """Make the opened project this session's knowledge root when it is not
+    already inside a configured one.
+
+    The shipped config lists machine-specific roots, so an installed `lbe` run in
+    any other project failed every tool with "active workspace is not a
+    configured knowledge root". Least privilege: only the project the user
+    explicitly opened becomes a root, and an explicit
+    LBE_GUARD_INSPECTOR_CONFIG_PATH always wins. Must run before any subprocess
+    (and any agent import) reads the config.
+    """
+    import hashlib
+
+    identity = hashlib.sha256(str(workspace).lower().encode("utf-8")).hexdigest()[:16]
+    base = database.parent / "workspaces" / identity
+
+    # Write policy is fail-closed in the shipped governance (allowed_write_paths
+    # is empty). A user-authored per-workspace policy is honored only from the
+    # install state directory, which is outside the project, so an agent working
+    # in the project cannot grant itself write access. LBE never creates it.
+    governance_file = base / "governance.json"
+    if governance_file.is_file() and not os.environ.get("LBE_GUARD_INSPECTOR_GOVERNANCE_PATH"):
+        os.environ["LBE_GUARD_INSPECTOR_GOVERNANCE_PATH"] = str(governance_file)
+
+    if os.environ.get("LBE_GUARD_INSPECTOR_CONFIG_PATH"):
+        return
+    shipped = _shipped_runtime_config()
+    for item in shipped.get("knowledge_roots") or []:
+        try:
+            workspace.relative_to(Path(str(item.get("path", ""))).expanduser().resolve())
+            return  # already covered by a configured root
+        except (ValueError, OSError, AttributeError):
+            continue
+    base.mkdir(parents=True, exist_ok=True)
+    config = dict(shipped)
+    config["knowledge_roots"] = [{"name": "project", "path": str(workspace)}]
+    config["active_workspace_root"] = None
+    target = base / "config.json"
+    text = json.dumps(config, indent=2)
+    if not target.exists() or target.read_text(encoding="utf-8") != text:
+        target.write_text(text, encoding="utf-8")
+    os.environ["LBE_GUARD_INSPECTOR_CONFIG_PATH"] = str(target)
+    os.environ.setdefault("LBE_GUARD_INSPECTOR_STATE_DIR", str(base / "index"))
+
+
 def _handle_authority_command(line: str) -> None:
     """`/authority [status|clear|<package.json>]` for the current terminal session."""
     global _OWNER_AUTHORITY_FILE
@@ -923,6 +982,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise SystemExit(f"workspace missing: {args.workspace}")
 
     args.database.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_workspace_runtime_config(args.workspace, args.database)
     try:
         session_id = _ensure_session(args)
         current = _status(args.database, session_id)
