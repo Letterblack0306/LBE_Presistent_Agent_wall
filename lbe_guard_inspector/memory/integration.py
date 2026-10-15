@@ -57,6 +57,8 @@ class SessionMemoryAdapter:
             ("git_head", state.get("head")),
             ("changed_files", list(state.get("status_short") or [])),
         ):
+            if value is None:
+                continue  # no commit yet: nothing true to record about HEAD
             records.append(
                 self.promoter.promote(
                     CandidateClaim(

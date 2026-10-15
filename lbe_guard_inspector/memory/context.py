@@ -38,9 +38,20 @@ def inspect_git_state(workspace_root: str | Path) -> dict[str, Any]:
         )
         return completed.stdout.strip()
 
+    def head() -> str | None:
+        # A freshly initialised repository has no commit yet. That is a real,
+        # reportable state (head=None), not a failure of the whole turn.
+        completed = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--verify", "--quiet", "HEAD"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        return completed.stdout.strip() or None if completed.returncode == 0 else None
+
     return {
         "branch": run("branch", "--show-current"),
-        "head": run("rev-parse", "HEAD"),
+        "head": head(),
         "status_short": run("status", "--short").splitlines(),
     }
 

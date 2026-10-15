@@ -32,7 +32,8 @@ def test_render_turn_limits_activity_to_latest_three_real_events(capsys) -> None
         }
     )
     out = capsys.readouterr().out
-    assert "ACTIVE PROCESS" in out
+    assert "ACTIVITY" in out
+    assert "ACTIVE PROCESS" not in out
     assert "tool.requested" not in out
     assert "tool.started" in out
     assert "receipt receipt-1" in out
@@ -349,7 +350,7 @@ def test_resume_transcript_replays_real_session_events(monkeypatch, tmp_path):
     assert "agent" in result and "Done" in result
 
 
-def test_fullscreen_renders_conversation_first_without_metadata_sidebar(monkeypatch, tmp_path):
+def test_fullscreen_is_frameless_conversation_first_layout(monkeypatch, tmp_path):
     from types import SimpleNamespace
     from prompt_toolkit.application import Application
     from prompt_toolkit.output import DummyOutput
@@ -357,35 +358,93 @@ def test_fullscreen_renders_conversation_first_without_metadata_sidebar(monkeypa
     from prompt_toolkit.input import DummyInput
     monkeypatch.setattr(app_module, "get_app_session", lambda: SimpleNamespace(output=DummyOutput(), input=DummyInput()))
     from prompt_toolkit.layout.containers import HSplit
-    from prompt_toolkit.widgets import Frame
-    import prompt_toolkit.widgets as widgets
-    from prompt_toolkit.widgets import TextArea
-    frames = []
-    def record_frame(*args, **kwargs):
-        frame = Frame(*args, **kwargs)
-        frames.append(frame)
-        return frame
-    monkeypatch.setattr(widgets, "Frame", record_frame)
 
     db = tmp_path / "state.sqlite3"
     monkeypatch.setattr(terminal_ui, "_resume_transcript", lambda database, sid: "you > recovered turn")
     captured = {}
+
     def inspect(self, *args, **kwargs):
-        root = self.layout.container
-        captured["root"] = root
-        captured["frames"] = frames
+        captured["root"] = self.layout.container
         return 0
     monkeypatch.setattr(Application, "run", inspect)
     args = SimpleNamespace(database=db, workspace=tmp_path, provider_config=tmp_path / "provider.json")
-    status = {"provider_id":"openai-compatible","provider_model":"model-a","mode":"audit"}
+    status = {"provider_id": "openai-compatible", "provider_model": "model-a", "mode": "audit"}
     assert terminal_ui._run_full_screen(args, "same-session", status) == 0
-    assert isinstance(captured["root"], HSplit)
-    assert len(captured["frames"]) == 2
-    assert captured["frames"][0].title == "Conversation / tools"
-    assert captured["frames"][1].title.startswith("Task ")
-    conversation = captured["frames"][0].body
-    assert isinstance(conversation, TextArea)
-    assert "recovered turn" in conversation.text
+    root = captured["root"]
+    assert isinstance(root, HSplit)
+    from prompt_toolkit.layout.containers import Window
+    from prompt_toolkit.layout.layout import walk
+    from prompt_toolkit.layout.controls import BufferControl
+
+    windows = [c for c in walk(root) if isinstance(c, Window) and isinstance(c.content, BufferControl)]
+    assert len(windows) == 2  # transcript + composer
+    transcript, composer = windows
+    assert "recovered turn" in transcript.content.buffer.text
+    assert transcript.content.buffer.read_only() and not composer.content.buffer.read_only()
+    # top bar, rule, transcript, rule, composer, rule, status: no boxed frames
+    assert len(root.get_children()) == 7
+
+
+def test_transcript_styles_come_from_what_each_line_is() -> None:
+    lines = [
+        "you  > create hello.txt",
+        "ACTIVITY",
+        "  tool.completed | receipt r-1",
+        "  model.error | boom",
+        "Agent",
+        "done",
+        "EFFECTS | governed workspace changes executed: 1 | blocked or failed: 0  (from receipts, not model text)",
+        "EFFECTS | governed workspace changes executed: 0 | blocked or failed: 1  (from receipts, not model text)",
+        "EFFECTS | governed workspace changes executed: 0 | blocked or failed: 0  (from receipts, not model text)",
+        "ACTION GATE",
+        "  tool       | workspace.patch",
+        "after the gate",
+    ]
+    styles = terminal_ui._classify_transcript(lines)
+    assert styles == [
+        "class:user", "class:label", "class:muted", "class:error", "class:label", "class:text",
+        "class:ok", "class:warn", "class:muted", "class:warn", "class:warn", "class:text",
+    ]
+
+
+def test_green_is_only_for_executed_effects_never_for_model_words() -> None:
+    styles = terminal_ui._classify_transcript(["Agent", "All changes were applied successfully"])
+    assert "class:ok" not in styles
+
+
+def test_no_color_style_keeps_non_color_cues() -> None:
+    style = terminal_ui._ui_style(False)
+    attrs = {name: style.get_attrs_for_style_str("class:" + name) for name in ("user", "error", "warn")}
+    assert all(a.bold for a in attrs.values())
+    assert terminal_ui._PALETTE["signal"] == "#ef4b4b"  # logo red, from lbe-logo.svg
+
+
+def test_ascii_mode_when_requested(monkeypatch) -> None:
+    monkeypatch.setenv("LBE_ASCII", "1")
+    assert terminal_ui._ascii_only() is True
+
+
+def test_human_error_is_one_readable_line() -> None:
+    raw = ("CalledProcessError: Command '['git', '-C', 'C:\\w', 'rev-parse', 'HEAD']' "
+           "returned non-zero exit status 128.")
+    out = terminal_ui._human_error(raw)
+    assert out == "command failed (exit 128): rev-parse HEAD"
+    assert len(terminal_ui._human_error("x" * 500)) <= 180
+
+
+def test_help_lists_one_command_per_row(capsys) -> None:
+    terminal_ui._help()
+    rows = capsys.readouterr().out.splitlines()
+    assert rows[0] == "COMMANDS"
+    assert all(len(r) < 100 for r in rows)
+    assert any(r.strip().startswith("/providers") for r in rows)
+
+
+def test_providers_marks_the_active_one(capsys) -> None:
+    terminal_ui._render_providers(
+        {"providers": ["a", "b"], "engines": [], "bindings": []}, active="b")
+    out = capsys.readouterr().out
+    assert "* b" in out and "  a" in out and "* a" not in out
 
 
 def test_fullscreen_slash_menu_filters_actual_commands(monkeypatch, tmp_path):
@@ -415,3 +474,11 @@ def test_fullscreen_slash_menu_filters_actual_commands(monkeypatch, tmp_path):
     assert "/model" in values and "/models" in values
     assert "/quit" not in values
     assert list(menu.get_completions(Document("ordinary task"), None)) == []
+
+
+def test_long_workspace_path_keeps_its_tail_and_never_overflows() -> None:
+    path = "C:\\Users\\someone\\Projects\\a-very-long-name\\my-project"
+    shown = terminal_ui._fit_path(path, 24)
+    assert len(shown) <= 24 and shown.endswith("my-project") and shown.startswith("\u2026")
+    assert terminal_ui._fit_path(path, 200) == path
+    assert terminal_ui._fit_path(path, 4) == ""

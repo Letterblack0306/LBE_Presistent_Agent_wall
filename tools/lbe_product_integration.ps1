@@ -222,7 +222,7 @@ function Test-IntegrationContracts {
     $terminalMarkers = @(
         "LBE",
         "LOCKSTEP BOUNDARY ENGINE",
-        "ACTIVE PROCESS",
+        "ACTIVITY",
         "[I] > ",
         '"/plan"',
         '"/act"',

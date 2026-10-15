@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import subprocess
+import re
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -337,6 +338,16 @@ def _payload_text(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _human_error(detail: str) -> str:
+    """One readable line; the full text stays in the persisted event (/audit)."""
+    text = " ".join(str(detail).split())
+    match = re.search(r"CalledProcessError: Command '\[(.*?)\]' returned non-zero exit status (\d+)", text)
+    if match:
+        words = [w.strip(" '\"") for w in match.group(1).split(",")]
+        text = f"command failed (exit {match.group(2)}): {' '.join(words[-2:])}"
+    return text if len(text) <= 180 else text[:177] + "..."
+
+
 def _render_turn(result: dict[str, Any]) -> dict[str, str] | None:
     events = list(result.get("events") or [])
     activity: list[str] = []
@@ -394,13 +405,13 @@ def _render_turn(result: dict[str, Any]) -> dict[str, str] | None:
             activity.append(f"{event_type} | {operation}")
         elif "error" in event_type:
             detail = text or str(payload.get("error_message") or payload.get("error_code") or "error")
-            activity.append(f"{event_type} | {detail}")
+            activity.append(f"{event_type} | {_human_error(detail)}")
         elif "tool" in event_type or event_type.startswith("governed."):
             activity.append(event_type)
 
     if activity:
         print("")
-        print("ACTIVE PROCESS")
+        print("ACTIVITY")
         for line in activity[-3:]:
             print(f"  {line}")
 
@@ -463,6 +474,111 @@ _TERMINAL_COMMANDS = (
 )
 
 
+# Palette taken from docs/reference/ui/lbe-logo.svg (red #ef4b4b, off-white #e9e9ef,
+# panel #0b0c15). Red is a signal colour, never a background: it marks failure and
+# live execution. Green means a verified effect, amber a gate that needs a decision.
+_PALETTE = {
+    "bg": "#0b0c15", "text": "#e9e9ef", "muted": "#8e8e93", "rule": "#2a2a2d",
+    "signal": "#ef4b4b", "ok": "#4ade80", "warn": "#e5b567",
+}
+_EVENT_LINE = re.compile(r"^\s{2}[a-z_]+(\.[a-z_]+)+")
+_EFFECTS = re.compile(r"executed: (\d+) \| blocked or failed: (\d+)")
+_SECTION_HEADS = {"ACTIVITY", "PROVIDERS", "MODELS", "AGENT PLATFORMS", "COMMANDS", "AGENT", "Agent"}
+
+
+def _color_enabled() -> bool:
+    return not os.environ.get("NO_COLOR")
+
+
+def _ascii_only() -> bool:
+    encoding = (getattr(sys.stdout, "encoding", None) or "").lower()
+    return bool(os.environ.get("LBE_ASCII")) or not encoding.startswith("utf")
+
+
+def _classify_transcript(lines: Sequence[str]) -> list[str]:
+    """Style per transcript line from what the line really is (no guessing at meaning)."""
+    styles: list[str] = []
+    in_gate = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "ACTION GATE":
+            in_gate = True
+            styles.append("class:warn")
+            continue
+        if in_gate and line.startswith("  "):
+            styles.append("class:warn")
+            continue
+        in_gate = False
+        if line.startswith(("you  > ", "you > ")):
+            styles.append("class:user")
+        elif line.startswith("EFFECTS |"):
+            found = _EFFECTS.search(line)
+            executed, blocked = (int(found.group(1)), int(found.group(2))) if found else (0, 0)
+            styles.append("class:warn" if blocked else "class:ok" if executed else "class:muted")
+        elif line.startswith(("FAILED |", "DENIED |")) or re.match(r"^\s{2}model\.error", line):
+            styles.append("class:error")
+        elif "model.error |" in line or "tool.failed" in line:
+            styles.append("class:error")
+        elif stripped in _SECTION_HEADS or line.startswith(("ENGINES |", "CONTEXT ")):
+            styles.append("class:label")
+        elif _EVENT_LINE.match(line):
+            styles.append("class:muted")
+        else:
+            styles.append("class:text")
+    return styles
+
+
+def _fit_path(path: str, available: int) -> str:
+    """Keep the tail of a long path (the part that identifies the project)."""
+    if available < 8:
+        return ""
+    if len(path) <= available:
+        return path
+    return "\u2026" + path[-(available - 1):]
+
+
+def _transcript_lexer():
+    from prompt_toolkit.lexers import Lexer
+
+    class TranscriptLexer(Lexer):
+        def lex_document(self, document):
+            lines = document.lines
+            styles = _classify_transcript(lines)
+
+            def line_fragments(number: int):
+                style = styles[number] if number < len(styles) else "class:text"
+                return [(style, lines[number])]
+
+            return line_fragments
+
+    return TranscriptLexer()
+
+
+def _ui_style(color: bool):
+    from prompt_toolkit.styles import Style
+
+    if not color:
+        return Style.from_dict({"user": "bold", "label": "bold", "error": "bold", "warn": "bold"})
+    p = _PALETTE
+    return Style.from_dict({
+        "app": f"bg:{p['bg']} {p['text']}",
+        "text": p["text"],
+        "user": f"bold {p['text']}",
+        "muted": p["muted"],
+        "label": f"bold {p['muted']}",
+        "rule": p["rule"],
+        "mark": p["signal"],
+        "error": p["signal"],
+        "warn": p["warn"],
+        "ok": p["ok"],
+        "live": f"bold {p['signal']}",
+        "ready": p["ok"],
+        "wait": p["warn"],
+        "scrollbar.background": p["bg"],
+        "scrollbar.button": p["rule"],
+    })
+
+
 def _interactive_reader(database: Path, session_id: str):
     """Editable terminal composer; keep the standard-input fallback dependency-free."""
     try:
@@ -509,18 +625,10 @@ def _landing_rows(status: dict[str, Any], workspace: Path) -> tuple[str, ...]:
     mode = _mode_label(status.get("mode"))
     session = str(status.get("session_id") or "not started")
     return (
-        "  LBE  /  LOCKSTEP BOUNDARY ENGINE",
-        "  " + "-" * 55,
-        f"  Workspace  {workspace}",
-        f"  Provider   {provider}",
-        f"  Model      {model}",
-        f"  Session    {session}",
-        f"  Mode       {mode}",
-        "  " + "-" * 55,
-        "  /providers  list available providers  /models  inspect model catalog",
-        "  /model ID   select model          /plan /act /audit  switch mode",
-        "  /status     refresh session       /help   commands and keys",
-        "  Enter task to start a governed turn.  Tab: commands  Up/Down: history",
+        f"  workspace  {workspace}",
+        f"  provider   {provider}/{model}",
+        f"  mode       {mode}",
+        f"  session    {session}",
     )
 
 
@@ -559,9 +667,21 @@ def _print_header(status: dict[str, Any], workspace: Path) -> None:
 
 
 def _help() -> None:
-    print("/plan  /act  /audit  /status  /provider  /providers  /agents  /authority  /models  /model <id>  /approve  /deny  /help  /quit")
-    print("Provider/model and approval commands delegate to existing LBE runtime owners.")
-    print("Enter any other text to start a governed LBE turn.")
+    rows = (
+        ("/plan  /act  /audit", "switch mode"),
+        ("/status", "session, provider, model"),
+        ("/providers", "providers and how each authenticates"),
+        ("/models  /model <id>", "model catalog, select a model"),
+        ("/agents", "installed agent platforms"),
+        ("/authority <pkg>", "owner authority package for governed writes"),
+        ("/approve  /deny", "resolve a pending action"),
+        ("/quit", "exit"),
+    )
+    print("COMMANDS")
+    for command, meaning in rows:
+        print(f"  {command:<24}{meaning}")
+    print("Any other text starts a governed turn.")
+    print("Tab completes, Ctrl+J adds a line, PgUp/PgDn scrolls, Ctrl+C cancels a running turn.")
 
 
 def _render_agents() -> None:
@@ -608,7 +728,7 @@ def _select_model(
     ])
 
 
-def _render_providers(payload: dict[str, Any]) -> None:
+def _render_providers(payload: dict[str, Any], active: str | None = None) -> None:
     providers = [str(item) for item in payload.get("providers") or []]
     engines = [str(item) for item in payload.get("engines") or []]
     bindings = [item for item in payload.get("bindings") or [] if isinstance(item, dict)]
@@ -626,7 +746,8 @@ def _render_providers(payload: dict[str, Any]) -> None:
         if mode == "login":
             mode += " (ready)" if info.get("installed") else f" (CLI missing: {info.get('login_hint')})"
         auth_text = f" | auth: {mode}" if mode else ""
-        print(f"  {provider}{auth_text}{suffix}")
+        marker = "* " if active and provider == active else "  "
+        print(f"{marker}{provider}{auth_text}{suffix}")
     if engines:
         print(f"ENGINES | {', '.join(engines)}")
 
@@ -746,19 +867,22 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
     from prompt_toolkit.filters import Condition
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.filters import Condition
-    from prompt_toolkit.layout import HSplit, Layout, Window
+    from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, WindowAlign
+    from prompt_toolkit.output.color_depth import ColorDepth
     from prompt_toolkit.layout.controls import FormattedTextControl
-    from prompt_toolkit.widgets import Frame, TextArea
-    from prompt_toolkit.styles import Style
+    from prompt_toolkit.widgets import TextArea
 
     state = dict(initial)
     pending: dict[str, str] | None = None
     busy = False
     activity_state = "IDLE"
     previous = _resume_transcript(args.database, session_id)
+    ascii_only = _ascii_only()
+    color = _color_enabled()
     transcript = TextArea(text=(previous + "\n\n" if previous else
-                                "LBE | LOCKSTEP BOUNDARY ENGINE\nWhat can I do for you?\n\n"),
-                          read_only=True, scrollbar=True, wrap_lines=True, focusable=True)
+                                "What can I do for you?  /help lists commands.\n\n"),
+                          read_only=True, scrollbar=True, wrap_lines=True, focusable=True,
+                          lexer=_transcript_lexer())
     class SlashCompleter(Completer):
         def get_completions(self, document, complete_event):
             text = document.text_before_cursor
@@ -770,18 +894,64 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                     yield Completion(candidate, start_position=-len(text),
                                      display=candidate)
 
-    composer = TextArea(multiline=True, height=3, prompt="> ",
+    composer = TextArea(multiline=True, height=3, prompt="> " if ascii_only else "\u276f ",
                         scrollbar=False, wrap_lines=True,
                         completer=SlashCompleter(),
                         complete_while_typing=True)
-    status = FormattedTextControl(text=lambda: [
-        ("class:accent", " LBE  "),
-        ("class:status", "  |  " + str(state.get("provider_id") or "?") + "/" +
-         str(state.get("provider_model") or "?") + "  |  " +
-         _mode_label(state.get("mode")) +
-         ("  |  CANCELLING" if busy and cancel_turn.is_set() else "  |  " + activity_state if busy else "  |  READY") +
-         ("  |  APPROVAL REQUIRED" if pending else "")),
-    ])
+
+    auth_mode: dict[str, str] = {"text": ""}
+
+    def load_auth_mode() -> None:
+        # Real registry data, read once in the background; blank when unavailable.
+        try:
+            catalog = _providers()
+            info = (catalog.get("auth") or {}).get(str(state.get("provider_id") or ""))
+            if isinstance(info, dict) and info.get("mode"):
+                auth_mode["text"] = str(info["mode"])
+                if app is not None:
+                    app.invalidate()
+        except Exception:
+            pass
+
+    def top_left():
+        import shutil
+        mark = [("class:text", "["), ("class:mark", "|" if ascii_only else "\u2503"), ("class:text", "]")]
+        columns = shutil.get_terminal_size((100, 30)).columns
+        room = columns - len("[|]  LBE  ") - len(top_right_text()) - 2
+        shown = _fit_path(str(args.workspace), room)
+        if ascii_only:
+            shown = shown.replace("\u2026", "...")
+        return mark + [("class:user", "  LBE  "), ("class:muted", shown)]
+
+    def top_right_text() -> str:
+        provider = str(state.get("provider_id") or "provider?")
+        model = str(state.get("provider_model") or "model?")
+        sep = "  |  " if ascii_only else "  \u00b7  "
+        auth = f"{sep}{auth_mode['text']}" if auth_mode["text"] else ""
+        return f"{provider}/{model}{auth} "
+
+    def top_right():
+        return [("class:muted", top_right_text())]
+
+    def status_left():
+        dot = "*" if ascii_only else "\u25cf"
+        if pending:
+            return [("class:wait", f" {dot} "), ("class:text", "approval required"),
+                    ("class:muted", "   /approve  /deny")]
+        if busy and cancel_turn.is_set():
+            return [("class:wait", f" {dot} "), ("class:text", "cancelling")]
+        if busy:
+            return [("class:live", f" {dot} "), ("class:text", activity_state.lower())]
+        sep = "|" if ascii_only else "\u00b7"
+        return [("class:ready", f" {dot} "), ("class:text", "ready"),
+                ("class:muted", "   " + _mode_label(state.get("mode")).lower() + "  " + sep +
+                 "  " + str(state.get("session_id") or session_id)[-8:])]
+
+    hints = "Enter send   Ctrl+J newline   Tab commands   /help "
+
+    def status_right():
+        return [("class:muted", hints)]
+
     keys = KeyBindings()
     app = None
 
@@ -816,7 +986,7 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                     for row in _landing_rows(state, args.workspace):
                         print(row)
                 elif line == "/providers":
-                    _render_providers(_providers())
+                    _render_providers(_providers(), active=str(state.get("provider_id") or ""))
                 elif line == "/agents":
                     _render_agents()
                 elif line == "/authority" or line.startswith("/authority "):
@@ -882,7 +1052,7 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
         except Exception as exc:
             out.write("FAILED | " + str(exc) + "\n")
         finally:
-            content = out.getvalue().strip()
+            content = out.getvalue().strip("\n").rstrip()
             append(content or "No displayable result; inspect runtime status with /status")
             busy = False
             activity_state = "IDLE"
@@ -973,22 +1143,30 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
         else:
             event.app.exit(result=0)
 
-    style = Style.from_dict({
-        "frame.border": "#34383f",
-        "frame.label": "#d6d7dd",
-        "accent": "bold #ef4b4b",
-        "status": "bg:#17191e #c4c8d0",
-    })
+    style = _ui_style(color)
+    rule_char = "-" if ascii_only else "\u2500"
     root = HSplit([
-        Window(height=1, content=FormattedTextControl(
-            text=" LBE  |  LOCKSTEP BOUNDARY ENGINE  |  " + str(args.workspace)), style="class:status"),
-        Frame(transcript, title="Conversation / tools"),
-        Frame(composer, title="Task  |  Enter send  |  Ctrl+J newline  |  PgUp/PgDn scroll", height=6),
-        Window(height=1, content=status, style="class:status"),
-    ])
+        VSplit([
+            Window(content=FormattedTextControl(top_left), height=1),
+            Window(content=FormattedTextControl(top_right), height=1,
+                   width=lambda: len(top_right_text()), align=WindowAlign.RIGHT),
+        ], height=1),
+        Window(height=1, char=rule_char, style="class:rule"),
+        transcript,
+        Window(height=1, char=rule_char, style="class:rule"),
+        composer,
+        Window(height=1, char=rule_char, style="class:rule"),
+        VSplit([
+            Window(content=FormattedTextControl(status_left), height=1),
+            Window(content=FormattedTextControl(status_right), height=1,
+                   width=len(hints), align=WindowAlign.RIGHT),
+        ], height=1),
+    ], style="class:app")
     app = Application(layout=Layout(root, focused_element=composer),
                       key_bindings=keys, style=style, full_screen=True,
-                      mouse_support=True)
+                      mouse_support=True,
+                      color_depth=None if color else ColorDepth.DEPTH_1_BIT)
+    threading.Thread(target=load_auth_mode, daemon=True).start()
     return int(app.run() or 0)
 
 
