@@ -469,7 +469,6 @@ _LBE_LOGO_TERMINAL = (
 
 _TERMINAL_COMMANDS = (
     "/help", "/status", "/providers", "/provider", "/agents", "/authority", "/models", "/model ",
-    "/sessions", "/session ", "/turns", "/evidence", "/gate", "/conversation", "/capabilities", "/setup",
     "/plan", "/act", "/audit", "/approve", "/deny",
     "/quit", "/exit",
 )
@@ -676,19 +675,13 @@ def _help() -> None:
         ("/agents", "installed agent platforms"),
         ("/authority <pkg>", "owner authority package for governed writes"),
         ("/approve  /deny", "resolve a pending action"),
-        ("/sessions  /session <id>", "list and resume a project session"),
-        ("/turns  /evidence", "persisted turns and receipts"),
-        ("/gate  /conversation", "approval details or conversation"),
-        ("/capabilities", "provider and agent catalog"),
-        ("/setup", "provider config and model selection"),
         ("/quit", "exit"),
     )
     print("COMMANDS")
     for command, meaning in rows:
         print(f"  {command:<24}{meaning}")
     print("Any other text starts a governed turn.")
-    print("F4 sessions, F5 evidence, F6 gate, F7 conversation. Tab completes; Ctrl+J newline.")
-    print("PgUp/PgDn scroll; Ctrl+C cancels a running turn.")
+    print("Tab completes, Ctrl+J adds a line, PgUp/PgDn scrolls, Ctrl+C cancels a running turn.")
 
 
 def _render_agents() -> None:
@@ -844,119 +837,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 
-def _project_sessions(database: Path, workspace: Path) -> list[dict[str, Any]]:
-    payload = _run_product_json([
-        "session", "list", "--database", str(database),
-        "--project-workspace-id", _workspace_id(workspace), "--limit", "20",
-    ])
-    return [row for row in payload.get("sessions") or [] if isinstance(row, dict)]
-
-
-def _project_history(database: Path, session_id: str, *, evidence: bool = False) -> str:
-    """Read persisted events; the UI never infers an unrecorded success."""
-    from .cli import WorkspaceMemoryStore
-    from .memory.operational_history import SessionOperationalHistory
-
-    history = SessionOperationalHistory(store=WorkspaceMemoryStore(str(database)))
-    events = history.events_for_session(session_id=session_id)
-    if not events:
-        return "No persisted turns or receipts for this session."
-    lines: list[str] = []
-    current_turn = None
-    for event in events:
-        if event.turn_id and event.turn_id != current_turn:
-            current_turn = event.turn_id
-            lines.append("\nTURN " + current_turn)
-        if evidence:
-            if not (event.event_type.startswith(("tool.", "child_agent.")) or
-                    "validat" in event.event_type or "complet" in event.event_type or
-                    event.tool_receipt_id or event.runtime_operation_id):
-                continue
-            refs = [f"{name}={value}" for name, value in (
-                ("operation", event.runtime_operation_id),
-                ("receipt", event.tool_receipt_id),
-                ("provider_call", event.provider_tool_call_id),
-                ("lbe_call", event.lbe_call_id),
-            ) if value]
-            lines.append(f"{event.event_type}  " + "  ".join(refs))
-            payload = event.payload if isinstance(event.payload, dict) else {}
-            for item in payload.get("evidence") or []:
-                if isinstance(item, dict) and item.get("ref"):
-                    lines.append("  evidence " + str(item["ref"]))
-        elif event.event_type == "user.message":
-            message = _payload_text(event.payload if isinstance(event.payload, dict) else {})
-            if message:
-                lines.append("you > " + message[:180])
-    return "\n".join(lines[-200:]).strip() or "No matching persisted evidence."
-
-
-def _project_gate(database: Path, session_id: str, pending: dict[str, str] | None) -> str:
-    if pending is None:
-        return "REPOSITORY GATE\nNo pending approval in this terminal session.\n\nLBE owns authorization, execution, receipts, validation and completion."
-    inspected = _run_product_json([
-        "operation", "inspect", "--database", str(database),
-        "--session-id", session_id, "--operation-id", pending["operation_id"],
-    ])
-    if (inspected.get("approval_id") != pending["approval_id"] or
-            inspected.get("capability") != pending["capability"]):
-        raise RuntimeError("pending approval identity changed in the LBE runtime")
-    scope = inspected.get("input_scope") if isinstance(inspected.get("input_scope"), dict) else {}
-    rows = [
-        "REPOSITORY GATE | PERMISSION REQUIRED",
-        f"tool        {inspected.get('tool_id') or 'unavailable'}",
-        f"capability  {inspected['capability']}",
-        f"target      {scope.get('target') or 'unavailable'}",
-        f"input keys  {', '.join(scope.get('argument_keys') or []) or 'unavailable'}",
-        f"operation   {pending['operation_id']}",
-        f"approval    {pending['approval_id']}",
-        f"decision    {inspected.get('decision') or 'unavailable'}",
-        f"reason      {pending.get('rationale') or 'unavailable'}",
-    ]
-    if scope.get("content_sha256"):
-        rows.append(f"content     {scope['content_bytes']} bytes sha256 {scope['content_sha256']}")
-    if scope.get("expected_sha256"):
-        rows.append(f"expected    sha256 {scope['expected_sha256']}")
-    rows.extend(["diff        unavailable from persisted operation", "", "Type /approve to allow once or /deny to reject.",
-                 "LBE owns consequence; provider completion is not validation proof."])
-    return "\n".join(rows)
-
-
-def _recover_pending_gate(database: Path, session_id: str) -> dict[str, str] | None:
-    """Rehydrate only a still-pending persisted approval for this session."""
-    from .cli import WorkspaceMemoryStore
-    from .memory.operational_history import SessionOperationalHistory
-
-    history = SessionOperationalHistory(store=WorkspaceMemoryStore(str(database)))
-    candidates = (event for event in reversed(history.events_for_session(session_id=session_id))
-                  if event.event_type == "tool.escalated")
-    for index, event in enumerate(candidates):
-        if index >= 20:
-            break
-        if event.event_type != "tool.escalated" or not event.runtime_operation_id:
-            continue
-        payload = event.payload if isinstance(event.payload, dict) else {}
-        approval = str(payload.get("approval_id") or "")
-        if not approval:
-            continue
-        try:
-            operation = _run_product_json([
-                "operation", "inspect", "--database", str(database),
-                "--session-id", session_id, "--operation-id", event.runtime_operation_id,
-            ])
-        except RuntimeError:
-            continue
-        if operation.get("approval_id") != approval or operation.get("decision") != "pending":
-            continue
-        return {
-            "approval_id": approval,
-            "operation_id": event.runtime_operation_id,
-            "capability": str(operation.get("capability") or ""),
-            "tool_id": str(operation.get("tool_id") or ""),
-            "rationale": str(payload.get("error_message") or "Approval required."),
-        }
-    return None
-
-
 def _resume_transcript(database: Path, session_id: str) -> str:
     """Project persisted conversational history without creating another store."""
     from .cli import WorkspaceMemoryStore
@@ -984,6 +864,7 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
     from contextlib import redirect_stdout
     from prompt_toolkit.application import Application
     from prompt_toolkit.completion import Completer, Completion
+    from prompt_toolkit.filters import Condition
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.filters import Condition
     from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, WindowAlign
@@ -992,7 +873,7 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
     from prompt_toolkit.widgets import TextArea
 
     state = dict(initial)
-    pending: dict[str, str] | None = _recover_pending_gate(args.database, session_id)
+    pending: dict[str, str] | None = None
     busy = False
     activity_state = "IDLE"
     previous = _resume_transcript(args.database, session_id)
@@ -1002,9 +883,6 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                                 "What can I do for you?  /help lists commands.\n\n"),
                           read_only=True, scrollbar=True, wrap_lines=True, focusable=True,
                           lexer=_transcript_lexer())
-    conversation = {"text": transcript.text}
-    active_view = {"name": "conversation"}
-    session_rows: list[dict[str, Any]] = []
     class SlashCompleter(Completer):
         def get_completions(self, document, complete_event):
             text = document.text_before_cursor
@@ -1069,7 +947,7 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                 ("class:muted", "   " + _mode_label(state.get("mode")).lower() + "  " + sep +
                  "  " + str(state.get("session_id") or session_id)[-8:])]
 
-    hints = "F4 sessions  F5 evidence  F6 gate  F7 chat  /help "
+    hints = "Enter send   Ctrl+J newline   Tab commands   /help "
 
     def status_right():
         return [("class:muted", hints)]
@@ -1077,70 +955,15 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
     keys = KeyBindings()
     app = None
 
-    def show_view(name: str) -> None:
-        if name == "conversation":
-            content = conversation["text"]
-        elif name == "sessions":
-            rows = _project_sessions(args.database, args.workspace)
-            session_rows[:] = rows
-            content = "SESSIONS | current project\n" + "\n".join(
-                ("* " if row.get("session_id") == session_id else "  ") +
-                f"{row.get('session_id')}  {row.get('provider_id') or '?'} / {row.get('provider_model') or '?'}"
-                for row in rows
-            ) + "\n\nUse /session <full-id> to resume one of these sessions."
-        elif name == "turns":
-            content = "TURNS | " + session_id + "\n\n" + _project_history(args.database, session_id)
-        elif name == "evidence":
-            content = "EVIDENCE | " + session_id + "\n\n" + _project_history(args.database, session_id, evidence=True)
-        elif name == "gate":
-            content = _project_gate(args.database, session_id, pending)
-        elif name == "capabilities":
-            output = io.StringIO()
-            with redirect_stdout(output):
-                _render_providers(_providers(), active=str(state.get("provider_id") or ""))
-                _render_agents()
-            content = output.getvalue()
-        elif name == "setup":
-            config = _provider_document(args.provider_config)
-            catalog = _providers()
-            provider = str(config.get("provider_id") or state.get("provider_id") or "unavailable")
-            auth = (catalog.get("auth") or {}).get(provider) or {}
-            content = ("PROVIDER SETUP\n\nSTEP 1 | Provider and login method\n"
-                       f"configured  {provider}\nconfig      {args.provider_config}\n"
-                       f"auth mode  {auth.get('mode') or 'unavailable'}\n"
-                       "Use /providers for discovered bindings. /provider <config.json> selects a validated config.\n\n"
-                       "STEP 2 | Model\n"
-                       f"selected   {state.get('provider_model') or 'unavailable'}\n"
-                       f"configured {config.get('model') or 'unavailable'}\n"
-                       "Use /models for endpoint discovery, then /model <id> to select through LBE.\n"
-                       "Login availability and endpoint reachability require a real turn.")
-        else:
-            raise ValueError("unknown terminal view")
-        def render():
-            active_view["name"] = name
-            transcript.buffer.read_only = False
-            transcript.text = content
-            transcript.buffer.read_only = True
-            transcript.buffer.cursor_position = 0 if name != "conversation" else len(content)
-            if app is not None:
-                app.invalidate()
-        loop = getattr(app, "loop", None) if app is not None else None
-        if loop is not None and threading.current_thread() is not threading.main_thread():
-            loop.call_soon_threadsafe(render)
-        else:
-            render()
-
     def append(text: str):
         if not text:
             return
 
         def render():
-            conversation["text"] = (conversation["text"] + text + "\n")[-60000:]
-            if active_view["name"] == "conversation":
-                transcript.buffer.read_only = False
-                transcript.text = conversation["text"]
-                transcript.buffer.read_only = True
-                transcript.buffer.cursor_position = len(transcript.text)
+            transcript.buffer.read_only = False
+            transcript.text = (transcript.text + text + "\n")[-60000:]
+            transcript.buffer.read_only = True
+            transcript.buffer.cursor_position = len(transcript.text)
             if app is not None:
                 app.invalidate()
 
@@ -1152,9 +975,8 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
             render()
 
     def run_command(line: str):
-        nonlocal busy, pending, state, activity_state, session_id
+        nonlocal busy, pending, state, activity_state
         out = io.StringIO()
-        handled_view = False
         try:
             with redirect_stdout(out):
                 if line in {"/help", "?"}:
@@ -1163,29 +985,6 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                     state = _status(args.database, session_id)
                     for row in _landing_rows(state, args.workspace):
                         print(row)
-                elif line in {"/sessions", "/turns", "/evidence", "/gate", "/conversation", "/capabilities", "/setup"}:
-                    show_view(line[1:])
-                    handled_view = True
-                    return
-                elif line.startswith("/session "):
-                    requested = line.split(None, 1)[1].strip()
-                    rows = _project_sessions(args.database, args.workspace)
-                    if requested not in {str(row.get("session_id")) for row in rows}:
-                        print("DENIED | session is not in this project's persisted session list")
-                    else:
-                        next_state = _status(args.database, requested)
-                        if Path(str(next_state.get("workspace") or "")).resolve() != args.workspace:
-                            print("DENIED | session workspace does not match the opened project")
-                        elif str(next_state.get("provider_id") or "") != str(_provider_document(args.provider_config).get("provider_id") or args.provider):
-                            print("DENIED | session provider differs from the active provider configuration")
-                        else:
-                            session_id = requested
-                            state = next_state
-                            pending = _recover_pending_gate(args.database, requested)
-                            os.environ["LBE_SESSION_ID"] = requested
-                            conversation["text"] = _resume_transcript(args.database, requested) + "\n\n"
-                            show_view("conversation")
-                            print("SESSION | resumed " + requested)
                 elif line == "/providers":
                     _render_providers(_providers(), active=str(state.get("provider_id") or ""))
                 elif line == "/agents":
@@ -1194,33 +993,15 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                     _handle_authority_command(line)
                 elif line == "/provider":
                     _render_providers(_providers())
-                    print("Use /provider <config.json> to select its provider/model binding through LBE.")
-                elif line.startswith("/provider "):
-                    from .reasoning_config import load_provider_config
-                    candidate = Path(line.split(None, 1)[1].strip().strip('"')).expanduser().resolve()
-                    configured = load_provider_config(candidate)
-                    provider_id = str(configured.provider_id or state.get("provider_id") or "")
-                    selected = _select_model(database=args.database, session_id=session_id,
-                                             provider_id=provider_id, model_id=configured.model)
-                    args.provider_config = candidate
-                    os.environ["LBE_PROVIDER_CONFIG"] = str(candidate)
-                    state = _status(args.database, session_id)
-                    print(f"PROVIDER | {selected.get('provider_id')}/{selected.get('provider_model')}")
-                    print("Configuration bound to this terminal session; reachability is checked by a real turn.")
+                    print("Choose a compatible configured provider through its runtime binding; selection alone does not grant authorization.")
                 elif line == "/models":
                     _render_models(_models(args.provider_config), str(state.get("provider_model") or ""))
                 elif line.startswith("/model "):
                     model_id = line[7:].strip()
-                    configured = _provider_document(args.provider_config)
-                    try:
-                        catalog = _models(args.provider_config)
-                        options = [str(x) for x in catalog.get("models") or []]
-                    except RuntimeError:
-                        options = []
-                    if configured.get("model"):
-                        options.append(str(configured["model"]))
+                    catalog = _models(args.provider_config)
+                    options = [str(x) for x in catalog.get("models") or []]
                     if model_id not in options:
-                        print("DENIED | model is neither configured nor in the active endpoint catalog")
+                        print("DENIED | model not in the active endpoint catalog")
                     else:
                         result = _select_model(
                             database=args.database, session_id=session_id,
@@ -1245,8 +1026,6 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                         _render_governed_receipt(receipt)
                         if str(receipt.get("status") or "") in {"EXECUTED", "DENIED", "FAILED"}:
                             pending = None
-                        if active_view["name"] == "gate":
-                            show_view("gate")
                 elif line == "/model":
                     _render_models(_models(args.provider_config), str(state.get("provider_model") or ""))
                     print("Use /model <id> to select a model.")
@@ -1270,13 +1049,11 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                     new_pending = _render_turn(result)
                     if new_pending is not None:
                         pending = new_pending
-                        show_view("gate")
         except Exception as exc:
             out.write("FAILED | " + str(exc) + "\n")
         finally:
             content = out.getvalue().strip("\n").rstrip()
-            if not handled_view:
-                append(content or "No displayable result; inspect runtime status with /status")
+            append(content or "No displayable result; inspect runtime status with /status")
             busy = False
             activity_state = "IDLE"
             if app is not None:
@@ -1332,31 +1109,16 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
 
     @keys.add("f2")
     def open_provider_catalog(event):
-        open_view("setup")
-
-    def open_view(name: str):
+        import threading
         def load():
             try:
-                show_view(name)
-            except (RuntimeError, ValueError, OSError) as exc:
-                append("VIEW FAILED | " + str(exc))
+                catalog = _providers()
+                choices = [str(x) for x in catalog.get("providers") or []]
+                append("AVAILABLE PROVIDERS\n" + "\n".join("  " + x for x in choices))
+                append("Use /providers for provider details.")
+            except RuntimeError as exc:
+                append("PROVIDER CATALOG | " + str(exc))
         threading.Thread(target=load, daemon=True).start()
-
-    @keys.add("f4")
-    def open_sessions(event):
-        open_view("sessions")
-
-    @keys.add("f5")
-    def open_evidence(event):
-        open_view("evidence")
-
-    @keys.add("f6")
-    def open_gate(event):
-        open_view("gate")
-
-    @keys.add("f7")
-    def open_conversation(event):
-        open_view("conversation")
 
     @keys.add("pageup")
     def scroll_up(event):
@@ -1383,20 +1145,6 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
 
     style = _ui_style(color)
     rule_char = "-" if ascii_only else "\u2500"
-    def rail():
-        rows = [" SESSIONS", "", " * " + session_id[-17:]]
-        rows.extend("   " + str(row.get("session_id") or "")[-17:]
-                    for row in session_rows if row.get("session_id") != session_id)
-        rows.extend(["", " VIEWS"])
-        for label in ("conversation", "capabilities", "evidence", "gate"):
-            rows.append((" > " if active_view["name"] == label else "   ") + label)
-        rows.extend(["", " /sessions  /turns"])
-        return "\n".join(rows)
-
-    def rail_width():
-        import shutil
-        return 25 if shutil.get_terminal_size((100, 30)).columns >= 100 else 0
-
     root = HSplit([
         VSplit([
             Window(content=FormattedTextControl(top_left), height=1),
@@ -1404,10 +1152,7 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                    width=lambda: len(top_right_text()), align=WindowAlign.RIGHT),
         ], height=1),
         Window(height=1, char=rule_char, style="class:rule"),
-        VSplit([
-            Window(content=FormattedTextControl(rail), width=rail_width, style="class:muted"),
-            transcript,
-        ]),
+        transcript,
         Window(height=1, char=rule_char, style="class:rule"),
         composer,
         Window(height=1, char=rule_char, style="class:rule"),
@@ -1422,13 +1167,6 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                       mouse_support=True,
                       color_depth=None if color else ColorDepth.DEPTH_1_BIT)
     threading.Thread(target=load_auth_mode, daemon=True).start()
-    def load_sessions():
-        try:
-            session_rows[:] = _project_sessions(args.database, args.workspace)
-            app.invalidate()
-        except RuntimeError:
-            pass
-    threading.Thread(target=load_sessions, daemon=True).start()
     return int(app.run() or 0)
 
 

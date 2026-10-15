@@ -1028,22 +1028,6 @@ def _operation(argv: Sequence[str]) -> int:
             raise ValueError("governed operation workspace root mismatch")
 
         if args.action == "inspect":
-            request = persisted.get("request")
-            bound_arguments = request.get("arguments") if isinstance(request, dict) else None
-            bound_arguments = bound_arguments if isinstance(bound_arguments, dict) else {}
-            # An approval screen needs the persisted input scope. Never return
-            # raw content here: the identity-bound request is replayed by LBE.
-            input_scope = {
-                "argument_keys": sorted(str(key) for key in bound_arguments),
-                "target": str(bound_arguments.get("path") or bound_arguments.get("command_id") or ""),
-            }
-            content = bound_arguments.get("content")
-            if isinstance(content, str):
-                import hashlib
-                input_scope["content_bytes"] = len(content.encode("utf-8"))
-                input_scope["content_sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
-            if bound_arguments.get("expected_sha256"):
-                input_scope["expected_sha256"] = str(bound_arguments["expected_sha256"])
             _cli._emit(
                 {
                     "ok": True,
@@ -1055,7 +1039,6 @@ def _operation(argv: Sequence[str]) -> int:
                     "session_id": state.session_id,
                     "workspace_id": state.project_workspace_id,
                     "workspace": state.canonical_workspace_root,
-                    "input_scope": input_scope,
                     "receipt": persisted.get("receipt"),
                 },
                 args.format,
