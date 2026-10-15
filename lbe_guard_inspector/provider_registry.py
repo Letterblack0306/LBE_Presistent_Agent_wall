@@ -271,6 +271,25 @@ def native_openai_compatible_factory(provider_id: str) -> ProviderFactory:
     return factory
 
 
+def login_agent_factory(provider_id: str) -> ProviderFactory:
+    """Bind a platform that authenticates by the user's own CLI login."""
+    clean_provider = _provider_id(provider_id)
+
+    def factory(config: ProviderConfig) -> ProviderHandle:
+        from .login_agent_transport import LoginAgentTransport
+
+        return _handle(
+            clean_provider,
+            config,
+            ToolAwareOpenAICompatibleReasoningBackend(
+                config=config, transport=LoginAgentTransport(clean_provider)
+            ),
+            engine_id=NATIVE_LBE_ENGINE_ID,
+        )
+
+    return factory
+
+
 def openai_factory(config: ProviderConfig) -> ProviderHandle:
     require_api_key(config, "openai")
     family, evidence = detect_protocol_family(
@@ -406,6 +425,16 @@ def default_provider_registry() -> ProviderRegistry:
         factory=gemini_factory,
         default=True,
     )
+
+    # Platforms reached through the user's own login (their CLI holds the
+    # credentials; LBE never sees them). See login_agent_transport.
+    for provider_id in ("claude-code", "openai-codex-cli", "gemini-cli"):
+        registry.register_binding(
+            engine_id=NATIVE_LBE_ENGINE_ID,
+            provider_id=provider_id,
+            factory=login_agent_factory(provider_id),
+            default=True,
+        )
 
     # LM Studio, Ollama, OpenRouter, DeepSeek, Groq, Mistral, Together, Fireworks, and xAI expose OpenAI-compatible chat
     # transports. Native LBE bindings are usable without Cline, while the

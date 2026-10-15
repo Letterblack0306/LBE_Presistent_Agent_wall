@@ -1,0 +1,81 @@
+"""Login-based platforms are reached through their installed CLI, tools off."""
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+from lbe_guard_inspector import login_agent_transport as lat
+from lbe_guard_inspector.provider_registry import default_provider_registry
+from lbe_guard_inspector.reasoning_provider import ProviderConfig, ProviderError
+
+
+def _fake_cli(tmp_path: Path, body: str) -> str:
+    script = tmp_path / "fakecli.py"
+    script.write_text(body, encoding="utf-8")
+    launcher = tmp_path / ("fakecli.cmd" if sys.platform == "win32" else "fakecli")
+    if sys.platform == "win32":
+        launcher.write_text(f'@"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
+    else:
+        launcher.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n', encoding="utf-8")
+        launcher.chmod(0o755)
+    return str(launcher)
+
+
+_PAYLOAD = {
+    "model": "default",
+    "messages": [{"role": "system", "content": "sys"}, {"role": "user", "content": "hi"}],
+    "response_format": {"type": "json_schema", "json_schema": {"schema": {"type": "object"}}},
+}
+
+
+def test_registry_binds_login_platforms_to_native_engine() -> None:
+    registry = default_provider_registry()
+    for provider_id in lat.LOGIN_AGENT_SPECS:
+        handle = registry.build(
+            provider_id=provider_id,
+            config=ProviderConfig(endpoint=lat.ENDPOINT_SCHEME + provider_id, model="default",
+                                  timeout_seconds=5, provider_id=provider_id),
+        )
+        assert handle.descriptor.provider_id == provider_id
+        assert handle.engine_id == "native-lbe"
+
+
+def test_cli_answer_is_returned_as_chat_completion(monkeypatch, tmp_path) -> None:
+    cli = _fake_cli(tmp_path, "import sys; sys.stdin.read(); print('{\"ok\": true}')")
+    monkeypatch.setattr(lat.shutil, "which", lambda name: cli)
+    reply = lat.LoginAgentTransport("claude-code").post_json(
+        endpoint="login-agent://claude-code", payload=_PAYLOAD, headers={}, timeout_seconds=30)
+    assert json.loads(reply["choices"][0]["message"]["content"]) == {"ok": True}
+
+
+def test_cli_runs_in_empty_scratch_directory_not_the_workspace(monkeypatch, tmp_path) -> None:
+    cli = _fake_cli(tmp_path, "import os,sys; sys.stdin.read(); print(os.getcwd()); print(os.listdir('.'))")
+    monkeypatch.setattr(lat.shutil, "which", lambda name: cli)
+    reply = lat.LoginAgentTransport("gemini-cli").post_json(
+        endpoint="x", payload=_PAYLOAD, headers={}, timeout_seconds=30)
+    text = reply["choices"][0]["message"]["content"]
+    assert "lbe-login-agent-" in text and text.rstrip().endswith("[]")
+
+
+def test_missing_cli_reports_login_unavailable(monkeypatch) -> None:
+    monkeypatch.setattr(lat.shutil, "which", lambda name: None)
+    with pytest.raises(ProviderError) as err:
+        lat.LoginAgentTransport("openai-codex-cli").post_json(
+            endpoint="x", payload=_PAYLOAD, headers={}, timeout_seconds=5)
+    assert err.value.code == "PROVIDER_LOGIN_UNAVAILABLE"
+
+
+def test_logged_out_cli_reports_login_required(monkeypatch, tmp_path) -> None:
+    cli = _fake_cli(tmp_path, "import sys; sys.stdin.read(); sys.stderr.write('Not logged in'); sys.exit(1)")
+    monkeypatch.setattr(lat.shutil, "which", lambda name: cli)
+    with pytest.raises(ProviderError) as err:
+        lat.LoginAgentTransport("claude-code").post_json(
+            endpoint="x", payload=_PAYLOAD, headers={}, timeout_seconds=30)
+    assert err.value.code == "PROVIDER_LOGIN_REQUIRED"
+
+
+def test_tools_are_disabled_in_every_binding() -> None:
+    assert "--tools" in lat._claude_args("", "s", "o") and "-s" in lat._codex_args("", "s", "o")
+    assert "read-only" in lat._codex_args("", "s", "o")
+    assert "yolo" not in " ".join(lat._gemini_args("", "s", "o"))
