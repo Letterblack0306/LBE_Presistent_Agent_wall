@@ -170,3 +170,10 @@ def test_fresh_install_does_not_invent_a_verified_model() -> None:
     assert 'model = ""' in fallback
     assert 'model = "google/gemma-4-e4b"' not in fallback
     assert 'Test-Path -LiteralPath $installedProviderConfig -PathType Leaf' in source
+
+def test_installed_launchers_honor_the_install_root_exported_by_bin_cmd() -> None:
+    """bin\lbe.cmd exports LBE_INSTALL_ROOT; a relocated install must resolve its own root,
+    not silently fall back to %LOCALAPPDATA%\LetterBlack\LBE."""
+    source = SCRIPT.read_text(encoding="utf-8")
+    needle = "$(if ($env:LBE_INSTALL_ROOT) { $env:LBE_INSTALL_ROOT } else {"
+    assert source.count(needle) >= 2  # product launcher and Cline launcher templates

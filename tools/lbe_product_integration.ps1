@@ -652,7 +652,7 @@ param(
     [switch]$Plain,
     [switch]$NoAnimation,
     [switch]$Ascii,
-    [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE")
+    [string]$InstallRoot = $(if ($env:LBE_INSTALL_ROOT) { $env:LBE_INSTALL_ROOT } else { Join-Path $env:LOCALAPPDATA "LetterBlack\LBE" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -851,7 +851,7 @@ param(
     [string]$Project,
     [string]$Database,
     [string]$SessionId,
-    [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "LetterBlack\LBE")
+    [string]$InstallRoot = $(if ($env:LBE_INSTALL_ROOT) { $env:LBE_INSTALL_ROOT } else { Join-Path $env:LOCALAPPDATA "LetterBlack\LBE" })
 )
 
 $ErrorActionPreference = "Stop"
