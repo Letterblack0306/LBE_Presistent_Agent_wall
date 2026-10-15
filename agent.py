@@ -321,7 +321,11 @@ class TraversalIncomplete(RuntimeError):
 def iter_files(ctx: Context, root: KnowledgeRoot) -> Iterable[tuple[Path, str]]:
     forbidden = list(ctx.governance.get("forbidden_globs", []))
     allowed = list(ctx.governance.get("allowed_read_paths", ["."]))
+    entries: list[tuple[Path, str]] = []
+    traversal_error: OSError | None = None
     try:
+        # Resume positions compare virtual names lexically. rglob enumeration
+        # order is not guaranteed, so successful walks must sort first.
         for path in root.path.rglob("*"):
             try:
                 if not path.is_file():
@@ -334,15 +338,18 @@ def iter_files(ctx: Context, root: KnowledgeRoot) -> Iterable[tuple[Path, str]]:
                 continue
             if not path_allowed(relative, allowed):
                 continue
-            yield path, virtual
+            entries.append((path, virtual))
     except (OSError, PermissionError) as exc:
-        # rglob can fail during iteration, not only at construction, so the guard
-        # must wrap consumption. Silently returning here would let the caller
-        # believe the walk completed, and reconciliation would then prune index
-        # rows for every file the aborted walk never reached.
+        traversal_error = exc
+    entries.sort(key=lambda item: item[1])
+    yield from entries
+    if traversal_error is not None:
+        # Preserve the historical partial-progress and incomplete-walk signal;
+        # reconciliation must never prune a root from an aborted traversal.
         raise TraversalIncomplete(
-            f"walk of root '{root.name}' aborted: {type(exc).__name__}: {exc}"
-        ) from exc
+            f"walk of root '{root.name}' aborted: "
+            f"{type(traversal_error).__name__}: {traversal_error}"
+        ) from traversal_error
 
 
 def open_database() -> sqlite3.Connection:
@@ -545,7 +552,7 @@ def update_run(
     )
 
 
-def _load_resume_positions(connection: sqlite3.Connection) -> dict[str, str]:
+def _load_resume_positions(connection: sqlite3.Connection) -> dict[str, tuple[str, str]]:
     """Return the last committed walk position per root from the previous run.
 
     Only a run that did not finish its root is resumable. A completed run has
@@ -553,7 +560,7 @@ def _load_resume_positions(connection: sqlite3.Connection) -> dict[str, str]:
     """
     rows = connection.execute(
         """
-        SELECT current_root, current_file
+        SELECT current_root, current_file, run_id
         FROM runs
         WHERE current_root IS NOT NULL
           AND current_file IS NOT NULL
@@ -562,11 +569,11 @@ def _load_resume_positions(connection: sqlite3.Connection) -> dict[str, str]:
         ORDER BY started_at DESC
         """
     ).fetchall()
-    positions: dict[str, str] = {}
+    positions: dict[str, tuple[str, str]] = {}
     for row in rows:
         name = str(row["current_root"])
         if name not in positions:
-            positions[name] = str(row["current_file"])
+            positions[name] = (str(row["current_file"]), str(row["run_id"]))
     return positions
 
 
@@ -603,7 +610,18 @@ def trace_workspace(
             # Drive it explicitly so a completed walk and an aborted walk stay
             # distinguishable without re-indenting the indexing body.
             walker = iter_files(ctx, root)
-            resume_after = resume_positions.get(root.name)
+            previous = resume_positions.get(root.name)
+            resume_after = previous[0] if previous else None
+            resume_run_id = previous[1] if previous else None
+            # Interrupted enumeration has no guaranteed lexical prefix.
+            # Skip only the paths actually committed during that prior run.
+            already_indexed = (
+                {str(row[0]) for row in connection.execute(
+                    "SELECT path FROM files WHERE root=? AND last_seen_run=?",
+                    (root.name, resume_run_id),
+                )}
+                if resume_run_id else set()
+            )
             resumed = False
             walk_incomplete = False
             while True:
@@ -621,10 +639,9 @@ def trace_workspace(
                         "no pruning for this root."
                     )
                     break
-                if not resumed and resume_after is not None and virtual <= resume_after:
-                    # Everything at or before the recorded position was already
-                    # committed by the prior run. Skip it without counting it as
-                    # newly seen, so a resumed run does not double-count work.
+                if virtual in already_indexed:
+                    # A prior incomplete walk may have encountered files out of
+                    # order. Never infer that a lexical prefix was committed.
                     continue
                 if not resumed and resume_after is not None:
                     resumed = True
@@ -723,10 +740,9 @@ def trace_workspace(
                     carried = connection.execute(
                         """
                         UPDATE files SET last_seen_run=?
-                        WHERE root=? AND path<=?
-                          AND last_seen_run<>?
+                        WHERE root=? AND last_seen_run=?
                         """,
-                        (run_id, root.name, str(resume_after), run_id),
+                        (run_id, root.name, resume_run_id),
                     ).rowcount
                     if carried:
                         print(

@@ -23,7 +23,7 @@ active_intent    = LBE-INTENT-LBE-OWNED-TERMINAL-SURFACE-20261010
 ## Current product decision
 
 ```text
-PRODUCT / BRAND               = LBE / LetterBlack
+PRODUCT / BRAND               = LBE / Lockstep Boundary Engine
 VISIBLE PRODUCT CLIENT        = lbe_guard_inspector/terminal_ui.py
 NORMAL PRODUCT ENTRY          = lbe
 RUST/RATATUI                  = reference/integration only

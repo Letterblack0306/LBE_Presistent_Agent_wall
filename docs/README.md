@@ -47,6 +47,23 @@ Read these four in order to understand how someone learns and uses LBE:
 > Inspector** as the first capability of this platform (its first vertical slice). Treat them as
 > the capability's design; the platform framing above (Vision/Architecture in the spine) governs.
 
+## Governance rule discovery and recoverable blockers
+
+Use these **existing owners** in order when an agent asks what is permitted, why an operation was denied, or how to continue. Read only what is relevant to the current action; this is a navigation route, not another approval stage.
+
+| Question | Authoritative existing source | Agent action |
+| --- | --- | --- |
+| What governs this workspace? | [AGENTS.md](../AGENTS.md) and [governance rules](GOVERNANCE_RULES.md) | Resolve workspace identity and actual applicable instructions |
+| What is permitted for this specific file/action? | [Workspace policy](../.governance/workspace-policy.json), [active task scope](../.governance/task-scope.json), and `node scripts/action-preflight.mjs <action> [target]` | Inspect the actual decision and work only inside approved scope |
+| A governance check blocked the action | [Blocker guide](BLOCKER_GUIDE.md), [action preflight](../scripts/action-preflight.mjs), [governance checker](../scripts/governance-check.mjs) | Match the exact error code, fulfil already-authorized prerequisites, rerun the denying check, and resume the original objective |
+| Which current implementation slice can proceed? | [Active implementation gates](../.lbe/governance/implementation-gates.json) and [current implementation gate](acceptance/CURRENT_IMPLEMENTATION_GATE.md) | Keep active-slice and publication rules distinct from normal permitted investigation/repair |
+| Which component/document owns a requested change? | [Project index](../PROJECT_INDEX.md), [intent ledger](governance/PROJECT_INTENT_LEDGER.md), and [document intent manifest](DOCUMENT_INTENT_MANIFEST.md) | Reuse the declared owner; register bounded intent before mutation; update indexes only when affected |
+| Need broader methods or cross-project references? | [GPT-Knowledge start](https://github.com/Letterblack0306/GPT-Knowledge/blob/main/000_START_HERE.md), [LB Guards rules](https://github.com/Letterblack0306/LB_Guards_Rules), [BirdEye routing](https://github.com/Letterblack0306/Letterblack_BirdEye/blob/main/docs/GOVERNANCE_RULE_ROUTING.md) | Use as reference/routing and verify active local source before claiming enforcement |
+
+**Interpretation:** A DENY blocks the named operation, not all independent permitted work. Never bypass DENY, self-approve a scope expansion, modify protected policy just to pass, or mistake documentation for execution evidence. Follow the existing blocker guide and continue once the specific requirement has been fulfilled. If extra authority is truly required, report only that boundary and preserve the task for resumption.
+
+**Evidence boundary:** an allowed preflight only proves that check's decision; installed execution, actual effect, persisted receipt and user-visible completion remain separately verifiable. A missing search result, old index, or failed transport does not prove a rule or source is absent.
+
 ## Documentation routing
 
 - question about present state -> `CURRENT_STATUS.md`

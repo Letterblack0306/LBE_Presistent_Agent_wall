@@ -26,12 +26,12 @@ not allowed to silently override current source/runtime truth.
 ## 2. Product identity
 
 ```text
-PRODUCT                = LBE / LetterBlack
+PRODUCT                = LBE / Lockstep Boundary Engine
 ENTRYPOINT             = lbe
 VISIBLE CLIENT         = LBE-owned coding IDE CLI/TUI on the Python/LBE product-entry terminal surface
 BACKEND / RUNTIME      = LBE runtime
 AUTHORITY OWNER        = LBE
-BRANDING               = LBE / LetterBlack only
+BRANDING               = LBE / Lockstep Boundary Engine
 ```
 
 The product is an execution-control wall and persistent coding-agent runtime. It is not a generic

@@ -1410,3 +1410,43 @@ AUTHORITY_IMPACT: Preserve LBE authorization and owner-evidence checks, truthful
 REQUIRED_EVIDENCE: Exact local and remote revision relationship; governed staged and HEAD checks; package archive checksum verification; installer and installed hashes; live provider/tool receipt with observed effect; persisted continuation and restart; real ConPTY interaction and clean exit; acceptance record reconciled to actual results.
 RESULT: IMPLEMENTATION_IN_PROGRESS
 AUTHORIZATION: USER_CONTINUATION_AND_EXPLICIT_DIRECTION_2026_10_10
+
+## INTENT LBE-INTENT-GOVERNANCE-DISCOVERY-ROUTING-20261014
+STATUS: ACTIVE
+REQUEST: Make existing governance and blocker recovery documentation discoverable from the canonical docs entrypoint, without introducing new enforcement or duplicating authority.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: docs/README.md documentation navigation; docs/BLOCKER_GUIDE.md and docs/GOVERNANCE_RULES.md remain existing protected rule owners.
+EXPECTED_PATH_PREFIXES: docs/README.md,docs/governance/
+AFFECTED_STRUCTURE: docs/README.md navigation only; existing intent ledger registration.
+REUSE_DECISION: REUSE AGENTS.md, workspace-policy.json, task-scope.json, action-preflight.mjs, governance-check.mjs and the active implementation gate.
+AUTHORITY_IMPACT: None. No edits to protected policies, blockers, scope, execution, or release permissions.
+REQUIRED_EVIDENCE: Actual preflight ALLOW for docs/README.md; navigation targets exist; existing DENY for protected rule file unchanged; no cross-scope edits; readback and relevant validator result.
+RESULT: DOC_ROUTING_UPDATED_AND_BOUNDED_VALIDATION_PASS (12 local links resolved; docs-only git diff --check PASS; action-preflight for docs/README.md ALLOW). No current installed-runtime proof or commit claimed.
+AUTHORIZATION: USER_REQUEST_TO_ADVANCE_GOVERNANCE_DOCUMENTATION_2026_10_14
+
+
+## INTENT LBE-INTENT-ROOT-HTML-DOC-NAVIGATION-20261014
+STATUS: ACTIVE
+REQUEST: Reconcile root LBE_DOCS_EXPLORER.html with the tracked nested documentation paths and canonical document manifest, while preserving the existing feature graph and historical distinctions.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: LBE_DOCS_EXPLORER.html presentation-only explorer; docs/DOCUMENT_INTENT_MANIFEST.md provides document classification; docs/README.md provides routing.
+EXPECTED_PATH_PREFIXES: LBE_DOCS_EXPLORER.html,docs/governance/
+AFFECTED_STRUCTURE: Existing root HTML explorer only.
+REUSE_DECISION: Extend existing document browser; no second governance owner or policy.
+AUTHORITY_IMPACT: None. Preserve scope, rules, active acceptance and release locks.
+REQUIRED_EVIDENCE: All tracked docs discoverable, valid local targets, representative nested paths, HTML parse, optional real browser interaction; no historical PASS promoted to current.
+RESULT: HTML_NAVIGATION_BROWSER_PROVEN (Chrome rendered 167 of 167 tracked docs; filtering for CURRENT_IMPLEMENTATION_GATE returned the expected single link; no page errors; five absent historical UI targets and the missing lbe-cli folder are visibly marked unavailable). This proves the explorer interaction only; installed LBE product acceptance remains open.
+AUTHORIZATION: USER_EXPLICIT_CONTINUATION_20261014
+
+## INTENT LBE-INTENT-TERMINAL-INPUT-KEY-PATH-PROOF-20261014
+STATUS: ACTIVE
+REQUEST: Continue session 01a13a50-23d4-74c1-89d9-30954b7d7c33 and prove the LBE Python terminal keyboard input path in a live ConPTY session: terminal input → prompt_toolkit key binding → composer submission → command dispatch → observable result.
+MACHINE_SLICE: CONTINUOUS_GOVERNED_MAINTENANCE
+EXISTING_OWNER: lbe_guard_inspector/terminal_ui.py remains the visible terminal owner; the pywinpty ConPTY probe lives outside the repository under %TEMP%\agent-validation\24607d269d7b4a219674111e5eeedebd.
+EXPECTED_PATH_PREFIXES: docs/governance/,docs/CURRENT_STATUS.md
+AFFECTED_STRUCTURE: Documentation record only; probe files are temporary and outside the repository. No repository source changed by this continuation.
+REUSE_DECISION: REUSE the existing terminal owner, existing pywinpty ConPTY probe and existing focused tests; no second terminal implementation.
+AUTHORITY_IMPACT: No policy, scope, gate or release change; active locked scope CONTINUOUS-GOVERNED-MAINTENANCE-20261008 used for validation only.
+REQUIRED_EVIDENCE: Key trace containing a real Enter key (Keys.ControlM), composer echo of the typed command, and rendered /status output inside an actual ConPTY session.
+RESULT: TERMINAL_INPUT_PATH_LIVE_PROVEN. Discrete-write run produced keys `/ s t a t u s` then `Keys.ControlM` then `Keys.ControlC`; composer showed `you > /status`; /status output rendered Workspace, Provider, Model, Session and Mode lines (10597 captured chars). Earlier failure cause identified: prompt_toolkit 3.0.43 `Win32Parser._is_paste` folds a single read batch containing text plus ControlM into one `Keys.BracketedPaste`, so a one-shot `/status\r` write never submitted. Writing the text and Enter in separate writes delivers a real Enter. Two repeated runs gave the same key sequence. Installed-product packaging, isolated installation, receipts and final terminal acceptance remain OPEN.
+AUTHORIZATION: USER_EXPLICIT_CONTINUATION_20261014

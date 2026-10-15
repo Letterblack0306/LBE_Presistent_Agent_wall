@@ -712,3 +712,89 @@ def test_operation_resume_rejects_cross_session_access(
     payload = _last_json(capsys)
     assert payload["ok"] is False
     assert "session identity mismatch" in str(payload["message"])
+
+
+def test_external_capability_product_route_correlates_real_read_effect(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """Real tempfile read through product_entry -> registry -> R6C -> R6E -> receipt."""
+    from types import SimpleNamespace
+
+    from lbe_guard_inspector.memory.models import SessionState
+    from lbe_guard_inspector.runtime.external_capabilities import (
+        ExternalCapabilityKind, ExternalCapabilityRegistration,
+    )
+    from lbe_guard_inspector.runtime.tool_orchestration import ToolExecutionResult
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = workspace / "evidence.txt"
+    target.write_text("authoritative-external-evidence", encoding="utf-8")
+    database = tmp_path / "runtime.sqlite"
+    WorkspaceMemoryStore(database).save_session_state(
+        SessionState(
+            session_id="external-session",
+            project_workspace_id="external-project",
+            canonical_workspace_root=str(workspace.resolve()),
+            mode="audit",
+            permission="read_only",
+            runtime_policy="audit",
+        )
+    )
+    monkeypatch.setattr(product_entry.Context, "load", staticmethod(
+        lambda: SimpleNamespace(roots=[
+            SimpleNamespace(path=workspace.resolve(), name="external-project")
+        ])
+    ))
+    invoked = []
+
+    def real_read(request):
+        invoked.append(request.operation_id)
+        observed = target.read_text(encoding="utf-8")
+        return ToolExecutionResult(
+            output={"text": observed, "path": "evidence.txt"},
+            evidence=({
+                "ref": "external:read:evidence.txt",
+                "source_type": "runtime",
+                "verified": True,
+                "metadata": {
+                    "operation_id": request.operation_id,
+                    "tool_id": request.tool_id,
+                },
+            },),
+        )
+
+    registration = ExternalCapabilityRegistration(
+        adapter_id="mcp-disposable-reader",
+        kind=ExternalCapabilityKind.MCP,
+        tool_id="mcp.disposable_read",
+        description="Read a preconfigured disposable workspace file",
+        handler=real_read,
+    )
+    monkeypatch.setattr(
+        product_entry, "_installed_external_capabilities", lambda: (registration,)
+    )
+    argv = [
+        "tool", "mcp.disposable_read",
+        "--database", str(database),
+        "--session-id", "external-session",
+        "--workspace-id", "external-project",
+        "--workspace", str(workspace),
+        "--arguments", "{}",
+        "--operation-id", "op-external-read-once",
+        "--format", "json",
+    ]
+    assert product_entry.main(argv) == 0
+    first = _last_json(capsys)
+    assert first["status"] == "EXECUTED"
+    assert first["authorization"]["verdict"] == "ALLOW"
+    assert first["output"]["text"] == "authoritative-external-evidence"
+    assert first["evidence"][0]["metadata"]["operation_id"] == first["operation_id"]
+    assert first["evidence"][0]["metadata"]["tool_id"] == first["tool_id"]
+    assert invoked == ["op-external-read-once"]
+    assert product_entry.main(argv) == 0
+    repeated = _last_json(capsys)
+    # Read-only requests can be re-observed; exactly-once applies to approved mutations.
+    assert repeated["status"] == "EXECUTED"
+    assert repeated["output"]["text"] == first["output"]["text"]
+    assert invoked == ["op-external-read-once", "op-external-read-once"]

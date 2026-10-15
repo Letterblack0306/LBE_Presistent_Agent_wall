@@ -1095,3 +1095,39 @@ def test_git_mutation_rejects_non_main_branch(tmp_path: Path, monkeypatch) -> No
     )
     assert receipt.status is ToolReceiptStatus.FAILED
     assert "canonical main" in receipt.error_message
+
+
+def test_resume_after_out_of_order_incomplete_walk_does_not_skip_unseen_file(
+    _isolated_index_state, monkeypatch
+):
+    """A high lexical checkpoint cannot imply smaller files were indexed."""
+    workspace = _isolated_index_state.parent / "ws"
+    workspace.mkdir()
+    for name in ("file-a.txt", "file-b.txt", "file-z.txt"):
+        (workspace / name).write_text(name, encoding="utf-8")
+    database = _isolated_index_state / "workspace.db"
+    real_rglob = Path.rglob
+
+    def interrupted_high_first(self, pattern):
+        yield self / "file-z.txt"
+        raise PermissionError(13, "interrupted after high path")
+
+    monkeypatch.setattr(Path, "rglob", interrupted_high_first)
+    first = agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]})
+    )
+    assert first["statistics"]["incomplete_roots_this_run"] == ["root"]
+    assert "root/file-z.txt" in _indexed_paths(database)
+
+    def reversed_complete(self, pattern):
+        yield from reversed(list(real_rglob(self, pattern)))
+
+    monkeypatch.setattr(Path, "rglob", reversed_complete)
+    second = agent.trace_workspace(
+        _index_context(workspace, {"forbidden_globs": [], "allowed_read_paths": ["."]}),
+        resume=True,
+    )
+    assert second["statistics"]["files_seen_this_run"] == 2
+    assert _indexed_paths(database) == {
+        "root/file-a.txt", "root/file-b.txt", "root/file-z.txt"
+    }

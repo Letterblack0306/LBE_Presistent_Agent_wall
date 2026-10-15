@@ -180,3 +180,42 @@ passes.
 
 These gaps do not require discarding the existing authorization, execution,
 evidence, receipt, persistence, or validation foundations.
+
+## 12. Historical-plans / built-product reconciliation (2026-10-12)
+
+**Product identity: Lockstep Boundary Engine (LBE).** LetterBlack is a repository/
+organizational namespace, not the product's expanded name. Historical files may
+use earlier branding; preserve their provenance, but the user-facing product
+must use the canonical identity.
+
+Historical plans are product decision evidence, not disposable context. Distinguish
+the historical **Guard Inspector vertical slice** from the later complete
+**persistent coding-agent product**. The former's read-only retrieval, deterministic
+guard verdicts, and workspace evidence are capabilities in the latter; its
+historical non-goal of autonomous coding must not erase the explicit later
+complete-agent product direction.
+
+| Historical required capability | Existing owner / current source | Evidence boundary |
+| --- | --- | --- |
+| Natural agent conversation, plan, tool proposal and continuation | `lbe_guard_inspector/terminal_ui.py`, `lbe_guard_inspector/reasoning_runtime.py`, `lbe_guard_inspector/runtime/` | Source and bounded provider-turn proof; current installed end-to-end acceptance open |
+| Provider/engine neutral binding, optional Cline adapter | Provider registry, reasoning runtime and provider adapters | 17-provider discovery and local model catalog observed; health, inference and fallback separately verified |
+| Session identity, restart/resume, earned history and checkpoints | Existing session/persistence and memory owners | Bounded installed restart proof; do not infer universal persistence from it |
+| Tools, workspace inspection, patch review, registered process execution | Existing LBE capability registry and governed tool orchestration | Read receipts exist; mutating tool requires explicit authorization and effect proof |
+| Authorization, DENY/ALLOW, exact operation replay | LBE runtime approval bridge, tool orchestration and receipt owners | Historical and isolated tests exist; installed-current mutation round trip remains separately gated |
+| Evidence retrieval, deterministic guards, validation, audit | Agents Memory Tool knowledge index, guard inspector and LBE validation owners | Guard Inspector is a component, never a replacement for the agent |
+| Advisory skills and capability discovery | BirdEye skills projection + LBE bounded guidance | Advisory data does not authorize or execute actions |
+| Delegated/child-agent activity, extensions/MCP and browser | Existing declared runtime/adapter seams | Surface presence is not proof of a functional end-to-end journey |
+| Optional UI surfaces and natural interaction | Canonical current Python product client; retained Rust/Ratatui and HTML references | One canonical normal entrypoint at a time; do not delete functioning reference clients |
+| Final install, PTY/ConPTY, bare command, evidence and completion | Canonical product installer, product entry and runtime acceptance gate | OPEN until exact installed artifact proves each required observable |
+
+**Do not narrow LBE to a terminal.** The terminal is only a user interface
+to the durable runtime and governance system. Preserve the user's complete-agent
+feature requirements without using them to override the current active slice,
+invent authority, or silently choose another UI technology.
+
+Next acceptance work within the already open `LBE_OWNED_TERMINAL_PRODUCT_SURFACE`
+slice is: verify exact-current package and canonical launcher resolution; exercise
+installed PTY input and clean exit; verify real provider/model and governed
+DENY/ALLOW with disposable mutation plus receipt/evidence; prove continuation
+and restart; then record independent, correlated completion. Historical PASS
+remains bounded evidence and does not auto-close any current gate.

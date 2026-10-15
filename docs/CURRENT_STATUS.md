@@ -5,7 +5,15 @@
 > **Latest bounded observation:** LBE `2e0c3fd` included a data-driven provider-identity decoder, but the TUI picker still used the fixed enum. Windows ConPTY observations proved basic keyboard, mouse, slash menu and terminal lifecycle; they did not prove complete model→tool→observation→completion readiness. These observations are not evergreen.
 
 
-Updated: 2026-10-11
+Updated: 2026-10-14
+
+## Terminal input key path observation — 2026-10-14 (bounded)
+
+A live ConPTY probe (temporary, outside the repository) proved the visible terminal's keyboard submission path end to end: discrete key events `/ s t a t u s` reached prompt_toolkit, `Keys.ControlM` submitted the composer, the composer echoed `you > /status`, and the `/status` result rendered Workspace, Provider, Model, Session and Mode lines. Two repeated runs produced the same key sequence.
+
+The earlier failure cause is identified: prompt_toolkit 3.0.43 `Win32Parser._is_paste` folds one read batch containing text plus `ControlM` into a single `Keys.BracketedPaste`, so writing `/status\r` in one shot never submitted. Writing the text and Enter in separate writes delivers a real Enter.
+
+This proves terminal input → key binding → composer submission → command dispatch → observed result for `/status` only. It does not establish installed-product acceptance: packaging, isolated installation, installed `lbe` launcher, live provider/tool receipts and final terminal acceptance remain OPEN.
 
 ## Authority
 
@@ -19,9 +27,9 @@ Canonical backend workspace: `C:\Agents-Memory-Tool-v6-integration`
 
 Product entrypoint: `lbe`
 
-Canonical visible terminal implementation workspace: `C:\Agents-Memory-Tool-v6-integration\apps\lbe-terminal`
+Canonical visible terminal implementation workspace: `C:\Agents-Memory-Tool-v6-integration\lbe_guard_inspector\terminal_ui.py` (Rust/Ratatui remains reference/integration material).
 
-## BirdEye resolved advisory skills � 2026-10-11
+## BirdEye resolved advisory skills � 2026-10-11
 
 Status: **IMPLEMENTED / FOCUSED-TESTED / LIVE UNPROVEN**
 
@@ -74,7 +82,7 @@ Current bounded evidence:
 ## Current product-owner decision — 2026-10-10
 
 ```text
-PRODUCT / BRAND               = LBE / LetterBlack
+PRODUCT / BRAND               = LBE / Lockstep Boundary Engine
 VISIBLE TERMINAL UI           = LBE-owned Python terminal client
 NORMAL COMMAND                = lbe
 RUST/RATATUI                  = reference/integration only
