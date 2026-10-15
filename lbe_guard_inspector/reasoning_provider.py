@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import copy
 import http.client
 import socket
@@ -24,7 +25,9 @@ from .reasoning_contracts import (
 )
 
 
-_REASONING_MAX_TOKENS = 512
+# Bounded need of one structured planning/explanation step. Reasoning models spend
+# hidden thinking tokens inside this budget; 512 truncated them to content=null.
+_REASONING_MAX_TOKENS = 2048
 
 # Output-token bounding. A provider will happily default an omitted `max_tokens` to the
 # model's full output ceiling (for example 131072 on OpenRouter), which is neither the
@@ -360,9 +363,12 @@ class OpenAICompatibleReasoningBackend:
         )
         content = _extract_message_content(response)
         try:
-            decoded = json.loads(content)
+            decoded = decode_structured_reply(content)
         except json.JSONDecodeError as exc:
-            raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider message content is not valid JSON") from exc
+            raise ProviderError(
+                "PROVIDER_RESPONSE_ERROR",
+                "provider message content is not valid JSON: " + repr(content[:120]),
+            ) from exc
         if not isinstance(decoded, Mapping):
             raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider message content must decode to an object")
         return decoded
@@ -409,6 +415,38 @@ def _require_relative_evidence_paths(plan: ReasoningPlan) -> None:
             raise ValueError(f"evidence path must be workspace-relative: {item.path}")
 
 
+_FENCED_OBJECT = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL | re.IGNORECASE)
+
+
+def decode_structured_reply(content: str) -> Any:
+    """Decode a model's structured reply.
+
+    Models routinely wrap the one JSON object in a markdown fence or a sentence
+    of prose. Accept the first complete top-level object and nothing else; the
+    caller still validates it against the schema, so a non-conforming object is
+    rejected exactly as before. Raises json.JSONDecodeError when no object is
+    present.
+    """
+    text = content.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as original:
+        fenced = _FENCED_OBJECT.search(text)
+        candidates = [fenced.group(1)] if fenced else []
+        start = text.find("{")
+        if start >= 0:
+            candidates.append(text[start:])
+        decoder = json.JSONDecoder()
+        for candidate in candidates:
+            try:
+                value, _ = decoder.raw_decode(candidate.strip())
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict):
+                return value
+        raise original
+
+
 def _extract_message_content(response: Mapping[str, Any]) -> str:
     choices = response.get("choices")
     if not isinstance(choices, list) or len(choices) != 1:
@@ -421,6 +459,14 @@ def _extract_message_content(response: Mapping[str, Any]) -> str:
         raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider choice must contain a message object")
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
+        finish_reason = choice.get("finish_reason")
+        if finish_reason == "length":
+            raise ProviderError(
+                "PROVIDER_OUTPUT_TRUNCATED",
+                "provider stopped at its output limit (finish_reason=length) before producing "
+                "content; the model likely spent the budget on hidden reasoning. Raise "
+                "max_output_tokens or lower reasoning_effort in the provider config.",
+            )
         raise ProviderError("PROVIDER_RESPONSE_ERROR", "provider message content must be a non-empty string")
     return content.strip()
 

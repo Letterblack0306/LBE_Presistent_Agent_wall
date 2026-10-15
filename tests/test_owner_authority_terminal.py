@@ -127,3 +127,34 @@ def test_render_turn_counts_executed_mutation_and_blocked_write(capsys) -> None:
     ))
     out = capsys.readouterr().out
     assert "changes executed: 1" in out and "blocked or failed: 1" in out
+
+
+def test_validated_completion_is_a_successful_coding_turn_not_an_error() -> None:
+    """Regression: once validation passes the gate returns VALIDATED_COMPLETION, which
+    the turn runtime used to raise as RuntimeError and record as model.error."""
+    events = []
+    finalized = []
+
+    class Gateway:
+        def invoke(self, envelope):
+            return SimpleNamespace(
+                outcome="VALIDATED_COMPLETION", task_id="t",
+                response=SimpleNamespace(deterministic_result={"provider_output": "done"}, error=None),
+            )
+
+    turn = SimpleNamespace(session_id="s")
+    state = SimpleNamespace(
+        provider_id="p", provider_model="m", session_id="s",
+        project_workspace_id="w", canonical_workspace_root="C:/w",
+    )
+    history = SimpleNamespace(
+        get_turn=lambda turn_id: turn,
+        store=SimpleNamespace(load_session_state=lambda session_id: state),
+        append_event=events.append,
+        events_for_turn=lambda turn_id: (),
+        finalize_turn=lambda **kwargs: finalized.append(kwargs),
+    )
+    GovernedCodingTurnRuntime(history=history, gateway=Gateway()).run(turn_id="t1", text="x")
+    assert "model.error" not in [e.event_type for e in events]
+    assert "model.turn.completed" in [e.event_type for e in events]
+    assert finalized and finalized[0]["status"].value == "completed"

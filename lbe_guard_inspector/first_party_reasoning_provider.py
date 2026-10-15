@@ -12,7 +12,7 @@ from typing import Any, Mapping
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .coding_reasoning_provider import ToolAwareOpenAICompatibleReasoningBackend
-from .reasoning_provider import JsonTransport, ProviderConfig, ProviderError
+from .reasoning_provider import JsonTransport, ProviderConfig, ProviderError, decode_structured_reply
 
 
 class AnthropicReasoningBackend(ToolAwareOpenAICompatibleReasoningBackend):
@@ -62,7 +62,7 @@ def _contract_input(stage: str, output_contract: Mapping[str, Any], input_payloa
 
 def _decode_contract_json(content: str, provider_name: str) -> Mapping[str, Any]:
     try:
-        decoded = json.loads(content)
+        decoded = decode_structured_reply(content)
     except json.JSONDecodeError as exc:
         raise ProviderError("PROVIDER_RESPONSE_ERROR", f"{provider_name} response text is not valid JSON") from exc
     if not isinstance(decoded, Mapping):

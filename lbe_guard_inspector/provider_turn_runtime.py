@@ -265,7 +265,9 @@ class GovernedCodingTurnRuntime:
                     session_id=turn.session_id, turn_id=turn_id, event_type="model.message.completed", payload={"text": output},
                     provider_id=state.provider_id, model_id=state.provider_model,
                 ))
-            if result.outcome == "COMPLETED":
+            # VALIDATED_COMPLETION is the evidence-owned terminal success outcome the
+            # completion gate returns once every required evidence kind passes.
+            if result.outcome in ("COMPLETED", "VALIDATED_COMPLETION"):
                 tool_projection = [
                     dict(item)
                     for item in deterministic.get("governed_tool_projection", [])
