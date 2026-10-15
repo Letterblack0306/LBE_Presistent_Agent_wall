@@ -52,3 +52,30 @@ def test_registry_builds_custom_provider_with_resolved_credentials(tmp_path, mon
         endpoint="https://gw/v1/chat/completions", model="m", timeout_seconds=5))
     cfg = handle.backend._config
     assert cfg.api_key == "s3cret" and cfg.headers == {"X-Org": "acme"}
+
+
+def test_provider_auth_modes_name_how_each_platform_authenticates(tmp_path, monkeypatch) -> None:
+    from lbe_guard_inspector.provider_registry import provider_auth_modes
+
+    path = _file(tmp_path, {"my-gw": {"endpoint": "http://x", "api_key_env": "K"}})
+    monkeypatch.setenv("LBE_CUSTOM_PROVIDERS_FILE", path)
+    modes = provider_auth_modes(default_provider_registry())
+    assert modes["claude-code"]["mode"] == "login" and "installed" in modes["claude-code"]
+    assert modes["openrouter"]["mode"] == "api_key"
+    assert modes["lmstudio"]["mode"] == "none"
+    assert modes["my-gw"] == {"mode": "api_key", "custom": True}
+    assert modes["bedrock"]["mode"] == "cloud_credentials"
+
+
+def test_terminal_renders_auth_mode_per_provider(capsys) -> None:
+    from lbe_guard_inspector import terminal_ui
+
+    terminal_ui._render_providers({
+        "providers": ["claude-code", "lmstudio"], "engines": ["native-lbe"],
+        "bindings": [{"provider_id": "claude-code", "engine_id": "native-lbe"}],
+        "auth": {"claude-code": {"mode": "login", "installed": False, "login_hint": "run `claude`"},
+                 "lmstudio": {"mode": "none"}},
+    })
+    out = capsys.readouterr().out
+    assert "claude-code | auth: login (CLI missing: run `claude`)" in out
+    assert "lmstudio | auth: none" in out

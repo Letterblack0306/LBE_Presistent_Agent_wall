@@ -612,6 +612,7 @@ def _render_providers(payload: dict[str, Any]) -> None:
     providers = [str(item) for item in payload.get("providers") or []]
     engines = [str(item) for item in payload.get("engines") or []]
     bindings = [item for item in payload.get("bindings") or [] if isinstance(item, dict)]
+    auth = payload.get("auth") if isinstance(payload.get("auth"), dict) else {}
     print("PROVIDERS")
     for provider in providers:
         related = [
@@ -620,7 +621,12 @@ def _render_providers(payload: dict[str, Any]) -> None:
             if item.get("provider_id") == provider and item.get("engine_id")
         ]
         suffix = f" | engines: {', '.join(related)}" if related else ""
-        print(f"  {provider}{suffix}")
+        info = auth.get(provider) if isinstance(auth.get(provider), dict) else {}
+        mode = str(info.get("mode") or "")
+        if mode == "login":
+            mode += " (ready)" if info.get("installed") else f" (CLI missing: {info.get('login_hint')})"
+        auth_text = f" | auth: {mode}" if mode else ""
+        print(f"  {provider}{auth_text}{suffix}")
     if engines:
         print(f"ENGINES | {', '.join(engines)}")
 

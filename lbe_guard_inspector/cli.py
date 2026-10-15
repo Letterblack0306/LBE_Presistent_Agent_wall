@@ -23,7 +23,7 @@ from .evidence_service import EvidenceService
 from .memory import SessionState, WorkspaceMemoryStore
 from .memory.operational_history import SessionOperationalHistory
 from .provider_health import check_provider_health
-from .provider_registry import default_provider_registry
+from .provider_registry import default_provider_registry, provider_auth_modes
 from .reasoning_config import bind_provider_config_to_session, load_provider_config
 from .reasoning_provider import ProviderConfig, discover_openai_compatible_model_ids
 from .reasoning_runtime import build_provider_controller
@@ -564,6 +564,7 @@ def _provider_list(args: argparse.Namespace) -> dict[str, Any]:
         "action": "provider.list",
         "providers": list(registry.provider_ids()),
         "engines": list(registry.engine_ids()),
+        "auth": provider_auth_modes(registry),
         "bindings": [
             {
                 "provider_id": binding.provider_id,

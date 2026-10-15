@@ -562,3 +562,47 @@ def _engine_id(value: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError("engine_id must be a non-empty string")
     return value.strip()
+
+
+_API_KEY_PROVIDERS = frozenset({
+    "openai", "anthropic", "gemini", "openrouter", "deepseek", "groq",
+    "mistral", "together", "fireworks", "xai",
+})
+_LOCAL_PROVIDERS = frozenset({"lmstudio", "ollama"})
+_CLOUD_CREDENTIAL_PROVIDERS = frozenset({"bedrock", "vertex", "openai-native", "opencode"})
+
+
+def provider_auth_modes(registry: "ProviderRegistry") -> dict[str, dict[str, object]]:
+    """Describe how each registered provider authenticates (no secrets, no I/O).
+
+    Modes follow GPT-Knowledge provider-neutral auth classes: ``login`` (the
+    platform's own CLI login), ``api_key``, ``none`` (local), ``cloud_credentials``
+    (provider credential chain), ``configured`` (custom/OpenAI-compatible endpoint
+    whose credentials come from its config), or ``unknown``.
+    """
+    from .custom_providers import load_openai_providers
+    from .login_agent_transport import LOGIN_AGENT_SPECS, login_agent_status
+
+    custom = load_openai_providers()
+    modes: dict[str, dict[str, object]] = {}
+    for provider_id in registry.provider_ids():
+        if provider_id in LOGIN_AGENT_SPECS:
+            status = login_agent_status(provider_id)
+            modes[provider_id] = {
+                "mode": "login",
+                "installed": status["installed"],
+                "login_hint": status["login_hint"],
+            }
+        elif provider_id in custom:
+            modes[provider_id] = {"mode": custom[provider_id].auth_mode, "custom": True}
+        elif provider_id in _API_KEY_PROVIDERS:
+            modes[provider_id] = {"mode": "api_key"}
+        elif provider_id in _LOCAL_PROVIDERS:
+            modes[provider_id] = {"mode": "none"}
+        elif provider_id in _CLOUD_CREDENTIAL_PROVIDERS:
+            modes[provider_id] = {"mode": "cloud_credentials"}
+        elif provider_id == "openai-compatible":
+            modes[provider_id] = {"mode": "configured"}
+        else:
+            modes[provider_id] = {"mode": "unknown"}
+    return modes
