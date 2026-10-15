@@ -1,0 +1,17 @@
+{
+  "description": "LBE governance: harness-run pre-tool preflight (not an agent-chosen tool).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hook-preflight.mjs\"",
+            "statusMessage": "LBE governance preflight"
+          }
+        ]
+      }
+    ]
+  }
+}

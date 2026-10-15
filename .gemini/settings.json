@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace|run_shell_command",
+        "sequential": true,
+        "hooks": [
+          {
+            "type": "command",
+            "name": "lbe-governance-preflight",
+            "command": "node scripts/agent-hook-preflight.mjs",
+            "timeout": 30000,
+            "description": "LBE governance preflight (harness-run, not an agent-chosen tool)"
+          }
+        ]
+      }
+    ]
+  }
+}
