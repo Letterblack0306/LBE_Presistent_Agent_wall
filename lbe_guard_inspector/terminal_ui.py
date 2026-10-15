@@ -22,6 +22,60 @@ _MODES = {
     "audit": "audit",
 }
 
+# Owner authority package for governed writes: the same validated input that
+# `lbe code --owner-authority-file` accepts. Without it every coding write is
+# denied with OWNER_AUTHORITY_BLOCKER. Session-scoped; never persisted here.
+_OWNER_AUTHORITY_FILE: str | None = os.environ.get("LBE_OWNER_AUTHORITY_FILE") or None
+
+
+def _with_owner_authority(arguments: Sequence[str]) -> list[str]:
+    args = list(arguments)
+    if args and args[0] == "turn" and _OWNER_AUTHORITY_FILE and "--owner-authority-file" not in args:
+        args += ["--owner-authority-file", _OWNER_AUTHORITY_FILE]
+    return args
+
+
+def _owner_authority_summary(path: str) -> dict[str, Any]:
+    """Validate a package with LBE's own contract and return its scope for display."""
+    from .authority_ownership import OwnerAuthorityAuthorization
+
+    package = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    if not isinstance(package, dict):
+        raise ValueError("owner authority file must contain a JSON object")
+    authorization = OwnerAuthorityAuthorization.from_mapping(package)
+    return {
+        "issue_id": authorization.issue_id,
+        "owner_status": str(getattr(authorization.owner_status, "value", authorization.owner_status)),
+        "allowed_paths": list(authorization.allowed_paths),
+        "validation_command": authorization.validation_command,
+    }
+
+
+def _handle_authority_command(line: str) -> None:
+    """`/authority [status|clear|<package.json>]` for the current terminal session."""
+    global _OWNER_AUTHORITY_FILE
+    parts = line.split(None, 1)
+    argument = parts[1].strip().strip('"') if len(parts) > 1 else "status"
+    if argument == "status":
+        if _OWNER_AUTHORITY_FILE is None:
+            print("AUTHORITY | none attached; governed writes are denied (OWNER_AUTHORITY_BLOCKER)")
+        else:
+            summary = _owner_authority_summary(_OWNER_AUTHORITY_FILE)
+            print(f"AUTHORITY | {summary['issue_id']} [{summary['owner_status']}]")
+            print("  allowed paths: " + ", ".join(summary["allowed_paths"]))
+            print("  validation:    " + summary["validation_command"])
+        return
+    if argument == "clear":
+        _OWNER_AUTHORITY_FILE = None
+        print("AUTHORITY | cleared; governed writes are denied")
+        return
+    summary = _owner_authority_summary(argument)  # raises ValueError if the contract rejects it
+    _OWNER_AUTHORITY_FILE = str(Path(argument).resolve())
+    print(f"AUTHORITY | attached {summary['issue_id']} [{summary['owner_status']}]")
+    print("  allowed paths: " + ", ".join(summary["allowed_paths"]))
+    print("  validation:    " + summary["validation_command"])
+    print("Writes outside these paths remain denied. /authority clear detaches.")
+
 
 def _default_install_root() -> Path:
     local = os.environ.get("LOCALAPPDATA")
@@ -41,7 +95,7 @@ def _run_product_json(arguments: Sequence[str]) -> dict[str, Any]:
         "lbe_guard_inspector.product_entry",
         "--format",
         "json",
-        *arguments,
+        *_with_owner_authority(arguments),
     ]
     completed = subprocess.run(
         command,
@@ -74,7 +128,7 @@ def _run_cancellable_turn(arguments: Sequence[str], cancel_event: Any, *,
     import subprocess as _subprocess
 
     command = [sys.executable, "-m", "lbe_guard_inspector.product_entry",
-               "--format", "json", *arguments]
+               "--format", "json", *_with_owner_authority(arguments)]
     process = _subprocess.Popen(
         command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace",
@@ -323,7 +377,7 @@ _LBE_LOGO_TERMINAL = (
 )
 
 _TERMINAL_COMMANDS = (
-    "/help", "/status", "/providers", "/provider", "/agents", "/models", "/model ",
+    "/help", "/status", "/providers", "/provider", "/agents", "/authority", "/models", "/model ",
     "/plan", "/act", "/audit", "/approve", "/deny",
     "/quit", "/exit",
 )
@@ -425,7 +479,7 @@ def _print_header(status: dict[str, Any], workspace: Path) -> None:
 
 
 def _help() -> None:
-    print("/plan  /act  /audit  /status  /provider  /providers  /agents  /models  /model <id>  /approve  /deny  /help  /quit")
+    print("/plan  /act  /audit  /status  /provider  /providers  /agents  /authority  /models  /model <id>  /approve  /deny  /help  /quit")
     print("Provider/model and approval commands delegate to existing LBE runtime owners.")
     print("Enter any other text to start a governed LBE turn.")
 
@@ -679,6 +733,8 @@ def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[st
                     _render_providers(_providers())
                 elif line == "/agents":
                     _render_agents()
+                elif line == "/authority" or line.startswith("/authority "):
+                    _handle_authority_command(line)
                 elif line == "/provider":
                     _render_providers(_providers())
                     print("Choose a compatible configured provider through its runtime binding; selection alone does not grant authorization.")
@@ -965,6 +1021,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
         if line == "/agents":
             _render_agents()
+            continue
+        if line == "/authority" or line.startswith("/authority "):
+            try:
+                _handle_authority_command(line)
+            except (ValueError, OSError) as exc:
+                print(f"DENIED | {exc}")
             continue
         if line == "/providers":
             try:

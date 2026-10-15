@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import threading
 import json
+from typing import Any
 from uuid import uuid4
 
 from .agent_integration import AgentMode, AgentRequestEnvelope, GovernedAgentGateway
@@ -182,9 +183,18 @@ class GovernedCodingTurnRuntime:
 
     supports_cancellation = False
 
-    def __init__(self, *, history: SessionOperationalHistory, gateway: GovernedAgentGateway) -> None:
+    def __init__(
+        self,
+        *,
+        history: SessionOperationalHistory,
+        gateway: GovernedAgentGateway,
+        reference_context: tuple[dict[str, Any], ...] = (),
+    ) -> None:
         self.history = history
         self.gateway = gateway
+        # Same envelope input `lbe code --owner-authority-file` supplies; without it
+        # every governed write is denied with OWNER_AUTHORITY_BLOCKER.
+        self.reference_context = tuple(reference_context)
 
     def cancel(self, *, turn_id: str) -> None:
         raise RuntimeError("live provider cancellation is not available for governed coding")
@@ -212,7 +222,11 @@ class GovernedCodingTurnRuntime:
                 workspace_root=state.canonical_workspace_root,
                 mode=AgentMode.CODING,
                 operation_id="reasoning.inspect",
-                arguments={"problem": text, "max_results": 10},
+                arguments={
+                    "problem": text,
+                    "max_results": 10,
+                    "reference_context": self.reference_context,
+                },
                 parent_turn_id=turn_id,
             ))
             deterministic = dict(result.response.deterministic_result or {})

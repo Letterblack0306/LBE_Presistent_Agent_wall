@@ -124,6 +124,10 @@ def _build_turn_parser() -> argparse.ArgumentParser:
     parser.add_argument("--provider-config")
     parser.add_argument("--state-root")
     parser.add_argument("--profile")
+    parser.add_argument(
+        "--owner-authority-file",
+        help="Validated owner evidence package for governed writes (coding sessions only)",
+    )
     parser.add_argument("--format", choices=("json", "text"), default="json")
     return parser
 
@@ -196,6 +200,17 @@ def _turn(argv: Sequence[str]) -> int:
         )
         history = SessionOperationalHistory(store=store)
         runtime = _cli._runtime_from_state(database=args.database, state=state)
+        reference_context: tuple[dict, ...] = ()
+        if args.owner_authority_file:
+            if state.mode != "coding":
+                raise ValueError("owner authority applies only to coding sessions")
+            from .authority_ownership import OwnerAuthorityAuthorization
+
+            package = json.loads(Path(args.owner_authority_file).read_text(encoding="utf-8-sig"))
+            if not isinstance(package, dict):
+                raise ValueError("owner authority file must contain a JSON object")
+            OwnerAuthorityAuthorization.from_mapping(package)
+            reference_context = ({"owner_authority": package},)
         if state.mode == "coding" and state.permission not in {"read_only", "audit_only"}:
             controller = build_governed_coding_controller(
                 runtime=runtime,
@@ -207,6 +222,7 @@ def _turn(argv: Sequence[str]) -> int:
             foreground_runtime = GovernedCodingTurnRuntime(
                 history=history,
                 gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller),
+                reference_context=reference_context,
             )
         else:
             controller, _ = build_provider_controller(
