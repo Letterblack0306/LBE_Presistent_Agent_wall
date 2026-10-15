@@ -134,6 +134,15 @@ def build_parser() -> argparse.ArgumentParser:
     provider_list = provider_commands.add_parser("list", help="List registered providers")
     provider_list.set_defaults(handler=_provider_list)
 
+    agents = commands.add_parser(
+        "agents", help="Discover external coding-agent platforms (read-only)"
+    )
+    agents_commands = agents.add_subparsers(dest="agents_command", required=True)
+    agents_list = agents_commands.add_parser(
+        "list", help="List known agent platforms and whether they are installed"
+    )
+    agents_list.set_defaults(handler=_agents_list)
+
     provider_models = provider_commands.add_parser(
         "models", help="Discover model IDs from a configured compatible endpoint"
     )
@@ -539,6 +548,13 @@ def _session_mode(args: argparse.Namespace) -> dict[str, Any]:
         "resolved_mode": decision.mode,
         "rationale": decision.rationale,
     }
+
+
+def _agents_list(args: argparse.Namespace) -> dict[str, Any]:
+    del args
+    from .agent_platforms import discover_agent_platforms, platforms_payload
+
+    return platforms_payload(discover_agent_platforms())
 
 
 def _provider_list(args: argparse.Namespace) -> dict[str, Any]:

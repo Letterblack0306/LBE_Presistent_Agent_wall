@@ -404,16 +404,47 @@ def build_workspace_read_handler(evidence_service: EvidenceService) -> ToolHandl
             evidence_requirements=["explicit governed workspace.read request"],
         )
         evidence = tuple(dict(item) for item in package.get("current_workspace_evidence", ()))
-        return ToolExecutionResult(
-            output={
-                "path": path,
-                "evidence_count": len(evidence),
-                "missing_evidence": list(package.get("missing_evidence", ())),
-            },
-            evidence=evidence,
-        )
+        output: dict[str, Any] = {
+            "path": path,
+            "evidence_count": len(evidence),
+            "missing_evidence": list(package.get("missing_evidence", ())),
+        }
+        window = _bounded_content_window(evidence, context.workspace_root)
+        if window is not None:
+            output.update(window)
+        return ToolExecutionResult(output=output, evidence=evidence)
 
     return handler
+
+
+_READ_WINDOW_CHARS = 12_000
+
+
+def _bounded_content_window(evidence: tuple[dict[str, Any], ...], workspace_root: Path) -> dict[str, Any] | None:
+    """Return a bounded content window for the first verified evidence file.
+
+    The guard evidence snippet is only a 400 character preview; without this the
+    provider can never read past the top of a file. The path comes from evidence
+    already authorized by the evidence owner and is re-confined to the workspace.
+    """
+    for item in evidence:
+        raw = item.get("path")
+        if not isinstance(raw, str) or not raw:
+            continue
+        try:
+            resolved = Path(raw).resolve(strict=True)
+            resolved.relative_to(Path(workspace_root).resolve())
+            with resolved.open("rb") as handle:
+                data = handle.read((_READ_WINDOW_CHARS * 4) + 1)
+        except (OSError, ValueError):
+            continue
+        text = data.decode("utf-8", errors="replace")
+        return {
+            "content": text[:_READ_WINDOW_CHARS],
+            "content_truncated": len(text) > _READ_WINDOW_CHARS or len(data) > _READ_WINDOW_CHARS * 4,
+            "content_window_chars": min(len(text), _READ_WINDOW_CHARS),
+        }
+    return None
 
 
 def workspace_list_spec() -> ToolSpec:

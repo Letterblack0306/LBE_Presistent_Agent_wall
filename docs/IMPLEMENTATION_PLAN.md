@@ -3,7 +3,7 @@
 Updated: 2026-10-11
 Status: **ACTIVE — LBE-OWNED TERMINAL PRODUCT / CURRENT INSTALLED ACCEPTANCE**
 
-## BirdEye advisory-skills composition � active plan (2026-10-11)
+## BirdEye advisory-skills composition — active plan (2026-10-11)
 
 **Intent:** Use BirdEye-resolved skills as bounded procedural context for LBE reasoning without creating another discovery, transport, execution, authorization, receipt, evidence or completion owner.
 

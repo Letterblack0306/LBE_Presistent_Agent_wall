@@ -333,6 +333,40 @@ def test_workspace_read_handler_delegates_to_existing_evidence_service(tmp_path:
     assert call["path_patterns"] == ["docs/README.md"]
 
 
+def test_workspace_read_returns_bounded_content_window_beyond_snippet(tmp_path: Path) -> None:
+    target = tmp_path / "docs" / "gate.md"
+    target.parent.mkdir()
+    body = "x" * 600 + "\nactive_phase = LATE_FIELD\n"
+    target.write_text(body, encoding="utf-8")
+    service = FakeEvidenceService(evidence=[{
+        "ref": "workspace:workspace-1:docs/gate.md",
+        "verified": True,
+        "path": str(target),
+        "snippet": body[:400],
+    }])
+    registry = ToolRegistry()
+    registry.register(workspace_read_spec(), build_workspace_read_handler(service))
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        _request(tmp_path, arguments={"path": "docs/gate.md"})
+    )
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert "active_phase = LATE_FIELD" in receipt.output["content"]
+    assert receipt.output["content_truncated"] is False
+
+
+def test_workspace_read_content_window_ignores_evidence_path_outside_workspace(tmp_path: Path) -> None:
+    outside = tmp_path.parent / "outside-secret.txt"
+    outside.write_text("secret", encoding="utf-8")
+    service = FakeEvidenceService(evidence=[{"ref": "r", "verified": True, "path": str(outside)}])
+    registry = ToolRegistry()
+    registry.register(workspace_read_spec(), build_workspace_read_handler(service))
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        _request(tmp_path, arguments={"path": "docs/README.md"})
+    )
+    assert receipt.status is ToolReceiptStatus.EXECUTED
+    assert "content" not in receipt.output
+
+
 def test_workspace_read_handler_rejects_path_escape_before_evidence_read(tmp_path: Path) -> None:
     service = FakeEvidenceService()
     registry = ToolRegistry()
