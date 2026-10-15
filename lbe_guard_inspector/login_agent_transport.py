@@ -228,8 +228,7 @@ class LoginAgentTransport:
             if self._cancelled:
                 raise ProviderError("PROVIDER_CANCELLED", f"{spec.provider_id}: turn cancelled")
             if proc.returncode != 0:
-                detail = (stderr or stdout or "").strip().replace("\n", " ")[:300]
-                code = "PROVIDER_LOGIN_REQUIRED" if _looks_like_auth_failure(detail) else "PROVIDER_HTTP_ERROR"
+                code, detail = classify_cli_failure(stderr or stdout or "")
                 hint = f" ({spec.login_hint})" if code == "PROVIDER_LOGIN_REQUIRED" else ""
                 raise ProviderError(code, f"{spec.provider_id}: CLI exited {proc.returncode}{hint}: {detail}")
             text = stdout
@@ -282,7 +281,31 @@ def _flatten_messages(payload: Mapping[str, Any]) -> tuple[str, str]:
     return "\n\n".join(system), "\n\n".join(user)
 
 
-def _looks_like_auth_failure(detail: str) -> bool:
+_QUOTA_TOKENS = ("usage limit", "rate limit", "quota", "429", "too many requests", "try again at", "purchase more credits")
+_AUTH_TOKENS = ("not logged in", "please log in", "log in to", "sign in", "unauthorized", "authentication", "invalid api key", "credential")
+
+
+def classify_cli_failure(output: str) -> tuple[str, str]:
+    """Return (error code, one readable line) for a failed platform CLI.
+
+    CLIs print a banner (version, workdir, model...) before the real error, so only
+    the error lines are inspected and quoted; the banner must never decide the code.
+    """
+    lines = [line.strip() for line in str(output).splitlines() if line.strip()]
+    errors = [line for line in lines if line.upper().startswith(("ERROR", "FATAL", "ERR!"))]
+    focus = errors or lines[-3:]
+    seen: list[str] = []
+    for line in focus:
+        if line not in seen:
+            seen.append(line)
+    detail = " ".join(seen)[:300] or "no output"
     lowered = detail.lower()
-    return any(token in lowered for token in (
-        "not logged in", "login", "log in", "sign in", "unauthorized", "401", "authenticate", "credential"))
+    if any(token in lowered for token in _QUOTA_TOKENS):
+        return "PROVIDER_QUOTA_EXCEEDED", detail
+    if any(token in lowered for token in _AUTH_TOKENS):
+        return "PROVIDER_LOGIN_REQUIRED", detail
+    return "PROVIDER_HTTP_ERROR", detail
+
+
+def _looks_like_auth_failure(detail: str) -> bool:
+    return classify_cli_failure("ERROR " + detail)[0] == "PROVIDER_LOGIN_REQUIRED"

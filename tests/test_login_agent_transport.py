@@ -131,3 +131,21 @@ def test_login_cli_rejects_unoffered_tool(monkeypatch, tmp_path) -> None:
             headers={}, timeout_seconds=30,
         )
     assert err.value.code == "PROVIDER_TOOL_RESPONSE_INVALID"
+
+
+def test_usage_limit_is_quota_not_login_and_banner_is_ignored() -> None:
+    banner = "OpenAI Codex v0.162.1\n--------\nworkdir: C:\\tmp\nmodel: m\nprovider: openai\nsession id: 01a14144-f9f4-7a31\n--------\nuser\npong\n"
+    out = banner + "ERROR: You've hit your usage limit. Try again at 2:53 AM.\nERROR: You've hit your usage limit. Try again at 2:53 AM.\n"
+    code, detail = lat.classify_cli_failure(out)
+    assert code == "PROVIDER_QUOTA_EXCEEDED"
+    assert detail.count("usage limit") == 1 and "workdir" not in detail
+
+
+def test_real_auth_failure_is_still_login_required() -> None:
+    code, detail = lat.classify_cli_failure("banner\nError: Not logged in. Please log in to continue.")
+    assert code == "PROVIDER_LOGIN_REQUIRED" and "Not logged in" in detail
+
+
+def test_unknown_failure_keeps_the_last_lines() -> None:
+    code, detail = lat.classify_cli_failure("a\nb\nsegfault in module x")
+    assert code == "PROVIDER_HTTP_ERROR" and "segfault" in detail
