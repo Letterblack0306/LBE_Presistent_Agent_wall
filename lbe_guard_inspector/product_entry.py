@@ -1239,6 +1239,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .terminal_ui import main as terminal_main
         return terminal_main([])
 
+    # `lbe --version` is a product-identity query, not a legacy CLI command; the
+    # terminal client already owns it, so route it there instead of the parser.
+    if values in (["--version"], ["-V"]):
+        from .terminal_ui import main as terminal_main
+        return terminal_main(["--version"])
+
     product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization", "operation", "child-agent") if command in values]
     if not product_commands:
         return _cli.main(values)
