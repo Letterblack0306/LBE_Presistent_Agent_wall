@@ -21,6 +21,7 @@ from .agent_guidance import build_agent_guidance
 from .governed_coding import GovernedProviderReasoningController
 from .tool_orchestration import (
     ToolAccessClass,
+    ToolExecutionResult,
     ToolHandler,
     ToolNetworkBehavior,
     ToolRegistry,
@@ -256,6 +257,7 @@ def build_birdeye_mcp_handler(tool: str) -> ToolHandler:
             cwd=str(server.parent),
             input=encoded,
             text=True,
+            errors="replace",
             capture_output=True,
             check=False,
         )

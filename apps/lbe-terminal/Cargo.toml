@@ -1,0 +1,15 @@
+[package]
+name = "lbe-terminal"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "lbe-terminal"
+path = "src/main.rs"
+
+[lib]
+path = "src/ui.rs"
+
+[dependencies]
+ratatui = "0.26"
+crossterm = "0.27"
