@@ -77,6 +77,8 @@ def test_catalog_records_harness_owned_surfaces_separately_from_tools() -> None:
     claude = get_platform("claude-code")
     assert claude.hooks is True and "CLAUDE.md" in claude.harness_instructions
     assert get_platform("gemini-cli").hooks is True
+    agy = get_platform("antigravity")
+    assert agy.hooks is True and "AGENTS.md" in agy.harness_instructions
     # not observed means False/empty, never assumed
     assert get_platform("opencode").hooks is False
     assert get_platform("opencode").harness_instructions == ()

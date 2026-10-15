@@ -1,0 +1,16 @@
+{
+  "lbe-governance-preflight": {
+    "PreToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content|run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ../scripts/agent-hook-preflight.mjs",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

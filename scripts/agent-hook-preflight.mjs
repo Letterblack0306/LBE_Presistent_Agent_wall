@@ -46,7 +46,37 @@ export function patchOperations(patch) {
   return ops;
 }
 
+// Antigravity CLI (agy): { toolCall: { name, args }, workspacePaths, ... } with
+// lowercase step-type tool names. File-argument key names are not documented, so
+// the first string value under a key matching /file|path/i is used; a write-like
+// tool with no discoverable target is blocked (fail closed).
+const AGY_WRITE = /^(?:write|replace|multi_replace|edit|create|delete)|_file\b|file_content$/i;
+
+function agyTarget(args) {
+  for (const [key, value] of Object.entries(args ?? {})) {
+    if (/file|path/i.test(key) && typeof value === 'string' && value.trim()) return value;
+  }
+  return null;
+}
+
+function classifyAgy(call) {
+  const name = String(call?.name ?? '');
+  const args = call?.args ?? {};
+  if (name === 'run_command') {
+    const cmd = args.CommandLine ?? args.commandLine ?? args.command;
+    const op = typeof cmd === 'string' ? classifyShell(cmd) : null;
+    return op ? [op] : [];
+  }
+  if (AGY_WRITE.test(name)) {
+    const target = agyTarget(args);
+    const action = /delete/i.test(name) ? 'delete' : 'write';
+    return [{ action, target: target ?? '', unresolved: target === null }];
+  }
+  return [];
+}
+
 export function classify(payload) {
+  if (payload?.toolCall) return classifyAgy(payload.toolCall);
   const tool = payload?.tool_name;
   const input = payload?.tool_input ?? {};
   if (tool === 'apply_patch' && typeof input.command === 'string') return patchOperations(input.command);
@@ -72,8 +102,12 @@ function relativeInside(target, cwd) {
 export function decide(payload) {
   const ops = classify(payload);
   if (ops.length === 0) return { allow: true, reason: 'not a governed action' };
+  const base = payload?.cwd ?? (Array.isArray(payload?.workspacePaths) ? payload.workspacePaths[0] : undefined);
   for (const op of ops) {
-    const rel = relativeInside(op.target, payload?.cwd);
+    if (op.unresolved) {
+      return { allow: false, reason: 'cannot determine the write target of this tool call (fail closed)' };
+    }
+    const rel = relativeInside(op.target, base);
     if (rel === null) continue; // outside workspace root
     const args = [preflight, op.action];
     if (rel) args.push(rel);
@@ -96,6 +130,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       process.exit(2);
     }
     const verdict = decide(payload);
+    if (payload?.toolCall) {
+      // agy contract: JSON decision on stdout. "ask" defers to agy's normal
+      // permission flow; "allow" would auto-approve and is deliberately not used.
+      const out = verdict.allow
+        ? { decision: 'ask', reason: `LBE preflight: ${verdict.reason}` }
+        : { decision: 'deny', reason: `[governance] BLOCK ${verdict.reason}` };
+      process.stdout.write(JSON.stringify(out));
+      process.exit(0);
+    }
     if (verdict.allow) process.exit(0);
     console.error(`[governance] BLOCK ${verdict.reason}`);
     process.exit(2);
