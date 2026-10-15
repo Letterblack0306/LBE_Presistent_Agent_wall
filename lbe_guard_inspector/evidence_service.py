@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import heapq
 import fnmatch
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -21,6 +22,79 @@ _EXCLUDED_CLASSIFICATIONS = {
     "development_copy",
     "vendor",
 }
+
+# Directories that are never useful evidence roots. They are pruned during the
+# walk (not filtered afterward): enumerating hundreds of thousands of vendored or
+# generated files made a single governed turn exceed the provider timeout.
+_PRUNED_DIR_NAMES = frozenset({
+    ".git", "node_modules", "__pycache__", "target",
+    ".venv", "venv", ".mypy_cache", ".pytest_cache", ".tox",
+})
+
+
+def _iter_workspace_files(
+    root: Path,
+    *,
+    include_excluded: bool,
+    allow_dirs: frozenset[str] = frozenset(),
+):
+    """Yield workspace files, pruning heavy/generated directories while walking.
+
+    ``allow_dirs`` names directories that an explicit approved path pattern
+    mentions; they are never pruned so authorized evidence stays reachable.
+    """
+    for dirpath, dirnames, filenames in os.walk(root):
+        directory = Path(dirpath)
+        kept: list[str] = []
+        for name in dirnames:
+            if name in _PRUNED_DIR_NAMES and name not in allow_dirs:
+                continue
+            if not include_excluded and name not in allow_dirs:
+                child = (directory / name).relative_to(root).as_posix()
+                if _classify_path(child) in _EXCLUDED_CLASSIFICATIONS:
+                    continue
+            kept.append(name)
+        dirnames[:] = sorted(kept)
+        for filename in sorted(filenames):
+            yield directory / filename
+
+
+def _has_glob(pattern: str) -> bool:
+    return any(char in pattern for char in "*?[")
+
+
+def _guard_candidate_paths(root: Path, patterns: list[str]) -> list[Path]:
+    """Resolve approved guard patterns without walking the whole workspace.
+
+    Exact paths are checked directly; wildcard patterns walk with heavy
+    directories pruned unless the pattern names them explicitly.
+    """
+    found: dict[str, Path] = {}
+    wildcard: list[str] = []
+    for pattern in patterns:
+        if not pattern:
+            continue
+        if _has_glob(pattern):
+            wildcard.append(pattern)
+            continue
+        candidate = root / pattern
+        try:
+            candidate.resolve().relative_to(root)
+        except ValueError:
+            continue
+        if candidate.is_file():
+            found[candidate.as_posix()] = candidate
+    if wildcard:
+        allow = frozenset(
+            segment
+            for pattern in wildcard
+            for segment in pattern.split("/")
+            if segment and not _has_glob(segment)
+        )
+        for path in _iter_workspace_files(root, include_excluded=True, allow_dirs=allow):
+            found[path.as_posix()] = path
+    return sorted(found.values(), key=lambda item: item.as_posix().lower())
+
 
 _DEFAULT_EXTENSIONS = {
     ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".py", ".ps1",
@@ -192,7 +266,7 @@ class EvidenceService:
         }
         normalized_patterns = [pattern.replace("\\", "/").strip("/") for pattern in path_patterns]
         evidence: list[dict[str, Any]] = []
-        for path in sorted(root.rglob("*"), key=lambda item: item.as_posix().lower()):
+        for path in _guard_candidate_paths(root, normalized_patterns):
             if not path.is_file() or path.suffix.lower() not in allowed_extensions:
                 continue
             relative = path.relative_to(root).as_posix()
@@ -358,7 +432,7 @@ class EvidenceService:
         candidates: list[tuple[int, int, dict[str, Any]]] = []
         serial = 0
 
-        for path in root.rglob("*"):
+        for path in _iter_workspace_files(root, include_excluded=include_excluded):
             if not path.is_file() or path.suffix.lower() not in allowed_extensions:
                 continue
 
