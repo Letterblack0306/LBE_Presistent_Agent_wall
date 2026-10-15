@@ -36,6 +36,7 @@ class LoginAgentSpec:
     # (model, system_prompt, output_file) -> argv after the executable; prompt goes on stdin
     build_args: Callable[[str, str, str], Sequence[str]]
     reads_output_file: bool = False
+    system_in_args: bool = False
 
 
 def _claude_args(model: str, system_prompt: str, _out: str) -> Sequence[str]:
@@ -62,12 +63,70 @@ def _gemini_args(model: str, _system: str, _out: str) -> Sequence[str]:
     return args
 
 
-LOGIN_AGENT_SPECS: Mapping[str, LoginAgentSpec] = {
+LOGIN_AGENT_SPECS: dict[str, LoginAgentSpec] = {
     "claude-code": LoginAgentSpec("claude-code", "claude", "run `claude` and sign in", _claude_args),
     "openai-codex-cli": LoginAgentSpec(
         "openai-codex-cli", "codex", "run `codex login`", _codex_args, reads_output_file=True),
     "gemini-cli": LoginAgentSpec("gemini-cli", "gemini", "run `gemini` and sign in", _gemini_args),
 }
+
+def spec_from_mapping(provider_id: str, raw: Mapping[str, Any]) -> LoginAgentSpec:
+    """Build a spec from JSON so any platform CLI can be added without code.
+
+    {"executable": "opencode", "args": ["run"], "model_args": ["-m", "{model}"],
+     "system_args": ["--system", "{system}"], "output_file_arg": ["-o", "{out}"],
+     "login_hint": "run `opencode auth login`"}
+    The prompt always goes on stdin; "{model}", "{system}", "{out}" are substituted.
+    """
+    executable = raw.get("executable")
+    if not isinstance(executable, str) or not executable.strip():
+        raise ValueError(f"login agent {provider_id!r}: executable must be a non-empty string")
+
+    def tokens(key: str) -> list[str]:
+        value = raw.get(key, [])
+        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+            raise ValueError(f"login agent {provider_id!r}: {key} must be a list of strings")
+        return value
+
+    base, model_args, system_args, out_args = (
+        tokens("args"), tokens("model_args"), tokens("system_args"), tokens("output_file_arg"))
+
+    def build(model: str, system: str, out: str) -> Sequence[str]:
+        sub = {"{model}": model, "{system}": system, "{out}": out}
+
+        def fill(parts: Sequence[str]) -> list[str]:
+            result = []
+            for part in parts:
+                for key, value in sub.items():
+                    part = part.replace(key, value)
+                result.append(part)
+            return result
+
+        argv = fill(base) + fill(out_args)
+        if system_args:
+            argv += fill(system_args)
+        if model and model_args:
+            argv += fill(model_args)
+        return argv
+
+    return LoginAgentSpec(
+        provider_id, executable.strip(), str(raw.get("login_hint") or f"sign in with `{executable}`"),
+        build, reads_output_file=bool(out_args), system_in_args=bool(system_args))
+
+
+def load_extra_login_agents(path: str | os.PathLike[str] | None = None) -> dict[str, LoginAgentSpec]:
+    """Register additional platforms from LBE_LOGIN_AGENTS_FILE (or `path`)."""
+    location = path or os.environ.get("LBE_LOGIN_AGENTS_FILE")
+    if not location or not os.path.exists(location):
+        return {}
+    with open(location, encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, dict):
+        raise ValueError("login agents file must be a JSON object keyed by provider id")
+    added = {pid: spec_from_mapping(pid, raw) for pid, raw in data.items() if pid not in LOGIN_AGENT_SPECS}
+    LOGIN_AGENT_SPECS.update(added)  # type: ignore[attr-defined]
+    return added
+
 
 # model ids meaning "let the platform pick its default"
 _DEFAULT_MODEL_IDS = frozenset({"", "default", "login-default"})

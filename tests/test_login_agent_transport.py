@@ -79,3 +79,24 @@ def test_tools_are_disabled_in_every_binding() -> None:
     assert "--tools" in lat._claude_args("", "s", "o") and "-s" in lat._codex_args("", "s", "o")
     assert "read-only" in lat._codex_args("", "s", "o")
     assert "yolo" not in " ".join(lat._gemini_args("", "s", "o"))
+
+
+def test_new_platform_is_added_from_json_without_code(monkeypatch, tmp_path) -> None:
+    cli = _fake_cli(tmp_path, "import sys; print('args=' + ' '.join(sys.argv[1:])); sys.stdin.read()")
+    monkeypatch.setattr(lat.shutil, "which", lambda name: cli)
+    monkeypatch.setitem(lat.LOGIN_AGENT_SPECS, "x", lat.LOGIN_AGENT_SPECS["claude-code"])
+    lat.LOGIN_AGENT_SPECS.pop("x")
+    path = tmp_path / "agents.json"
+    path.write_text(json.dumps({"acme-cli": {
+        "executable": "acme", "args": ["run", "--quiet"], "model_args": ["-m", "{model}"]}}))
+    monkeypatch.setattr(lat, "LOGIN_AGENT_SPECS", dict(lat.LOGIN_AGENT_SPECS))
+    added = lat.load_extra_login_agents(path)
+    assert set(added) == {"acme-cli"}
+    reply = lat.LoginAgentTransport("acme-cli").post_json(
+        endpoint="x", payload={**_PAYLOAD, "model": "big"}, headers={}, timeout_seconds=30)
+    assert "args=run --quiet -m big" in reply["choices"][0]["message"]["content"]
+
+
+def test_bad_spec_is_rejected() -> None:
+    with pytest.raises(ValueError):
+        lat.spec_from_mapping("p", {"args": ["x"]})

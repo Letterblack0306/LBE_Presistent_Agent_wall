@@ -428,7 +428,10 @@ def default_provider_registry() -> ProviderRegistry:
 
     # Platforms reached through the user's own login (their CLI holds the
     # credentials; LBE never sees them). See login_agent_transport.
-    for provider_id in ("claude-code", "openai-codex-cli", "gemini-cli"):
+    from .login_agent_transport import LOGIN_AGENT_SPECS, load_extra_login_agents
+
+    load_extra_login_agents()
+    for provider_id in tuple(LOGIN_AGENT_SPECS):
         registry.register_binding(
             engine_id=NATIVE_LBE_ENGINE_ID,
             provider_id=provider_id,
