@@ -22,6 +22,7 @@ import tempfile
 import threading
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Mapping, Sequence
+from uuid import uuid4
 
 from .reasoning_provider import ProviderError
 
@@ -176,6 +177,25 @@ class LoginAgentTransport:
                 f"{spec.provider_id}: `{spec.executable}` is not installed; install it and {spec.login_hint}",
             )
         system_prompt, prompt = _flatten_messages(payload)
+        offered_tools = payload.get("tools") or ()
+        if offered_tools:
+            if not isinstance(offered_tools, list):
+                raise ProviderError("PROVIDER_TOOL_SCHEMA_ERROR", "login-agent tools must be a list")
+            tool_names: set[str] = set()
+            for tool in offered_tools:
+                if not isinstance(tool, Mapping) or not isinstance(tool.get("function"), Mapping):
+                    raise ProviderError("PROVIDER_TOOL_SCHEMA_ERROR", "login-agent tool definition is invalid")
+                name = tool["function"].get("name")
+                if not isinstance(name, str) or not name:
+                    raise ProviderError("PROVIDER_TOOL_SCHEMA_ERROR", "login-agent tool name is missing")
+                tool_names.add(name)
+            system_prompt += (
+                "\n\nYou may propose one of the following LBE proxy tools. Your own CLI tools remain disabled. "
+                "Reply with exactly one JSON object: either {\"final\": \"answer\"} or "
+                "{\"tool_calls\": [{\"name\": \"offered tool name\", \"arguments\": {}}]}. "
+                "Only LBE may authorize and execute a proposed call. Offered tools: "
+                + json.dumps(offered_tools, ensure_ascii=False)
+            )
         model = str(payload.get("model") or "").strip()
         if model in _DEFAULT_MODEL_IDS:
             model = ""
@@ -216,7 +236,30 @@ class LoginAgentTransport:
             if spec.reads_output_file and os.path.exists(out_file):
                 with open(out_file, encoding="utf-8", errors="replace") as handle:
                     text = handle.read()
-        return {"choices": [{"message": {"role": "assistant", "content": text.strip()}, "finish_reason": "stop"}]}
+        if not offered_tools:
+            return {"choices": [{"message": {"role": "assistant", "content": text.strip()}, "finish_reason": "stop"}]}
+        try:
+            envelope = json.loads(text.strip())
+        except (ValueError, TypeError) as exc:
+            raise ProviderError("PROVIDER_TOOL_RESPONSE_INVALID", "login-agent did not return a JSON tool/answer envelope") from exc
+        if not isinstance(envelope, dict):
+            raise ProviderError("PROVIDER_TOOL_RESPONSE_INVALID", "login-agent envelope must be an object")
+        if "tool_calls" in envelope:
+            calls = envelope["tool_calls"]
+            if not isinstance(calls, list) or len(calls) != 1:
+                raise ProviderError("PROVIDER_TOOL_RESPONSE_INVALID", "login-agent must propose exactly one tool call")
+            call = calls[0]
+            if not isinstance(call, dict) or call.get("name") not in tool_names or not isinstance(call.get("arguments"), dict):
+                raise ProviderError("PROVIDER_TOOL_RESPONSE_INVALID", "login-agent proposed an unoffered or invalid tool call")
+            return {"choices": [{"message": {"role": "assistant", "content": None, "tool_calls": [{
+                "id": f"login-call-{uuid4().hex}", "type": "function", "function": {
+                    "name": call["name"], "arguments": json.dumps(call["arguments"], ensure_ascii=False),
+                },
+            }]}, "finish_reason": "tool_calls"}]}
+        final = envelope.get("final")
+        if not isinstance(final, str):
+            raise ProviderError("PROVIDER_TOOL_RESPONSE_INVALID", "login-agent answer must have final text")
+        return {"choices": [{"message": {"role": "assistant", "content": final}, "finish_reason": "stop"}]}
 
 
 def _flatten_messages(payload: Mapping[str, Any]) -> tuple[str, str]:
@@ -235,7 +278,7 @@ def _flatten_messages(payload: Mapping[str, Any]) -> tuple[str, str]:
                 "Reply with exactly one JSON object and nothing else (no prose, no code fence). "
                 "It must validate against this JSON Schema:\n" + json.dumps(schema, sort_keys=True)
             )
-    system.append("Do not use tools, read files, or run commands. Answer only from the input provided.")
+    system.append("Do not use your own CLI tools, read files, or run commands. Answer only from the input provided and any LBE tool results.")
     return "\n\n".join(system), "\n\n".join(user)
 
 

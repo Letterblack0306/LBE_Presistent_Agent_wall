@@ -8,6 +8,8 @@ import pytest
 from lbe_guard_inspector import login_agent_transport as lat
 from lbe_guard_inspector.provider_registry import default_provider_registry
 from lbe_guard_inspector.reasoning_provider import ProviderConfig, ProviderError
+from lbe_guard_inspector.runtime.provider_event_adapters import build_native_provider_event_adapter
+from lbe_guard_inspector.professional_provider_events import ModelEventType
 
 
 def _fake_cli(tmp_path: Path, body: str) -> str:
@@ -100,3 +102,32 @@ def test_new_platform_is_added_from_json_without_code(monkeypatch, tmp_path) -> 
 def test_bad_spec_is_rejected() -> None:
     with pytest.raises(ValueError):
         lat.spec_from_mapping("p", {"args": ["x"]})
+
+
+def test_login_cli_proposes_only_offered_lbe_tool(monkeypatch, tmp_path) -> None:
+    cli = _fake_cli(tmp_path, "import sys; sys.stdin.read(); print('{\"tool_calls\": [{\"name\": \"workspace_read\", \"arguments\": {\"path\": \"notes.txt\"}}]}')")
+    monkeypatch.setattr(lat.shutil, "which", lambda name: cli)
+    config = ProviderConfig(endpoint="login-agent://claude-code", model="default",
+                            timeout_seconds=30, provider_id="claude-code")
+    adapter = build_native_provider_event_adapter(provider_id="claude-code", config=config)
+    events = adapter.complete(
+        messages=({"role": "user", "content": "Read notes"},), provider_id="claude-code",
+        lbe_call_id_for_provider_tool_call=lambda call_id: "lbe-child-1",
+        tools=({"type": "function", "function": {"name": "workspace_read", "parameters": {"type": "object"}}},),
+    )
+    call = next(event for event in events if event.event_type is ModelEventType.TOOL_CALL_COMPLETED)
+    assert call.tool_name == "workspace_read"
+    assert call.tool_arguments == {"path": "notes.txt"}
+    assert call.lbe_call_id == "lbe-child-1"
+
+
+def test_login_cli_rejects_unoffered_tool(monkeypatch, tmp_path) -> None:
+    cli = _fake_cli(tmp_path, "import sys; sys.stdin.read(); print('{\"tool_calls\": [{\"name\": \"unsafe\", \"arguments\": {}}]}')")
+    monkeypatch.setattr(lat.shutil, "which", lambda name: cli)
+    with pytest.raises(ProviderError) as err:
+        lat.LoginAgentTransport("claude-code").post_json(
+            endpoint="login-agent://claude-code",
+            payload={**_PAYLOAD, "tools": [{"type": "function", "function": {"name": "workspace_read"}}]},
+            headers={}, timeout_seconds=30,
+        )
+    assert err.value.code == "PROVIDER_TOOL_RESPONSE_INVALID"

@@ -276,6 +276,14 @@ def build_native_provider_event_adapter(
     No provider/engine fallback occurs here. Unsupported protocol families fail
     explicitly before any network request or governed mutation.
     """
+    from ..login_agent_transport import LoginAgentTransport, is_login_agent
+
+    if is_login_agent(provider_id):
+        if config.endpoint.strip() != f"login-agent://{provider_id}":
+            raise ValueError("login-agent provider identity does not match its endpoint")
+        return OpenAICompatibleEventAdapter(
+            config=config, transport=transport or LoginAgentTransport(provider_id)
+        )
     family, evidence = detect_protocol_family(
         provider_id=provider_id,
         endpoint=config.endpoint,

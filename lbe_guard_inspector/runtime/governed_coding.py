@@ -1066,6 +1066,9 @@ class _GovernedCodingControllerBase:
         )
         child_session_id = f"child-{uuid4().hex}"
         state = self._runtime.session_state
+        from ..login_agent_transport import is_login_agent
+
+        login_child = is_login_agent(self._provider_id)
         SessionMemoryRuntimeBridge(
             database_path=self._runtime.store.database_path,
             project_workspace_id=self._runtime.project_workspace_id,
@@ -1079,7 +1082,7 @@ class _GovernedCodingControllerBase:
             active_profile_id=state.active_profile_id,
             permission_policy_id=state.permission_policy_id,
             evidence_policy_id=state.evidence_policy_id,
-            reasoning_engine="cline",
+            reasoning_engine="native-lbe" if login_child else "cline",
         )
         self._history.start_child_agent_run(
             session_id=self._runtime.session_id,
@@ -1087,18 +1090,6 @@ class _GovernedCodingControllerBase:
             child_agent_run_id=child_run.child_agent_run_id,
             child_session_id=child_session_id,
         )
-
-        from .cline_stdio_bridge import GovernedClineWorker
-        from .cline_stdio_protocol import BridgeFrame, PROTOCOL_VERSION
-
-        worker = GovernedClineWorker()
-        provider: dict[str, object] = {
-            "provider_id": self._provider_id,
-            "model_id": self._provider_config.model.strip(),
-            "base_url": _cline_provider_base_url(self._provider_config.endpoint),
-        }
-        if self._provider_config.api_key:
-            provider["api_key"] = self._provider_config.api_key
 
         allowed_specs = tuple(
             spec for spec in self._registry.specs() if not spec.tool_id.startswith("subagent.")
@@ -1125,6 +1116,27 @@ class _GovernedCodingControllerBase:
                 lbe_call_id=lbe_call_id,
             )
             return None
+
+        if login_child:
+            return self._execute_login_child(
+                task=task,
+                role=role,
+                child_agent_run_id=child_run.child_agent_run_id,
+                child_session_id=child_session_id,
+                on_tool_receipt=on_child_tool_receipt,
+            )
+
+        from .cline_stdio_bridge import GovernedClineWorker
+        from .cline_stdio_protocol import BridgeFrame, PROTOCOL_VERSION
+
+        worker = GovernedClineWorker()
+        provider: dict[str, object] = {
+            "provider_id": self._provider_id,
+            "model_id": self._provider_config.model.strip(),
+            "base_url": _cline_provider_base_url(self._provider_config.endpoint),
+        }
+        if self._provider_config.api_key:
+            provider["api_key"] = self._provider_config.api_key
 
         try:
             ready = worker.start(
@@ -1206,6 +1218,90 @@ class _GovernedCodingControllerBase:
                 "error_message": error_message,
             }
         )
+
+    def _execute_login_child(
+        self,
+        *,
+        task: str,
+        role: str,
+        child_agent_run_id: str,
+        child_session_id: str,
+        on_tool_receipt: Callable[[object, ToolReceipt], None],
+    ) -> ToolExecutionResult:
+        """Run a login-platform child through the selected CLI and LBE tool authority."""
+        from types import SimpleNamespace
+
+        adapter = build_native_provider_event_adapter(
+            provider_id=self._provider_id, config=self._provider_config
+        )
+        specs = tuple(
+            spec for spec in self._registry.specs() if not spec.tool_id.startswith("subagent.")
+        )
+        messages: list[dict[str, object]] = [
+            {"role": "system", "content": (
+                f"{self._guidance.prompt}\n\n"
+                "You are an LBE-governed delegated child. Use only supplied LBE proxy tools. "
+                f"Recursive delegation is unavailable. Assigned role: {role}"
+            )},
+            {"role": "user", "content": task},
+        ]
+        output_text = ""
+        error_message: str | None = None
+        child_status = ChildAgentStatus.FAILED
+        try:
+            for iteration in range(8):
+                call_ids: dict[str, str] = {}
+                events = adapter.complete(
+                    messages=tuple(messages),
+                    provider_id=self._provider_id,
+                    lbe_call_id_for_provider_tool_call=lambda provider_call_id: call_ids.setdefault(
+                        provider_call_id, f"lbe-{child_agent_run_id}-{iteration + 1}"
+                    ),
+                    tools=tuple(_provider_tool_definition(index, spec) for index, spec in enumerate(specs)),
+                    max_output_tokens=_TOOL_STEP_MAX_OUTPUT_TOKENS,
+                )
+                error = _provider_event_error(events)
+                if error is not None:
+                    error_message = f"{error.code}: {error.message}"
+                    break
+                output_text = _message_text(events) or output_text
+                calls = tuple(event for event in events if event.event_type is ModelEventType.TOOL_CALL_COMPLETED)
+                if not calls:
+                    if any(event.event_type is ModelEventType.TURN_COMPLETED for event in events):
+                        child_status = ChildAgentStatus.COMPLETED
+                    else:
+                        error_message = "delegated login-agent turn was incomplete"
+                    break
+                messages.append(_assistant_tool_message(output_text, calls))
+                for event in calls:
+                    assert event.provider_tool_call_id is not None
+                    assert event.tool_name is not None
+                    tool_id = _tool_id_for_provider_name(event.tool_name, specs)
+                    receipt = self._orchestrator.invoke(ToolRequest(
+                        operation_id=f"{child_agent_run_id}:{event.lbe_call_id}",
+                        tool_id=tool_id,
+                        arguments=dict(event.tool_arguments or {}),
+                        context=self._context,
+                    ))
+                    on_tool_receipt(SimpleNamespace(
+                        cline_tool_call_id=event.provider_tool_call_id,
+                        lbe_call_id=event.lbe_call_id,
+                    ), receipt)
+                    messages.append({
+                        "role": "tool", "tool_call_id": event.provider_tool_call_id,
+                        "content": json.dumps(_receipt_payload(receipt), ensure_ascii=False, sort_keys=True),
+                    })
+            else:
+                error_message = "delegated login-agent exceeded the eight-iteration tool limit"
+        except Exception as exc:
+            error_message = f"{type(exc).__name__}: {exc}"
+        return ToolExecutionResult(output={
+            "child_agent_run_id": child_agent_run_id,
+            "child_session_id": child_session_id,
+            "child_status": child_status.value,
+            "output_text": output_text,
+            "error_message": error_message,
+        })
 
     def _persist_subagent_receipt(
         self,
