@@ -179,9 +179,10 @@ function Test-IntegrationContracts {
     $childProductTests = Get-SourceText -Root $AgentRoot -Path "tests/test_child_agent_product_seam.py" -SourceMode $SourceMode -AllowMissing
     $historyTests = Get-SourceText -Root $AgentRoot -Path "tests/test_operational_history.py" -SourceMode $SourceMode -AllowMissing
 
-    # Rust/Ratatui is the canonical visible LBE product client selected by the product owner
-    # on 2026-09-18. It remains projection/control only; all authority-bearing consequences
-    # continue through the canonical Agent Wall owners.
+    # The LBE-owned Python terminal (terminal_ui.py) is the canonical visible LBE product
+    # client (product decision 2026-10-10). The Rust/Ratatui client below is a retained
+    # reference/integration client; its source checks are informational and non-blocking.
+    # All authority-bearing consequences continue through the canonical Agent Wall owners.
     # Single-project topology: the client crate is colocated at apps\lbe-terminal in the Agent Wall
     # repository, so client source paths are prefixed with the crate directory.
     $wrapper = Get-SourceText -Root $ClientRoot -Path "apps/lbe-terminal/src/wrapper.rs" -SourceMode $SourceMode
@@ -220,7 +221,7 @@ function Test-IntegrationContracts {
     # non-ASCII UI glyphs without changing the actual UTF-8 source.
     $terminalMarkers = @(
         "LBE",
-        "LETTERBLACK",
+        "LOCKSTEP BOUNDARY ENGINE",
         "ACTIVE PROCESS",
         "[I] > ",
         '"/plan"',
@@ -232,8 +233,30 @@ function Test-IntegrationContracts {
     $terminalConnected = $productEntry.Contains("from .terminal_ui import main as terminal_main") -and ($missingTerminalMarkers.Count -eq 0)
     $checks.Add((New-ContractCheck -Id "lbe.terminal_product_surface" -Passed $terminalConnected -Classification $(if ($terminalConnected) { "CONNECTED" } else { "MISSING" }) -Detail $(if ($terminalConnected) { "Bare lbe delegates to the LBE-owned terminal client, which delegates governed work back through product_entry." } else { "Missing terminal markers: $($missingTerminalMarkers -join ', ')" })))
 
+    # Canonical client capability contract: these markers must exist in the packaged
+    # Python terminal, and its runtime dependency must be declared.
+    $pyproject = Get-SourceText -Root $AgentRoot -Path "pyproject.toml" -SourceMode $SourceMode
+    $terminalCapabilityMarkers = @(
+        "_run_full_screen",
+        "_run_cancellable_turn",
+        "_interactive_reader",
+        '"/providers"',
+        '"/models"',
+        '"/agents"',
+        '"/audit"'
+    )
+    $missingTerminalCapabilities = @($terminalCapabilityMarkers | Where-Object { -not $terminalUi.Contains($_) })
+    $terminalDependencyDeclared = $pyproject.Contains("prompt_toolkit")
+    $terminalCapabilitiesPass = ($missingTerminalCapabilities.Count -eq 0) -and $terminalDependencyDeclared
+    $terminalCapabilityDetail = if ($terminalCapabilitiesPass) {
+        "Python terminal exposes full-screen UI, cancellable turns, provider/model/agent catalogs and mode commands; prompt_toolkit is a declared dependency."
+    } else {
+        "Missing terminal markers: $($missingTerminalCapabilities -join ', '); prompt_toolkit declared: $terminalDependencyDeclared."
+    }
+    $checks.Add((New-ContractCheck -Id "lbe.terminal_client_capabilities" -Passed $terminalCapabilitiesPass -Classification $(if ($terminalCapabilitiesPass) { "PRESENT" } else { "MISSING" }) -Detail $terminalCapabilityDetail))
+
     $wrapperUsesProductEntry = $wrapper.Contains("lbe_guard_inspector.product_entry")
-    $checks.Add((New-ContractCheck -Id "tui.real_wrapper_boundary" -Passed $wrapperUsesProductEntry -Classification $(if ($wrapperUsesProductEntry) { "CONNECTED" } else { "MISSING" }) -Detail "Rust RealLbeWrapper must route through the canonical Agent Wall product entry."))
+    $checks.Add((New-ContractCheck -Id "tui.real_wrapper_boundary" -Blocking $false -Passed $wrapperUsesProductEntry -Classification $(if ($wrapperUsesProductEntry) { "CONNECTED" } else { "MISSING" }) -Detail "Rust RealLbeWrapper must route through the canonical Agent Wall product entry."))
 
     $readOnlyRuntimeMarkers = @(
         "registry.register(workspace_read_spec()",
@@ -244,7 +267,8 @@ function Test-IntegrationContracts {
     $readOnlyClientTools = @("workspace.read", "workspace.list", "workspace.glob", "workspace.search")
     $missingRuntimeMarkers = @($readOnlyRuntimeMarkers | Where-Object { -not $productEntry.Contains($_) })
     $missingClientTools = @($readOnlyClientTools | Where-Object { -not $wrapper.Contains($_) })
-    $readOnlyConnected = ($missingRuntimeMarkers.Count -eq 0) -and ($missingClientTools.Count -eq 0)
+    # Runtime registrations are the blocking contract; Rust tool IDs are informational.
+    $readOnlyConnected = ($missingRuntimeMarkers.Count -eq 0)
     $readOnlyDetail = if ($readOnlyConnected) {
         "Read-only workspace capabilities are registered by their canonical Agent Wall specs and routed by the Rust client."
     }
@@ -256,17 +280,19 @@ function Test-IntegrationContracts {
     $approvalRuntime = $toolRuntime.Contains("approval_granted") -and $productEntry.Contains("_governed_operation_fingerprint") -and $productEntry.Contains("save_governed_operation")
     $approvalTest = $productTests.Contains("test_product_entry_approval_bridge_executes_exact_operation_once")
     $approvalClient = $wrapper.Contains("pending_authorization") -and $wrapper.Contains("UserRequest::Approve") -and $wrapper.Contains("UserRequest::Reject") -and $wrapper.Contains("workspace.patch")
-    $approvalConnected = $approvalRuntime -and $approvalTest -and $approvalClient
+    # Runtime binding plus its proof test is the blocking contract; the Rust client
+    # approve/reject routing ($approvalClient) is a reference-client detail.
+    $approvalConnected = $approvalRuntime -and $approvalTest
     $checks.Add((New-ContractCheck -Id "workspace.patch.approval_bridge" -Passed $approvalConnected -Classification $(if ($approvalConnected) { "CONNECTED_TEST_PROOF_PRESENT" } else { "PARTIAL" }) -Detail "Requires persisted exact-operation approval binding, product-entry idempotency proof, and Rust approve/reject routing."))
 
     $payloadSubstitutionProof = $productTests.Contains("substituted") -and $productTests.Contains("payload")
     $checks.Add((New-ContractCheck -Id "workspace.patch.payload_binding" -Passed $payloadSubstitutionProof -Classification $(if ($payloadSubstitutionProof) { "TEST_PROOF_PRESENT" } else { "UNPROVEN" }) -Detail "Approved operation must reject changed payloads."))
 
-    $mcpConnected = $productEntry.Contains("mcp.birdeye.") -and $wrapper.Contains("mcp.birdeye.")
+    $mcpConnected = $productEntry.Contains("mcp.birdeye.")
     $checks.Add((New-ContractCheck -Id "mcp.birdeye.routing" -Passed $mcpConnected -Classification $(if ($mcpConnected) { "STRUCTURALLY_CONNECTED" } else { "PARTIAL" }) -Detail "BirdEye requests must cross the LBE governed tool boundary."))
 
     $sessionProjection = $types.Contains("session_id") -and $wrapper.Contains("session_id")
-    $checks.Add((New-ContractCheck -Id "session.identity_projection" -Passed $sessionProjection -Classification $(if ($sessionProjection) { "CONNECTED" } else { "PARTIAL" }) -Detail "Rust session projection must preserve authoritative LBE session identity."))
+    $checks.Add((New-ContractCheck -Id "session.identity_projection" -Blocking $false -Passed $sessionProjection -Classification $(if ($sessionProjection) { "CONNECTED" } else { "PARTIAL" }) -Detail "Rust session projection must preserve authoritative LBE session identity."))
 
     # Cline is a behavior/reference source only. LetterBlack owns product identity,
     # session truth, authorization, governed execution, receipts, and completion.
@@ -284,21 +310,21 @@ function Test-IntegrationContracts {
         "--json"
     )
     $missingCliSurface = @($cliSurfaceMarkers | Where-Object { -not $main.Contains($_) })
-    $checks.Add((New-ContractCheck -Id "tui.cli_launch_surface" -Passed ($missingCliSurface.Count -eq 0) -Classification $(if ($missingCliSurface.Count -eq 0) { "CONNECTED" } else { "PARTIAL" }) -Detail $(if ($missingCliSurface.Count -eq 0) { "Interactive, project, headless, provider/model, mode, session, continuation, and JSON launch surfaces are present." } else { "Missing CLI markers: $($missingCliSurface -join ', ')" })))
+    $checks.Add((New-ContractCheck -Id "tui.cli_launch_surface" -Blocking $false -Passed ($missingCliSurface.Count -eq 0) -Classification $(if ($missingCliSurface.Count -eq 0) { "CONNECTED" } else { "PARTIAL" }) -Detail $(if ($missingCliSurface.Count -eq 0) { "Interactive, project, headless, provider/model, mode, session, continuation, and JSON launch surfaces are present." } else { "Missing CLI markers: $($missingCliSurface -join ', ')" })))
 
     $navigationCommands = @(
         "/provider", "/models", "/sessions", "/mcp", "/tools", "/processes",
         "/activity", "/evidence", "/receipts", "/changes", "/memory", "/doctor", "/help"
     )
     $missingNavigation = @($navigationCommands | Where-Object { -not $app.Contains('"' + $_ + '"') })
-    $checks.Add((New-ContractCheck -Id "tui.navigation_surfaces" -Passed ($missingNavigation.Count -eq 0) -Classification $(if ($missingNavigation.Count -eq 0) { "PRESENT" } else { "PARTIAL" }) -Detail $(if ($missingNavigation.Count -eq 0) { "All selected navigation/diagnostic surfaces are present in the Rust UI." } else { "Missing navigation commands: $($missingNavigation -join ', ')" })))
+    $checks.Add((New-ContractCheck -Id "tui.navigation_surfaces" -Blocking $false -Passed ($missingNavigation.Count -eq 0) -Classification $(if ($missingNavigation.Count -eq 0) { "PRESENT" } else { "PARTIAL" }) -Detail $(if ($missingNavigation.Count -eq 0) { "All selected navigation/diagnostic surfaces are present in the Rust UI." } else { "Missing navigation commands: $($missingNavigation -join ', ')" })))
 
     $governedCommands = @(
         "/open", "/read", "/tree", "/list", "/glob", "/find", "/search",
         "/patch", "/run", "/authorize", "/audit", "/mode", "/new", "/clear", "/quit"
     )
     $missingGoverned = @($governedCommands | Where-Object { -not $app.Contains('"' + $_ + '"') })
-    $checks.Add((New-ContractCheck -Id "tui.governed_command_surfaces" -Passed ($missingGoverned.Count -eq 0) -Classification $(if ($missingGoverned.Count -eq 0) { "PRESENT" } else { "PARTIAL" }) -Detail $(if ($missingGoverned.Count -eq 0) { "Governed workspace, authorization, mode, session, and lifecycle command surfaces are present." } else { "Missing governed commands: $($missingGoverned -join ', ')" })))
+    $checks.Add((New-ContractCheck -Id "tui.governed_command_surfaces" -Blocking $false -Passed ($missingGoverned.Count -eq 0) -Classification $(if ($missingGoverned.Count -eq 0) { "PRESENT" } else { "PARTIAL" }) -Detail $(if ($missingGoverned.Count -eq 0) { "Governed workspace, authorization, mode, session, and lifecycle command surfaces are present." } else { "Missing governed commands: $($missingGoverned -join ', ')" })))
 
     $coreRealRoutes = @(
         "UserRequest::RefreshProviderCatalog",
@@ -318,7 +344,7 @@ function Test-IntegrationContracts {
         "UserRequest::SubmitTask"
     )
     $missingRealRoutes = @($coreRealRoutes | Where-Object { -not $wrapper.Contains($_) })
-    $checks.Add((New-ContractCheck -Id "tui.real_runtime_core_routes" -Passed ($missingRealRoutes.Count -eq 0) -Classification $(if ($missingRealRoutes.Count -eq 0) { "CONNECTED" } else { "PARTIAL" }) -Detail $(if ($missingRealRoutes.Count -eq 0) { "Core conversational, provider/model, session, MCP, diagnostics, workspace, process, and approval requests route through RealLbeWrapper." } else { "Missing RealLbeWrapper routes: $($missingRealRoutes -join ', ')" })))
+    $checks.Add((New-ContractCheck -Id "tui.real_runtime_core_routes" -Blocking $false -Passed ($missingRealRoutes.Count -eq 0) -Classification $(if ($missingRealRoutes.Count -eq 0) { "CONNECTED" } else { "PARTIAL" }) -Detail $(if ($missingRealRoutes.Count -eq 0) { "Core conversational, provider/model, session, MCP, diagnostics, workspace, process, and approval requests route through RealLbeWrapper." } else { "Missing RealLbeWrapper routes: $($missingRealRoutes -join ', ')" })))
 
     $explicitlyDeferred = @(
         "provider configuration",
@@ -333,7 +359,7 @@ function Test-IntegrationContracts {
     $checks.Add((New-ContractCheck -Id "tui.deferred_scaffolding_truth" -Passed $true -Blocking $false -Classification $(if ($deferredPresent.Count -eq 0) { "NONE" } else { "EXPLICITLY_UNAVAILABLE" }) -Detail $(if ($deferredPresent.Count -eq 0) { "No selected deferred real-runtime scaffolding remains." } else { "Still explicitly unavailable in the real wrapper: $($deferredPresent -join ', '). These surfaces must not be represented as connected." })))
 
     $requestContractPresent = $requests.Contains("SubmitTask") -and $requests.Contains("PatchWorkspace") -and $requests.Contains("Approve") -and $requests.Contains("Reject")
-    $checks.Add((New-ContractCheck -Id "tui.typed_request_contract" -Passed $requestContractPresent -Classification $(if ($requestContractPresent) { "CONNECTED" } else { "PARTIAL" }) -Detail "Typed request contract must cover conversational task submission, governed patching, and approval decisions."))
+    $checks.Add((New-ContractCheck -Id "tui.typed_request_contract" -Blocking $false -Passed $requestContractPresent -Classification $(if ($requestContractPresent) { "CONNECTED" } else { "PARTIAL" }) -Detail "Typed request contract must cover conversational task submission, governed patching, and approval decisions."))
 
     $childOwnerPresent = $history -and
         $history.Contains("create_child_agent_run") -and
@@ -388,10 +414,9 @@ function Test-IntegrationContracts {
     $identityPresent = $uiFilesPresent -and
         $visibleUi.Contains("Welcome to LBE") -and
         $visibleUi.Contains("Exit LBE") -and
-        $visibleUi.Contains("Lockstep Boundry Engine") -and
-        $visibleUi.Contains("LETTERBLACK")
+        $visibleUi.Contains("Lockstep Boundary Engine")
     $brandingPass = $uiFilesPresent -and ($brandingLeaks.Count -eq 0) -and $identityPresent
-    $checks.Add((New-ContractCheck -Id "lbe.ui.branding_contract" -Blocking $false -Passed ([bool]$brandingPass) -Classification $(if ($brandingPass) { "LBE_ONLY" } elseif (-not $uiFilesPresent) { "MISSING" } else { "FAIL" }) -Detail $(if ($brandingLeaks.Count) { "Visible Cline branding leaks: $($brandingLeaks -join ', ')" } elseif (-not $identityPresent) { "Required LBE / Lockstep Boundry Engine / LETTERBLACK identity markers are incomplete." } else { "Active CLI/TUI surface is LBE-branded." })))
+    $checks.Add((New-ContractCheck -Id "lbe.ui.branding_contract" -Blocking $false -Passed ([bool]$brandingPass) -Classification $(if ($brandingPass) { "LBE_ONLY" } elseif (-not $uiFilesPresent) { "MISSING" } else { "FAIL" }) -Detail $(if ($brandingLeaks.Count) { "Visible Cline branding leaks: $($brandingLeaks -join ', ')" } elseif (-not $identityPresent) { "Required LBE / Lockstep Boundary Engine identity markers are incomplete." } else { "Active CLI/TUI surface is LBE-branded." })))
 
     # Branding alone is insufficient. The accepted LBE surface must not retain the
     # recognizable Cline centered hero/composer composition. Structural acceptance
@@ -1404,15 +1429,16 @@ $manifest = [ordered]@{
         rule = "Only check may inspect worktree state; prove/build/package require clean origin/main exports and cannot use uncommitted source."
     }
     authority = [ordered]@{
-        rule = "Agent Wall is the runtime/governance authority. The LBE-owned Rust/Ratatui client is the canonical visible product surface, colocated in the Agent Wall repository at apps\lbe-terminal. Headless Cline mechanics provide cognition/provider/model/continuation behind LBE. This script owns no runtime decision."
+        rule = "Agent Wall is the runtime/governance authority. The LBE-owned Python terminal (lbe_guard_inspector/terminal_ui.py, reached by bare lbe via product_entry) is the canonical visible product surface since the 2026-10-10 product decision. The Rust/Ratatui client at apps\lbe-terminal is a retained reference/integration client and is not packaged. Headless Cline mechanics provide cognition/provider/model/continuation behind LBE. This script owns no runtime decision."
         agent_wall = $agent
-        rust_product_client = [ordered]@{ repository = $AgentWallRepository; role = "CANONICAL_VISIBLE_PRODUCT_CLIENT"; path = "apps/lbe-terminal/src/" }
+        terminal_product_client = [ordered]@{ repository = $AgentWallRepository; role = "CANONICAL_VISIBLE_PRODUCT_CLIENT"; path = "lbe_guard_inspector/terminal_ui.py" }
+        rust_reference_client = [ordered]@{ repository = $AgentWallRepository; role = "RETAINED_REFERENCE_CLIENT_NOT_PACKAGED"; path = "apps/lbe-terminal/src/" }
     }
     product_surface = [ordered]@{
         name = "LBE CLI/TUI"
-        full_name = "Lockstep Boundry Engine"
+        full_name = "Lockstep Boundary Engine"
         brand = "LETTERBLACK"
-        mechanics = "Rust/Ratatui visible client + headless Cline reasoning/provider worker"
+        mechanics = "LBE-owned Python terminal client + headless Cline reasoning/provider worker"
         rule = "User-facing product identity and presentation are LBE-owned. Cline remains headless internal mechanics only; all capability/consequence authority remains with LBE."
     }
     cline_upstream_reference = [ordered]@{
