@@ -1090,7 +1090,7 @@ foreach ($jsonConfig in @(
         [IO.File]::WriteAllText($jsonConfig, $jsonText, $utf8NoBom)
     }
 }
-$site = & $python -c "import pathlib,lbe_guard_inspector; print(pathlib.Path(lbe_guard_inspector.__file__).parent)"
+$site = & $python -I -c "import pathlib,lbe_guard_inspector; print(pathlib.Path(lbe_guard_inspector.__file__).parent)"
 if ($LASTEXITCODE -ne 0) { throw "Unable to resolve installed LBE package" }
 $workerTarget = Join-Path $site "runtime\cline_worker"
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "cline-worker\node_modules") -Destination $workerTarget -Recurse -Force
