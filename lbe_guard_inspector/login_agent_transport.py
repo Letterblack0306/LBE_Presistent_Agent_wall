@@ -115,16 +115,13 @@ def spec_from_mapping(provider_id: str, raw: Mapping[str, Any]) -> LoginAgentSpe
 
 
 def load_extra_login_agents(path: str | os.PathLike[str] | None = None) -> dict[str, LoginAgentSpec]:
-    """Register additional platforms from LBE_LOGIN_AGENTS_FILE (or `path`)."""
-    location = path or os.environ.get("LBE_LOGIN_AGENTS_FILE")
-    if not location or not os.path.exists(location):
-        return {}
-    with open(location, encoding="utf-8") as handle:
-        data = json.load(handle)
-    if not isinstance(data, dict):
-        raise ValueError("login agents file must be a JSON object keyed by provider id")
-    added = {pid: spec_from_mapping(pid, raw) for pid, raw in data.items() if pid not in LOGIN_AGENT_SPECS}
-    LOGIN_AGENT_SPECS.update(added)  # type: ignore[attr-defined]
+    """Register login-agent entries from the custom providers file (or `path`)."""
+    from .custom_providers import login_agent_entries
+
+    added = {pid: spec_from_mapping(pid, raw)
+             for pid, raw in login_agent_entries(str(path) if path else None).items()
+             if pid not in LOGIN_AGENT_SPECS}
+    LOGIN_AGENT_SPECS.update(added)
     return added
 
 

@@ -20,6 +20,7 @@ from .reasoning_provider import (
     ProviderConfig,
     ProviderError,
     UrllibJsonTransport,
+    apply_credentials,
     resolve_max_output_tokens,
 )
 
@@ -61,8 +62,7 @@ class OpenAICompatibleEventAdapter:
         if tools:
             payload["tools"] = [dict(item) for item in tools]
         headers = {"Content-Type": "application/json"}
-        if self._config.api_key:
-            headers["Authorization"] = f"Bearer {self._config.api_key}"
+        apply_credentials(self._config, headers)
         try:
             response = self._transport.post_json(
                 endpoint=self._config.endpoint.strip(),
@@ -182,8 +182,7 @@ class OpenAICompatibleEventAdapter:
             "max_tokens": resolved_max_tokens,
         }
         headers = {"Content-Type": "application/json"}
-        if self._config.api_key:
-            headers["Authorization"] = f"Bearer {self._config.api_key}"
+        apply_credentials(self._config, headers)
         request_id: str | None = None
         started = False
         text_seen = False

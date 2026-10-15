@@ -87,6 +87,8 @@ class ProviderConfig:
     # Optional explicit output cap. `None` means "no user/provider cap", and the
     # resolver applies the LBE default and ceiling. It is never the context window.
     max_output_tokens: int | None = None
+    # Extra request headers for custom providers (e.g. gateways needing x-api-key).
+    headers: Mapping[str, str] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.endpoint, str) or not self.endpoint.strip():
@@ -103,6 +105,15 @@ class ProviderConfig:
             not isinstance(self.provider_id, str) or not self.provider_id.strip()
         ):
             raise ValueError("provider_id must be a non-empty string when supplied")
+
+
+def apply_credentials(config: "ProviderConfig", headers: dict[str, str]) -> dict[str, str]:
+    """Add bearer auth and any custom headers; custom headers win on conflict."""
+    if config.api_key:
+        headers["Authorization"] = f"Bearer {config.api_key}"
+    for name, value in (config.headers or {}).items():
+        headers[str(name)] = str(value)
+    return headers
 
 
 class ProviderError(RuntimeError):
@@ -130,9 +141,7 @@ def discover_openai_compatible_model_ids(config: ProviderConfig) -> tuple[str, .
     models_url = urllib.parse.urlunsplit(
         (parsed.scheme, parsed.netloc, models_path, "", "")
     )
-    headers = {"Accept": "application/json"}
-    if config.api_key:
-        headers["Authorization"] = f"Bearer {config.api_key}"
+    headers = apply_credentials(config, {"Accept": "application/json"})
     request = urllib.request.Request(models_url, headers=headers, method="GET")
     try:
         with urllib.request.urlopen(
@@ -352,9 +361,7 @@ class OpenAICompatibleReasoningBackend:
         }
         if self._config.reasoning_effort is not None:
             payload["reasoning_effort"] = self._config.reasoning_effort.strip()
-        headers = {"Content-Type": "application/json"}
-        if self._config.api_key:
-            headers["Authorization"] = f"Bearer {self._config.api_key}"
+        headers = apply_credentials(self._config, {"Content-Type": "application/json"})
         response = self._transport.post_json(
             endpoint=self._config.endpoint.strip(),
             payload=payload,

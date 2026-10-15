@@ -290,6 +290,31 @@ def login_agent_factory(provider_id: str) -> ProviderFactory:
     return factory
 
 
+def custom_openai_factory(provider) -> ProviderFactory:
+    """Bind a user-declared OpenAI-compatible provider (custom_providers.py)."""
+    from dataclasses import replace
+
+    from .custom_providers import resolve_credentials
+
+    def factory(config: ProviderConfig) -> ProviderHandle:
+        api_key, headers = resolve_credentials(provider)
+        merged = replace(
+            config,
+            endpoint=config.endpoint if config.endpoint.strip() else (provider.endpoint or config.endpoint),
+            api_key=config.api_key or api_key,
+            headers={**headers, **dict(config.headers or {})} or None,
+            provider_id=provider.provider_id,
+        )
+        return _handle(
+            provider.provider_id,
+            merged,
+            ToolAwareOpenAICompatibleReasoningBackend(config=merged),
+            engine_id=NATIVE_LBE_ENGINE_ID,
+        )
+
+    return factory
+
+
 def openai_factory(config: ProviderConfig) -> ProviderHandle:
     require_api_key(config, "openai")
     family, evidence = detect_protocol_family(
@@ -438,6 +463,17 @@ def default_provider_registry() -> ProviderRegistry:
             factory=login_agent_factory(provider_id),
             default=True,
         )
+
+    from .custom_providers import load_openai_providers
+
+    for custom in load_openai_providers().values():
+        if custom.provider_id not in registry.provider_ids():
+            registry.register_binding(
+                engine_id=NATIVE_LBE_ENGINE_ID,
+                provider_id=custom.provider_id,
+                factory=custom_openai_factory(custom),
+                default=True,
+            )
 
     # LM Studio, Ollama, OpenRouter, DeepSeek, Groq, Mistral, Together, Fireworks, and xAI expose OpenAI-compatible chat
     # transports. Native LBE bindings are usable without Cline, while the
