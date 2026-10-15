@@ -45,7 +45,9 @@ def test_header_is_ascii_safe(capsys) -> None:
     terminal_ui._print_header({"mode": "coding", "provider_id": "p", "provider_model": "m", "session_id": "s"}, terminal_ui.Path("C:/work"))
     out = capsys.readouterr().out
     out.encode("ascii")
-    assert "LBE | LETTERBLACK" in out
+    assert "LBE | LOCKSTEP BOUNDARY ENGINE" in out
+    assert "+-----------+" in out
+    assert "|  |[ | ]|  |" in out
     assert "-" * 60 in out
 
 
@@ -235,3 +237,181 @@ def test_resolve_pending_authorization_reuses_runtime_identities(monkeypatch, tm
     resolve_call = calls[1]
     assert resolve_call[resolve_call.index("--workspace-id") + 1] == "workspace-1"
     assert resolve_call[resolve_call.index("--approval-id") + 1] == "approval-1"
+
+
+def test_interactive_commands_include_existing_runtime_routes() -> None:
+    assert {"/help", "/status", "/models", "/approve", "/deny", "/quit"}.issubset(
+        set(terminal_ui._TERMINAL_COMMANDS)
+    )
+
+def test_fullscreen_uses_actual_product_runtime_and_no_second_executor(monkeypatch, tmp_path) -> None:
+    """A TTY launch routes to the UI while preserving existing product entry."""
+    monkeypatch.setattr(terminal_ui.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(terminal_ui.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(terminal_ui, "_ensure_session", lambda args: "session-1")
+    monkeypatch.setattr(terminal_ui, "_status", lambda database, session: {
+        "session_id": session, "provider_id": "local",
+        "provider_model": "model-1", "mode": "audit"
+    })
+    seen = {}
+    def fake_full_screen(args, session_id, status):
+        seen.update({"session_id": session_id, "model": status["provider_model"]})
+        return 0
+    monkeypatch.setattr(terminal_ui, "_run_full_screen", fake_full_screen)
+    config = tmp_path / "provider.json"
+    config.write_text('{"model":"model-1"}', encoding="utf-8")
+    assert terminal_ui.main([str(tmp_path), "--database", str(tmp_path / "state.sqlite3"),
+                             "--provider-config", str(config), "--agent", "audit"]) == 0
+    assert seen == {"session_id": "session-1", "model": "model-1"}
+
+
+def test_cancellable_turn_preserves_json_product_result(monkeypatch):
+    import threading
+    from types import SimpleNamespace
+    class Finished:
+        returncode = 0
+        def communicate(self):
+            return ('{"ok":true,"events":[]}', "")
+    monkeypatch.setattr(terminal_ui.subprocess, "Popen", lambda *args, **kwargs: Finished())
+    assert terminal_ui._run_cancellable_turn(["turn"], threading.Event())["ok"] is True
+
+
+def test_cancellable_turn_does_not_claim_rollback(monkeypatch):
+    import threading
+    import time
+    class Running:
+        returncode = -15
+        def __init__(self):
+            self.stopped = threading.Event()
+        def communicate(self):
+            self.stopped.wait(timeout=3)
+            return ("", "")
+        def terminate(self):
+            self.stopped.set()
+        def kill(self):
+            self.stopped.set()
+    process = Running()
+    monkeypatch.setattr(terminal_ui.subprocess, "Popen", lambda *args, **kwargs: process)
+    cancellation = threading.Event()
+    cancellation.set()
+    import pytest
+    with pytest.raises(RuntimeError, match="already executed tool effects"):
+        terminal_ui._run_cancellable_turn(["turn"], cancellation)
+    assert process.stopped.is_set()
+
+
+def test_live_turn_events_are_delivered_once_in_session_order(monkeypatch, tmp_path):
+    import threading
+    from types import SimpleNamespace
+
+    event = SimpleNamespace(session_sequence=8, event_type="tool.completed",
+                            payload={"tool_id": "workspace.read"}, tool_receipt_id="rcpt-live")
+    old = SimpleNamespace(session_sequence=7, event_type="user.message", payload={})
+    class History:
+        reads = 0
+        def __init__(self, *, store):
+            pass
+        def events_for_session(self, *, session_id):
+            self.reads += 1
+            return (old,) if self.reads == 1 else (old, event, event)
+    class Process:
+        returncode = 0
+        def communicate(self):
+            return ('{"ok":true,"events":[]}', "")
+    import lbe_guard_inspector.memory.operational_history as history_module
+    monkeypatch.setattr(history_module, "SessionOperationalHistory", History)
+    monkeypatch.setattr(terminal_ui.subprocess, "Popen", lambda *args, **kwargs: Process())
+    seen = []
+    result = terminal_ui._run_cancellable_turn(
+        ["turn"], threading.Event(), on_event=seen.append,
+        database=tmp_path / "test.sqlite3", session_id="test-session")
+    assert result["ok"] is True
+    assert [e.tool_receipt_id for e in seen] == ["rcpt-live"]
+
+
+def test_resume_transcript_replays_real_session_events(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from lbe_guard_inspector.memory import operational_history
+    class History:
+        def __init__(self, *, store):
+            pass
+        def events_for_session(self, *, session_id):
+            assert session_id == "same-session"
+            return [
+                SimpleNamespace(event_type="user.message", payload={"text": "check status"}, tool_receipt_id=None, runtime_operation_id=None),
+                SimpleNamespace(event_type="tool.completed", payload={}, tool_receipt_id="receipt-1", runtime_operation_id=None),
+                SimpleNamespace(event_type="model.message.completed", payload={"text": "Done"}, tool_receipt_id=None, runtime_operation_id=None),
+            ]
+    monkeypatch.setattr(operational_history, "SessionOperationalHistory", History)
+    result=terminal_ui._resume_transcript(tmp_path/"db.sqlite3", "same-session")
+    assert "you > check status" in result
+    assert "receipt-1" in result
+    assert "agent" in result and "Done" in result
+
+
+def test_fullscreen_renders_conversation_first_without_metadata_sidebar(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.output import DummyOutput
+    import prompt_toolkit.application.application as app_module
+    from prompt_toolkit.input import DummyInput
+    monkeypatch.setattr(app_module, "get_app_session", lambda: SimpleNamespace(output=DummyOutput(), input=DummyInput()))
+    from prompt_toolkit.layout.containers import HSplit
+    from prompt_toolkit.widgets import Frame
+    import prompt_toolkit.widgets as widgets
+    from prompt_toolkit.widgets import TextArea
+    frames = []
+    def record_frame(*args, **kwargs):
+        frame = Frame(*args, **kwargs)
+        frames.append(frame)
+        return frame
+    monkeypatch.setattr(widgets, "Frame", record_frame)
+
+    db = tmp_path / "state.sqlite3"
+    monkeypatch.setattr(terminal_ui, "_resume_transcript", lambda database, sid: "you > recovered turn")
+    captured = {}
+    def inspect(self, *args, **kwargs):
+        root = self.layout.container
+        captured["root"] = root
+        captured["frames"] = frames
+        return 0
+    monkeypatch.setattr(Application, "run", inspect)
+    args = SimpleNamespace(database=db, workspace=tmp_path, provider_config=tmp_path / "provider.json")
+    status = {"provider_id":"openai-compatible","provider_model":"model-a","mode":"audit"}
+    assert terminal_ui._run_full_screen(args, "same-session", status) == 0
+    assert isinstance(captured["root"], HSplit)
+    assert len(captured["frames"]) == 2
+    assert captured["frames"][0].title == "Conversation / tools"
+    assert captured["frames"][1].title.startswith("Task ")
+    conversation = captured["frames"][0].body
+    assert isinstance(conversation, TextArea)
+    assert "recovered turn" in conversation.text
+
+
+def test_fullscreen_slash_menu_filters_actual_commands(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.output import DummyOutput
+    from prompt_toolkit.input import DummyInput
+    import prompt_toolkit.application.application as app_module
+    from prompt_toolkit.document import Document
+    import prompt_toolkit.widgets as widgets
+    monkeypatch.setattr(app_module, "get_app_session", lambda: SimpleNamespace(
+        input=DummyInput(), output=DummyOutput()))
+    monkeypatch.setattr(terminal_ui, "_resume_transcript", lambda database, session: "")
+    text_areas = []
+    original = widgets.TextArea
+    def record(*args, **kwargs):
+        item = original(*args, **kwargs)
+        text_areas.append(item)
+        return item
+    monkeypatch.setattr(widgets, "TextArea", record)
+    monkeypatch.setattr(Application, "run", lambda self: 0)
+    args = SimpleNamespace(database=tmp_path/"state.sqlite3", workspace=tmp_path,
+                           provider_config=tmp_path/"provider.json")
+    terminal_ui._run_full_screen(args, "test-session", {"mode":"audit"})
+    menu = next(area.completer for area in text_areas if area.completer is not None)
+    values = [c.text for c in menu.get_completions(Document("/mo"), None)]
+    assert "/model" in values and "/models" in values
+    assert "/quit" not in values
+    assert list(menu.get_completions(Document("ordinary task"), None)) == []

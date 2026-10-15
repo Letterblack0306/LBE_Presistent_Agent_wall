@@ -66,6 +66,86 @@ def _run_product_json(arguments: Sequence[str]) -> dict[str, Any]:
     return payload
 
 
+
+def _run_cancellable_turn(arguments: Sequence[str], cancel_event: Any, *,
+                          on_event: Any = None, database: Path | None = None,
+                          session_id: str | None = None) -> dict[str, Any]:
+    """Interrupt the local turn process, not committed remote/workspace effects."""
+    import subprocess as _subprocess
+
+    command = [sys.executable, "-m", "lbe_guard_inspector.product_entry",
+               "--format", "json", *arguments]
+    process = _subprocess.Popen(
+        command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE,
+        text=True, encoding="utf-8", errors="replace",
+    )
+    history = None
+    last_sequence = 0
+    if on_event is not None and database is not None and session_id:
+        from .cli import WorkspaceMemoryStore
+        from .memory.operational_history import SessionOperationalHistory
+        history = SessionOperationalHistory(store=WorkspaceMemoryStore(str(database)))
+        old = history.events_for_session(session_id=session_id)
+        last_sequence = max((event.session_sequence for event in old), default=0)
+
+    def deliver_new_events():
+        nonlocal last_sequence
+        if history is None:
+            return
+        for event in history.events_for_session(session_id=session_id):
+            if event.session_sequence <= last_sequence:
+                continue
+            last_sequence = event.session_sequence
+            if event.event_type.startswith(("tool.", "runtime.provider.", "model.error")):
+                on_event(event)
+
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(process.communicate)
+        while True:
+            try:
+                stdout, stderr = future.result(timeout=0.15)
+                deliver_new_events()
+                break
+            except FutureTimeout:
+                deliver_new_events()
+                if cancel_event.is_set():
+                    # Request cancellation from the persisted LBE turn owner
+                    # before stopping the waiting CLI transport.
+                    if history is not None:
+                        running = history.latest_running_turn(session_id=session_id)
+                        if running is not None:
+                            try:
+                                _run_product_json([
+                                    "control", "cancel", "--database", str(database),
+                                    "--session-id", str(session_id),
+                                    "--turn-id", running.turn_id,
+                                ])
+                            except RuntimeError:
+                                pass  # local interruption is not proof of runtime cancellation
+                    process.terminate()
+                    try:
+                        future.result(timeout=2)
+                    except FutureTimeout:
+                        process.kill()
+                        future.result(timeout=5)
+                    raise RuntimeError(
+                        "Turn interrupted locally; already executed tool effects "
+                        "must be checked in the LBE receipts."
+                    )
+    raw = stdout.strip()
+    if not raw:
+        raise RuntimeError(stderr.strip() or f"LBE turn exited {process.returncode} without JSON")
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"LBE turn returned invalid JSON: {raw[:400]}") from exc
+    if process.returncode != 0 or not payload.get("ok", True):
+        raise RuntimeError(str(payload.get("message") or payload.get("reason") or
+                               payload.get("error") or stderr.strip() or process.returncode))
+    return payload
+
+
 def _workspace_id(workspace: Path) -> str:
     import hashlib
     digest = hashlib.sha256(str(workspace).lower().encode("utf-8")).hexdigest()
@@ -231,21 +311,140 @@ def _render_turn(result: dict[str, Any]) -> dict[str, str] | None:
     return pending
 
 
+# Monochrome terminal projection of docs/reference/ui/lbe-logo.svg.
+# Frame, opposing brackets and center bar preserve existing brand geometry.
+_LBE_LOGO_TERMINAL = (
+    "+-----------+",
+    "|  +-----+  |",
+    "|  |[ | ]|  |",
+    "|  |[ | ]|  |",
+    "|  +-----+  |",
+    "+-----------+",
+)
+
+_TERMINAL_COMMANDS = (
+    "/help", "/status", "/providers", "/provider", "/agents", "/models", "/model ",
+    "/plan", "/act", "/audit", "/approve", "/deny",
+    "/quit", "/exit",
+)
+
+
+def _interactive_reader(database: Path, session_id: str):
+    """Editable terminal composer; keep the standard-input fallback dependency-free."""
+    try:
+        from prompt_toolkit import PromptSession
+        from prompt_toolkit.completion import WordCompleter
+        from prompt_toolkit.history import InMemoryHistory
+        from prompt_toolkit.styles import Style
+    except ImportError:
+        return lambda: input("[I] > ")
+
+    session = PromptSession(
+        history=InMemoryHistory(),
+        completer=WordCompleter(_TERMINAL_COMMANDS, sentence=True),
+        complete_while_typing=False,
+        style=Style.from_dict({
+            "bottom-toolbar": "bg:#15171c #a6aab2",
+            "prompt": "#e8555a bold",
+        }),
+    )
+
+    def footer():
+        try:
+            state = _status(database, session_id)
+            model = str(state.get("provider_model") or "model?")
+            provider = str(state.get("provider_id") or "provider?")
+            mode = _mode_label(state.get("mode"))
+        except RuntimeError:
+            provider, model, mode = "provider?", "model?", "UNKNOWN"
+        return (
+            f" {provider}/{model}  |  {mode}  |  "
+            "/help  /providers  /models  /plan  /act  /audit  /quit "
+        )
+
+    return lambda: session.prompt(
+        "LBE > ",
+        bottom_toolbar=footer,
+        complete_in_thread=False,
+    )
+
+def _landing_rows(status: dict[str, Any], workspace: Path) -> tuple[str, ...]:
+    """Snapshot real session fields; unknown state is never shown as healthy."""
+    provider = str(status.get("provider_id") or "not configured")
+    model = str(status.get("provider_model") or "not selected")
+    mode = _mode_label(status.get("mode"))
+    session = str(status.get("session_id") or "not started")
+    return (
+        "  LBE  /  LOCKSTEP BOUNDARY ENGINE",
+        "  " + "-" * 55,
+        f"  Workspace  {workspace}",
+        f"  Provider   {provider}",
+        f"  Model      {model}",
+        f"  Session    {session}",
+        f"  Mode       {mode}",
+        "  " + "-" * 55,
+        "  /providers  list available providers  /models  inspect model catalog",
+        "  /model ID   select model          /plan /act /audit  switch mode",
+        "  /status     refresh session       /help   commands and keys",
+        "  Enter task to start a governed turn.  Tab: commands  Up/Down: history",
+    )
+
+
+def _select_from_catalog(title: str, values: list[str]) -> str | None:
+    """Native keyboard picker; never use static example provider/model lists."""
+    unique = list(dict.fromkeys(str(v) for v in values if str(v).strip()))
+    if not unique:
+        return None
+    try:
+        from prompt_toolkit.shortcuts import radiolist_dialog
+        return radiolist_dialog(
+            title=title,
+            text="Arrow keys: choose  |  Enter: confirm  |  Tab: buttons  |  Esc: cancel",
+            values=[(item, item) for item in unique],
+        ).run()
+    except (ImportError, EOFError, KeyboardInterrupt):
+        for index, value in enumerate(unique, 1):
+            print(f"  {index:>2}. {value}")
+        try:
+            reply = input("Choose number (blank cancels): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return None
+        return unique[int(reply)-1] if reply.isdigit() and 1 <= int(reply) <= len(unique) else None
+
 def _print_header(status: dict[str, Any], workspace: Path) -> None:
     mode = _mode_label(status.get("mode"))
     provider = status.get("provider_id") or "provider?"
     model = status.get("provider_model") or "model?"
     session = status.get("session_id") or "session?"
-    print("LBE | LETTERBLACK")
+    for line in _LBE_LOGO_TERMINAL:
+        print(line)
+    print("LBE | LOCKSTEP BOUNDARY ENGINE")
     print(f"{workspace} | {provider}/{model} | {mode}")
     print(f"session {session}")
     print("-" * 60)
 
 
 def _help() -> None:
-    print("/plan  /act  /audit  /status  /providers  /models  /model <id>  /approve  /deny  /help  /quit")
+    print("/plan  /act  /audit  /status  /provider  /providers  /agents  /models  /model <id>  /approve  /deny  /help  /quit")
     print("Provider/model and approval commands delegate to existing LBE runtime owners.")
     print("Enter any other text to start a governed LBE turn.")
+
+
+def _render_agents() -> None:
+    """Read-only catalog of external agent platforms (no model is run)."""
+    from .agent_platforms import discover_agent_platforms
+
+    print("AGENT PLATFORMS (catalog only; discovery runs --version, never a model)")
+    for row in discover_agent_platforms():
+        flags = ", ".join(
+            name for name, on in (
+                ("mcp", row["mcp_client"]),
+                ("hooks", row["hooks"]),
+                ("acp", bool(row["acp_args"])),
+            ) if on
+        ) or "-"
+        state = row["version"] or ("installed" if row["installed"] else "not installed")
+        print(f"  {row['platform_id']:<13} {row['display_name']:<20} {state:<28} {flags}")
 
 
 def _providers() -> dict[str, Any]:
@@ -374,6 +573,283 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+
+
+
+def _resume_transcript(database: Path, session_id: str) -> str:
+    """Project persisted conversational history without creating another store."""
+    from .cli import WorkspaceMemoryStore
+    from .memory.operational_history import SessionOperationalHistory
+    history = SessionOperationalHistory(store=WorkspaceMemoryStore(str(database)))
+    lines = []
+    for event in history.events_for_session(session_id=session_id):
+        payload = event.payload if isinstance(event.payload, dict) else {}
+        message = _payload_text(payload)
+        if event.event_type == "user.message" and message:
+            lines.append("you > " + message)
+        elif event.event_type in {"model.message.completed", "model.output.completed", "assistant.message.completed"} and message:
+            lines.append("agent\n" + message)
+        elif event.event_type in {"tool.completed", "tool.failed", "tool.denied", "tool.escalated"}:
+            reference = str(event.tool_receipt_id or event.runtime_operation_id or "")
+            lines.append("  " + event.event_type + (" | " + reference if reference else ""))
+    return "\n\n".join(lines[-150:])
+
+
+def _run_full_screen(args: argparse.Namespace, session_id: str, initial: dict[str, Any]) -> int:
+    """Terminal view only: all state transitions remain owned by product_entry."""
+    import io
+    import threading
+    cancel_turn = threading.Event()
+    from contextlib import redirect_stdout
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.completion import Completer, Completion
+    from prompt_toolkit.filters import Condition
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.filters import Condition
+    from prompt_toolkit.layout import HSplit, Layout, Window
+    from prompt_toolkit.layout.controls import FormattedTextControl
+    from prompt_toolkit.widgets import Frame, TextArea
+    from prompt_toolkit.styles import Style
+
+    state = dict(initial)
+    pending: dict[str, str] | None = None
+    busy = False
+    activity_state = "IDLE"
+    previous = _resume_transcript(args.database, session_id)
+    transcript = TextArea(text=(previous + "\n\n" if previous else
+                                "LBE | LOCKSTEP BOUNDARY ENGINE\nWhat can I do for you?\n\n"),
+                          read_only=True, scrollbar=True, wrap_lines=True, focusable=True)
+    class SlashCompleter(Completer):
+        def get_completions(self, document, complete_event):
+            text = document.text_before_cursor
+            if not text.startswith("/") or "\n" in text or " " in text:
+                return
+            for command in _TERMINAL_COMMANDS:
+                candidate = command.strip()
+                if candidate.startswith(text) and candidate != text:
+                    yield Completion(candidate, start_position=-len(text),
+                                     display=candidate)
+
+    composer = TextArea(multiline=True, height=3, prompt="> ",
+                        scrollbar=False, wrap_lines=True,
+                        completer=SlashCompleter(),
+                        complete_while_typing=True)
+    status = FormattedTextControl(text=lambda: [
+        ("class:accent", " LBE  "),
+        ("class:status", "  |  " + str(state.get("provider_id") or "?") + "/" +
+         str(state.get("provider_model") or "?") + "  |  " +
+         _mode_label(state.get("mode")) +
+         ("  |  CANCELLING" if busy and cancel_turn.is_set() else "  |  " + activity_state if busy else "  |  READY") +
+         ("  |  APPROVAL REQUIRED" if pending else "")),
+    ])
+    keys = KeyBindings()
+    app = None
+
+    def append(text: str):
+        if not text:
+            return
+
+        def render():
+            transcript.buffer.read_only = False
+            transcript.text = (transcript.text + text + "\n")[-60000:]
+            transcript.buffer.read_only = True
+            transcript.buffer.cursor_position = len(transcript.text)
+            if app is not None:
+                app.invalidate()
+
+        # Prompt-toolkit buffers belong to the UI event loop, not the provider worker.
+        loop = getattr(app, "loop", None) if app is not None else None
+        if loop is not None and threading.current_thread() is not threading.main_thread():
+            loop.call_soon_threadsafe(render)
+        else:
+            render()
+
+    def run_command(line: str):
+        nonlocal busy, pending, state, activity_state
+        out = io.StringIO()
+        try:
+            with redirect_stdout(out):
+                if line in {"/help", "?"}:
+                    _help()
+                elif line == "/status":
+                    state = _status(args.database, session_id)
+                    for row in _landing_rows(state, args.workspace):
+                        print(row)
+                elif line == "/providers":
+                    _render_providers(_providers())
+                elif line == "/agents":
+                    _render_agents()
+                elif line == "/provider":
+                    _render_providers(_providers())
+                    print("Choose a compatible configured provider through its runtime binding; selection alone does not grant authorization.")
+                elif line == "/models":
+                    _render_models(_models(args.provider_config), str(state.get("provider_model") or ""))
+                elif line.startswith("/model "):
+                    model_id = line[7:].strip()
+                    catalog = _models(args.provider_config)
+                    options = [str(x) for x in catalog.get("models") or []]
+                    if model_id not in options:
+                        print("DENIED | model not in the active endpoint catalog")
+                    else:
+                        result = _select_model(
+                            database=args.database, session_id=session_id,
+                            provider_id=str(state.get("provider_id") or ""),
+                            model_id=model_id)
+                        state = _status(args.database, session_id)
+                        print("MODEL | " + str(result.get("provider_model") or model_id))
+                elif line in {"/plan", "/act", "/audit"}:
+                    result = _set_mode(args.database, session_id, _MODES[line[1:]])
+                    if result.get("accepted", True):
+                        state = _status(args.database, session_id)
+                        print("MODE | " + _mode_label(state.get("mode")))
+                    else:
+                        print("DENIED | " + str(result.get("rationale") or result.get("status") or "mode transition"))
+                elif line in {"/approve", "/deny"}:
+                    if pending is None:
+                        print("DENIED | no operation requires approval")
+                    else:
+                        receipt = _resolve_pending_authorization(
+                            database=args.database, session_id=session_id, pending=pending,
+                            decision="approve" if line == "/approve" else "reject")
+                        _render_governed_receipt(receipt)
+                        if str(receipt.get("status") or "") in {"EXECUTED", "DENIED", "FAILED"}:
+                            pending = None
+                elif line == "/model":
+                    _render_models(_models(args.provider_config), str(state.get("provider_model") or ""))
+                    print("Use /model <id> to select a model.")
+                else:
+                    def show_event(event):
+                        nonlocal activity_state
+                        event_type = str(event.event_type)
+                        activity_state = event_type
+                        detail = str(event.payload.get("tool_id") or event.runtime_operation_id or "")
+                        receipt = str(event.tool_receipt_id or "")
+                        append("  " + event_type +
+                               ("  " + detail if detail else "") +
+                               ("  receipt " + receipt if receipt else ""))
+                        if app is not None:
+                            app.invalidate()
+                    result = _run_cancellable_turn([
+                        "turn", "--database", str(args.database),
+                        "--session-id", session_id, "--text", line,
+                        "--provider-config", str(args.provider_config)], cancel_turn,
+                        on_event=show_event, database=args.database, session_id=session_id)
+                    new_pending = _render_turn(result)
+                    if new_pending is not None:
+                        pending = new_pending
+        except Exception as exc:
+            out.write("FAILED | " + str(exc) + "\n")
+        finally:
+            content = out.getvalue().strip()
+            append(content or "No displayable result; inspect runtime status with /status")
+            busy = False
+            activity_state = "IDLE"
+            if app is not None:
+                app.invalidate()
+
+    @keys.add("enter", filter=Condition(lambda: app is not None and app.layout.current_window == composer.window))
+    def submit(event):
+        nonlocal busy, activity_state
+        if busy:
+            return
+        line = composer.text.strip()
+        if not line:
+            return
+        composer.text = ""
+        if line in {"/quit", "/exit"}:
+            event.app.exit(result=0)
+            return
+        append("you  > " + line)
+        cancel_turn.clear()
+        busy = True
+        activity_state = "STARTING"
+        event.app.invalidate()
+        threading.Thread(target=run_command, args=(line,), daemon=True).start()
+
+    @keys.add("tab", filter=Condition(lambda: app is not None and app.layout.current_window == composer.window))
+    def command_completion(event):
+        if composer.buffer.complete_state:
+            composer.buffer.complete_next()
+        elif composer.text.startswith("/"):
+            composer.buffer.start_completion(select_first=False)
+
+    @keys.add("c-j", filter=Condition(lambda: app is not None and app.layout.current_window == composer.window))
+    def newline(event):
+        event.current_buffer.insert_text("\n")
+
+    @keys.add("f3")
+    def open_model_catalog(event):
+        # Keep the choice in the composer; submission owns the actual mutation.
+        import threading
+        def load():
+            try:
+                catalog = _models(args.provider_config)
+                options = [str(x) for x in catalog.get("models") or []]
+                if not options:
+                    append("No models reported by the configured endpoint.")
+                else:
+                    append("AVAILABLE MODELS\n" + "\n".join(
+                        "  /model " + x for x in options))
+                    append("Type /model <id> to select through LBE.")
+            except RuntimeError as exc:
+                append("MODEL CATALOG | " + str(exc))
+        threading.Thread(target=load, daemon=True).start()
+
+    @keys.add("f2")
+    def open_provider_catalog(event):
+        import threading
+        def load():
+            try:
+                catalog = _providers()
+                choices = [str(x) for x in catalog.get("providers") or []]
+                append("AVAILABLE PROVIDERS\n" + "\n".join("  " + x for x in choices))
+                append("Use /providers for provider details.")
+            except RuntimeError as exc:
+                append("PROVIDER CATALOG | " + str(exc))
+        threading.Thread(target=load, daemon=True).start()
+
+    @keys.add("pageup")
+    def scroll_up(event):
+        event.app.layout.focus(transcript)
+        transcript.window.vertical_scroll = max(0, transcript.window.vertical_scroll - 12)
+        event.app.invalidate()
+
+    @keys.add("pagedown")
+    def scroll_down(event):
+        transcript.window.vertical_scroll += 12
+        event.app.invalidate()
+
+    @keys.add("escape")
+    def focus_input(event):
+        event.app.layout.focus(composer)
+
+    @keys.add("c-c")
+    def quit_app(event):
+        if busy:
+            cancel_turn.set()
+            append("LBE | cancellation requested; checking local turn process")
+        else:
+            event.app.exit(result=0)
+
+    style = Style.from_dict({
+        "frame.border": "#34383f",
+        "frame.label": "#d6d7dd",
+        "accent": "bold #ef4b4b",
+        "status": "bg:#17191e #c4c8d0",
+    })
+    root = HSplit([
+        Window(height=1, content=FormattedTextControl(
+            text=" LBE  |  LOCKSTEP BOUNDARY ENGINE  |  " + str(args.workspace)), style="class:status"),
+        Frame(transcript, title="Conversation / tools"),
+        Frame(composer, title="Task  |  Enter send  |  Ctrl+J newline  |  PgUp/PgDn scroll", height=6),
+        Window(height=1, content=status, style="class:status"),
+    ])
+    app = Application(layout=Layout(root, focused_element=composer),
+                      key_bindings=keys, style=style, full_screen=True,
+                      mouse_support=True)
+    return int(app.run() or 0)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(list(argv) if argv is not None else None)
     if args.version:
@@ -403,7 +879,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     os.environ["LBE_WALL_DATABASE"] = str(args.database)
     os.environ["LBE_PROVIDER_CONFIG"] = str(args.provider_config)
 
+    if not args.prompt and sys.stdin.isatty() and sys.stdout.isatty():
+        try:
+            import prompt_toolkit  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            return _run_full_screen(args, session_id, current)
+
     _print_header(current, args.workspace)
+    for row in _landing_rows(current, args.workspace):
+        print(row)
     pending_authorization: dict[str, str] | None = None
 
     if args.prompt:
@@ -422,10 +908,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"FAILED | {exc}", file=sys.stderr)
             return 1
 
-    print("Type /help for commands.")
+    print("Enter a task, or /help for controls. Tab completes commands; Up/Down recalls history.")
+    read_line = _interactive_reader(args.database, session_id)
     while True:
         try:
-            line = input("[I] > ").strip()
+            line = read_line().strip()
         except (EOFError, KeyboardInterrupt):
             print("")
             return 0
@@ -433,7 +920,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
         if line in {"/quit", "/exit"}:
             return 0
-        if line == "/help":
+        if line in {"/help", "?"}:
             _help()
             continue
         if line == "/status":
@@ -461,6 +948,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             except RuntimeError as exc:
                 print(f"FAILED | {exc}")
             continue
+        if line == "/provider":
+            try:
+                catalog = _providers()
+                raw = catalog.get("providers") or []
+                names = [
+                    str(item.get("provider_id") or item.get("id") or item.get("name") or "")
+                    if isinstance(item, dict) else str(item) for item in raw
+                ]
+                selected_provider = _select_from_catalog("LBE providers", names)
+                if selected_provider:
+                    print(f"PROVIDER | {selected_provider} (catalog choice; use /models to inspect endpoint models)")
+                    print("Provider switching requires a compatible configured session binding; no silent provider mutation.")
+            except RuntimeError as exc:
+                print(f"FAILED | {exc}")
+            continue
+        if line == "/agents":
+            _render_agents()
+            continue
         if line == "/providers":
             try:
                 _render_providers(_providers())
@@ -471,6 +976,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 current = _status(args.database, session_id)
                 _render_models(_models(args.provider_config), str(current.get("provider_model") or ""))
+            except RuntimeError as exc:
+                print(f"FAILED | {exc}")
+            continue
+        if line == "/model":
+            try:
+                current = _status(args.database, session_id)
+                available = _models(args.provider_config)
+                choices = [
+                    str(item.get("id") or item.get("model") or "")
+                    if isinstance(item, dict) else str(item)
+                    for item in (available.get("models") or [])
+                ]
+                chosen = _select_from_catalog("LBE models", choices)
+                if chosen:
+                    selected = _select_model(
+                        database=args.database,
+                        session_id=session_id,
+                        provider_id=str(current.get("provider_id") or ""),
+                        model_id=chosen,
+                    )
+                    print(f"MODEL | {selected.get('provider_id')}/{selected.get('provider_model')}")
             except RuntimeError as exc:
                 print(f"FAILED | {exc}")
             continue

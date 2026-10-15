@@ -9,7 +9,8 @@ description = "Deterministic local workspace inspection with evidence-bound guar
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-  "jsonschema==4.23.0"
+  "jsonschema==4.23.0",
+  "prompt_toolkit>=3.0,<4"
 ]
 
 [project.optional-dependencies]
