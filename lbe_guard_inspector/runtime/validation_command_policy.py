@@ -6,7 +6,8 @@ in .github/workflows/ci.yml.  This is not a general command execution API.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Sequence
+import shlex
+from typing import Any, Literal, Mapping, Sequence
 
 
 RuntimeMode = Literal["coding", "audit", "investigation"]
@@ -65,7 +66,47 @@ DEFAULT_VALIDATION_COMMAND_POLICY_CATALOG = ValidationCommandPolicyCatalog((
         operation_id="reasoning.inspect",
         applicable_mode="coding",
         evidence_kind="focused_test",
-        command=("python", "-m", "pytest", "-q"),
+        # -p no:cacheprovider: validation must not create .pytest_cache (an
+        # unauthorized workspace mutation) in the project it is validating.
+        command=("python", "-m", "pytest", "-q", "-p", "no:cacheprovider"),
         timeout_seconds=300.0,
     ),
 ))
+
+
+OWNER_AUTHORITY_VALIDATION_POLICY_ID = "owner.authority.validation.v1"
+
+
+def catalog_for_owner_authority(
+    package: Mapping[str, Any] | None,
+) -> ValidationCommandPolicyCatalog:
+    """Completion validation catalog for one governed coding task.
+
+    The repository default stays in force unless a *validated* owner authority
+    package supplies ``validation_command``. That field is human-authored owner
+    evidence for this bounded mutation, not model output, so it may replace the
+    default command for the same mapping. It is tokenized (never run through a
+    shell) and keeps the default timeout bound. Anything that does not validate
+    falls back to the fixed repository policy.
+    """
+    if not isinstance(package, Mapping):
+        return DEFAULT_VALIDATION_COMMAND_POLICY_CATALOG
+    from ..authority_ownership import OwnerAuthorityAuthorization
+
+    try:
+        authorization = OwnerAuthorityAuthorization.from_mapping(package)
+        tokens = tuple(shlex.split(authorization.validation_command))
+    except (ValueError, TypeError):
+        return DEFAULT_VALIDATION_COMMAND_POLICY_CATALOG
+    if not tokens:
+        return DEFAULT_VALIDATION_COMMAND_POLICY_CATALOG
+    return ValidationCommandPolicyCatalog((
+        ValidationCommandPolicy(
+            policy_id=OWNER_AUTHORITY_VALIDATION_POLICY_ID,
+            operation_id="reasoning.inspect",
+            applicable_mode="coding",
+            evidence_kind="focused_test",
+            command=tokens,
+            timeout_seconds=300.0,
+        ),
+    ))

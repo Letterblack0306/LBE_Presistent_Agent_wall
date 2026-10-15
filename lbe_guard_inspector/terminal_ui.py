@@ -343,12 +343,26 @@ def _render_turn(result: dict[str, Any]) -> dict[str, str] | None:
     final_text: str | None = None
     usage: dict[str, Any] | None = None
     pending: dict[str, str] | None = None
+    changes_executed = 0
+    changes_blocked = 0
 
     for event in events:
         if not isinstance(event, dict):
             continue
         event_type = str(event.get("event_type") or "event")
         payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        # Effects come only from persisted receipts, never from model prose.
+        evidence = payload.get("evidence") if isinstance(payload.get("evidence"), list) else []
+        is_mutation = any(
+            isinstance(item, dict) and item.get("classification") == "current_workspace_mutation"
+            for item in evidence
+        )
+        if event_type == "tool.completed" and is_mutation:
+            changes_executed += 1
+        elif event_type in {"tool.failed", "tool.denied", "tool.escalated"} and str(
+            payload.get("tool_id") or ""
+        ) not in {"workspace.read", "workspace.list", "workspace.glob", "workspace.search"}:
+            changes_blocked += 1
         text = _payload_text(payload)
         if event_type in {"model.message.completed", "model.output.completed", "assistant.message.completed"} and text:
             final_text = text
@@ -402,6 +416,13 @@ def _render_turn(result: dict[str, Any]) -> dict[str, str] | None:
             print("")
             print("Agent")
             print(fallback)
+
+    if events:
+        print("")
+        print(
+            f"EFFECTS | governed workspace changes executed: {changes_executed}"
+            f" | blocked or failed: {changes_blocked}  (from receipts, not model text)"
+        )
 
     if usage:
         used = usage.get("input_tokens") or usage.get("prompt_tokens")

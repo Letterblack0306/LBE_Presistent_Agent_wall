@@ -101,3 +101,29 @@ def test_coding_turn_envelope_carries_the_owner_authority_package() -> None:
 def test_default_runtime_has_empty_reference_context() -> None:
     runtime = GovernedCodingTurnRuntime(history=SimpleNamespace(), gateway=SimpleNamespace())
     assert runtime.reference_context == ()
+
+
+def _turn(*events):
+    return {"events": [dict(e) for e in events]}
+
+
+def test_render_turn_reports_effects_from_receipts_not_model_text(capsys) -> None:
+    terminal_ui._render_turn(_turn(
+        {"event_type": "tool.completed", "payload": {"tool_id": "workspace.read", "evidence": []}},
+        {"event_type": "model.message.completed", "payload": {"text": "hello.txt has been overwritten"}},
+    ))
+    out = capsys.readouterr().out
+    assert "hello.txt has been overwritten" in out  # the model's words are shown as-is
+    assert "governed workspace changes executed: 0" in out
+    assert "blocked or failed: 0" in out
+
+
+def test_render_turn_counts_executed_mutation_and_blocked_write(capsys) -> None:
+    terminal_ui._render_turn(_turn(
+        {"event_type": "tool.completed", "payload": {
+            "tool_id": "workspace.create_candidate_text",
+            "evidence": [{"classification": "current_workspace_mutation"}]}},
+        {"event_type": "tool.failed", "payload": {"tool_id": "workspace.write_text", "evidence": []}},
+    ))
+    out = capsys.readouterr().out
+    assert "changes executed: 1" in out and "blocked or failed: 1" in out

@@ -186,7 +186,7 @@ def test_focused_test_runs_only_registered_repository_command(
         task_id="task-1", operation_id="reasoning.inspect"
     )
 
-    assert calls == [(("python", "-m", "pytest", "-q"), root, True)]
+    assert calls == [(("python", "-m", "pytest", "-q", "-p", "no:cacheprovider"), root, True)]
     assert evidence.kind == "focused_test"
     assert evidence.status == "PASS"
     assert evidence.producer_id == "lbe.completion.focused_test.v1"
@@ -209,7 +209,7 @@ def test_focused_test_failure_is_producer_classified_not_provider_claim(
     )
 
     assert evidence.status == "FAIL"
-    assert evidence.details["command"] == ["python", "-m", "pytest", "-q"]
+    assert evidence.details["command"] == ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider"]
     assert "provider" not in evidence.details
 
 

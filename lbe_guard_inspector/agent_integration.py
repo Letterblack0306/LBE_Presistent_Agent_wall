@@ -11,6 +11,7 @@ from .recovery import FailureClass, RecoveryStoppedError, RetryPolicy
 from .runtime.completion_promotion import CompletionProofPromotion
 from .runtime.completion_runtime import CodingCompletionRuntime, CodingReasoningResult
 from .runtime.completion_evidence_producers import CompletionEvidenceProducers
+from .runtime.validation_command_policy import catalog_for_owner_authority
 from .runtime.mode_controller import ModeDecision, ModeRequest, resolve_mode
 from .runtime.task_completion_policy import (
     DEFAULT_TASK_COMPLETION_POLICY_CATALOG,
@@ -202,7 +203,15 @@ class GovernedAgentGateway:
             mode_decision=mode_decision,
             completion_runtime=completion_runtime,
         )
-        producers = CompletionEvidenceProducers(runtime=self._runtime)
+        owner_authority = next(
+            (item["owner_authority"] for item in reference_context
+             if isinstance(item.get("owner_authority"), Mapping)),
+            None,
+        )
+        producers = CompletionEvidenceProducers(
+            runtime=self._runtime,
+            validation_command_catalog=catalog_for_owner_authority(owner_authority),
+        )
         task_baseline = producers.capture_workspace_snapshot()
         reasoning_operation_id = self._recovery_operation_id(request, "reasoning")
         try:
