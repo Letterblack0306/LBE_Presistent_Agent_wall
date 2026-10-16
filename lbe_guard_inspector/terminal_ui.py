@@ -581,6 +581,8 @@ def _ui_style(color: bool):
 
 def _interactive_reader(database: Path, session_id: str):
     """Editable terminal composer; keep the standard-input fallback dependency-free."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        return lambda: input("[I] > ")
     try:
         from prompt_toolkit import PromptSession
         from prompt_toolkit.completion import WordCompleter

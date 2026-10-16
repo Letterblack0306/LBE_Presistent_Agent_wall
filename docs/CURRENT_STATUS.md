@@ -17,6 +17,14 @@ screen restoration. Focused existing product/provider regressions: 19 passed.
 The product integration `check` command passed structural checks only; its
 `proofPass` was false because that mode does not run proofs.
 
+The `30453f8c` archive passed verification and installed in isolation. Its
+normal `bin/lbe.cmd` launched the full-screen client in ConPTY; `/status`,
+`/quit`, terminal restoration, and restart with the same session ID were
+observed. A separate installed piped-input run exposed
+`NoConsoleScreenBufferError`: the non-TTY reader incorrectly constructed
+`prompt_toolkit.PromptSession`. The current follow-up returns to ordinary
+standard input when no TTY is attached; it requires a rebuilt installed run.
+
 Classification: **IMPLEMENTED, PARTIALLY RUNTIME PROVEN** for the source
 client. Exact-current package/install, provider-backed turn and governed
 receipt through the installed UI, approval round trip, and final completion
