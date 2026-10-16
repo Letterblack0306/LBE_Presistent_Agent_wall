@@ -3,7 +3,9 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::ui::{App, Entry, Evidence, Mode, Screen, Tab, COMMANDS};
+use serde_json::{json, Value};
+
+use crate::ui::{App, Entry, Evidence, Mode, Permission, Screen, Tab, COMMANDS};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Outcome {
@@ -63,7 +65,17 @@ pub fn on_key(app: &mut App, key: KeyEvent) -> Outcome {
             // permission shortcuts only when the composer is empty
             if s.input_buffer.is_empty() && s.pending.is_some() && (c == 'a' || c == 'd') {
                 let p = s.pending.take().expect("checked");
-                if c == 'a' {
+                if s.runtime_attached {
+                    let d = if c == 'a' { "approve" } else { "reject" };
+                    s.outbox.push(json!({"op": "decision", "decision": d}).to_string());
+                    s.busy = true;
+                    s.entries.push(Entry::Info(format!(
+                        "{} sent for {} ({}).",
+                        if c == 'a' { "Allow once" } else { "Deny" },
+                        p.action,
+                        p.id
+                    )));
+                } else if c == 'a' {
                     s.entries.push(Entry::Note {
                         tag: Evidence::Supported,
                         text: format!("Allowed once: {} ({}). No runtime attached to execute it, so no receipt was issued.", p.action, p.id),
@@ -84,6 +96,99 @@ pub fn on_key(app: &mut App, key: KeyEvent) -> Outcome {
         _ => {}
     }
     Outcome::Continue
+}
+
+/// Apply one message from the runtime bridge to the UI state.
+pub fn on_bridge(app: &mut App, msg: &Value) {
+    let s = &mut app.snapshot;
+    let text = |k: &str| msg.get(k).and_then(Value::as_str).unwrap_or("").to_string();
+    match msg.get("type").and_then(Value::as_str).unwrap_or("") {
+        "ready" => {
+            s.runtime_attached = true;
+            s.busy = false;
+            s.entries
+                .retain(|e| !matches!(e, Entry::Info(t) if t.starts_with("Connecting to the LBE runtime")));
+            s.session_id = text("session_id");
+            let provider = text("provider");
+            if !provider.is_empty() {
+                s.provider = provider;
+            }
+            let model = text("model");
+            if !model.is_empty() {
+                s.model = model;
+            }
+            if let Some(m) = Mode::parse(&text("mode")) {
+                s.mode = m;
+            }
+            let ws = text("workspace");
+            if !ws.is_empty() {
+                s.workspace = ws;
+            }
+        }
+        "reply" => s.entries.push(Entry::Lbe(text("text"))),
+        "activity" => {
+            let tag = if text("status") == "OK" { Evidence::Proven } else { Evidence::Blocked };
+            let receipt = text("receipt");
+            let detail = if !text("detail").is_empty() { text("detail") } else { text("operation") };
+            if tag == Evidence::Proven && !receipt.is_empty() {
+                s.receipts.push((Evidence::Proven, text("name")));
+            }
+            s.entries.push(Entry::Tool {
+                name: text("name"),
+                detail,
+                tag,
+                took: if receipt.is_empty() { None } else { Some(format!("rcpt {receipt}")) },
+            });
+        }
+        "effects" => {
+            let n = |k: &str| msg.get(k).and_then(Value::as_u64).unwrap_or(0);
+            s.entries.push(Entry::Info(format!(
+                "EFFECTS  executed {} / blocked or failed {}  (from receipts, not model text)",
+                n("executed"),
+                n("blocked")
+            )));
+        }
+        "context" => {
+            s.ctx_used = msg.get("used").and_then(Value::as_u64).unwrap_or(0) as u32;
+            s.ctx_max = msg.get("total").and_then(Value::as_u64).unwrap_or(0) as u32;
+        }
+        "permission" => {
+            s.pending = Some(Permission { id: text("id"), action: text("action"), scope: text("scope") });
+        }
+        "receipt" => {
+            let status = text("status");
+            let tag = if status == "EXECUTED" { Evidence::Proven } else { Evidence::Blocked };
+            s.receipts.push((tag, format!("{} {}", status.to_lowercase(), text("receipt_id"))));
+            s.entries.push(Entry::Note {
+                tag,
+                text: format!("{status} / {} / verdict {}", text("receipt_id"), text("verdict")),
+            });
+        }
+        "mode" => {
+            if let Some(m) = Mode::parse(&text("mode")) {
+                s.mode = m;
+            }
+        }
+        "providers" => {
+            if let Some(a) = msg.get("providers").and_then(Value::as_array) {
+                s.providers = a.iter().filter_map(|v| v.as_str().map(String::from)).collect();
+            }
+        }
+        "error" => {
+            s.busy = false;
+            s.entries.push(Entry::Note { tag: Evidence::Blocked, text: text("message") });
+        }
+        "closed" => {
+            s.runtime_attached = false;
+            s.busy = false;
+            s.entries.push(Entry::Note {
+                tag: Evidence::Blocked,
+                text: "Runtime bridge closed. Restart LBE to reconnect.".into(),
+            });
+        }
+        "done" => s.busy = false,
+        _ => {}
+    }
 }
 
 pub fn on_scroll(app: &mut App, up: bool) {
@@ -141,7 +246,19 @@ fn submit(app: &mut App) -> Outcome {
     if line.starts_with('/') {
         return command(app, &line);
     }
-    // No bridge to a runtime exists in this client yet: say so, never go silent.
+    if app.snapshot.runtime_attached {
+        if app.snapshot.busy {
+            app.snapshot.entries.push(Entry::Note {
+                tag: Evidence::Blocked,
+                text: "A turn is still running. Esc stops it.".into(),
+            });
+        } else {
+            app.snapshot.busy = true;
+            app.snapshot.outbox.push(json!({"op": "turn", "text": line}).to_string());
+        }
+        return Outcome::Continue;
+    }
+    // Never go silent when no runtime is attached.
     app.snapshot.entries.push(Entry::Note { tag: Evidence::Blocked, text: NO_RUNTIME.into() });
     Outcome::Continue
 }
@@ -160,16 +277,27 @@ fn command(app: &mut App, line: &str) -> Outcome {
             }
             s.entries.push(Entry::Info("Tab completes a /command, or cycles the tabs. F1 shows all keys.".into()));
         }
-        "/providers" => s.screen = Some(Screen::Providers),
+        "/providers" => {
+            if s.runtime_attached {
+                s.outbox.push(json!({"op": "providers"}).to_string());
+            }
+            s.screen = Some(Screen::Providers);
+        }
         "/keys" => s.screen = Some(Screen::Keys),
         "/report" => s.screen = Some(Screen::Report),
         "/audit" => {
             s.mode = Mode::Audit;
+            if s.runtime_attached {
+                s.outbox.push(json!({"op": "mode", "mode": "audit"}).to_string());
+            }
             s.entries.push(Entry::Info("Mode: AUDIT. Scope, investigate, clarify, report.".into()));
         }
         "/mode" => match Mode::parse(arg) {
             Some(m) => {
                 s.mode = m;
+                if s.runtime_attached {
+                    s.outbox.push(json!({"op": "mode", "mode": m.label()}).to_string());
+                }
                 s.entries.push(Entry::Info(format!("Mode: {}.", m.label().to_uppercase())));
             }
             None => s.entries.push(Entry::Note {
@@ -322,5 +450,26 @@ mod tests {
         type_str(&mut a, "ab");
         on_key(&mut a, key(KeyCode::Backspace));
         assert_eq!(a.snapshot.input_buffer, "a");
+    }
+
+    #[test]
+    fn bridge_messages_update_state_and_turns_are_queued() {
+        let mut a = app();
+        on_bridge(&mut a, &json!({"type":"ready","session_id":"tui-1","mode":"plan","provider":"lmstudio","model":"m","workspace":"w"}));
+        assert!(a.snapshot.runtime_attached);
+        assert_eq!(a.snapshot.mode, Mode::Plan);
+        assert_eq!(a.snapshot.session_id, "tui-1");
+        type_str(&mut a, "hi");
+        on_key(&mut a, key(KeyCode::Enter));
+        assert!(a.snapshot.busy);
+        assert_eq!(a.snapshot.outbox.len(), 1);
+        assert!(a.snapshot.outbox[0].contains("\"op\":\"turn\""));
+        on_bridge(&mut a, &json!({"type":"reply","text":"hello"}));
+        on_bridge(&mut a, &json!({"type":"done"}));
+        assert!(!a.snapshot.busy);
+        assert!(format!("{:?}", a.snapshot.entries).contains("hello"));
+        on_bridge(&mut a, &json!({"type":"permission","id":"ap-1","action":"workspace.write","scope":"s"}));
+        on_key(&mut a, key(KeyCode::Char('a')));
+        assert!(a.snapshot.outbox.last().unwrap().contains("approve"));
     }
 }

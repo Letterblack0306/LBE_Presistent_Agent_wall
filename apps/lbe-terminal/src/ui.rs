@@ -242,6 +242,8 @@ pub struct SessionSnapshot {
     /// Lines scrolled up from the bottom (0 = stick to bottom).
     pub scroll_up: usize,
     pub no_color: bool,
+    /// JSON lines queued for the runtime bridge (drained by main).
+    pub outbox: Vec<String>,
 }
 
 pub struct App {
@@ -269,6 +271,7 @@ impl SessionSnapshot {
             input_buffer: String::new(),
             scroll_up: 0,
             no_color: false,
+            outbox: Vec::new(),
         }
     }
 }
@@ -646,7 +649,8 @@ fn draw_rail(frame: &mut Frame, area: Rect, s: &SessionSnapshot) {
         }
     };
     l.push(Line::from(vec![seg(Mode::Plan, "PLAN"), seg(Mode::Act, "ACT"), seg(Mode::Audit, "AUDIT")]));
-    l.push(Line::from(vec![sp("id       ", dim()), sp(s.session_id.clone(), text())]));
+    let short_id: String = s.session_id.chars().take(RAIL_WIDTH as usize - 12).collect();
+    l.push(Line::from(vec![sp("id       ", dim()), sp(short_id, text())]));
     l.push(Line::from(""));
     l.push(head("CONTEXT"));
     if s.ctx_max == 0 {

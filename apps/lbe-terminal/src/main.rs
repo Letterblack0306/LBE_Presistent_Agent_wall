@@ -15,6 +15,7 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
+mod bridge;
 mod control;
 mod ui;
 use control::Outcome;
@@ -95,6 +96,27 @@ fn main() -> Result<(), io::Error> {
         default_hook(info);
     }));
 
+    // Connect to the LBE runtime; the UI stays usable and says so if it cannot.
+    let mut bridge = if std::env::var("LBE_BRIDGE").map(|v| v == "off").unwrap_or(false) {
+        None
+    } else {
+        match bridge::Bridge::start() {
+            Ok(b) => {
+                app.snapshot.busy = true;
+                app.snapshot
+                    .entries
+                    .push(ui::Entry::Info("Connecting to the LBE runtime...".into()));
+                Some(b)
+            }
+            Err(e) => {
+                app.snapshot
+                    .entries
+                    .push(ui::Entry::Note { tag: ui::Evidence::Blocked, text: e });
+                None
+            }
+        }
+    };
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -102,6 +124,14 @@ fn main() -> Result<(), io::Error> {
 
     let tick = Duration::from_millis(250);
     loop {
+        if let Some(b) = bridge.as_mut() {
+            while let Ok(msg) = b.rx.try_recv() {
+                control::on_bridge(&mut app, &msg);
+            }
+            for line in app.snapshot.outbox.drain(..) {
+                b.send_line(&line);
+            }
+        }
         terminal.draw(|frame| ui::draw(frame, &app))?;
         if !event::poll(tick)? {
             continue;
@@ -122,6 +152,9 @@ fn main() -> Result<(), io::Error> {
         }
     }
 
+    if let Some(mut b) = bridge {
+        b.shutdown();
+    }
     restore();
     terminal.show_cursor()?;
     Ok(())
