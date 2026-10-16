@@ -31,6 +31,11 @@ REQUIRED_EVIDENCE: Bare `lbe` launches the LBE-owned terminal surface; primary p
 
 RESULT: IMPLEMENTATION_IN_PROGRESS
 
+CURRENT_REPAIR_2026_10_16:
+- Restored the previously shipped `lbe_guard_inspector/terminal_ui.py` presentation client after its deletion in `a52256e7`; bare `lbe` and `lbe --version` now route to it without a Rust or legacy-CLI fallback.
+- Reconciled the product integration check with the retained Rust reference client and the removed terminal test file; no new repository test artifact was created.
+- Worktree source ConPTY and persisted-session observations are bounded evidence only. Installed package, provider-backed turn, governed approval/receipt, and completion acceptance remain open until directly observed.
+
 CURRENT_EVIDENCE_2026_10_10:
 - Installed runtime/package source `75158f1` also resumed session `tui-29f2116feb31454ba7e154e068a324b3` with provider/model/mode retained and exited cleanly.
 - Python/LBE terminal is the normal product surface; Rust/Ratatui is reference/integration only.

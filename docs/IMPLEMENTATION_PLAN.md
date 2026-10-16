@@ -1,5 +1,7 @@
 # LBE Persistent Agent — Canonical Implementation Plan
 
+> **2026-10-16 execution note:** The Python terminal client deleted in `a52256e7` has been restored as the canonical `lbe` presentation owner. The Rust cockpit added in `68a3351c` is retained as reference only because it hardcodes runtime state and has no composer interaction. Source ConPTY input/exit and a persisted session have been observed; exact-current package and installed provider/tool acceptance are still open. See `docs/CURRENT_STATUS.md` for the bounded evidence.
+
 Updated: 2026-10-11
 Status: **ACTIVE — LBE-OWNED TERMINAL PRODUCT / CURRENT INSTALLED ACCEPTANCE**
 

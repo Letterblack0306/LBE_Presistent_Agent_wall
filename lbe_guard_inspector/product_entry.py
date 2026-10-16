@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
 import sys
 import hashlib
 import time
@@ -1246,62 +1245,20 @@ def _dispatch_product_command(values: list[str], command: str) -> int:
     raise AssertionError(f"unsupported product command: {command}")
 
 
-def _rust_terminal_binary() -> Path | None:
-    """Locate the built Rust terminal binary, if any.
-
-    Searches the crate target dirs (debug then release) relative to the
-    repository root. Returns None when no binary has been built yet.
-    """
-    repo_root = Path(__file__).resolve().parents[1]
-    exe_suffix = ".exe" if os.name == "nt" else ""
-    candidates = [
-        repo_root / "apps" / "lbe-terminal" / "target" / "debug" / f"lbe-terminal{exe_suffix}",
-        repo_root / "apps" / "lbe-terminal" / "target" / "release" / f"lbe-terminal{exe_suffix}",
-    ]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-    return None
-
-
-def _launch_rust_terminal(binary: Path, values: list[str]) -> int:
-    """Launch the Rust terminal binary, inheriting stdio so the TUI owns the
-    terminal. Returns the process exit code."""
-    completed = subprocess.run([str(binary)] + values)
-    return completed.returncode
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
 
-    # Bare `lbe` is the installed product entry. Presentation is delegated to
-    # the LBE-owned terminal client; all authority-bearing actions still route
-    # back through this product-entry/runtime boundary. If the terminal client
-    # module is unavailable (e.g. not installed in this tree), fall back to the
-    # canonical CLI instead of crashing with ImportError.
+    # The terminal client is the single visible product entry. Missing client
+    # dependencies must fail visibly instead of opening a disconnected client.
     if not values:
-        try:
-            from .terminal_ui import main as terminal_main
-            return terminal_main([])
-        except ImportError:
-            pass
-        rust_bin = _rust_terminal_binary()
-        if rust_bin is not None:
-            return _launch_rust_terminal(rust_bin, values)
-        return _cli.main(values)
+        from .terminal_ui import main as terminal_main
+        return terminal_main([])
 
     # `lbe --version` is a product-identity query, not a legacy CLI command; the
     # terminal client already owns it, so route it there instead of the parser.
     if values in (["--version"], ["-V"]):
-        try:
-            from .terminal_ui import main as terminal_main
-            return terminal_main(["--version"])
-        except ImportError:
-            pass
-        rust_bin = _rust_terminal_binary()
-        if rust_bin is not None:
-            return _launch_rust_terminal(rust_bin, values)
-        return _cli.main(values)
+        from .terminal_ui import main as terminal_main
+        return terminal_main(["--version"])
 
     product_commands = [command for command in ("turn", "control", "start", "capabilities", "export", "tool", "authorization", "operation", "child-agent") if command in values]
     if not product_commands:

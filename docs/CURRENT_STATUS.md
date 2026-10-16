@@ -1,5 +1,30 @@
 # Current Status
 
+## Terminal client repair in progress — 2026-10-16
+
+After `a52256e7` deleted the Python terminal client, `68a3351c` made bare
+source-tree `lbe` launch a static Rust cockpit that hardcoded `LIVE` and a
+provider list. The current repair restores the LBE-owned Python terminal
+client and removes the Rust fallback from the normal product entry. The
+installer's structural check now treats missing Rust reference modules as
+optional and no longer names the deleted terminal test file.
+
+Observed on the worktree candidate: a temporary-root session projected its
+persisted workspace, provider, model and mode; `provider.list` returned the
+live 20-provider registry; a real Windows ConPTY delivered `/status` and
+`/quit` key events to the full-screen client, exited, and emitted alternate
+screen restoration. Focused existing product/provider regressions: 19 passed.
+The product integration `check` command passed structural checks only; its
+`proofPass` was false because that mode does not run proofs.
+
+Classification: **IMPLEMENTED, PARTIALLY RUNTIME PROVEN** for the source
+client. Exact-current package/install, provider-backed turn and governed
+receipt through the installed UI, approval round trip, and final completion
+remain **OPEN**. An available local endpoint returned HTTP 401 without a
+token during one probe; this is a provider-specific condition, not product
+acceptance evidence. The UI now displays a failure state after an observed
+provider error instead of a green ready indicator.
+
 > **Status-document reading rule (2026-10-10):** This file contains historical checkpoints and claims tied to their recorded dates, builds and scopes. It is not a live product readiness declaration. The canonical documentation responsibilities and no-PASS-as-proof rule are in [the implementation plan](IMPLEMENTATION_PLAN.md#documentation-consolidation-and-workspace-hygiene--active-plan-2026-10-10). Current working state must be reverified at the live Git HEAD, running terminal/provider and correlated receipts.
 >
 > **Latest bounded observation:** LBE `2e0c3fd` included a data-driven provider-identity decoder, but the TUI picker still used the fixed enum. Windows ConPTY observations proved basic keyboard, mouse, slash menu and terminal lifecycle; they did not prove complete model→tool→observation→completion readiness. These observations are not evergreen.
