@@ -269,6 +269,63 @@ class AuthorityOwnershipDeclaration:
         return OwnershipEvidenceState.SUFFICIENT
 
 
+_PACKAGE_FIELDS = (
+    "issue_id, owner_file_or_module, owner_reason, owner_evidence, "
+    "owner_status OWNER_PROVEN, allowed_paths, validation_command"
+)
+
+
+def owner_denial_guidance(
+    blocker: str,
+    authority: "OwnerAuthorityAuthorization | None",
+    proposed_paths: tuple[str, ...] = (),
+) -> dict[str, object]:
+    """Explain an OWNER_AUTHORITY_BLOCKER denial in the shape the LBE Core blocker
+    registry uses (meaning, who can satisfy it, next step).
+
+    The decision is unchanged; this only says what the denial means and who can
+    resolve it. The leading ``message`` text is the original blocker string.
+    Agents cannot create or approve owner authority, so a missing or unproven
+    package is always owner-satisfiable.
+    """
+    paths = [path for path in proposed_paths if path]
+    target = ", ".join(paths) if paths else "the proposed change"
+    if authority is None:
+        return {
+            "message": (
+                f"{blocker}. Only the owner can supply it: an owner-authority package ({_PACKAGE_FIELDS}) "
+                "attached with --owner-authority-file or LBE_OWNER_AUTHORITY_FILE. "
+                "You cannot create or approve one, and other write tools are governed the same way, so do not retry them."
+            ),
+            "satisfiable_by": "owner",
+            "next_step": (
+                f"stop writing and ask the owner to attach an owner-authority package that lists allowed_paths for {target}"
+            ),
+            "allowed_paths": [],
+            "proposed_paths": paths,
+        }
+    allowed = list(authority.allowed_paths)
+    if "outside allowed_paths" in blocker:
+        listed = ", ".join(allowed)
+        return {
+            "message": (
+                f"{blocker}. Allowed paths: {listed}. You may write only to an allowed path; "
+                "changing allowed_paths needs the owner."
+            ),
+            "satisfiable_by": "agent",
+            "next_step": f"write to an allowed path ({listed}) or ask the owner to widen allowed_paths",
+            "allowed_paths": allowed,
+            "proposed_paths": paths,
+        }
+    return {
+        "message": f"{blocker}. This is owner evidence; only the owner can change it.",
+        "satisfiable_by": "owner",
+        "next_step": "ask the owner to correct the owner-authority package",
+        "allowed_paths": allowed,
+        "proposed_paths": paths,
+    }
+
+
 def require_single_operation(
     declarations: tuple[AuthorityOwnershipDeclaration, ...],
 ) -> AuthorityOwnershipDeclaration:

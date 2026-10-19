@@ -118,7 +118,11 @@ class LBERequestController:
         if not plan.candidate_guard_ids:
             return self._response(
                 request, identity, profile, plan, None, None, "INSUFFICIENT_EVIDENCE",
-                OrchestrationError("NO_GUARD_SELECTED", "Reasoning plan selected no approved guard."),
+                OrchestrationError(
+                    "NO_GUARD_SELECTED",
+                    "Reasoning plan selected no approved guard.",
+                    _input_needed("NO_GUARD_SELECTED", (), approved_guards),
+                ),
             )
         unknown_in_candidates = sorted(set(plan.candidate_guard_ids) - set(approved_guards))
         if unknown_in_candidates:
@@ -177,6 +181,7 @@ class LBERequestController:
                     OrchestrationError(
                         selection.stop_reason,
                         f"GuardPlanner could not select a guard: {selection.stop_reason}",
+                        _input_needed(selection.stop_reason, candidates, approved_guards),
                     ),
                 )
             return self._response(
@@ -330,6 +335,58 @@ class _ControllerFailure(ValueError):
     def __init__(self, code: str, message: str, details: tuple[str, ...] = ()) -> None:
         super().__init__(message)
         self.code, self.details = code, details
+
+
+def _input_needed(
+    stop_reason: str,
+    candidates: tuple[GuardCandidate, ...] | list[GuardCandidate],
+    approved_guard_ids: tuple[str, ...] | list[str],
+) -> tuple[str, ...]:
+    """What a stop at the guard-selection step checked, lacks, and asks for.
+
+    Built only from the planner's own data (candidate evidence plans, the registered
+    evidence contracts, the approved guard list). It selects nothing and answers
+    nothing: it states the question the person would have to answer. One line per
+    kind, each prefixed ``checked:`` / ``missing:`` / ``investigate:`` / ``ask:``.
+    """
+    if stop_reason == "AMBIGUOUS_GUARD_SELECTION":
+        eligible = [c.guard_id for c in candidates if c.evidence_plan.complete]
+        listed = ", ".join(eligible)
+        return (
+            f"checked: {len(candidates)} proposed guard(s); these have complete evidence: {listed}",
+            "missing: a single guard to run",
+            f"ask: Which one should inspect this: {' or '.join(eligible)}?",
+        )
+    if stop_reason == "INSUFFICIENT_EVIDENCE" and candidates:
+        checked, missing, patterns = [], [], []
+        for candidate in candidates:
+            plan = candidate.evidence_plan
+            needs = ", ".join(plan.required) or "no stated requirement"
+            checked.append(f"{candidate.guard_id} (needs {needs})")
+            if plan.missing:
+                missing.append(f"{candidate.guard_id}: {', '.join(plan.missing)}")
+                try:
+                    found = evidence_contract_for_guard(candidate.guard_id).get("path_patterns", ())
+                except KeyError:
+                    found = ()
+                patterns.extend(str(item) for item in found)
+        patterns = list(dict.fromkeys(patterns))
+        lines = [
+            f"checked: {'; '.join(checked)}",
+            f"missing: {'; '.join(missing) or 'no matching workspace evidence'}",
+        ]
+        if patterns:
+            lines.append(f"investigate: {', '.join(patterns)} (read-only lookup)")
+        target = ", ".join(patterns) or "the missing evidence"
+        lines.append(f"ask: Where is the evidence for this ({target})? Name the file, or say it does not exist.")
+        return tuple(lines)
+    guards = ", ".join(list(approved_guard_ids)[:8])
+    return (
+        f"checked: the question against {len(approved_guard_ids)} approved guard(s)",
+        "missing: an approved guard that applies to this question",
+        f"investigate: approved guards include {guards}",
+        "ask: Which approved guard should inspect this, or can you restate it as a check on the workspace?",
+    )
 
 
 def _coerce_plan(value: ReasoningPlan | Mapping[str, Any]) -> ReasoningPlan:

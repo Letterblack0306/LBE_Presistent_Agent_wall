@@ -734,6 +734,12 @@ def test_owner_authority_blocker_denies_unproven_write_before_handler(
     assert blocked.status is ToolReceiptStatus.DENIED
     assert blocked.error_code == "OWNER_AUTHORITY_BLOCKER"
     assert not (workspace / "candidate.txt").exists()
+    # The denial tells the agent who can satisfy it and what to do next.
+    assert blocked.error_message.startswith("no proven owner evidence package was supplied")
+    assert "Only the owner can supply it" in blocked.error_message
+    assert blocked.output["satisfiable_by"] == "owner"
+    assert blocked.output["proposed_paths"] == ["candidate.txt"]
+    assert "ask the owner" in blocked.output["next_step"]
 
     authority = OwnerAuthorityAuthorization(
         issue_id="BRD-00027",
@@ -811,6 +817,7 @@ def test_create_candidate_text_respects_allowed_write_paths(tmp_path: Path, monk
     assert receipt.status is ToolReceiptStatus.FAILED
     assert receipt.error_code == "TOOL_EXECUTION_FAILED"
     assert "write path is not allowed" in receipt.error_message
+    assert "only the owner can change it" in receipt.error_message
     assert not (workspace / "candidate.txt").exists()
 
 
@@ -1131,3 +1138,84 @@ def test_resume_after_out_of_order_incomplete_walk_does_not_skip_unseen_file(
     assert _indexed_paths(database) == {
         "root/file-a.txt", "root/file-b.txt", "root/file-z.txt"
     }
+
+
+def _install_intent_gate(workspace: Path, *, enforce: bool) -> None:
+    """A workspace that carries the canonical gate script, a ledger with one ACTIVE intent for docs/, and git."""
+    import hashlib
+    import shutil
+    import subprocess
+
+    repo = Path(__file__).resolve().parents[1]
+    (workspace / "scripts").mkdir()
+    (workspace / ".lbe" / "governance").mkdir(parents=True)
+    (workspace / "docs" / "governance").mkdir(parents=True)
+    shutil.copy(repo / "scripts" / "check-implementation-gate.py", workspace / "scripts" / "check-implementation-gate.py")
+    index = "index: `docs/`\n"
+    (workspace / "PROJECT_INDEX.md").write_text(index, encoding="utf-8")
+    (workspace / "docs" / "governance" / "PROJECT_INTENT_LEDGER.md").write_text(
+        "## INTENT BASE-1\n\nSTATUS: ACTIVE\nMACHINE_SLICE: S\nEXISTING_OWNER: owner\nEXPECTED_PATH_PREFIXES: docs/\n",
+        encoding="utf-8",
+    )
+    section = {"required": True, "intent_required_before_mutation": True, "root_index": "PROJECT_INDEX.md",
+               "intent_ledger": "docs/governance/PROJECT_INTENT_LEDGER.md"}
+    if enforce:
+        section["enforce_before_write"] = True
+    (workspace / ".lbe" / "governance" / "implementation-gates.json").write_text(json.dumps({
+        "status": "OPEN", "active_slice": "S", "implementation_allowed": True, "active_plan": "p", "active_phase": "ph",
+        "intent_and_structure_governance": section,
+        "active_intent": {"intent_id": "BASE-1", "index_revision": hashlib.sha256(index.encode()).hexdigest().upper()},
+    }), encoding="utf-8")
+    for args in (("init", "-q", "-b", "scratch"), ("config", "user.email", "t@t"), ("config", "user.name", "t"),
+                 ("add", "-A"), ("commit", "-qm", "base")):
+        subprocess.run(["git", "-C", str(workspace), *args], check=True, capture_output=True)
+
+
+def _proven_authority(path: str) -> OwnerAuthorityAuthorization:
+    return OwnerAuthorityAuthorization(
+        issue_id="BRD-00027", owner_file_or_module="owner.py", owner_reason="owner evidence traces the relevant effect",
+        owner_evidence=("BRD-00027:E12",), owner_status=OwnerAuthorityStatus.OWNER_PROVEN,
+        allowed_paths=(path,), validation_command="pytest tests/test_governed_coding.py",
+    )
+
+
+def test_intent_gate_denies_a_proven_write_with_no_covering_intent_and_asks_the_owner(tmp_path: Path, monkeypatch) -> None:
+    workspace = _configure_runtime_files(tmp_path, monkeypatch)
+    _install_intent_gate(workspace, enforce=True)
+    registry = ToolRegistry()
+    registry.register(workspace_create_candidate_text_spec(), build_workspace_create_candidate_text_handler())
+    orchestrator = _ReceiptTrackingOrchestrator(registry=registry, owner_authority=lambda: _proven_authority("candidate.txt"))
+    request = ToolRequest(operation_id="intent-blocked", tool_id="workspace.create_candidate_text",
+                          arguments={"path": "candidate.txt", "content": "x\n"}, context=_context(workspace))
+
+    blocked = orchestrator.invoke(request)
+    assert blocked.status is ToolReceiptStatus.DENIED and blocked.error_code == "INTENT_GATE_BLOCKED"
+    assert not (workspace / "candidate.txt").exists()
+    assert blocked.output["satisfiable_by"] == "owner" and blocked.output["proposed_paths"] == ["candidate.txt"]
+    assert blocked.output["ask"].startswith("Why change candidate.txt?")
+    assert blocked.output["checked"].startswith("active intent BASE-1 (ACTIVE) covers docs/")
+
+    # Owner authority alone never bypassed the gate, and the gate alone is not authority: a workspace
+    # that does not opt in is unaffected.
+    other = tmp_path / "other"
+    other.mkdir()
+    monkeypatch.undo()
+    workspace2 = _configure_runtime_files(other, monkeypatch)
+    _install_intent_gate(workspace2, enforce=False)
+    allowed = _ReceiptTrackingOrchestrator(registry=registry, owner_authority=lambda: _proven_authority("candidate.txt")).invoke(
+        ToolRequest(operation_id="intent-optout", tool_id="workspace.create_candidate_text",
+                    arguments={"path": "candidate.txt", "content": "x\n"}, context=_context(workspace2)))
+    assert allowed.status is ToolReceiptStatus.EXECUTED
+
+
+def test_intent_gate_backstops_a_route_without_the_receipt_wrapper(tmp_path: Path, monkeypatch) -> None:
+    workspace = _configure_runtime_files(tmp_path, monkeypatch)
+    _install_intent_gate(workspace, enforce=True)
+    registry = ToolRegistry()
+    registry.register(workspace_create_candidate_text_spec(), build_workspace_create_candidate_text_handler())
+    receipt = GovernedToolOrchestrator(registry=registry).invoke(
+        ToolRequest(operation_id="plain-route", tool_id="workspace.create_candidate_text",
+                    arguments={"path": "candidate.txt", "content": "x\n"}, context=_context(workspace)))
+    assert receipt.status is not ToolReceiptStatus.EXECUTED
+    assert "BLOCKED_INTENT_SCOPE_MISMATCH" in (receipt.error_message or "")
+    assert not (workspace / "candidate.txt").exists()

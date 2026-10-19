@@ -119,6 +119,18 @@ Rejects push operations not matching canonical main HEAD -> origin/main.
 ### `scripts/check-implementation-gate.py`
 Fail-closed structural validation of the machine gate.
 
+`active_intent.index_revision` in `.lbe/governance/implementation-gates.json` must be the upper-case
+SHA-256 digest of the raw bytes of the **staged** `PROJECT_INDEX.md` blob, the same value as
+`git show :PROJECT_INDEX.md | sha256sum` (never a label or a placeholder). Print the exact
+value with `python scripts/check-implementation-gate.py --print-index-revision` (read-only, uses the
+validator's own computation) after staging the intended index; the value must be re-recorded by the
+owner whenever `PROJECT_INDEX.md` is staged again. The gate file is a protected path: an agent does
+not edit it without separate authority.
+
+`python scripts/check-implementation-gate.py --proposed PATH...` runs the same intent, owner, scope and
+index checks on paths about to be written (read-only). It is enforced before governed writes only in
+a workspace whose gate file sets `intent_and_structure_governance.enforce_before_write: true`.
+
 ## Active-scope governance
 
 External cryptographic scope signing is retired. Normal workspace governance uses an active locked

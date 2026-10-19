@@ -253,6 +253,28 @@ def test_guard_planner_stops_on_insufficient_evidence(tmp_path):
     assert runner.calls == []
 
 
+def test_guard_without_evidence_request_fails_closed_before_any_inspection(tmp_path):
+    """G21: a free-form question can yield a plan that names a guard but no evidence; the planning
+    stage's consistency rule makes that an orchestration error, never a guard run."""
+    backend = FakeBackend(_plan(candidate_guard_ids=["cep.manifest_exists"], evidence_requests=[]))
+    controller, runner, workspace = _controller(tmp_path, backend)
+    response = _run(controller, workspace)
+    assert response.outcome == "ORCHESTRATION_ERROR"
+    assert response.error.code == "MISSING_EVIDENCE_REQUEST"
+    assert runner.calls == []
+
+
+def test_plan_with_no_guard_is_insufficient_evidence_not_an_exception(tmp_path):
+    """G21: a question no approved guard applies to is a deliberate INSUFFICIENT_EVIDENCE outcome."""
+    backend = FakeBackend(_plan(candidate_guard_ids=[], evidence_requests=[]))
+    controller, runner, workspace = _controller(tmp_path, backend)
+    response = _run(controller, workspace)
+    assert response.outcome == "INSUFFICIENT_EVIDENCE"
+    assert response.error.code == "NO_GUARD_SELECTED"
+    assert response.explanation is None
+    assert runner.calls == []
+
+
 @pytest.mark.parametrize("field", ["verdict", "write", "apply", "memory_promotion", "authorization"])
 def test_plan_rejects_forbidden_authority_fields(tmp_path, field):
     plan = _plan(); plan[field] = "forbidden"
@@ -357,3 +379,44 @@ def test_optional_proposal_skipped_on_unresolved_contradictions(tmp_path):
     assert response.outcome == "COMPLETED"
     assert response.proposal is None
     assert planner.calls == []
+
+
+def _lines(response):
+    return {line.partition(":")[0]: line.partition(":")[2].strip() for line in response.error.details}
+
+
+def test_insufficient_evidence_states_what_was_checked_what_is_missing_and_the_question(tmp_path):
+    """G21b: the stop carries its own data; nothing is selected, run or answered."""
+    backend = FakeBackend(_plan(candidate_guard_ids=["cep.manifest_exists"]))
+    evidence_service = FakeInsufficientEvidenceService(_evidence_package(
+        current=[{"ref": "workspace:test:src/app.py", "path": "src/app.py", "source_type": "workspace", "authority": 9, "verified": True, "classification": "source"}]
+    ))
+    controller, runner, workspace = _controller(tmp_path, backend, evidence_service=evidence_service)
+    response = _run(controller, workspace)
+    lines = _lines(response)
+    assert response.error.code == "INSUFFICIENT_EVIDENCE"
+    assert "cep.manifest_exists" in lines["checked"]
+    assert lines["missing"].startswith("cep.manifest_exists:")
+    assert lines["ask"].endswith("or say it does not exist.")
+    assert runner.calls == [] and response.deterministic_result is None and response.explanation is None
+
+
+def test_ambiguous_selection_asks_which_guard_without_choosing_one(tmp_path):
+    backend = FakeBackend(_plan(candidate_guard_ids=["cep.manifest_exists", "cep.host_version"]))
+    controller, runner, workspace = _controller(tmp_path, backend)
+    response = _run(controller, workspace)
+    lines = _lines(response)
+    assert response.error.code == "AMBIGUOUS_GUARD_SELECTION"
+    assert "cep.manifest_exists" in lines["ask"] and "cep.host_version" in lines["ask"]
+    assert runner.calls == []
+
+
+def test_no_guard_selected_lists_approved_guards_to_investigate(tmp_path):
+    backend = FakeBackend(_plan(candidate_guard_ids=[], evidence_requests=[]))
+    controller, runner, workspace = _controller(tmp_path, backend)
+    response = _run(controller, workspace)
+    lines = _lines(response)
+    assert response.error.code == "NO_GUARD_SELECTED"
+    assert lines["investigate"].startswith("approved guards include")
+    assert lines["ask"].startswith("Which approved guard")
+    assert runner.calls == []

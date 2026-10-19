@@ -387,11 +387,21 @@ class GovernedProviderTurnRuntime:
                 self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.COMPLETED)
                 return
             message = response.error.message if response.error else result.outcome
-            raise RuntimeError(message)
+            failure = RuntimeError(message)
+            if response.error is not None and response.error.details:
+                # The controller's own stop data (what was checked, what is missing, what to ask).
+                failure.reason_code = response.error.code
+                failure.details = tuple(response.error.details)
+            raise failure
         except Exception as exc:
+            payload = {"error_code": "GOVERNED_PROVIDER_TURN_ERROR", "error_message": f"{type(exc).__name__}: {exc}"}
+            details = getattr(exc, "details", None)
+            if isinstance(details, (tuple, list)) and details and all(isinstance(item, str) for item in details):
+                payload["reason_code"] = str(getattr(exc, "reason_code", ""))
+                payload["error_details"] = list(details)
             self.history.append_event(OperationalEvent(
                 session_id=turn.session_id, turn_id=turn_id, event_type="model.error",
-                payload={"error_code": "GOVERNED_PROVIDER_TURN_ERROR", "error_message": f"{type(exc).__name__}: {exc}"},
+                payload=payload,
                 provider_id=state.provider_id, model_id=state.provider_model,
             ))
             self.history.finalize_turn(turn_id=turn_id, status=TurnStatus.FAILED)

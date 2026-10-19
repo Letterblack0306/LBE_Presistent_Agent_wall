@@ -471,3 +471,113 @@ def test_serve_stdio_round_trips_initialize_list_and_ping(tmp_path: Path) -> Non
     assert "lbe_governed_execute" in names
     pinged = next(item for item in responses if item.get("id") == 1)
     assert pinged["result"] == {}
+
+
+# --- BirdEye classification: only known lookups are reads; workspace_run & co. are governed as writes ---
+
+_MUTATING_CATALOG = _READ_CATALOG + [
+    {"name": "workspace_run", "description": "Run a command.", "inputSchema": {"type": "object", "properties": {}}},
+    {"name": "workspace_run_sequence", "description": "Run commands.", "inputSchema": {"type": "object", "properties": {}}},
+]
+
+
+@pytest.mark.parametrize("tool", ["workspace_run", "workspace_run_sequence", "desktop_action", "some_new_tool"])
+def test_non_lookup_birdeye_tools_are_specified_as_governed_writes(tool: str) -> None:
+    from lbe_guard_inspector.runtime.external_capabilities import birdeye_mcp_tool_spec
+    from lbe_guard_inspector.runtime.tool_orchestration import ToolAccessClass, ToolRiskClass
+    spec = birdeye_mcp_tool_spec(tool)
+    assert spec.access_class is ToolAccessClass.WRITE
+    assert spec.risk_class is ToolRiskClass.HIGH
+    assert spec.capability == "modify"
+
+
+@pytest.mark.parametrize("tool", ["birdeye_search", "knowledge_read", "memory_recall", "workspace_command_history"])
+def test_known_birdeye_lookups_stay_reads(tool: str) -> None:
+    from lbe_guard_inspector.runtime.external_capabilities import birdeye_mcp_tool_spec
+    from lbe_guard_inspector.runtime.tool_orchestration import ToolAccessClass
+    assert birdeye_mcp_tool_spec(tool).access_class is ToolAccessClass.READ
+
+
+def test_mutating_birdeye_tools_are_not_offered_or_run_as_reads(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    store = WorkspaceMemoryStore(tmp_path / "lbe.sqlite")
+    _write_session(store, workspace=workspace)
+    ran: list[str] = []
+
+    def builder(name: str):
+        def handler(request):
+            ran.append(name)
+            return ToolExecutionResult(output={"name": name}, evidence=())
+        return handler
+
+    addon = _addon(store, session_id="session-addon", workspace=workspace,
+                   governed_handler_builder=builder, read_tools=_MUTATING_CATALOG)
+    listed = addon._dispatch({"jsonrpc": "2.0", "id": 3, "method": "tools/list", "params": {}})
+    names = [tool["name"] for tool in listed["result"]["tools"]]
+    assert "birdeye_search" in names
+    assert "workspace_run" not in names and "workspace_run_sequence" not in names
+
+    rejected = _call(addon, "workspace_run", arguments={"command": "echo hi"})
+    assert "error" in rejected
+    assert ran == []
+
+
+def test_workspace_run_through_governed_execute_needs_owner_authority_and_never_runs_without_it(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    database = tmp_path / "lbe.sqlite"
+    store = WorkspaceMemoryStore(database)
+    _write_session(store, workspace=workspace)
+    ran: list[str] = []
+
+    def builder(name: str):
+        def handler(request):
+            ran.append(name)
+            return ToolExecutionResult(output={"name": name}, evidence=())
+        return handler
+
+    addon = _addon(store, session_id="session-addon", workspace=workspace,
+                   governed_handler_builder=builder, read_tools=_MUTATING_CATALOG)
+    result = _call(addon, "lbe_governed_execute", arguments={
+        "tool_id": "mcp.birdeye.workspace_run",
+        "arguments": {"arguments": {"command": "echo hi"}},
+        "operation_id": "op-run-no-owner",
+    })
+    payload = json.loads(result["result"]["content"][0]["text"])
+    assert payload["status"] == "DENIED"
+    assert payload["error_code"] == "OWNER_AUTHORITY_BLOCKER"
+    assert payload["authorization"]["verdict"] == "DENY"
+    assert payload["tool_id"] == "mcp.birdeye.workspace_run"
+    assert payload["receipt_id"] and payload["approval_id"] is None
+    assert ran == []
+    assert _governed_count(database) == 0
+
+
+def test_workspace_run_is_denied_in_a_read_only_session(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    store = WorkspaceMemoryStore(tmp_path / "lbe.sqlite")
+    _write_session(store, workspace=workspace, permission="read_only", runtime_policy="audit")
+    ran: list[str] = []
+
+    def builder(name: str):
+        def handler(request):
+            ran.append(name)
+            return ToolExecutionResult(output={"name": name}, evidence=())
+        return handler
+
+    addon = _addon(store, session_id="session-addon", workspace=workspace,
+                   governed_handler_builder=builder, read_tools=_MUTATING_CATALOG)
+    result = _call(addon, "lbe_governed_execute", arguments={
+        "tool_id": "mcp.birdeye.workspace_run",
+        "arguments": {"arguments": {"command": "echo hi"}},
+        "operation_id": "op-run-readonly",
+        "owner_authority": _owner_authority(),
+    })
+    payload = json.loads(result["result"]["content"][0]["text"])
+    assert payload["status"] == "DENIED"
+    assert payload["error_code"] == "OWNER_AUTHORITY_BLOCKER"
+    assert payload["authorization"]["verdict"] == "DENY"
+    assert payload["approval_id"] is None and payload["output"] == {}
+    assert ran == []

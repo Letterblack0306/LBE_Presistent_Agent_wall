@@ -199,3 +199,50 @@ def test_runtime_issue_rejects_docs_only_patch() -> None:
         proposed_layer="docs",
     )
     assert "docs-only" in str(authority.pre_execution_blocker("docs/status.md"))
+
+
+def _authority(**overrides):
+    from lbe_guard_inspector.authority_ownership import OwnerAuthorityAuthorization
+    values = dict(
+        issue_id="ISSUE-1",
+        owner_file_or_module="hello.txt",
+        owner_reason="owner of the file under change",
+        owner_evidence=("user request",),
+        owner_status=OwnerAuthorityStatus.OWNER_PROVEN,
+        allowed_paths=("hello.txt",),
+        validation_command="python -m pytest -q",
+    )
+    values.update(overrides)
+    return OwnerAuthorityAuthorization(**values)
+
+
+def test_missing_package_denial_says_only_the_owner_can_supply_it() -> None:
+    from lbe_guard_inspector.authority_ownership import owner_denial_guidance
+    guidance = owner_denial_guidance("no proven owner evidence package was supplied", None, ("hello.txt",))
+    assert guidance["message"].startswith("no proven owner evidence package was supplied")
+    assert "Only the owner can supply it" in guidance["message"]
+    assert "cannot create or approve" in guidance["message"]
+    assert "LBE_OWNER_AUTHORITY_FILE" in guidance["message"]
+    assert guidance["satisfiable_by"] == "owner"
+    assert "ask the owner" in guidance["next_step"] and "hello.txt" in guidance["next_step"]
+    assert guidance["proposed_paths"] == ["hello.txt"]
+
+
+def test_outside_allowed_paths_denial_lists_the_allowed_paths_the_agent_may_use() -> None:
+    from lbe_guard_inspector.authority_ownership import owner_denial_guidance
+    authority = _authority()
+    blocker = authority.pre_execution_blocker("outside.txt")
+    guidance = owner_denial_guidance(blocker, authority, ("outside.txt",))
+    assert guidance["message"].startswith(blocker)
+    assert "Allowed paths: hello.txt" in guidance["message"]
+    assert guidance["satisfiable_by"] == "agent"
+    assert guidance["allowed_paths"] == ["hello.txt"]
+    assert "hello.txt" in guidance["next_step"] and "owner" in guidance["next_step"]
+
+
+def test_unproven_owner_denial_is_owner_only() -> None:
+    from lbe_guard_inspector.authority_ownership import owner_denial_guidance
+    authority = _authority(owner_status=OwnerAuthorityStatus.OWNER_UNPROVEN)
+    guidance = owner_denial_guidance(authority.pre_execution_blocker("hello.txt"), authority, ("hello.txt",))
+    assert guidance["satisfiable_by"] == "owner"
+    assert "only the owner can change it" in guidance["message"]

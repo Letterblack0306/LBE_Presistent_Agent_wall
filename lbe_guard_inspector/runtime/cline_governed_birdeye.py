@@ -54,6 +54,7 @@ from lbe_guard_inspector.runtime.authorization_resolver import (
     resolve_authorization,
 )
 from lbe_guard_inspector.runtime.external_capabilities import (
+    BIRDEYE_READ_TOOLS,
     birdeye_mcp_tool_spec,
     build_birdeye_mcp_handler,
 )
@@ -274,6 +275,8 @@ class GovernedBirdeyeAddon:
                 self._read_tools = []
         for definition in self._read_tools:
             name = str(definition.get("name", ""))
+            if name not in BIRDEYE_READ_TOOLS:
+                continue  # only lookups are offered as reads; the rest go through lbe_governed_execute as writes
             description = str(definition.get("description", ""))
             tools.append({
                 "name": name,
@@ -342,7 +345,9 @@ class GovernedBirdeyeAddon:
             except (ValueError, TypeError, FileNotFoundError, RuntimeError, OSError) as exc:
                 raise _McpError(-32602, f"BirdEye read tools are unavailable: {exc}") from exc
         for definition in self._read_tools:
-            self._read_tool_names.add(str(definition.get("name", "")))
+            name = str(definition.get("name", ""))
+            if name in BIRDEYE_READ_TOOLS:
+                self._read_tool_names.add(name)
 
     @staticmethod
     def _text_result(payload: Mapping[str, Any]) -> dict[str, Any]:

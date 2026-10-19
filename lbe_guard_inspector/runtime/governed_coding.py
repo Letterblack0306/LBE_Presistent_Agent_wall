@@ -26,6 +26,7 @@ from agent import Context, GovernanceError, matches_any, path_allowed
 from ..authority_ownership import (
     OWNER_AUTHORITY_BLOCKER,
     OWNER_SCOPE_VIOLATION,
+    owner_denial_guidance,
     OwnerAuthorityAuthorization,
 )
 from ..evidence_service import EvidenceService
@@ -35,6 +36,7 @@ from ..professional_provider_events import ModelEventType, NormalizedModelEvent
 from ..reasoning_contracts import LBERequest, LBEResponse, OrchestrationError
 from ..reasoning_provider import ProviderConfig
 from ..session_memory_runtime import SessionMemoryRuntimeBridge
+from . import intent_gate
 from .mode_controller import ModeRequest, resolve_mode
 from .provider_event_adapters import build_native_provider_event_adapter
 from .agent_guidance import AgentGuidance, ResolvedAdvisorySkills, build_agent_guidance
@@ -86,9 +88,17 @@ def _resolve_workspace_policy(root: Path, relative_to_root: str) -> tuple[Contex
 
     allowed_write_paths = list(governance.get("allowed_write_paths", []))
     if not path_allowed(relative_to_root, allowed_write_paths):
-        raise GovernanceError(f"write path is not allowed: {relative_to_root}")
+        raise GovernanceError(
+            f"write path is not allowed: {relative_to_root}. The workspace write policy "
+            "(allowed_write_paths) is owner-set; only the owner can change it."
+        )
 
     _enforce_ui_implementation_authority(governance, relative_to_root, None)
+    # Backstop for write routes that do not pass the coding controller's receipt wrapper
+    # (direct `tool`, governed Cline worker): same gate, same opt-in, plain failure text.
+    intent_block = intent_gate.check_paths(root, (relative_to_root,))
+    if intent_block is not None:
+        raise GovernanceError(intent_block.message())
     return ctx, configured_root
 
 
@@ -225,7 +235,10 @@ def build_workspace_create_candidate_text_handler() -> object:
         if len(raw) > _MAX_CREATE_BYTES:
             raise ValueError(f"content exceeds bounded create limit of {_MAX_CREATE_BYTES} bytes")
         if int(governance.get("max_changed_files", 0)) < 1:
-            raise GovernanceError("active governance allows zero changed files")
+            raise GovernanceError(
+                "active governance allows zero changed files. The change budget "
+                "(max_changed_files) is owner-set; only the owner can raise it."
+            )
         max_patch_bytes = int(governance.get("max_patch_bytes", 0))
         if max_patch_bytes < len(raw):
             raise GovernanceError(f"content exceeds active max_patch_bytes ({max_patch_bytes})")
@@ -295,7 +308,10 @@ def build_workspace_write_text_handler() -> object:
         if len(raw) > _MAX_WRITE_BYTES:
             raise ValueError(f"content exceeds bounded write limit of {_MAX_WRITE_BYTES} bytes")
         if int(governance.get("max_changed_files", 0)) < 1:
-            raise GovernanceError("active governance allows zero changed files")
+            raise GovernanceError(
+                "active governance allows zero changed files. The change budget "
+                "(max_changed_files) is owner-set; only the owner can raise it."
+            )
         max_patch_bytes = int(governance.get("max_patch_bytes", 0))
         if max_patch_bytes < len(raw):
             raise GovernanceError(f"content exceeds active max_patch_bytes ({max_patch_bytes})")
@@ -712,13 +728,39 @@ class _ReceiptTrackingOrchestrator(GovernedToolOrchestrator):
                     None,
                 )
             if authority is None or blocker is not None:
+                guidance = owner_denial_guidance(
+                    blocker or "owner authority was not proven", authority, proposed_paths
+                )
                 receipt = ToolReceipt(
                     operation_id=request.operation_id,
                     tool_id=request.tool_id,
                     status=ToolReceiptStatus.DENIED,
                     authorization=None,
+                    output={
+                        "satisfiable_by": guidance["satisfiable_by"],
+                        "next_step": guidance["next_step"],
+                        "allowed_paths": guidance["allowed_paths"],
+                        "proposed_paths": guidance["proposed_paths"],
+                    },
                     error_code=OWNER_AUTHORITY_BLOCKER,
-                    error_message=blocker or "owner authority was not proven",
+                    error_message=str(guidance["message"]),
+                )
+                if receipt.receipt_id not in self._observed_receipt_ids:
+                    self._observed_receipt_ids.add(receipt.receipt_id)
+                    self._observed_receipts.append(receipt)
+                return receipt
+            # Owner authority is proven; the workspace's own implementation gate must also
+            # have a valid intent covering these paths (only when that workspace opts in).
+            intent_block = intent_gate.check_paths(Path(request.context.workspace_root), proposed_paths)
+            if intent_block is not None:
+                receipt = ToolReceipt(
+                    operation_id=request.operation_id,
+                    tool_id=request.tool_id,
+                    status=ToolReceiptStatus.DENIED,
+                    authorization=None,
+                    output=intent_block.output(),
+                    error_code=intent_gate.INTENT_GATE_BLOCKED,
+                    error_message=intent_block.message(),
                 )
                 if receipt.receipt_id not in self._observed_receipt_ids:
                     self._observed_receipt_ids.add(receipt.receipt_id)

@@ -300,3 +300,25 @@ def test_unknown_installed_adapter_remains_unavailable() -> None:
     registry = InstalledCapabilityRegistry(records=(record,))
     assert built_in_adapter_factories(registry) == {}
     assert registry.statuses({})[0].availability == "UNAVAILABLE"
+
+
+def test_a_stored_read_record_cannot_make_workspace_run_a_read(tmp_path: Path) -> None:
+    record = _record(
+        integration_id="birdeye-run", adapter_id="mcp.birdeye.run",
+        tool_id="mcp.birdeye.workspace_run", access_class=ToolAccessClass.READ,
+    )
+    registry = InstalledCapabilityRegistry(records=(record,))
+    registrations = registry.materialize(built_in_adapter_factories(registry))
+    assert len(registrations) == 1
+    assert registrations[0].access_class is ToolAccessClass.WRITE
+    assert registrations[0].risk_class is ToolRiskClass.HIGH
+
+
+def test_a_stored_birdeye_lookup_record_stays_a_read(tmp_path: Path) -> None:
+    record = _record(
+        integration_id="birdeye-search", adapter_id="mcp.birdeye.search",
+        tool_id="mcp.birdeye.birdeye_search", access_class=ToolAccessClass.READ,
+    )
+    registry = InstalledCapabilityRegistry(records=(record,))
+    registrations = registry.materialize(built_in_adapter_factories(registry))
+    assert registrations[0].access_class is ToolAccessClass.READ

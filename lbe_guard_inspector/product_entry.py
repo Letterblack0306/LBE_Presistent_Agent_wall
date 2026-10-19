@@ -230,10 +230,26 @@ def _turn(argv: Sequence[str]) -> int:
                 provider_config=config,
                 engine_id=state.reasoning_engine,
             )
+            # Same doctrine builder `lbe` uses for the non-coding path in cli.py; without
+            # it the model never receives the mode's doctrine or the tool/authority rules.
+            from .runtime.agent_guidance import build_agent_guidance
+
+            intent = "diagnose_failure" if state.mode == AgentMode.INVESTIGATION.value else "inspect_workspace"
+            guidance = build_agent_guidance(
+                mode_decision=resolve_mode(ModeRequest(
+                    intent=intent,
+                    permission=state.permission,
+                    runtime_policy=state.runtime_policy,
+                    workspace_root=str(state.canonical_workspace_root),
+                )),
+                workspace_root=state.canonical_workspace_root,
+                tools=(),
+            )
             foreground_runtime = GovernedProviderTurnRuntime(
                 history=history,
                 gateway=GovernedAgentGateway(runtime=runtime, reasoning_controller=controller),
                 mode=AgentMode(state.mode),
+                guidance=guidance,
             )
         provider_runtime = BackgroundProviderTurnRuntime(
             history=history,

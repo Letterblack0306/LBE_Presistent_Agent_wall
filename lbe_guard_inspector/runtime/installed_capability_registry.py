@@ -18,6 +18,7 @@ from typing import Callable, Mapping
 from .external_capabilities import (
     ExternalCapabilityKind,
     ExternalCapabilityRegistration,
+    birdeye_access_class,
     build_birdeye_mcp_handler,
 )
 from .tool_orchestration import (
@@ -200,6 +201,14 @@ class InstalledCapabilityRegistry:
             handler = adapter_factories[record.adapter_id](record)
             if not callable(handler):
                 raise TypeError(f"adapter factory returned non-callable handler: {record.adapter_id}")
+            access_class = record.access_class
+            risk_class = record.risk_class
+            if record.tool_id.startswith("mcp.birdeye.") and (
+                birdeye_access_class(record.tool_id.removeprefix("mcp.birdeye.")) is ToolAccessClass.WRITE
+            ):
+                # a stored record cannot declare a non-lookup BirdEye tool as a read
+                access_class = ToolAccessClass.WRITE
+                risk_class = ToolRiskClass.HIGH
             registrations.append(
                 ExternalCapabilityRegistration(
                     adapter_id=record.adapter_id,
@@ -209,9 +218,9 @@ class InstalledCapabilityRegistry:
                     handler=handler,
                     required_arguments=record.required_arguments,
                     optional_arguments=record.optional_arguments,
-                    access_class=record.access_class,
+                    access_class=access_class,
                     network_behavior=record.network_behavior,
-                    risk_class=record.risk_class,
+                    risk_class=risk_class,
                     timeout_seconds=record.timeout_seconds,
                     retry_policy=record.retry_policy,
                 )

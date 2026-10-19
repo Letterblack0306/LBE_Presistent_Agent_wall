@@ -37,7 +37,15 @@ def _git(*args: str) -> subprocess.CompletedProcess[str]:
         fail(f"cannot inspect staged changes: {exc}")
 
 
+# Set by `--proposed PATH...`: validate paths that are about to be written, before any
+# staging. Same checks as the commit-time run, except the two that only make sense
+# against a staged change set (the staged diff check and "new file needs an index update").
+PROPOSED: tuple[str, ...] | None = None
+
+
 def _staged_paths() -> tuple[str, ...]:
+    if PROPOSED is not None:
+        return PROPOSED
     result = _git("diff", "--cached", "--name-only", "--diff-filter=ACMRD")
     if result.returncode != 0:
         fail(f"cannot enumerate staged paths: {result.stderr.strip() or 'git diff failed'}")
@@ -61,8 +69,8 @@ def _documentation_only_commit_allowed() -> bool:
             + ", ".join(disallowed)
         )
 
-    diff_check = _git("diff", "--cached", "--check")
-    if diff_check.returncode != 0:
+    diff_check = _git("diff", "--cached", "--check") if PROPOSED is None else None
+    if diff_check is not None and diff_check.returncode != 0:
         detail = (diff_check.stdout + diff_check.stderr).strip()
         fail(f"documentation-only staged diff failed git diff --cached --check: {detail}")
 
@@ -75,6 +83,23 @@ def _structure_for(path: str) -> str:
     return path
 
 
+def _staged_index_revision() -> str:
+    """The revision `active_intent.index_revision` must equal: SHA-256 (upper-case hex) of the RAW BYTES of the
+    STAGED PROJECT_INDEX.md blob, i.e. `git show :PROJECT_INDEX.md | sha256sum`. No text decoding or newline
+    translation is applied. This is the only definition; the validator and --print-index-revision share it."""
+    try:
+        staged_index = subprocess.run(
+            ["git", "show", ":PROJECT_INDEX.md"],
+            cwd=ROOT, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        fail(f"cannot inspect staged changes: {exc}")
+    if staged_index.returncode != 0:
+        fail("BLOCKED_STRUCTURE_DRIFT: PROJECT_INDEX.md must be staged before mutation")
+    return hashlib.sha256(staged_index.stdout).hexdigest().upper()
+
+
 def _intent_block(ledger: str, intent_id: str) -> str:
     match = re.search(
         rf"^## INTENT {re.escape(intent_id)}\s*$([\s\S]*?)(?=^## INTENT |\Z)",
@@ -85,7 +110,7 @@ def _intent_block(ledger: str, intent_id: str) -> str:
 
 
 def _field(block: str, name: str) -> str:
-    match = re.search(rf"^{re.escape(name)}:\s*(.+)$", block, re.MULTILINE)
+    match = re.search(rf"^{re.escape(name)}:[ \t]*(.+)$", block, re.MULTILINE)
     return match.group(1).strip() if match else ""
 
 
@@ -126,10 +151,7 @@ def _validate_intent_and_structure(data: dict[str, object], staged: tuple[str, .
         fail("BLOCKED_INTENT_SCOPE_MISMATCH: expected path scope is empty")
 
     index = index_path.read_text(encoding="utf-8")
-    staged_index = _git("show", ":PROJECT_INDEX.md")
-    if staged_index.returncode != 0:
-        fail("BLOCKED_STRUCTURE_DRIFT: PROJECT_INDEX.md must be staged before mutation")
-    revision = hashlib.sha256(staged_index.stdout.encode("utf-8")).hexdigest().upper()
+    revision = _staged_index_revision()
     declared_revision = str(active.get("index_revision", "")).strip().upper()
     if declared_revision != revision:
         fail("BLOCKED_STRUCTURE_DRIFT: active_intent.index_revision does not match PROJECT_INDEX.md")
@@ -143,7 +165,7 @@ def _validate_intent_and_structure(data: dict[str, object], staged: tuple[str, .
             fail(f"BLOCKED_UNINDEXED_STRUCTURE: {structure}")
 
         head_check = _git("cat-file", "-e", f"HEAD:{path}")
-        if head_check.returncode != 0 and "PROJECT_INDEX.md" not in staged:
+        if PROPOSED is None and head_check.returncode != 0 and "PROJECT_INDEX.md" not in staged:
             fail(f"BLOCKED_STRUCTURE_DRIFT: new structure requires PROJECT_INDEX.md update: {path}")
 
 
@@ -161,6 +183,9 @@ def main() -> None:
     status = str(data.get("status", "")).upper()
     if not data.get("active_phase") or not data.get("active_slice"):
         fail("active phase/slice is not declared")
+
+    if status in {"PASS", "CLOSED"} and PROPOSED is not None:
+        fail("BLOCKED_GATE_CLOSED: no open implementation slice covers a write to " + ", ".join(PROPOSED))
 
     if status in {"PASS", "CLOSED"}:
         active = data.get("active_intent") or {}
@@ -232,4 +257,29 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if "--print-index-revision" in sys.argv:
+        # Read-only: prints the value the gate file's active_intent.index_revision must hold for the
+        # index as currently staged. It changes nothing; the owner records it.
+        print(_staged_index_revision())
+        raise SystemExit(0)
+    if "--proposed" in sys.argv:
+        import posixpath
+
+        _paths = []
+        for item in sys.argv[sys.argv.index("--proposed") + 1:]:
+            if not item.strip():
+                continue
+            _norm = posixpath.normpath(item.replace("\\", "/").strip())
+            if (
+                _norm in {".", ".."}
+                or _norm.startswith(("../", "/"))
+                or re.match(r"^[A-Za-z]:", _norm)
+                or any(not ch.isprintable() for ch in _norm)
+            ):
+                fail(f"BLOCKED_PATH_ESCAPE: not a plain workspace-relative path: {item!r}")
+            _paths.append(_norm)
+        _paths = tuple(_paths)
+        if not _paths:
+            fail("--proposed needs at least one path")
+        PROPOSED = _paths
     main()

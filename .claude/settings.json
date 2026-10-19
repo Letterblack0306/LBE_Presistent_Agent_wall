@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/agent-hook-preflight.mjs\"",
+            "timeout": 30,
+            "statusMessage": "LBE governance preflight"
+          }
+        ]
+      }
+    ]
+  }
+}

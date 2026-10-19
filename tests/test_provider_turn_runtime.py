@@ -196,3 +196,70 @@ def test_non_streaming_runtime_delivers_active_doctrine_and_safe_provenance(tmp_
     assert len(loaded) == 1
     assert loaded[0].payload["doctrine"] == "AUDIT"
     assert "prompt" not in loaded[0].payload
+
+
+def test_product_turn_hands_doctrine_to_the_non_coding_runtime(tmp_path: Path, monkeypatch) -> None:
+    """G14: `_turn()`'s non-coding branch must pass the mode doctrine to the runtime it builds."""
+    import json
+
+    from lbe_guard_inspector import product_entry, provider_turn_runtime
+
+    history, state = _service(tmp_path, mode="audit")
+    config = tmp_path / "provider-config.json"
+    config.write_text(json.dumps({"endpoint": "http://127.0.0.1:9/v1/chat/completions", "model": "m", "timeout_seconds": 5}))
+    captured: dict = {}
+
+    class _Spy:
+        supports_cancellation = False
+
+        def __init__(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+        def run(self, *, turn_id: str, text: str) -> None:
+            history.finalize_turn(turn_id=turn_id, status=TurnStatus.COMPLETED)
+
+    monkeypatch.setattr(provider_turn_runtime, "GovernedProviderTurnRuntime", _Spy)
+    monkeypatch.setattr(product_entry._cli, "_runtime_from_state", lambda **_: object())
+    monkeypatch.setattr("lbe_guard_inspector.reasoning_runtime.build_provider_controller", lambda **_: (object(), None))
+    product_entry._turn([
+        "--database", str(tmp_path / "state.sqlite3"), "--session-id", state.session_id,
+        "--text", "what is your doctrine?", "--provider-config", str(config),
+    ])
+    guidance = captured["guidance"]
+    assert guidance is not None and guidance.mode == "audit"
+    assert "ACTIVE DOCTRINE: AUDIT" in guidance.prompt and "Code modification is disabled" in guidance.prompt
+
+
+class _StoppedGateway(_CapturingGateway):
+    """The controller stopped for lack of evidence and said what it would need."""
+
+    def invoke(self, request: AgentRequestEnvelope) -> AgentResultEnvelope:
+        from lbe_guard_inspector.reasoning_contracts import OrchestrationError
+
+        ok = super().invoke(request)
+        return AgentResultEnvelope(
+            request_id=ok.request_id, session_id=ok.session_id, task_id=ok.task_id, operation_id=ok.operation_id,
+            mode=ok.mode, mode_decision=ok.mode_decision, status=TaskStatus.BLOCKED, outcome="INSUFFICIENT_EVIDENCE",
+            response=LBEResponse(
+                task_id=request.task_id, workspace_identity={}, workspace_profile={}, plan=None,
+                deterministic_result=None, explanation=None, outcome="INSUFFICIENT_EVIDENCE",
+                error=OrchestrationError(
+                    "INSUFFICIENT_EVIDENCE", "GuardPlanner could not select a guard: INSUFFICIENT_EVIDENCE",
+                    ("checked: g1 (needs x)", "missing: g1: x", "ask: Where is x?"),
+                ),
+            ),
+        )
+
+
+def test_a_controller_stop_keeps_its_checked_missing_and_ask_in_the_persisted_error(tmp_path: Path) -> None:
+    history, state = _service(tmp_path, mode="audit")
+    runtime = GovernedProviderTurnRuntime(history=history, gateway=_StoppedGateway(), mode=AgentMode.AUDIT)
+    turn = history.start_turn(session_id=state.session_id)
+    runtime.run(turn_id=turn.turn_id, text="what is the doctrine?")
+    errors = [e for e in history.events_for_session(session_id=state.session_id) if e.event_type == "model.error"]
+    assert len(errors) == 1
+    payload = errors[0].payload
+    assert payload["error_code"] == "GOVERNED_PROVIDER_TURN_ERROR"  # unchanged outcome and code
+    assert "INSUFFICIENT_EVIDENCE" in payload["error_message"]
+    assert payload["reason_code"] == "INSUFFICIENT_EVIDENCE"
+    assert payload["error_details"] == ["checked: g1 (needs x)", "missing: g1: x", "ask: Where is x?"]

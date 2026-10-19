@@ -196,18 +196,36 @@ def external_capability_descriptions(
     return {item.tool_id: item.description for item in registrations}
 
 
+# BirdEye tools LBE treats as reads: evidence, search, memory and history lookups.
+# Everything else (workspace_run, workspace_run_sequence, desktop_action, ...) may
+# change state, so LBE governs the agent's request to it as a write; BirdEye itself
+# is not modified and keeps its own authority.
+BIRDEYE_READ_TOOLS = frozenset({
+    "birdeye_inspect", "birdeye_roots", "birdeye_search", "birdeye_status", "birdeye_verify_hash",
+    "knowledge_read", "knowledge_route", "local_projects", "revision_status",
+    "memory_conversation", "memory_message", "memory_recall", "memory_related",
+    "memory_search", "memory_sources", "memory_timeline",
+    "workspace_command_history", "workspace_identity",
+})
+
+
+def birdeye_access_class(tool: str) -> ToolAccessClass:
+    return ToolAccessClass.READ if str(tool).strip() in BIRDEYE_READ_TOOLS else ToolAccessClass.WRITE
+
+
 def birdeye_mcp_tool_spec(tool: str) -> ToolSpec:
-    """Return the bounded LBE-facing spec for one BirdEye read-only MCP tool."""
+    """Return the bounded LBE-facing spec for one BirdEye MCP tool (read only for known lookups)."""
     normalized = str(tool).strip()
     if not normalized:
         raise ValueError("BirdEye MCP tool must be non-empty")
+    access = birdeye_access_class(normalized)
     return ToolSpec(
         tool_id=f"mcp.birdeye.{normalized}",
-        capability="inspect",
+        capability="inspect" if access is ToolAccessClass.READ else "modify",
         required_arguments=("arguments",),
-        access_class=ToolAccessClass.READ,
+        access_class=access,
         network_behavior=ToolNetworkBehavior.NONE,
-        risk_class=ToolRiskClass.LOW,
+        risk_class=ToolRiskClass.LOW if access is ToolAccessClass.READ else ToolRiskClass.HIGH,
         timeout_seconds=60.0,
         retry_policy="none",
         preconditions=(
