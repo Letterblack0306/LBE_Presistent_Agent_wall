@@ -2,7 +2,7 @@
     "schema_version": 1,
     "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
     "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-    "active_slice": "LBE_OWNED_TERMINAL_PRODUCT_SURFACE",
+    "active_slice": "RECORDS_AND_GATE_STATE_RECONCILIATION_C",
     "status": "OPEN",
     "implementation_allowed": true,
     "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
         "fail_closed": true
     },
     "active_intent": {
-        "intent_id": "LBE-INTENT-LBE-OWNED-TERMINAL-SURFACE-20261010",
+        "intent_id": "LBE-INTENT-RECORDS-AND-GATE-STATE-RECONCILIATION-C-20261019",
         "owner": "Existing LBE product-entry, terminal presentation, runtime, packaging, and governed Cline mechanics owners",
-        "index_revision": "PROJECT_INDEX.md@2026-10-10-product-surface-supersession"
+        "index_revision": "3CEAC8212DDD942CE960843771F4D94FB0143B5B9CB55ECE62C013FA1D87E617"
     },
     "closure": {
         "status": "OPEN",

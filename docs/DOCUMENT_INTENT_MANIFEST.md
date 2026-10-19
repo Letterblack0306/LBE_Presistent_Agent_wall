@@ -57,6 +57,8 @@ The former `.agent/` and `.cline/` routing files were retired as obsolete local 
 | `docs/LBE_AGENT_LIFECYCLE.md` | `LIVE_OWNER` | Operational lifecycle owner for an LBE agent turn; keep current. |
 | `docs/README.md` | `ROUTER` | Canonical documentation entrypoint, collection map, and document-hygiene policy. |
 | `docs/DOCUMENT_INTENT_MANIFEST.md` | `ROUTER` | This per-file intent inventory; keep synchronized with the tracked Markdown set. |
+| `docs/LBE_TERMINAL_UI.md` | `LIVE_OWNER` | Status record for the redesigned Rust terminal client `apps/lbe-terminal`: design sources, architecture, screens, bridge messages, evidence, open items; keep current with the UI. |
+| `docs/LBE_CAPABILITY_INVENTORY.md` | `LIVE_OWNER` | Verified capability inventory (2026-10-18), confirmed governance-recovery gaps routed to existing owners, and the terminal UI coverage map; read-only evidence, no new engine. |
 
 ## Acceptance and gate records
 

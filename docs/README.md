@@ -166,6 +166,8 @@ show every material Markdown path and its disposition. A clean Git index alone i
 ## Design entry points
 
 - [LBE Agent Lifecycle](LBE_AGENT_LIFECYCLE.md) — operational flow owner.
+- [LBE Terminal UI](LBE_TERMINAL_UI.md) — redesigned Rust terminal client: architecture, screens, bridge messages, evidence and open items.
+- [LBE capability inventory](LBE_CAPABILITY_INVENTORY.md) — verified capabilities, confirmed governance-recovery gaps with owners and required evidence, and the UI coverage map.
 - [Agent Lifecycle — Phases, Owners, Surfaces, Reuse](design/AGENT_LIFECYCLE_PHASES.md) — the
   single product lifecycle everything hangs off of.
 - [Product Surface Living Spec](design/lbe_product_surface_spec.json) — the machine-legible model
