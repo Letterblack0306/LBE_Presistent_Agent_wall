@@ -38,3 +38,7 @@ Follow the standing authorization section of docs/GOVERNANCE_RULES.md: the activ
 ## Evaluation discovery before completion claims
 
 For audit, repair, and code changes, inspect requirements and existing tests; query `lbe_guard_inspector.runtime.evaluation_discovery.discover_evaluations(changed_paths=..., task_kind=...)` for applicable checks. This read-only selector returns candidates, not execution authority or completion evidence. Execute tests through the authorized project path and distinguish unit, bridge, installed interaction, and visual proof. A passing unit test cannot prove the installed TUI works; absent live evidence is UNVERIFIED or BLOCKED, never PROVEN. The existing persisted task completion contract, producer policy, and gate remain authoritative.
+
+## Terminal client status
+
+The Rust terminal client in `apps/lbe-terminal` (Lockstep Boundary Engine terminal client, rebuilt 2026-10-18 to `LBE_TUI_SCREEN_SPEC.md`; status and held-back items in `docs/LBE_TERMINAL_UI.md`) is the UI redesign candidate. It is not the canonical or installed client. The Python terminal (`lbe_guard_inspector/terminal_ui.py`, opened by bare `lbe`) remains canonical until the product owner explicitly supersedes it, and it is also the runtime library the bridge reuses: fix bugs there, but add no new Python UI screens. The Rust client is presentation and operator control only, and talks to the runtime through `lbe_guard_inspector/tui_bridge.py`. Do not add a client screen without a bridge message that supplies its data; do not patch UI files with ad-hoc scripts.

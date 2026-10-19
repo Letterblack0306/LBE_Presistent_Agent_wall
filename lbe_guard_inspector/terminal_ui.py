@@ -160,6 +160,7 @@ def _run_product_json(arguments: Sequence[str]) -> dict[str, Any]:
     completed = subprocess.run(
         command,
         check=False,
+        stdin=subprocess.DEVNULL,  # never inherit an interactive/bridge stdin
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -190,7 +191,7 @@ def _run_cancellable_turn(arguments: Sequence[str], cancel_event: Any, *,
     command = [sys.executable, "-m", "lbe_guard_inspector.product_entry",
                "--format", "json", *_with_owner_authority(arguments)]
     process = _subprocess.Popen(
-        command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE,
+        command, stdin=_subprocess.DEVNULL, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace",
     )
     history = None

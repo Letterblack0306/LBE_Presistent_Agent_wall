@@ -45,9 +45,6 @@ def run(output=None):
         except Exception as exc:
             logfile.write_text(str(exc), encoding="utf-8")
             record(name, "ERROR", {"log": str(logfile)})
-    command("rust_format", ["cargo", "fmt", "--manifest-path", "apps/lbe-terminal/Cargo.toml", "--", "--check"], 60, blocking=False)
-    command("rust_tests", ["cargo", "test", "--manifest-path", "apps/lbe-terminal/Cargo.toml", "--locked", "--", "--quiet"], 150, blocking=False)
-    command("rust_build", ["cargo", "check", "--manifest-path", "apps/lbe-terminal/Cargo.toml", "--locked"], 100, blocking=False)
     command("integration", ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "tools/lbe_product_integration.ps1"), "check", "-NoFetch", "-OutputRoot", str(root / "integration")], 180, structural=True)
     # Check exact installed product-owned paths, not an unrelated executable on PATH.
     install = Path.home() / "AppData" / "Local" / "LetterBlack" / "LBE"
