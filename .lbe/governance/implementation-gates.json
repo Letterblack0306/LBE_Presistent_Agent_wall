@@ -2,7 +2,7 @@
     "schema_version": 1,
     "active_plan": "docs/acceptance/INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE_GATE.md",
     "active_phase": "INSTALLED_PTY_CONPTY_AND_FINAL_PRODUCT_ACCEPTANCE",
-    "active_slice": "RECORDS_AND_GATE_STATE_RECONCILIATION_C",
+    "active_slice": "TUI_V4_LIVE_HEADER_RAIL_PLAN",
     "status": "OPEN",
     "implementation_allowed": true,
     "architecture_changes_allowed": true,
@@ -64,9 +64,9 @@
         "fail_closed": true
     },
     "active_intent": {
-        "intent_id": "LBE-INTENT-RECORDS-AND-GATE-STATE-RECONCILIATION-C-20261019",
-        "owner": "Existing LBE product-entry, terminal presentation, runtime, packaging, and governed Cline mechanics owners",
-        "index_revision": "3CEAC8212DDD942CE960843771F4D94FB0143B5B9CB55ECE62C013FA1D87E617"
+        "intent_id": "LBE-INTENT-TUI-V4-LIVE-HEADER-RAIL-PLAN-20261019",
+        "owner": "LBE runtime and gate owners; Rust client is the redesign candidate, Python terminal stays canonical",
+        "index_revision": "519D3AC66F492FE9E12FBC26B7E690A643CEB975F74D3905BDDF3FB100566DD0"
     },
     "closure": {
         "status": "OPEN",

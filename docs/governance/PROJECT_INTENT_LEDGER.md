@@ -78,6 +78,7 @@ RESULT: IMPLEMENTED_UNPROVEN
 AUTHORIZATION: USER_REQUESTED_BIRDEYE_SKILLS_INTEGRATION_AND_DOCUMENT_RECONCILIATION_2026_10_11
 ```
 
+
 ## Current reconciliation ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â 2026-09-05
 
 The current implementation uses the originating project-planning concepts as a
@@ -1278,6 +1279,25 @@ AUTHORIZATION: EXPLICIT_USER_DECISION_TO_OPEN_AUTHORITY_OWNERSHIP_ENGINE_NEUTRAL
 
 PROVENANCE_CORRECTION_2026_09_29: AUTHORIZATION_AMBIGUOUS. The agent offered two alternatives and the reply did not select one; the agent chose. This is NOT ratified as authorized and must not be treated as approved scope.
 
+
+## INTENT LBE-INTENT-TUI-V4-LIVE-HEADER-RAIL-PLAN-20261019
+
+```text
+INTENT_ID: LBE-INTENT-TUI-V4-LIVE-HEADER-RAIL-PLAN-20261019
+STATUS: ACTIVE
+REQUEST: TUI v4: live header (model · tok/s · Ns ago during a turn), live rail + plan, no placeholders, config next-step — per spec LBE_TUI_SCREEN_SPEC.md v4 §3 header, §9 F-keys (F5 capabilities, F6 report, F7 sessions/plan, F8 receipts), §10 no session ids, §16 rail; no KEYS block
+WHY: v4 is the owner-reviewed live-build spec for the Rust TUI redesign candidate. It replaces the static connection dot with a live model readout, rebuilds the rail around live work and project progress, and adds the useful-or-hidden rule. The Python terminal stays canonical until the product owner supersedes it.
+EXISTING_OWNER: LBE runtime and gate owners; Rust client is the redesign candidate, Python terminal stays canonical.
+MACHINE_SLICE: TUI_V4_LIVE_HEADER_RAIL_PLAN
+NON_GOALS: No logo change until owner supplies artwork; no docs agent in this intent; no Python UI screens.
+AUTHORITY_IMPACT: None.
+AFFECTED_STRUCTURE: apps/lbe-terminal/** (Rust client only). lbe_guard_inspector/tui_bridge.py is in scope for bridge messages that supply UI data. lbe_guard_inspector/terminal_ui.py limited to _provider_document and _human_error (config-missing message only). The stashed Python UI screens stay out.
+EXPECTED_PATH_PREFIXES: apps/lbe-terminal/, lbe_guard_inspector/tui_bridge.py, tools/ui-proof/, scripts/check-ui-proof.py, .lbe/proofs/ui/, .lbe/plan/, lbe_guard_inspector/terminal_ui.py (limited to _provider_document and _human_error, config-missing message only)
+FIRST_DELIVERABLE: scripts/check-ui-proof.py (gate §6/§6a), then the harness move from %TEMP%\lbe-ui-harness\harness.py to tools/ui-proof/harness.py, then UI changes. Plan file .lbe/plan/<intent-id>.json lists these as items.
+REQUIRED_EVIDENCE: UI Proof Gate manifest at .lbe/proofs/ui/<intent-id>.json; all gate §4A and §4B cases pass against the release build (cargo build --release); harness at tools/ui-proof/harness.py moved from %TEMP%\lbe-ui-harness\harness.py; scratch workspace with own git init, own LBE_WALL_DATABASE, explicit LBE_PROVIDER_CONFIG
+RESULT: IMPLEMENTATION_PENDING
+AUTHORIZATION: OWNER_APPROVED_2026_10_19
+```
 ## INTENT LBE-INTENT-TEXTUAL-NO-FABRICATED-EVIDENCE-001
 
 STATUS: CLOSED_NOT_IMPLEMENTED
