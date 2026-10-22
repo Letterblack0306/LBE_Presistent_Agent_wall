@@ -232,3 +232,33 @@ def test_passing_completion_proof_promotes_canonical_task_state(tmp_path: Path) 
     persisted = runtime.load_task_status(task_id="task-4")
     assert persisted is not None
     assert persisted.status is TaskStatus.COMPLETED
+
+
+def test_evidence_binding_does_not_cross_requirements() -> None:
+    contract = TaskCompletionContract(requirements=(
+        CompletionRequirement("compile", "focused_test"),
+        CompletionRequirement("integration", "focused_test"),
+    ))
+    bound = CompletionEvidence(
+        evidence_id="binding-compile", kind="focused_test",
+        status=CompletionEvidenceStatus.PASS, source="trusted-producer",
+        details={"requirement_id": "compile"},
+    )
+    verdict = evaluate_completion(contract=contract, evidence=(bound,), claimed_complete=True)
+    assert verdict.verdict is CompletionVerdict.BLOCKED
+    assert verdict.satisfied_requirement_ids == ("compile",)
+    assert verdict.missing_requirement_ids == ("integration",)
+
+
+def test_ambiguous_unbound_evidence_cannot_satisfy_duplicate_kind_requirements() -> None:
+    contract = TaskCompletionContract(requirements=(
+        CompletionRequirement("compile", "focused_test"),
+        CompletionRequirement("integration", "focused_test"),
+    ))
+    verdict = evaluate_completion(
+        contract=contract,
+        evidence=(_evidence("focused_test", CompletionEvidenceStatus.PASS),),
+        claimed_complete=True,
+    )
+    assert verdict.verdict is CompletionVerdict.BLOCKED
+    assert verdict.missing_requirement_ids == ("compile", "integration")

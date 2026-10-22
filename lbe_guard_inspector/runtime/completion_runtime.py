@@ -101,6 +101,71 @@ class CodingCompletionRuntime:
             )
         )
 
+    def bind_birdeye_receipt(
+        self, *, task_id: str, requirement_id: str, receipt_path: str,
+    ):
+        """Persist a verified BirdEye receipt reference without asserting acceptance.
+
+        LBE validation producers, not BirdEye exit codes, decide PASS/FAIL.
+        """
+        import hashlib
+        import json
+        from pathlib import Path
+
+        contract = self.load_contract(task_id=task_id)
+        if contract is None:
+            raise ValueError("persisted completion contract is required")
+        requirement = next(
+            (item for item in contract.requirements if item.requirement_id == requirement_id),
+            None,
+        )
+        if requirement is None:
+            raise ValueError("requirement is not declared in persisted completion contract")
+
+        path = Path(receipt_path).resolve(strict=True)
+        if path.name != "receipt.json" or path.parent.parent.name != "executions":
+            raise ValueError("not a BirdEye execution receipt location")
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(receipt, dict):
+            raise ValueError("invalid receipt")
+        digest = receipt.get("receipt_sha256")
+        body = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+        expected = hashlib.sha256(
+            json.dumps(body, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+        if not isinstance(digest, str) or not __import__("hmac").compare_digest(digest, expected):
+            raise ValueError("BirdEye receipt hash verification failed")
+        if receipt.get("task_id") != task_id or receipt.get("requirement_id") != requirement_id:
+            raise ValueError("BirdEye receipt task/requirement identity mismatch")
+        execution_id = receipt.get("execution_id")
+        if not isinstance(execution_id, str) or path.parent.name != execution_id:
+            raise ValueError("BirdEye execution identity mismatch")
+        evidence_sha = receipt.get("execution_evidence_sha256")
+        if not isinstance(evidence_sha, str) or len(evidence_sha) != 64:
+            raise ValueError("missing execution evidence identity")
+
+        # A verified receipt is provenance only, never proof a requirement passed.
+        return self._evidence.save(
+            session_id=self._runtime.session_id,
+            task_id=task_id,
+            project_workspace_id=self._runtime.project_workspace_id,
+            canonical_workspace_root=str(self._runtime.workspace_root),
+            evidence_id="birdeye:" + execution_id,
+            kind=requirement.evidence_kind,
+            status="STALE",
+            source="birdeye.receipt",
+            producer_id="lbe.birdeye.receipt_binding.v1",
+            operation_id="birdeye.workspace_run",
+            details={
+                "requirement_id": requirement_id,
+                "execution_id": execution_id,
+                "receipt_path": str(path),
+                "receipt_sha256": digest,
+                "execution_evidence_sha256": evidence_sha,
+                "execution_status": "unvalidated",
+            },
+        )
+
     def load_evidence(self, *, task_id: str) -> tuple[CompletionEvidence, ...]:
         """Load producer-bound completion evidence for this runtime session/task.
 

@@ -103,8 +103,20 @@ def evaluate_completion(
     failed: list[str] = []
     used_evidence: list[str] = []
 
+    kind_counts: dict[str, int] = {}
     for requirement in contract.requirements:
-        matches = [item for item in items if item.kind == requirement.evidence_kind]
+        kind_counts[requirement.evidence_kind] = kind_counts.get(requirement.evidence_kind, 0) + 1
+
+    for requirement in contract.requirements:
+        matches = [
+            item for item in items
+            if item.kind == requirement.evidence_kind
+            and (
+                item.details.get("requirement_id") == requirement.requirement_id
+                if "requirement_id" in item.details
+                else kind_counts[requirement.evidence_kind] == 1
+            )
+        ]
         passing = [item for item in matches if item.status is CompletionEvidenceStatus.PASS]
         if passing:
             satisfied.append(requirement.requirement_id)
