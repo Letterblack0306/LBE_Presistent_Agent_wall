@@ -1,0 +1,6 @@
+﻿{"command":"registry-fresh where lbe","result":"LetterBlack bin first","status":"PASS"}
+{"command":"lbe --version","result":"lbe 0.1.0","status":"PASS"}
+{"command":"lbe run \"installed single command acceptance\" --agent audit --model google/gemma-4-e4b --plain","result":"RESULT failed / phase Failed; RC=1; no lingering LBE process","status":"PASS_FOR_LAUNCHER_PROVIDER_FAILURE_ISOLATION"}
+{"command":"pytest focused provider/product/launcher suites","result":"49 passed then 6 passed after final launcher/install patch","status":"PASS"}
+{"command":"cargo test -q","result":"255 passed, 2 ignored","status":"PASS"}
+{"command":"cargo fmt -- --check","result":"PASS","status":"PASS"}

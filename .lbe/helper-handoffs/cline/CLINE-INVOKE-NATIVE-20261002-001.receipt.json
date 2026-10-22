@@ -1,0 +1,11 @@
+﻿{
+    "task_id":  "CLINE-INVOKE-NATIVE-20261002-001",
+    "workspace":  "C:\\Agents-Memory-Tool-v6-integration",
+    "starting_head":  "655e529e402dee5892da4f184359d0eb2bcfdb98",
+    "completed_head":  "655e529e402dee5892da4f184359d0eb2bcfdb98",
+    "exit_code":  1,
+    "result_path":  "C:\\Agents-Memory-Tool-v6-integration\\.lbe\\helper-handoffs\\cline\\CLINE-INVOKE-NATIVE-20261002-001.jsonl",
+    "sha256":  "319971093B522AE875F4B31CEB0816BFABF0308AC6A0F16D53C92689659C8DF1",
+    "bytes":  241,
+    "completed_utc":  "2026-10-02T06:26:36.1704417Z"
+}

@@ -1,0 +1,68 @@
+﻿{
+    "schema_version":  1,
+    "proof_id":  "LBE-20261002-FINAL-PRODUCT-SINGLE-COMMAND-LAUNCH",
+    "classification":  "RUNTIME_PROVEN",
+    "head":  "655e529e402dee5892da4f184359d0eb2bcfdb98",
+    "origin_main":  "655e529e402dee5892da4f184359d0eb2bcfdb98",
+    "head_matches_origin_main":  true,
+    "claim":  "Installed bare lbe resolves to LetterBlack entrypoint, invokes Rust headless run mode through LBE authority, surfaces provider-scoped failure, emits terminal result, exits cleanly.",
+    "session_id":  "tui-90b9d98119c04a2ba38aed2504251f99",
+    "turn_id":  "turn-adf37feec692460e8b727ba2edb2958b",
+    "observed_result":  "RESULT failed / phase Failed",
+    "exit_code":  1,
+    "provider_failure":  "HTTP 400 / llama-server.exe unavailable",
+    "provider_failure_scope":  "NON_BLOCKING_PROVIDER_OR_MODEL_INSTANCE",
+    "focused_python":  "49 passed earlier; launcher contract 6 passed after final launcher/install patches",
+    "rust":  "255 passed; 2 ignored",
+    "rust_fmt":  "PASS",
+    "diff_check":  "PASS",
+    "source_files":  [
+                         {
+                             "path":  "tools\\lbe_product_integration.ps1",
+                             "sha256":  "0db503d8ddd8b27dd19ecaaf975097686ca3edf592e25262177845a5d289e9e3",
+                             "bytes":  80464
+                         },
+                         {
+                             "path":  "tests\\test_product_launcher_contract.py",
+                             "sha256":  "7ee2694f6960f8465d9f29ce7e05a6eb1c5a67c96be80938024adcc76ccd91c7",
+                             "bytes":  6064
+                         },
+                         {
+                             "path":  "lbe_guard_inspector\\product_entry.py",
+                             "sha256":  "f642e6376465b0e8b1a92cf65d4428298e1ef7f9de75132a7f761f7d1c323139",
+                             "bytes":  49310
+                         },
+                         {
+                             "path":  "apps\\lbe-terminal\\src\\app.rs",
+                             "sha256":  "4fc465c433aa4243b193bb77d34090521997d4be8b68bd5d6e2edcdd0e43fc67",
+                             "bytes":  116034
+                         },
+                         {
+                             "path":  "apps\\lbe-terminal\\src\\main.rs",
+                             "sha256":  "c703a12bd81095e9f48b96cbf62f6a031a1a88a54a647b46891d5ad101677309",
+                             "bytes":  27351
+                         },
+                         {
+                             "path":  ".lbe\\governance\\implementation-gates.json",
+                             "sha256":  "41a0681ec91d59eace19b8b224fce8d70868703214f96d87d6000f9f2796784d",
+                             "bytes":  34154
+                         }
+                     ],
+    "installed_files":  [
+                            {
+                                "path":  "C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\lbe.exe",
+                                "sha256":  "d4e07439a2eff9dafd167c810d676bc28a978f7fd56d1fdba20769e219168ef7",
+                                "bytes":  2263040
+                            },
+                            {
+                                "path":  "C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\lbe-launch.ps1",
+                                "sha256":  "3b068458362df4180629be83c301c836908db8948a745a18bbbb2fbc4ebdc709",
+                                "bytes":  8827
+                            },
+                            {
+                                "path":  "C:\\Users\\prave\\AppData\\Local\\LetterBlack\\LBE\\bin\\lbe.cmd",
+                                "sha256":  "8b7c7c97600eaf0c134d0a38903bb05582d9693005ca0b284133dae4ecf5bcd6",
+                                "bytes":  192
+                            }
+                        ]
+}

@@ -1,0 +1,2 @@
+{"ts":"2026-10-02T06:25:36.142Z","type":"agent_event","event":{"type":"done","reason":"error","text":"","iterations":0}}
+{"ts":"2026-10-02T06:25:36.225Z","type":"error","message":"Unable to connect. Is the computer able to access the url?"}

@@ -1,0 +1,9 @@
+﻿{
+    "task_id":  "CLINE-INVOKE-NATIVE-20261002-001",
+    "workspace":  "C:\\Agents-Memory-Tool-v6-integration",
+    "starting_head":  "655e529e402dee5892da4f184359d0eb2bcfdb98",
+    "mode":  "read-only-plan",
+    "status":  "COMPLETED",
+    "raw_result":  "C:\\Agents-Memory-Tool-v6-integration\\.lbe\\helper-handoffs\\cline\\CLINE-INVOKE-NATIVE-20261002-001.jsonl",
+    "receipt":  "C:\\Agents-Memory-Tool-v6-integration\\.lbe\\helper-handoffs\\cline\\CLINE-INVOKE-NATIVE-20261002-001.receipt.json"
+}
