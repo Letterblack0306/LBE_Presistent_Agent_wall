@@ -1,2 +1,10 @@
 #!/bin/sh
+# LBE-owned staged changes must be structurally authorized first.
+set -e
 node scripts/governance-check.mjs staged
+
+# UI changes require the external approved-golden proof gate. Unrelated
+# changes never use this UI gate.
+if git diff --cached --name-only --     apps/lbe-terminal     lbe_guard_inspector/tui_bridge.py     lbe_guard_inspector/terminal_ui.py     docs/LBE_TERMINAL_UI.md | grep -q .; then
+    python scripts/check-ui-proof.py
+fi

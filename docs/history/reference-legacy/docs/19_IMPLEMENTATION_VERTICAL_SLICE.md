@@ -19,7 +19,7 @@ Provided callback is not a function
 ```json
 {
   "problem": "Provided callback is not a function",
-  "workspace_root": "G:/Developments/TargetCEP",
+  "workspace_root": "[retired-local-volume]/[historical-workspace]/TargetCEP",
   "mode": "inspect"
 }
 ```

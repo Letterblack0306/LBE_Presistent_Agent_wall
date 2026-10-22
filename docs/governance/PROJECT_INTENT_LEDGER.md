@@ -1655,3 +1655,5 @@ REQUIRED_EVIDENCE: UI Proof Gate manifest at .lbe/proofs/ui/<intent-id>.json; al
 RESULT: IMPLEMENTATION_PENDING
 AUTHORIZATION: OWNER_APPROVED_2026_10_19
 ```
+
+AMENDMENT 2026-10-21 (PROPOSED): Add only these paths to this intent's expected path boundary for the requested gate repairs: lbe_guard_inspector/reasoning_provider.py, .githooks/pre-commit, .github/workflows/ci.yml, docs/acceptance/*. Approved fields above remain unchanged pending owner approval.

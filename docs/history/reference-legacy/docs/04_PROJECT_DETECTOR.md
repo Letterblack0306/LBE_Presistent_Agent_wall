@@ -47,7 +47,7 @@ Excluded material may be retrieved only when the task explicitly needs it.
 ```json
 {
   "workspace_id": "letterblack-cep-example",
-  "root": "G:/Developments/ExampleCEP",
+  "root": "[retired-local-volume]/[historical-workspace]/ExampleCEP",
   "repository": "Letterblack0306/ExampleCEP",
   "project_types": ["cep-extension", "node-frontend", "extendscript-host"],
   "hosts": ["after-effects"],

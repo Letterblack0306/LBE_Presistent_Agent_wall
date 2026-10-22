@@ -6,7 +6,7 @@ Cross-workspace Cline session transcripts preserved for historical reference. Th
 
 ### `test-differfence-transcripts/`
 
-Captured agent sessions that originated in a *different* workspace (`G:\Developments\45_Accecc_Browser_Agent`, repo `Letterblack0306/Accecc_Browser_Agent.git`). Relocated out of `tests/` because they are not executable test proof against this repository.
+Captured agent sessions that originated in a *different* workspace (`[retired-local-volume]/[historical-workspace]\45_Accecc_Browser_Agent`, repo `Letterblack0306/Accecc_Browser_Agent.git`). Relocated out of `tests/` because they are not executable test proof against this repository.
 
 | Session | Model / provider | Notes |
 |---|---|---|

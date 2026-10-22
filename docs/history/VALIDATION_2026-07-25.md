@@ -12,8 +12,8 @@
 
 ## Acceptance Runner
 
-**Exit code**: 1 (timeout — rglob network scan over G:\Developments\00_CEP_Developer\cep-dev-workspace with 83,561 files).  
-**Schema v2 migration**: Verified via `python -c "from tools.run_post_fix_acceptance import _run_rule; print('import OK')"`.  
+**Exit code**: 1 (timeout — rglob network scan over [retired-local-volume]/[historical-workspace]\00_CEP_Developer\cep-dev-workspace with 83,561 files).
+**Schema v2 migration**: Verified via `python -c "from tools.run_post_fix_acceptance import _run_rule; print('import OK')"`.
 **Last completed run**: `state/post-fix-acceptance.json` (prior report).
 
 ### Rule-by-rule results (from last completed run)
@@ -25,11 +25,11 @@
 | `cep.no_zip_in_repo` | passed | NOT_RUN (timeout) | 0 |
 | `generic.index_present` | passed | NOT_RUN (timeout) | 0 |
 
-**Fatal errors**: 0  
-**Contradiction count**: 6 total (same-workspace)  
+**Fatal errors**: 0
+**Contradiction count**: 6 total (same-workspace)
 **Remaining unimplemented layers**:
 - Rule installation/approval transitions not implemented
-- Persistence of proposals not implemented  
+- Persistence of proposals not implemented
 - Rollback execution not implemented
 - Memory promotion not implemented
 - Reasoning-model integration not implemented
@@ -43,8 +43,8 @@
 
 ## Repository State
 
-**Read-only confirmed**: `governance.json` shows `write_enabled: false`, `allowed_write_paths: []`.  
-**No generated state staged**: `git status --short state/` returns empty.  
+**Read-only confirmed**: `governance.json` shows `write_enabled: false`, `allowed_write_paths: []`.
+**No generated state staged**: `git status --short state/` returns empty.
 **`rule_gatekeeper.py` on GitHub `origin/main`**: ❌ ABSENT (exists locally as untracked file).
 
 ## Proposal Layer Status
