@@ -135,6 +135,14 @@ class ToolReceipt:
     error_code: str | None = None
     error_message: str | None = None
     receipt_id: str = field(default_factory=lambda: f"receipt-{uuid.uuid4().hex}")
+    meaning: str | None = None
+    fix: tuple[str, ...] = ()
+    forbidden: tuple[str, ...] = ()
+    decision_options: tuple[str, ...] = ()
+
+    @property
+    def decisionOptions(self) -> tuple[str, ...]:
+        return self.decision_options
 
 
 class ToolHandler(Protocol):
@@ -298,6 +306,10 @@ class GovernedToolOrchestrator:
                 authorization=authorization,
                 error_code="AUTHORIZATION_DENIED",
                 error_message=authorization.rationale,
+                meaning=authorization.meaning,
+                fix=authorization.fix,
+                forbidden=authorization.forbidden,
+                decision_options=authorization.decision_options,
             ))
         if authorization.verdict is AuthorizationVerdict.ESCALATE:
             return self._remember(ToolReceipt(
@@ -307,6 +319,10 @@ class GovernedToolOrchestrator:
                 authorization=authorization,
                 error_code="AUTHORIZATION_REQUIRED",
                 error_message=authorization.rationale,
+                meaning=authorization.meaning,
+                fix=authorization.fix,
+                forbidden=authorization.forbidden,
+                decision_options=authorization.decision_options,
             ))
 
         try:

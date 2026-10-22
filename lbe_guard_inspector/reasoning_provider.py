@@ -291,11 +291,36 @@ class OpenAICompatibleReasoningBackend:
         self._transport = transport or UrllibJsonTransport()
 
     def plan(self, request: ReasoningRequest) -> ReasoningPlan:
+        # Concrete runtime options, not example strings that smaller models
+        # can copy as literal guard/tool IDs. Controller still validates every
+        # returned ID; this changes guidance, never authority.
+        contract = dict(_PLANNING_OUTPUT_CONTRACT)
+        contract["candidate_guard_ids"] = list(request.approved_guard_ids)
+        contract["evidence_requests"] = [
+            {"tool_id": tool_id, "path": "workspace-relative evidence path",
+             "reason": "why this evidence is needed"}
+            for tool_id in request.approved_tools
+        ]
+        # Also constrain the provider's structured-output schema to runtime
+        # approved names. This does not authorize a tool or normalize unknown
+        # IDs: the controller remains the independent fail-closed authority.
+        schema = copy.deepcopy(_PLANNING_JSON_SCHEMA)
+        # An empty enum is an invalid schema for most providers. With nothing
+        # approved, keep the plain string type; the controller still rejects
+        # any returned ID.
+        if request.approved_guard_ids:
+            schema["properties"]["candidate_guard_ids"]["items"] = {
+                "type": "string", "enum": list(request.approved_guard_ids),
+            }
+        if request.approved_tools:
+            schema["properties"]["evidence_requests"]["items"]["properties"]["tool_id"] = {
+                "type": "string", "enum": list(request.approved_tools),
+            }
         result = self._complete(
             "planning",
             _PLANNING_SYSTEM_PROMPT,
-            _PLANNING_OUTPUT_CONTRACT,
-            _PLANNING_JSON_SCHEMA,
+            contract,
+            schema,
             _planning_input_payload(request),
         )
         try:

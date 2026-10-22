@@ -43,6 +43,24 @@ class AuthorizationDecision:
     verdict: AuthorizationVerdict
     capability: str
     rationale: str
+    meaning: str | None = None
+    fix: tuple[str, ...] = ()
+    forbidden: tuple[str, ...] = ()
+    decision_options: tuple[str, ...] = ()
+
+    @property
+    def decisionOptions(self) -> tuple[str, ...]:
+        return self.decision_options
+
+    def blocker_dict(self) -> dict[str, object]:
+        if not self.meaning:
+            return {}
+        return {
+            "meaning": self.meaning,
+            "fix": list(self.fix),
+            "forbidden": list(self.forbidden),
+            "decisionOptions": list(self.decision_options),
+        }
 
 
 def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecision:
@@ -62,6 +80,10 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
             verdict=AuthorizationVerdict.DENY,
             capability=capability,
             rationale="Operation is explicitly forbidden by active policy.",
+            meaning="Operation is explicitly forbidden by active policy.",
+            fix=("Select an operation within allowed policy", "Review active task scope"),
+            forbidden=("Do not execute forbidden operations", "Do not bypass governance"),
+            decision_options=("Select allowed operation", "Update scope", "Ask user"),
         )
 
     if request.approval_granted:
@@ -70,12 +92,20 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
                 verdict=AuthorizationVerdict.ESCALATE,
                 capability=capability,
                 rationale="Approval cannot expand beyond the active workspace scope.",
+                meaning="Approval cannot expand beyond the active workspace scope.",
+                fix=("Confine operation to workspace scope", "Update task scope boundaries"),
+                forbidden=("Do not execute operations outside workspace",),
+                decision_options=("Confine to workspace", "Update scope", "Ask user"),
             )
         if request.intent_scope_conflict:
             return AuthorizationDecision(
                 verdict=AuthorizationVerdict.ESCALATE,
                 capability=capability,
                 rationale="Approval cannot resolve an unresolved intent or scope conflict.",
+                meaning="Unresolved intent or scope conflict.",
+                fix=("Re-register intent to match scope", "Resolve intent scope mismatch"),
+                forbidden=("Do not force proof with mismatched intent",),
+                decision_options=("Re-register intent", "Update scope", "Ask user"),
             )
         return AuthorizationDecision(
             verdict=AuthorizationVerdict.ALLOW,
@@ -91,6 +121,10 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
                 f"Capability '{capability}' is not enabled by "
                 f"{request.mode_decision.mode} mode policy."
             ),
+            meaning=f"Capability not enabled in {request.mode_decision.mode} mode.",
+            fix=(f"Switch to a mode enabling '{capability}'", "Select a permitted capability"),
+            forbidden=("Do not bypass mode capabilities",),
+            decision_options=("Switch mode", "Select permitted capability", "Ask user"),
         )
 
     if not request.within_workspace_scope:
@@ -98,6 +132,10 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
             verdict=AuthorizationVerdict.ESCALATE,
             capability=capability,
             rationale="Operation expands beyond the active workspace scope.",
+            meaning="Files or operations outside allowed workspace scope.",
+            fix=("Review changed files or targets", "Roll back or expand scope"),
+            forbidden=("Do not mark clean", "Do not silently widen scope"),
+            decision_options=("Roll back", "Expand scope", "Ask user"),
         )
 
     if request.intent_scope_conflict:
@@ -105,6 +143,10 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
             verdict=AuthorizationVerdict.ESCALATE,
             capability=capability,
             rationale="Operation has unresolved intent or scope conflict.",
+            meaning="Intent scope mismatch.",
+            fix=("Register intent covering target paths",),
+            forbidden=("Do not change files without intent",),
+            decision_options=("Register intent", "Update scope", "Ask user"),
         )
 
     if request.destructive and not request.destructive_authorized:
@@ -112,6 +154,10 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
             verdict=AuthorizationVerdict.ESCALATE,
             capability=capability,
             rationale="Destructive operation exceeds delegated authority.",
+            meaning="Destructive command requires explicit approval.",
+            fix=("Request explicit approval for destructive operation", "Use safe non-destructive command"),
+            forbidden=("Do not run unapproved destructive commands",),
+            decision_options=("Request approval", "Use safe command", "Ask user"),
         )
 
     if request.persistent_policy_change and not request.persistent_policy_authorized:
@@ -119,6 +165,10 @@ def resolve_authorization(request: AuthorizationRequest) -> AuthorizationDecisio
             verdict=AuthorizationVerdict.ESCALATE,
             capability=capability,
             rationale="Persistent policy change is not already delegated.",
+            meaning="Persistent policy change requires separate authority.",
+            fix=("Request policy change authorization",),
+            forbidden=("Do not silently mutate policy",),
+            decision_options=("Request authorization", "Ask user"),
         )
 
     return AuthorizationDecision(

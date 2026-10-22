@@ -308,3 +308,173 @@ def test_birdeye_resolved_skill_fails_closed_on_drift_or_truncation() -> None:
     truncated = {**base, "skills": [{**base["skills"][0], "truncated": True}]}
     with pytest.raises(ValueError, match="complete and untruncated"):
         resolved_advisory_skills_from_birdeye(truncated)
+
+
+# --- workspace grounding and completion contract -------------------------
+
+import subprocess as _subprocess
+
+from lbe_guard_inspector.memory.completion_contracts import (
+    StoredCompletionRequirement,
+    StoredTaskCompletionContract,
+    TaskCompletionContractPersistence,
+)
+
+
+def _git(cwd, *args) -> str:
+    return _subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+def _init_repo(path) -> None:
+    _git(path, "-c", "init.defaultBranch=main", "init")
+    _git(path, "config", "user.email", "lbe@example.invalid")
+    _git(path, "config", "user.name", "LBE Test")
+    _git(path, "config", "commit.gpgsign", "false")
+    (path / "tracked.txt").write_text("one\n", encoding="utf-8")
+    _git(path, "add", "tracked.txt")
+    _git(path, "commit", "-m", "initial")
+
+
+def test_guidance_grounds_agent_in_local_git_state(tmp_path) -> None:
+    _init_repo(tmp_path)
+    (tmp_path / "tracked.txt").write_text("two\n", encoding="utf-8")
+    (tmp_path / "new_file.py").write_text("x = 1\n", encoding="utf-8")
+
+    guidance = build_agent_guidance(mode_decision=_decision("coding"), workspace_root=tmp_path, tools=())
+
+    prompt = guidance.prompt
+    assert "WORKSPACE STATE" in prompt
+    assert "Branch: main" in prompt
+    assert f"HEAD: {_git(tmp_path, 'rev-parse', '--short=12', 'HEAD')}" in prompt
+    assert "Uncommitted changes: 2 path(s)" in prompt
+    assert "tracked.txt" in prompt and "new_file.py" in prompt
+    assert "never discard" in prompt
+    state = guidance.audit_payload()["workspace_state"]
+    assert state["is_git"] is True
+    assert state["branch"] == "main"
+    assert state["dirty_count"] == 2
+    assert "new_file.py" not in str(state)
+    assert _git(tmp_path, "status", "--porcelain").count("\n") == 1  # capture changed nothing
+
+
+def test_guidance_reports_non_git_workspace_instead_of_assuming(tmp_path, monkeypatch) -> None:
+    # Stop git discovery at tmp_path so an enclosing repository cannot leak in.
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+    guidance = build_agent_guidance(mode_decision=_decision("audit"), workspace_root=tmp_path, tools=())
+
+    assert "Not a git repository" in guidance.prompt
+    assert guidance.audit_payload()["workspace_state"]["is_git"] is False
+
+
+def test_operating_rules_apply_in_every_mode(tmp_path) -> None:
+    for mode in ("coding", "audit", "investigation"):
+        prompt = build_agent_guidance(mode_decision=_decision(mode), workspace_root=tmp_path, tools=()).prompt
+        assert "OPERATING RULES" in prompt
+        assert "PROVEN, FAILED or UNVERIFIED" in prompt
+        assert "never repeat an identical" in prompt
+
+
+def test_completion_contract_requirements_reach_provider_prompt(tmp_path) -> None:
+    contract = StoredTaskCompletionContract(
+        session_id="session-1",
+        task_id="task-1",
+        project_workspace_id="project-1",
+        canonical_workspace_root=str(tmp_path),
+        requirements=(
+            StoredCompletionRequirement("installed-tui", "visual_proof", "Installed TUI renders the cockpit"),
+        ),
+        created_at="2026-10-22T00:00:00Z",
+    )
+
+    without = build_agent_guidance(mode_decision=_decision("coding"), workspace_root=tmp_path, tools=())
+    guidance = build_agent_guidance(
+        mode_decision=_decision("coding"), workspace_root=tmp_path, tools=(), completion_contract=contract
+    )
+
+    assert "none persisted for this task" in without.prompt
+    assert "[installed-tui] needs visual_proof evidence" in guidance.prompt
+    assert "Installed TUI renders the cockpit" in guidance.prompt
+    assert guidance.audit_payload()["completion_contract"]["requirement_ids"] == ["installed-tui"]
+
+
+def test_governed_turn_loads_persisted_completion_contract(tmp_path, monkeypatch) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "state.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=workspace,
+        session_id="session-1",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id="openai-compatible",
+        provider_model="model-a",
+    )
+    TaskCompletionContractPersistence(runtime.store).save(
+        session_id="session-1",
+        task_id="task-1",
+        project_workspace_id="project-1",
+        canonical_workspace_root=str(workspace),
+        requirements=[{
+            "requirement_id": "readme-verified",
+            "evidence_kind": "focused_test",
+            "description": "README behaviour proven",
+        }],
+    )
+    captured: list = []
+
+    class CaptureAdapter:
+        def __init__(self, *, config) -> None:
+            self.config = config
+
+        def complete(self, *, messages, provider_id, lbe_call_id_for_provider_tool_call, tools, max_output_tokens=None):
+            captured.append(messages)
+            return (
+                NormalizedModelEvent(
+                    ModelEventType.MESSAGE_COMPLETED, provider_id, "model-a",
+                    ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT, text="ok",
+                ),
+                NormalizedModelEvent(
+                    ModelEventType.TURN_COMPLETED, provider_id, "model-a",
+                    ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT,
+                ),
+            )
+
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.governed_coding.build_native_provider_event_adapter",
+        lambda **kwargs: CaptureAdapter(config=kwargs["config"]),
+    )
+    controller = GovernedProviderReasoningController(
+        runtime=runtime,
+        provider_id="openai-compatible",
+        provider_config=ProviderConfig("https://provider.invalid/v1/chat/completions", "model-a", 5),
+    )
+
+    controller.run(LBERequest("Verify the README", workspace, (), "task-1", 10))
+
+    system = str(captured[0][0]["content"])
+    assert "[readme-verified] needs focused_test evidence" in system
+    assert "WORKSPACE STATE" in system
+
+
+def test_workspace_inside_parent_repository_is_flagged_and_scoped(tmp_path) -> None:
+    _init_repo(tmp_path)
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "inside.txt").write_text("v1\n", encoding="utf-8")
+    _git(tmp_path, "add", "project/inside.txt")
+    _git(tmp_path, "commit", "-m", "add project")
+    (workspace / "inside.txt").write_text("v2\n", encoding="utf-8")
+    (tmp_path / "outside.txt").write_text("out\n", encoding="utf-8")
+
+    guidance = build_agent_guidance(mode_decision=_decision("coding"), workspace_root=workspace, tools=())
+
+    assert "subfolder of this repository" in guidance.prompt
+    assert "inside.txt" in guidance.prompt
+    assert "outside.txt" not in guidance.prompt
+    state = guidance.audit_payload()["workspace_state"]
+    assert state["nested_in_parent"] is True
+    assert state["dirty_count"] == 1

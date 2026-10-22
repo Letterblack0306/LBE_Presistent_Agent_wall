@@ -408,3 +408,34 @@ def test_planning_rejects_non_mapping_proposal_candidate():
     with pytest.raises(ProviderError) as exc:
         backend.plan(planning_request())
     assert exc.value.code == "PROVIDER_SCHEMA_ERROR"
+
+
+def test_planning_schema_never_sends_an_empty_enum():
+    def wire_schema(request):
+        transport = FakeTransport(choice({**valid_plan(), "candidate_guard_ids": [], "evidence_requests": []}))
+        backend = OpenAICompatibleReasoningBackend(
+            config=ProviderConfig(
+                endpoint="http://127.0.0.1:1234/v1/chat/completions",
+                model="local-model",
+                timeout_seconds=12,
+            ),
+            transport=transport,
+        )
+        backend.plan(request)
+        return transport.calls[0]["payload"]["response_format"]["json_schema"]["schema"]
+
+    approved = wire_schema(planning_request())
+    assert approved["properties"]["candidate_guard_ids"]["items"]["enum"] == ["npm.package_metadata"]
+
+    base = planning_request()
+    empty = ReasoningRequest(
+        problem=base.problem,
+        workspace_identity=base.workspace_identity,
+        workspace_profile=base.workspace_profile,
+        approved_guard_ids=(),
+        approved_tools=(),
+        reference_context=base.reference_context,
+    )
+    schema = wire_schema(empty)
+    assert "enum" not in schema["properties"]["candidate_guard_ids"]["items"]
+    assert "enum" not in schema["properties"]["evidence_requests"]["items"]["properties"]["tool_id"]

@@ -75,6 +75,12 @@ def test_explicitly_forbidden_operation_is_denied() -> None:
         )
     )
     assert decision.verdict is AuthorizationVerdict.DENY
+    assert decision.meaning == "Operation is explicitly forbidden by active policy."
+    assert "Select an operation within allowed policy" in decision.fix
+    assert "Do not execute forbidden operations" in decision.forbidden
+    assert "Select allowed operation" in decision.decision_options
+    assert decision.decisionOptions == decision.decision_options
+    assert decision.blocker_dict()["meaning"] == decision.meaning
 
 
 def test_workspace_scope_expansion_escalates() -> None:

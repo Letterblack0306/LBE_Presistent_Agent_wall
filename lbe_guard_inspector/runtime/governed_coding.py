@@ -30,6 +30,7 @@ from ..authority_ownership import (
     OwnerAuthorityAuthorization,
 )
 from ..evidence_service import EvidenceService
+from ..memory.completion_contracts import TaskCompletionContractPersistence
 from ..memory.operational_history import ChildAgentStatus, SessionOperationalHistory
 from ..provider_continuation import ProviderToolContinuation, continuation_from_persisted_child_result
 from ..professional_provider_events import ModelEventType, NormalizedModelEvent
@@ -900,14 +901,26 @@ class _GovernedCodingControllerBase:
             owner_authority=lambda: self._owner_authority,
         )
 
-    def _rebuild_guidance(self, task: str | None = None) -> None:
+    def _rebuild_guidance(self, task: str | None = None, task_id: str | None = None) -> None:
         resolved_skills = self._skill_resolver(task) if task is not None and self._skill_resolver else None
+        # The persisted completion contract is the task's durable success criteria;
+        # the reasoner sees it every turn. Corrupt contracts fail closed in load().
+        completion_contract = (
+            TaskCompletionContractPersistence(self._runtime.store).load(
+                session_id=self._runtime.session_id,
+                task_id=task_id,
+                project_workspace_id=self._runtime.project_workspace_id,
+            )
+            if task_id
+            else None
+        )
         self._guidance = build_agent_guidance(
             mode_decision=self._context.mode_decision,
             workspace_root=self._runtime.workspace_root,
             tools=self._registry.specs(),
             task=task,
             resolved_skills=resolved_skills,
+            completion_contract=completion_contract,
         )
 
     @property
@@ -1500,7 +1513,7 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         self._activate_parent_turn(request.parent_turn_id)
         # Select relevant SKILL.md guidance for this task, not just globally
         # at controller construction. Skills never grant executable authority.
-        self._rebuild_guidance(task=request.problem)
+        self._rebuild_guidance(task=request.problem, task_id=task_id)
 
         turn_id = f"turn-{uuid4().hex}"
         messages: list[dict[str, object]] = [
@@ -1647,7 +1660,7 @@ class GovernedClineCodingController(_GovernedCodingControllerBase):
             raise ValueError("governed coding requires a task_id")
         self._bind_owner_authority(request)
         self._activate_parent_turn(request.parent_turn_id)
-        self._rebuild_guidance(task=request.problem)
+        self._rebuild_guidance(task=request.problem, task_id=task_id)
 
         # Cline remains feature-scoped: importing the adapter/worker occurs only
         # after an explicitly persisted Cline engine selection.
@@ -1896,7 +1909,7 @@ def _governed_tool_projection(
 
 def _receipt_payload(receipt: ToolReceipt) -> dict[str, object]:
     authorization = receipt.authorization
-    return {
+    payload: dict[str, object] = {
         "receipt_id": receipt.receipt_id,
         "operation_id": receipt.operation_id,
         "tool_id": receipt.tool_id,
@@ -1907,6 +1920,12 @@ def _receipt_payload(receipt: ToolReceipt) -> dict[str, object]:
         "error_code": receipt.error_code,
         "error_message": receipt.error_message,
     }
+    if receipt.meaning is not None:
+        payload["meaning"] = receipt.meaning
+        payload["fix"] = list(receipt.fix)
+        payload["forbidden"] = list(receipt.forbidden)
+        payload["decisionOptions"] = list(receipt.decision_options)
+    return payload
 
 
 def _tool_id_for_provider_name(name: str, specs: tuple[ToolSpec, ...]) -> str:

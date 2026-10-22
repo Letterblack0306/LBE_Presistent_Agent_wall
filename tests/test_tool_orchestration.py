@@ -169,6 +169,11 @@ def test_explicit_forbidden_policy_denies_without_execution(tmp_path: Path) -> N
     assert receipt.error_code == "AUTHORIZATION_DENIED"
     assert receipt.authorization is not None
     assert receipt.authorization.verdict is AuthorizationVerdict.DENY
+    assert receipt.meaning == "Operation is explicitly forbidden by active policy."
+    assert "Select an operation within allowed policy" in receipt.fix
+    assert "Do not execute forbidden operations" in receipt.forbidden
+    assert "Select allowed operation" in receipt.decision_options
+    assert receipt.decisionOptions == receipt.decision_options
     assert calls == []
 
 
