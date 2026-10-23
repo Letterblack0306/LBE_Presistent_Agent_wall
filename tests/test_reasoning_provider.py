@@ -15,6 +15,7 @@ from lbe_guard_inspector.reasoning_provider import (
     ProviderConfig,
     ProviderError,
     UrllibJsonTransport,
+    discover_openai_compatible_context_window,
     discover_openai_compatible_model_ids,
 )
 
@@ -439,3 +440,43 @@ def test_planning_schema_never_sends_an_empty_enum():
     schema = wire_schema(empty)
     assert "enum" not in schema["properties"]["candidate_guard_ids"]["items"]
     assert "enum" not in schema["properties"]["evidence_requests"]["items"]["properties"]["tool_id"]
+
+
+def _catalog_server(entries):
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = json.dumps({"data": entries}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args):
+            return
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    config = ProviderConfig(
+        endpoint=f"http://127.0.0.1:{server.server_port}/v1/chat/completions",
+        model="m", timeout_seconds=30,
+    )
+    return server, config
+
+
+def test_context_window_comes_only_from_the_models_own_catalog_entry():
+    server, config = _catalog_server([
+        {"id": "big", "context_window": 262144},
+        {"id": "lmstudio-native", "loaded_context_length": 8192},
+        {"id": "unreported", "context_window": None},
+        {"id": "bogus", "context_window": True, "context_length": 0},
+    ])
+    try:
+        assert discover_openai_compatible_context_window(config, "big") == 262144
+        assert discover_openai_compatible_context_window(config, "lmstudio-native") == 8192
+        assert discover_openai_compatible_context_window(config, "unreported") is None
+        assert discover_openai_compatible_context_window(config, "bogus") is None
+        assert discover_openai_compatible_context_window(config, "absent") is None
+    finally:
+        server.shutdown()
+        server.server_close()

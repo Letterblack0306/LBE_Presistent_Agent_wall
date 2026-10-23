@@ -478,3 +478,71 @@ def test_workspace_inside_parent_repository_is_flagged_and_scoped(tmp_path) -> N
     state = guidance.audit_payload()["workspace_state"]
     assert state["nested_in_parent"] is True
     assert state["dirty_count"] == 1
+
+
+def test_each_tool_call_in_a_turn_runs_and_provider_usage_is_kept(tmp_path, monkeypatch) -> None:
+    """Regression: ids reused across iterations replayed the first receipt."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "A.md").write_text("a\n", encoding="utf-8")
+    (workspace / "B.md").write_text("b\n", encoding="utf-8")
+    runtime = SessionMemoryRuntimeBridge(
+        database_path=tmp_path / "state.sqlite",
+        project_workspace_id="project-1",
+        workspace_root=workspace,
+        session_id="session-1",
+        mode="coding",
+        permission="write_allowed",
+        runtime_policy="permissive",
+        provider_id="openai-compatible",
+        provider_model="model-a",
+    )
+    read_paths = []
+
+    class FakeEvidenceService(EvidenceService):
+        def build_evidence_package(self, **kwargs):
+            read_paths.append(kwargs.get("path") or kwargs.get("rule_id"))
+            return {"current_workspace_evidence": [{"ref": "x", "verified": True}], "missing_evidence": []}
+
+    monkeypatch.setattr("lbe_guard_inspector.runtime.governed_coding.EvidenceService", FakeEvidenceService)
+    family = ProviderProtocolFamily.OPENAI_COMPATIBLE_CHAT
+
+    class TwoStepAdapter:
+        def __init__(self, *, config) -> None:
+            self.calls = 0
+
+        def complete(self, *, messages, provider_id, lbe_call_id_for_provider_tool_call, tools, max_output_tokens=None):
+            self.calls += 1
+            usage = NormalizedModelEvent(ModelEventType.USAGE_UPDATED, provider_id, "model-a", family,
+                                         usage={"prompt_tokens": 100 * self.calls})
+            if self.calls <= 2:
+                name = next(t["function"]["name"] for t in tools if t["function"]["name"].endswith("workspace_read"))
+                call = f"call_0"  # providers often restart numbering every response
+                return (usage, NormalizedModelEvent(
+                    ModelEventType.TOOL_CALL_COMPLETED, provider_id, "model-a", family,
+                    provider_tool_call_id=call, lbe_call_id=lbe_call_id_for_provider_tool_call(call),
+                    tool_name=name, tool_arguments={"path": "A.md" if self.calls == 1 else "B.md"},
+                ))
+            return (usage,
+                    NormalizedModelEvent(ModelEventType.MESSAGE_COMPLETED, provider_id, "model-a", family, text="done"),
+                    NormalizedModelEvent(ModelEventType.TURN_COMPLETED, provider_id, "model-a", family))
+
+    monkeypatch.setattr(
+        "lbe_guard_inspector.runtime.governed_coding.build_native_provider_event_adapter",
+        lambda **kwargs: TwoStepAdapter(config=kwargs["config"]),
+    )
+    controller = GovernedProviderReasoningController(
+        runtime=runtime,
+        provider_id="openai-compatible",
+        provider_config=ProviderConfig("https://provider.invalid/v1/chat/completions", "model-a", 5),
+    )
+    result = controller.run(LBERequest("Read A.md then B.md", workspace, (), "task-1", 10))
+
+    receipts = result.deterministic_result["governed_tool_receipts"]
+    assert result.outcome == "COMPLETED"
+    assert len(receipts) == 2
+    assert len({r["operation_id"] for r in receipts}) == 2
+    assert len(read_paths) == 2  # the second read really ran
+    assert result.deterministic_result["provider_usage"] == [
+        {"prompt_tokens": 100}, {"prompt_tokens": 200}, {"prompt_tokens": 300},
+    ]

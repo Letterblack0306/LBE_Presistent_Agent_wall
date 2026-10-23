@@ -122,8 +122,8 @@ class ProviderError(RuntimeError):
         self.code = code
 
 
-def discover_openai_compatible_model_ids(config: ProviderConfig) -> tuple[str, ...]:
-    """Read IDs from /v1/models without prompting or performing inference."""
+def _openai_compatible_catalog(config: ProviderConfig) -> list[dict[str, Any]]:
+    """GET the /models catalog beside the completion route, without inference."""
     if not isinstance(config, ProviderConfig):
         raise TypeError("config must be a ProviderConfig")
     parsed = urllib.parse.urlsplit(config.endpoint)
@@ -157,16 +157,43 @@ def discover_openai_compatible_model_ids(config: ProviderConfig) -> tuple[str, .
             "MODEL_DISCOVERY_INVALID_RESPONSE",
             "provider model catalog response did not contain a data array",
         )
+    return [item for item in payload["data"] if isinstance(item, dict)]
+
+
+def discover_openai_compatible_model_ids(config: ProviderConfig) -> tuple[str, ...]:
+    """Read IDs from /v1/models without prompting or performing inference."""
     model_ids: list[str] = []
-    for item in payload["data"]:
-        if not isinstance(item, dict):
-            continue
+    for item in _openai_compatible_catalog(config):
         model_id = item.get("id")
         if isinstance(model_id, str) and model_id.strip():
             clean_id = model_id.strip()
             if clean_id not in model_ids:
                 model_ids.append(clean_id)
     return tuple(model_ids)
+
+
+# Field names providers use for a model's context size in their /models entry.
+_CONTEXT_WINDOW_FIELDS = (
+    "context_window", "context_length", "loaded_context_length",
+    "max_context_length", "max_model_len",
+)
+
+
+def discover_openai_compatible_context_window(config: ProviderConfig, model_id: str) -> int | None:
+    """Context size the provider itself reports for ``model_id`` in its catalog.
+
+    Only a positive integer from that model's own entry counts. ``None`` means
+    the provider did not report one; callers must show nothing rather than guess.
+    """
+    for item in _openai_compatible_catalog(config):
+        if item.get("id") != model_id:
+            continue
+        for field in _CONTEXT_WINDOW_FIELDS:
+            value = item.get(field)
+            if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+                return value
+        return None
+    return None
 
 
 class JsonTransport(Protocol):

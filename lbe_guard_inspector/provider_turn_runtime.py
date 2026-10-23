@@ -238,6 +238,15 @@ class GovernedCodingTurnRuntime:
                     event_type="runtime.guidance.loaded",
                     payload=dict(guidance),
                 ))
+            # Provider-reported usage, persisted even when the turn fails, so the
+            # context figure shown to the user always traces to a stored event.
+            for usage in deterministic.get("provider_usage") or []:
+                if isinstance(usage, dict) and usage:
+                    self.history.append_event(OperationalEvent(
+                        session_id=turn.session_id, turn_id=turn_id,
+                        event_type="model.usage.updated", payload={"usage": dict(usage)},
+                        provider_id=state.provider_id, model_id=state.provider_model,
+                    ))
             projected_receipt_ids = {
                 event.tool_receipt_id
                 for event in self.history.events_for_turn(turn_id=turn_id)

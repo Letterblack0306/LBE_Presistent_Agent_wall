@@ -7,6 +7,7 @@ remain with their existing owners.
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -1303,6 +1304,9 @@ class _GovernedCodingControllerBase:
         output_text = ""
         error_message: str | None = None
         child_status = ChildAgentStatus.FAILED
+        # One sequence per child run: an id reused across iterations makes the
+        # orchestrator replay an earlier receipt instead of running the new call.
+        child_call_seq = itertools.count(1)
         try:
             for iteration in range(8):
                 call_ids: dict[str, str] = {}
@@ -1310,7 +1314,7 @@ class _GovernedCodingControllerBase:
                     messages=tuple(messages),
                     provider_id=self._provider_id,
                     lbe_call_id_for_provider_tool_call=lambda provider_call_id: call_ids.setdefault(
-                        provider_call_id, f"lbe-{child_agent_run_id}-{iteration + 1}"
+                        provider_call_id, f"lbe-{child_agent_run_id}-{next(child_call_seq)}"
                     ),
                     tools=tuple(_provider_tool_definition(index, spec) for index, spec in enumerate(specs)),
                     max_output_tokens=_TOOL_STEP_MAX_OUTPUT_TOKENS,
@@ -1522,6 +1526,11 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         ]
         provider_output = ""
         terminal_error: OrchestrationError | None = None
+        # One sequence per turn. The orchestrator is idempotent on operation_id, so
+        # an id reused across iterations replays the first receipt and the new
+        # tool call never runs.
+        call_seq = itertools.count(1)
+        provider_usage: list[dict[str, int]] = []
         try:
             for _iteration in range(8):
                 call_ids: dict[str, str] = {}
@@ -1530,7 +1539,7 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
                     provider_id=self._provider_id,
                     lbe_call_id_for_provider_tool_call=lambda provider_call_id: call_ids.setdefault(
                         provider_call_id,
-                        f"lbe-{turn_id}-{len(call_ids) + 1}",
+                        f"lbe-{turn_id}-{next(call_seq)}",
                     ),
                     tools=tuple(
                         _provider_tool_definition(index, spec)
@@ -1539,6 +1548,11 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
                     # Explicit bounded need for one governed tool step. It can only
                     # lower the effective output limit, never raise it.
                     max_output_tokens=_TOOL_STEP_MAX_OUTPUT_TOKENS,
+                )
+                provider_usage.extend(
+                    dict(event.usage)
+                    for event in events
+                    if event.event_type is ModelEventType.USAGE_UPDATED and event.usage
                 )
                 terminal_error = _provider_event_error(events)
                 if terminal_error is not None:
@@ -1615,6 +1629,8 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         deterministic_result = self._deterministic_result(
             turn_id=turn_id,
             provider_output=provider_output,
+            # Provider-reported token usage per request, in order; never estimated.
+            extra={"provider_usage": provider_usage} if provider_usage else None,
         )
         if terminal_error is not None:
             return self._response(
