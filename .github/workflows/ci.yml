@@ -16,6 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -27,4 +29,27 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install .[test]
       - run: python -m pytest -q
+      # Projection tests are necessary, not a substitute for live acceptance.
+      - name: Terminal UI Rust regressions
+        if: matrix.os == 'windows-latest' && matrix.python-version == '3.13'
+        run: cargo test --manifest-path apps/lbe-terminal/Cargo.toml --locked --quiet
+      # UI changes must have an external owner-approved-golden proof manifest.
+      - name: Terminal UI acceptance gate
+        if: matrix.os == 'windows-latest' && matrix.python-version == '3.13' && github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE: ${{ github.event.before }}
+        run: |
+          $base = if ($env:PR_BASE) { $env:PR_BASE } else { $env:PUSH_BASE }
+          if (-not $base -or $base -match '^0+$') {
+            Write-Error 'BLOCKED: UI proof baseline is unavailable'
+            exit 1
+          }
+          $paths = git diff --name-only $base HEAD -- apps/lbe-terminal/ lbe_guard_inspector/tui_bridge.py lbe_guard_inspector/terminal_ui.py docs/LBE_TERMINAL_UI.md
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if ($paths) {
+            python scripts/check-ui-proof.py --verify-only
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - run: python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
