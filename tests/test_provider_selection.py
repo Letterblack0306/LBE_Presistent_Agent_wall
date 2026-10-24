@@ -75,22 +75,22 @@ def test_models_are_live_when_the_provider_answers_else_the_catalog():
 
 def test_owner_declared_providers_join_the_list_and_their_file_is_never_changed(tmp_path):
     own = tmp_path / "mine.json"
-    own_text = json.dumps({"freellmapi": {"kind": "openai-compatible",
+    own_text = json.dumps({"local-test-endpoint": {"kind": "openai-compatible",
                                           "endpoint": "http://127.0.0.1:3001/v1/chat/completions",
-                                          "api_key_env": "FREELLMAPI_KEY"}})
+                                          "api_key_env": "LOCAL_TEST_ENDPOINT_KEY"}})
     own.write_text(own_text)
-    env = {"LBE_CUSTOM_PROVIDERS_FILE": str(own), "FREELLMAPI_KEY": SECRET}
+    env = {"LBE_CUSTOM_PROVIDERS_FILE": str(own), "LOCAL_TEST_ENDPOINT_KEY": SECRET}
     merged = ps.merged_catalog(CATALOG, environ=env)
     first = merged["providers"][0]
     assert (first["id"], first["base_url"], first["key_env"], first["source"]) == (
-        "freellmapi", "http://127.0.0.1:3001/v1", ["FREELLMAPI_KEY"], "custom")
+        "local-test-endpoint", "http://127.0.0.1:3001/v1", ["LOCAL_TEST_ENDPOINT_KEY"], "custom")
     state = tmp_path / "state"
-    ps.select(merged, "freellmapi", "auto", state_dir=state, environ=env, probe=lambda h, p: True)
+    ps.select(merged, "local-test-endpoint", "auto", state_dir=state, environ=env, probe=lambda h, p: True)
     ps.select(merged, "openrouter", "a/b", state_dir=state,
               environ={**env, "OPENROUTER_API_KEY": "y"}, probe=lambda h, p: False)
     assert own.read_text() == own_text
     declared = json.loads((state / "custom-providers.json").read_text())
-    assert declared["freellmapi"]["api_key_env"] == "FREELLMAPI_KEY"
+    assert declared["local-test-endpoint"]["api_key_env"] == "LOCAL_TEST_ENDPOINT_KEY"
     assert declared["openrouter"]["api_key_env"] == "OPENROUTER_API_KEY"
 
 
