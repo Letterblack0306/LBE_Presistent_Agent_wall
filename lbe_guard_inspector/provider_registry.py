@@ -261,6 +261,7 @@ def native_openai_compatible_factory(provider_id: str) -> ProviderFactory:
     clean_provider = _provider_id(provider_id)
 
     def factory(config: ProviderConfig) -> ProviderHandle:
+        config = _declared_credentials(clean_provider, config)
         return _handle(
             clean_provider,
             config,
@@ -269,6 +270,32 @@ def native_openai_compatible_factory(provider_id: str) -> ProviderFactory:
         )
 
     return factory
+
+
+def _declared_credentials(provider_id: str, config: ProviderConfig) -> ProviderConfig:
+    """Fill a missing key from the provider's declared environment variable
+    (custom providers file, written by provider selection). The value is read
+    when the turn runs and is never stored."""
+    if config.api_key:
+        return config
+    from dataclasses import replace
+
+    from .custom_providers import load_openai_providers, resolve_credentials
+
+    try:
+        declared = load_openai_providers().get(provider_id)
+    except (OSError, ValueError):
+        return config
+    if declared is None:
+        return config
+    api_key, headers = resolve_credentials(declared)
+    if not api_key and not headers:
+        return config
+    return replace(
+        config,
+        api_key=api_key,
+        headers={**headers, **dict(config.headers or {})} or None,
+    )
 
 
 def login_agent_factory(provider_id: str) -> ProviderFactory:

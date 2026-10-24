@@ -149,6 +149,18 @@ def build_parser() -> argparse.ArgumentParser:
     provider_models.add_argument("--provider-config", required=True)
     provider_models.set_defaults(handler=_provider_models)
 
+    provider_catalog = provider_commands.add_parser(
+        "catalog", help="List providers from the installed @cline/llms catalog with local readiness"
+    )
+    provider_catalog.add_argument("--refresh", action="store_true", help="Rebuild the cached catalog")
+    provider_catalog.set_defaults(handler=_provider_catalog)
+
+    provider_catalog_models = provider_commands.add_parser(
+        "catalog-models", help="List one provider's models from the installed @cline/llms catalog"
+    )
+    provider_catalog_models.add_argument("--provider", required=True)
+    provider_catalog_models.set_defaults(handler=_provider_catalog_models)
+
     provider_check = provider_commands.add_parser(
         "check", help="Check a provider against the structured reasoning contract"
     )
@@ -763,6 +775,31 @@ def _provider_models(args: argparse.Namespace) -> dict[str, Any]:
         "action": "provider.models",
         "models": list(model_ids),
         "is_local": hostname in {"localhost", "127.0.0.1", "::1"},
+    }
+
+
+def _provider_catalog(args: argparse.Namespace) -> dict[str, Any]:
+    from .provider_catalog import load_catalog, provider_rows
+
+    catalog = load_catalog(refresh=bool(args.refresh))
+    rows = provider_rows(catalog)
+    return {
+        "action": "provider.catalog",
+        "source": catalog.get("source"),
+        "version": catalog.get("version"),
+        "providers": rows,
+        "ready": [row["id"] for row in rows if row["ready"]],
+    }
+
+
+def _provider_catalog_models(args: argparse.Namespace) -> dict[str, Any]:
+    from .provider_catalog import catalog_models, load_catalog
+
+    catalog = load_catalog()
+    return {
+        "action": "provider.catalog_models",
+        "provider_id": args.provider,
+        "models": catalog_models(catalog, args.provider),
     }
 
 
