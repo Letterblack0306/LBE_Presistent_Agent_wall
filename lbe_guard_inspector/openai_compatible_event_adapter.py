@@ -116,12 +116,20 @@ class OpenAICompatibleEventAdapter:
         events.extend(tool_events)
         tool_error = any(event.event_type is ModelEventType.ERROR for event in tool_events)
         usage = _usage(response.get("usage"))
+        # Gateways (OpenRouter-style routers, FreeLLMAPI) name the upstream that
+        # actually answered; keep it exactly as reported, never inferred.
+        served = {
+            key: value.strip()
+            for key, value in (("served_by", response.get("provider")), ("served_model", response.get("model")))
+            if isinstance(value, str) and value.strip()
+        }
         if usage is not None:
             events.append(self._event(
                 event_type=ModelEventType.USAGE_UPDATED,
                 provider_id=provider_id,
                 provider_request_id=request_id,
                 usage=usage,
+                metadata=served,
             ))
         finish_reason = _optional_text(choice.get("finish_reason"), "finish_reason")
         if tool_error:

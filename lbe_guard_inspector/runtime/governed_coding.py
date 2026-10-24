@@ -1531,6 +1531,7 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
         # tool call never runs.
         call_seq = itertools.count(1)
         provider_usage: list[dict[str, int]] = []
+        provider_served: list[dict[str, str]] = []
         try:
             for _iteration in range(8):
                 call_ids: dict[str, str] = {}
@@ -1549,11 +1550,14 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
                     # lower the effective output limit, never raise it.
                     max_output_tokens=_TOOL_STEP_MAX_OUTPUT_TOKENS,
                 )
-                provider_usage.extend(
-                    dict(event.usage)
-                    for event in events
-                    if event.event_type is ModelEventType.USAGE_UPDATED and event.usage
-                )
+                for event in events:
+                    if event.event_type is ModelEventType.USAGE_UPDATED and event.usage:
+                        provider_usage.append(dict(event.usage))
+                        provider_served.append({
+                            key: str(value)
+                            for key, value in (event.metadata or {}).items()
+                            if key in ("served_by", "served_model") and value
+                        })
                 terminal_error = _provider_event_error(events)
                 if terminal_error is not None:
                     break
@@ -1630,7 +1634,9 @@ class GovernedProviderReasoningController(_GovernedCodingControllerBase):
             turn_id=turn_id,
             provider_output=provider_output,
             # Provider-reported token usage per request, in order; never estimated.
-            extra={"provider_usage": provider_usage} if provider_usage else None,
+            extra={"provider_usage": provider_usage, "provider_served": provider_served}
+            if provider_usage
+            else None,
         )
         if terminal_error is not None:
             return self._response(
