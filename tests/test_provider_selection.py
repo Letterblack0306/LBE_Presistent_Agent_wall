@@ -113,3 +113,26 @@ def test_native_binding_reads_the_declared_key_when_a_turn_runs(tmp_path, monkey
     monkeypatch.delenv("OPENROUTER_API_KEY")
     pr.native_openai_compatible_factory("openrouter")(config)
     assert built[1].api_key is None  # no value present: nothing invented
+
+
+def test_login_agent_providers_join_the_list_with_their_cli_state(tmp_path):
+    which = lambda exe: "C:/tools/claude.exe" if exe == "claude" else None
+    merged = ps.merged_catalog(CATALOG, environ={})
+    by_id = {p["id"]: p for p in merged["providers"]}
+    assert by_id["claude-code"]["source"] == "login" and by_id["claude-code"]["executable"] == "claude"
+    assert {"claude-code", "openai-codex-cli", "gemini-cli"} <= set(by_id)
+    from lbe_guard_inspector import provider_catalog as pc
+    rows = {r["id"]: r for r in pc.provider_rows(merged, environ={}, probe=lambda h, p: False, which=which)}
+    assert (rows["claude-code"]["ready"], rows["claude-code"]["engine"]) == (True, "login")
+    assert rows["claude-code"]["state"] == "own sign-in · claude installed"
+    assert (rows["gemini-cli"]["ready"], rows["gemini-cli"]["state"]) == (False, "gemini not installed")
+    assert ps.provider_models(merged, "claude-code", environ={}) == ("login", [
+        {"id": "default", "name": "platform default", "context_window": None,
+         "max_tokens": None, "capabilities": [], "status": None}])
+    picked = ps.select(merged, "claude-code", "default", state_dir=tmp_path, environ={}, which=which)
+    config = json.loads((tmp_path / "provider-claude-code.json").read_text())
+    assert config["endpoint"] == "login-agent://claude-code" and config["model"] == "default"
+    assert "claude-code" not in json.loads((tmp_path / "custom-providers.json").read_text())
+    assert picked["key_env"] is None
+    with pytest.raises(ps.SelectionError, match="gemini not installed"):
+        ps.select(merged, "gemini-cli", "default", state_dir=tmp_path, environ={}, which=which)

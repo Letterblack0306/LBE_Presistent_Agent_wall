@@ -82,11 +82,39 @@ def merged_catalog(
             "default_model": entry.default_model,
             "source": "custom",
         })
-    ids = {p["id"] for p in custom}
-    providers = custom + [
+    login = _login_providers(catalog, path)
+    ids = {p["id"] for p in custom} | {p["id"] for p in login}
+    providers = custom + [p for p in login if p["id"] not in {c["id"] for c in custom}] + [
         dict(p) for p in catalog.get("providers") or [] if isinstance(p, dict) and p.get("id") not in ids
     ]
     return {**dict(catalog), "providers": providers}
+
+
+def _login_providers(catalog: Mapping[str, Any], custom_path: Path | None) -> list[dict[str, Any]]:
+    """LBE's login-agent providers (Claude Code, Codex CLI, Gemini CLI, plus any the
+    owner declared): the platform CLI holds the sign-in and runs with its tools off."""
+    from .agent_platforms import AGENT_PLATFORMS
+    from .login_agent_transport import LOGIN_AGENT_SPECS, load_extra_login_agents
+
+    if custom_path is not None and custom_path.is_file():
+        try:
+            load_extra_login_agents(str(custom_path))
+        except (OSError, ValueError):
+            pass  # a broken declaration leaves the built-in login agents listed
+    names = {str(p.get("id")): p.get("name") for p in catalog.get("providers") or [] if isinstance(p, dict)}
+    display = {p.platform_id: p.display_name for p in AGENT_PLATFORMS}
+    return [{
+        "id": provider_id,
+        "name": names.get(provider_id) or display.get(provider_id) or provider_id,
+        "protocol": "login-agent",
+        "client": "login-agent",
+        "base_url": None,
+        "key_env": [],
+        "default_model": None,
+        "source": "login",
+        "executable": spec.executable,
+        "login_hint": spec.login_hint,
+    } for provider_id, spec in sorted(LOGIN_AGENT_SPECS.items())]
 
 
 def _provider(catalog: Mapping[str, Any], provider_id: str) -> dict[str, Any]:
@@ -113,6 +141,10 @@ def provider_models(
     """Models the provider serves now (``"live"``, from its own /models), or the
     catalog's list (``"catalog"``) when the provider cannot be asked."""
     provider = _provider(catalog, provider_id)
+    if provider.get("source") == "login":
+        # The platform CLI picks its own model; LBE does not guess its list.
+        return "login", [{"id": "default", "name": "platform default", "context_window": None,
+                          "max_tokens": None, "capabilities": [], "status": None}]
     static = pc.catalog_models(catalog, provider_id) if provider.get("source") != "custom" else []
     if pc.engine_for(provider) != "native":
         return "catalog", static
@@ -152,7 +184,7 @@ def _declare_key_env(
     target = state_dir / "custom-providers.json"
     entries = _read_custom(own) if own is not None and own.resolve() != target.resolve() else {}
     entries.update({k: v for k, v in _read_custom(target).items() if k not in entries})
-    if provider.get("source") != "custom":  # an owner-declared entry is already copied as-is
+    if provider.get("source") not in ("custom", "login"):  # owner/LBE entries need no key declaration
         entry: dict[str, Any] = {"kind": "openai-compatible", "endpoint": completion_endpoint(provider["base_url"])}
         if key_name:
             entry["api_key_env"] = key_name
@@ -169,10 +201,11 @@ def select(
     state_dir: Path,
     environ: Mapping[str, str] | None = None,
     probe: pc.Probe = pc._tcp_listening,
+    which: pc.Which = pc.shutil.which,
 ) -> dict[str, Any]:
     """Write the session provider config for this choice; return where it is."""
     provider = _provider(catalog, provider_id)
-    if pc.engine_for(provider) != "native":
+    if pc.engine_for(provider) not in ("native", "login"):
         raise SelectionError(
             f"{provider_id} runs through the Cline engine; starting it from provider selection is not built yet"
         )
@@ -180,14 +213,15 @@ def select(
     if not model:
         raise SelectionError("choose a model")
     env = os.environ if environ is None else environ
-    ready, state = pc.readiness(provider, environ=env, probe=probe)
+    ready, state = pc.readiness(provider, environ=env, probe=probe, which=which)
     if not ready:
         raise SelectionError(f"{provider_id} is not ready: {state}")
     key_name, _value = _present_key(provider, env)
     state_dir.mkdir(parents=True, exist_ok=True)
     config_path = state_dir / f"provider-{provider_id}.json"
+    login = provider.get("source") == "login"
     config_path.write_text(json.dumps({
-        "endpoint": completion_endpoint(provider["base_url"]),
+        "endpoint": f"login-agent://{provider_id}" if login else completion_endpoint(provider["base_url"]),
         "model": model,
         "timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
         "provider_id": provider_id,

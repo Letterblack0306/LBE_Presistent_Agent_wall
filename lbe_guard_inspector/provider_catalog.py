@@ -11,6 +11,8 @@ Readiness is a fact, never a guess:
 - ``needs <ENV>``  no key variable is present;
 - ``not running``  the local endpoint refuses the connection;
 - ``own login``    the provider signs in through its own tool (no key variable).
+- ``own sign-in``  an LBE login-agent provider whose CLI is installed; the CLI
+                   holds the sign-in, and the first turn proves it works.
 
 Catalog data says how to reach a provider; it does not prove a key is valid or
 quota is left. Only a real turn proves that.
@@ -19,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 from pathlib import Path
@@ -33,6 +36,7 @@ _DEFAULT_PORTS = {"http": 80, "https": 443}
 
 Runner = Callable[..., "subprocess.CompletedProcess[str]"]
 Probe = Callable[[str, int], bool]
+Which = Callable[[str], "str | None"]
 
 
 class CatalogUnavailable(RuntimeError):
@@ -98,7 +102,10 @@ def load_catalog(
 
 
 def engine_for(provider: Mapping[str, Any]) -> str:
-    """LBE's native engine speaks OpenAI-compatible chat; everything else goes through Cline."""
+    """LBE's native engine speaks OpenAI-compatible chat; everything else goes through Cline.
+    LBE's own login-agent providers run their platform CLI with its tools off."""
+    if provider.get("source") == "login":
+        return "login"
     native = (
         provider.get("protocol") == "openai-chat"
         and provider.get("client") == "openai-compatible"
@@ -120,7 +127,13 @@ def readiness(
     *,
     environ: Mapping[str, str] | None = None,
     probe: Probe = _tcp_listening,
+    which: Which = shutil.which,
 ) -> tuple[bool, str]:
+    if provider.get("source") == "login":
+        executable = str(provider.get("executable") or "")
+        if executable and which(executable):
+            return True, f"own sign-in · {executable} installed"
+        return False, f"{executable or 'cli'} not installed"
     env = os.environ if environ is None else environ
     keys = [str(k) for k in provider.get("key_env") or []]
     present = next((k for k in keys if env.get(k)), None)
@@ -143,6 +156,7 @@ def provider_rows(
     *,
     environ: Mapping[str, str] | None = None,
     probe: Probe = _tcp_listening,
+    which: Which = shutil.which,
 ) -> list[dict[str, Any]]:
     """One row per catalog provider; ready providers first, then by name."""
     models = catalog.get("models") if isinstance(catalog.get("models"), dict) else {}
@@ -150,7 +164,7 @@ def provider_rows(
     for provider in catalog.get("providers") or []:
         if not isinstance(provider, dict) or not provider.get("id"):
             continue
-        ready, state = readiness(provider, environ=environ, probe=probe)
+        ready, state = readiness(provider, environ=environ, probe=probe, which=which)
         rows.append({
             "id": str(provider["id"]),
             "name": str(provider.get("name") or provider["id"]),
